@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { addDays, format } from "date-fns";
 import { getCurrentProfile } from "@/lib/data/profile";
@@ -20,6 +21,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { HealthBadge } from "@/components/health-badge";
 import { TASK_PRIORITY_LABELS } from "@/lib/project-labels";
+
+export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
   const profile = await getCurrentProfile();

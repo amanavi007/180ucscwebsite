@@ -48,7 +48,7 @@ export function AppShell({
       <aside className="hidden w-60 shrink-0 border-r border-sidebar-border bg-sidebar md:flex md:flex-col">
         <div className="flex items-center gap-2 px-4 py-4">
           <Image src="/logo-icon.png" alt="" width={987} height={1006} className="h-6 w-auto" />
-          <span className="text-lg font-semibold tracking-tight text-primary">
+          <span className="font-brand text-lg font-bold tracking-tight text-primary">
             180 @ UCSC
           </span>
         </div>
@@ -66,7 +66,7 @@ export function AppShell({
           >
             <Menu className="size-5" />
           </Button>
-          <span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground md:hidden">
+          <span className="font-brand flex items-center gap-1.5 text-sm font-bold text-muted-foreground md:hidden">
             <Image src="/logo-icon.png" alt="" width={987} height={1006} className="h-4 w-auto" />
             180 @ UCSC
           </span>
@@ -109,7 +109,7 @@ export function AppShell({
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-64 p-0">
-          <SheetTitle className="flex items-center gap-2 px-4 py-4 text-lg font-semibold tracking-tight text-primary">
+          <SheetTitle className="font-brand flex items-center gap-2 px-4 py-4 text-lg font-bold tracking-tight text-primary">
             <Image src="/logo-icon.png" alt="" width={987} height={1006} className="h-6 w-auto" />
             180 @ UCSC
           </SheetTitle>

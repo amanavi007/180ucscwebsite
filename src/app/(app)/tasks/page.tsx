@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getVisibleTasks } from "@/lib/data/tasks";
 import { getProjects } from "@/lib/data/projects";
 import { TasksView } from "./tasks-view";
+
+export const metadata: Metadata = { title: "Tasks" };
 
 export default async function TasksPage({
   searchParams,

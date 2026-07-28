@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getDirectory } from "@/lib/data/directory";
 import { getActiveQuarter } from "@/lib/data/quarters";
 import { getCurrentProfile } from "@/lib/data/profile";
@@ -5,6 +6,8 @@ import { getQuarterAttendanceRates } from "@/lib/data/attendance";
 import type { AttendanceRateResult } from "@/lib/attendance";
 import { isExec } from "@/lib/auth/roles";
 import { DirectoryView } from "./directory-view";
+
+export const metadata: Metadata = { title: "Directory" };
 
 export default async function DirectoryPage() {
   const profile = await getCurrentProfile();

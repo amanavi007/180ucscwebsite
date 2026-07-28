@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getWikiPages } from "@/lib/data/wiki";
 import { isElevatedOrAbove, isExec } from "@/lib/auth/roles";
 import type { WikiSection } from "@/lib/supabase/database.types";
 import { ResourcesView } from "./resources-view";
+
+export const metadata: Metadata = { title: "Resources" };
 
 export default async function ResourcesPage({
   searchParams,

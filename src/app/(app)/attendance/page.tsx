@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getActiveQuarter } from "@/lib/data/quarters";
 import { getProjects, getProjectMembers } from "@/lib/data/projects";
@@ -5,6 +6,8 @@ import { getAttendanceHistory, getSessionForDate } from "@/lib/data/attendance";
 import { isExec } from "@/lib/auth/roles";
 import { getOrgTodayDateString } from "@/lib/date";
 import { AttendanceView } from "./attendance-view";
+
+export const metadata: Metadata = { title: "Attendance" };
 
 export default async function AttendancePage({
   searchParams,

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getProject, getProjectMembers } from "@/lib/data/projects";
@@ -8,6 +9,20 @@ import { computeProjectHealth } from "@/lib/project-health";
 import { ProjectHeader } from "./project-header";
 import { TeamRoster } from "./team-roster";
 import { TaskList } from "./task-list";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  try {
+    const project = await getProject(id);
+    return { title: project.client_name };
+  } catch {
+    return { title: "Project" };
+  }
+}
 
 export default async function ProjectDetailPage({
   params,

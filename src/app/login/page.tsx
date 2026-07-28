@@ -54,7 +54,7 @@ export default function LoginPage() {
             priority
             className="mx-auto h-16 w-auto"
           />
-          <div className="text-2xl font-semibold tracking-tight text-primary">
+          <div className="font-brand text-2xl font-bold tracking-tight text-primary">
             180 @ UCSC
           </div>
           <p className="text-sm text-muted-foreground">

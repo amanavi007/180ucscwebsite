@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getProjects } from "@/lib/data/projects";
 import { getQuarters, getActiveQuarter } from "@/lib/data/quarters";
 import { getAllProfiles } from "@/lib/data/members";
 import { isExec } from "@/lib/auth/roles";
 import { ProjectsView } from "./projects-view";
+
+export const metadata: Metadata = { title: "Projects" };
 
 export default async function ProjectsPage({
   searchParams,

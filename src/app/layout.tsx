@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Quicksand } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
@@ -14,8 +14,17 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const quicksand = Quicksand({
+  variable: "--font-quicksand",
+  subsets: ["latin"],
+  weight: ["600", "700"],
+});
+
 export const metadata: Metadata = {
-  title: "180 @ UCSC",
+  title: {
+    default: "UCSC 180",
+    template: "%s · UCSC 180",
+  },
   description: "180 Degrees Consulting UCSC chapter operations portal",
 };
 
@@ -27,7 +36,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${quicksand.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
