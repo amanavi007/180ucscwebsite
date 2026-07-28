@@ -11,7 +11,6 @@ export type UserRole =
   | "president";
 
 export type ProjectStatus =
-  | "introductions"
   | "initial_research"
   | "issue_tree"
   | "preliminary_research"
@@ -28,7 +27,6 @@ export type TaskStatus = "not_started" | "in_progress" | "done";
 export type TaskPriority = "low" | "medium" | "high";
 
 export type TaskType =
-  | "introductions"
   | "initial_research"
   | "issue_tree"
   | "preliminary_research"
