@@ -45,14 +45,24 @@ export function TaskList({
   const knownIds = new Set(rosterProfiles.map((p) => p.id));
   const strayIds = [...byAssignee.keys()].filter((id) => !knownIds.has(id));
 
-  const sections = [
-    ...rosterProfiles.map((p) => ({ id: p.id, name: p.name, tasks: byAssignee.get(p.id) ?? [] })),
-    ...strayIds.map((id) => ({
-      id,
-      name: byAssignee.get(id)?.[0]?.assignee?.name ?? "Former member",
-      tasks: byAssignee.get(id)!,
-    })),
-  ];
+  // Base-tier consultants only ever have their own tasks in `tasks` (filtered upstream) --
+  // don't show empty placeholder sections for teammates whose tasks are just hidden from view.
+  const sections = canManage
+    ? [
+        ...rosterProfiles.map((p) => ({ id: p.id, name: p.name, tasks: byAssignee.get(p.id) ?? [] })),
+        ...strayIds.map((id) => ({
+          id,
+          name: byAssignee.get(id)?.[0]?.assignee?.name ?? "Former member",
+          tasks: byAssignee.get(id)!,
+        })),
+      ]
+    : [
+        {
+          id: currentUserId,
+          name: rosterProfiles.find((p) => p.id === currentUserId)?.name ?? "My tasks",
+          tasks: byAssignee.get(currentUserId) ?? [],
+        },
+      ];
 
   return (
     <Card>

@@ -50,6 +50,7 @@ export function TasksView({
   filters,
   currentUserId,
   isExec,
+  canViewAll,
 }: {
   tasks: TaskWithProject[];
   projects: ProjectWithRelations[];
@@ -57,6 +58,7 @@ export function TasksView({
   filters: Filters;
   currentUserId: string;
   isExec: boolean;
+  canViewAll: boolean;
 }) {
   const router = useRouter();
 
@@ -93,24 +95,26 @@ export function TasksView({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex overflow-hidden rounded-md border">
-          <Button
-            variant={mine ? "default" : "ghost"}
-            size="sm"
-            className="rounded-none"
-            onClick={() => setParam("mine", "1")}
-          >
-            My tasks
-          </Button>
-          <Button
-            variant={!mine ? "default" : "ghost"}
-            size="sm"
-            className="rounded-none"
-            onClick={() => setParam("mine", "0")}
-          >
-            All tasks
-          </Button>
-        </div>
+        {canViewAll && (
+          <div className="flex overflow-hidden rounded-md border">
+            <Button
+              variant={mine ? "default" : "ghost"}
+              size="sm"
+              className="rounded-none"
+              onClick={() => setParam("mine", "1")}
+            >
+              My tasks
+            </Button>
+            <Button
+              variant={!mine ? "default" : "ghost"}
+              size="sm"
+              className="rounded-none"
+              onClick={() => setParam("mine", "0")}
+            >
+              All tasks
+            </Button>
+          </div>
+        )}
 
         <Select value={filters.project ?? ALL} onValueChange={(v) => setParam("project", v)}>
           <SelectTrigger size="sm" className="w-44">

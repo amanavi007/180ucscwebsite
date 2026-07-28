@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getVisibleTasks } from "@/lib/data/tasks";
 import { getProjects } from "@/lib/data/projects";
-import { isExec } from "@/lib/auth/roles";
+import { isExec, isElevatedOrAbove } from "@/lib/auth/roles";
 import { TasksView } from "./tasks-view";
 
 export const metadata: Metadata = { title: "Tasks" };
@@ -19,8 +19,10 @@ export default async function TasksPage({
 }) {
   const params = await searchParams;
   const profile = await getCurrentProfile();
+  const canViewAll = isElevatedOrAbove(profile.role);
 
-  const mine = params.mine !== "0";
+  // Base-tier consultants only ever see their own tasks -- ignore the "mine" param for them.
+  const mine = canViewAll ? params.mine !== "0" : true;
 
   const tasks = await getVisibleTasks({
     assigneeId: mine ? profile.id : undefined,
@@ -47,6 +49,7 @@ export default async function TasksPage({
         filters={params}
         currentUserId={profile.id}
         isExec={isExec(profile.role)}
+        canViewAll={canViewAll}
       />
     </div>
   );

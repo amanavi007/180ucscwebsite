@@ -2,10 +2,16 @@ import type { Metadata } from "next";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getActiveQuarter } from "@/lib/data/quarters";
 import { getProjects, getProjectMembers } from "@/lib/data/projects";
-import { getAttendanceHistory, getSessionForDate } from "@/lib/data/attendance";
-import { isExec } from "@/lib/auth/roles";
+import {
+  getAttendanceHistory,
+  getMyAttendanceSummary,
+  getSessionForDate,
+} from "@/lib/data/attendance";
+import { getAttendanceAlertThreshold } from "@/lib/data/org-settings";
+import { isExec, isElevatedOrAbove } from "@/lib/auth/roles";
 import { getOrgTodayDateString } from "@/lib/date";
 import { AttendanceView } from "./attendance-view";
+import { MyAttendanceStats } from "./my-attendance-stats";
 
 export const metadata: Metadata = { title: "Attendance" };
 
@@ -25,6 +31,24 @@ export default async function AttendancePage({
         <p className="text-sm text-muted-foreground">
           No active quarter yet -- an exec needs to set one up first.
         </p>
+      </div>
+    );
+  }
+
+  // Base-tier consultants get a personal stats view instead of the team quick-entry/history tool.
+  if (!isElevatedOrAbove(profile.role)) {
+    const [summary, threshold] = await Promise.all([
+      getMyAttendanceSummary(profile.id, activeQuarter.id),
+      getAttendanceAlertThreshold(),
+    ]);
+
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Attendance</h1>
+          <p className="text-sm text-muted-foreground">{activeQuarter.name}</p>
+        </div>
+        <MyAttendanceStats summary={summary} quarterName={activeQuarter.name} threshold={threshold} />
       </div>
     );
   }

@@ -118,6 +118,41 @@ export async function getQuarterAttendanceRates(
   return rates;
 }
 
+export interface MyAttendanceSummary extends AttendanceRateResult {
+  projectName: string | null;
+  marks: { date: string; mark: AttendanceMark }[];
+}
+
+/** A single member's own rate + recent marks for a quarter -- for the base-tier personal stats view. */
+export async function getMyAttendanceSummary(
+  userId: string,
+  quarterId: string,
+): Promise<MyAttendanceSummary> {
+  const supabase = await createClient();
+  const { data: memberships, error } = await supabase
+    .from("memberships")
+    .select("project:projects!inner(id, client_name, quarter_id)")
+    .eq("user_id", userId);
+
+  if (error) throw error;
+
+  const myProject = (
+    memberships as unknown as { project: { id: string; client_name: string; quarter_id: string } | null }[]
+  )
+    .map((m) => m.project)
+    .find((p): p is { id: string; client_name: string; quarter_id: string } => !!p && p.quarter_id === quarterId);
+
+  const [totalSessionDates, teamSessionDates, marks] = await Promise.all([
+    getQuarterSessionDates(quarterId),
+    myProject ? getProjectSessionDates(myProject.id) : Promise.resolve([]),
+    getUserMarksInQuarter(userId, quarterId),
+  ]);
+
+  const result = computeAttendanceRate({ totalSessionDates, teamSessionDates, marks });
+
+  return { ...result, projectName: myProject?.client_name ?? null, marks };
+}
+
 /** This member's excused/unexcused/tardy marks across all their sessions in a quarter. */
 export async function getUserMarksInQuarter(
   userId: string,

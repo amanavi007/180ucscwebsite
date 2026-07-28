@@ -53,6 +53,9 @@ export default async function ProjectDetailPage({
 
   const computedHealth = computeProjectHealth(project, tasks);
 
+  // Base-tier consultants only see their own tasks, not the whole team's.
+  const visibleTasks = canEdit ? tasks : tasks.filter((t) => t.assignee_id === profile.id);
+
   return (
     <div className="space-y-8">
       <ProjectHeader
@@ -66,7 +69,7 @@ export default async function ProjectDetailPage({
 
       <TaskList
         projectId={id}
-        tasks={tasks}
+        tasks={visibleTasks}
         canManage={canEdit}
         currentUserId={profile.id}
         rosterProfiles={members.map((m) => m.profile).filter((p): p is NonNullable<typeof p> => !!p)}
