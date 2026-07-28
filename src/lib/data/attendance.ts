@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { computeAttendanceRate, type AttendanceRateResult } from "@/lib/attendance";
 import type { AttendanceMark } from "@/lib/supabase/database.types";
 
 /** Distinct session dates logged org-wide for a quarter -- the shared rate denominator. */
@@ -91,6 +92,30 @@ export async function getAttendanceHistory(projectId: string): Promise<Attendanc
     unexcused: s.marks.filter((m) => m.mark === "unexcused").length,
     tardy: s.marks.filter((m) => m.mark === "tardy").length,
   }));
+}
+
+/** Per-member attendance rate for a quarter, keyed by user_id. Exec-only view. */
+export async function getQuarterAttendanceRates(
+  quarterId: string,
+  rows: { user_id: string; project_id: string | null }[],
+): Promise<Record<string, AttendanceRateResult>> {
+  const totalSessionDates = await getQuarterSessionDates(quarterId);
+  const teamDatesCache = new Map<string, string[]>();
+  const rates: Record<string, AttendanceRateResult> = {};
+
+  for (const row of rows) {
+    let teamSessionDates: string[] = [];
+    if (row.project_id) {
+      if (!teamDatesCache.has(row.project_id)) {
+        teamDatesCache.set(row.project_id, await getProjectSessionDates(row.project_id));
+      }
+      teamSessionDates = teamDatesCache.get(row.project_id)!;
+    }
+    const marks = await getUserMarksInQuarter(row.user_id, quarterId);
+    rates[row.user_id] = computeAttendanceRate({ totalSessionDates, teamSessionDates, marks });
+  }
+
+  return rates;
 }
 
 /** This member's excused/unexcused/tardy marks across all their sessions in a quarter. */
