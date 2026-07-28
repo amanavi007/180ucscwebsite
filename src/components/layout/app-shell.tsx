@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SidebarNav } from "./sidebar-nav";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { logout } from "@/actions/auth";
 import { roleLabel } from "@/lib/auth/roles";
 import type { UserRole } from "@/lib/supabase/database.types";
@@ -70,34 +71,37 @@ export function AppShell({
             180 @ UCSC
           </span>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button variant="ghost" className="ml-auto gap-2 px-2">
-                  <Avatar className="size-7">
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                      {initials(name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="hidden text-sm font-medium sm:inline">
-                    {name}
-                  </span>
-                </Button>
-              }
-            />
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>
-                <div className="font-medium">{name}</div>
-                <div className="text-xs font-normal text-muted-foreground">
-                  {roleLabel(role)}
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => logout()}>
-                Sign out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="ml-auto flex items-center gap-1">
+            <ThemeToggle />
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button variant="ghost" className="gap-2 px-2">
+                    <Avatar className="size-7">
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                        {initials(name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="hidden text-sm font-medium sm:inline">
+                      {name}
+                    </span>
+                  </Button>
+                }
+              />
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>
+                  <div className="font-medium">{name}</div>
+                  <div className="text-xs font-normal text-muted-foreground">
+                    {roleLabel(role)}
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => logout()}>
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>

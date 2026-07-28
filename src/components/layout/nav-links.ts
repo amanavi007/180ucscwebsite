@@ -5,7 +5,6 @@ import {
   ListTodo,
   Users,
   ClipboardCheck,
-  NotebookText,
   BookOpen,
   ShieldCheck,
 } from "lucide-react";
@@ -23,7 +22,6 @@ export const NAV_LINKS: NavLink[] = [
   { href: "/tasks", label: "Tasks", icon: ListTodo },
   { href: "/directory", label: "Directory", icon: Users },
   { href: "/attendance", label: "Attendance", icon: ClipboardCheck },
-  { href: "/notes", label: "Meeting Notes", icon: NotebookText },
   { href: "/resources", label: "Resources", icon: BookOpen },
   { href: "/admin", label: "Admin", icon: ShieldCheck, execOnly: true },
 ];

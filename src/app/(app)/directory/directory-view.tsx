@@ -168,7 +168,7 @@ export function DirectoryView({
                         {result.missingSessionDates.length > 0 && (
                           <span
                             title={`Team hasn't logged ${result.missingSessionDates.length} session(s) other teams logged this quarter`}
-                            className="text-xs text-amber-600"
+                            className="text-xs text-amber-600 dark:text-amber-400"
                           >
                             ⚠
                           </span>

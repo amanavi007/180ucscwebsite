@@ -3,6 +3,7 @@ import type { Database } from "@/lib/supabase/database.types";
 type Project = Database["public"]["Tables"]["projects"]["Row"];
 type Task = Database["public"]["Tables"]["tasks"]["Row"];
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+type WikiPage = Database["public"]["Tables"]["wiki_pages"]["Row"];
 
 export type NamedProfile = Pick<Profile, "id" | "name"> | null;
 
@@ -27,4 +28,8 @@ export interface MembershipWithProfile {
   id: string;
   user_id: string;
   profile: Pick<Profile, "id" | "name" | "role" | "email"> | null;
+}
+
+export interface WikiPageWithAuthor extends WikiPage {
+  updated_by_profile: NamedProfile;
 }

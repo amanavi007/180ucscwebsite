@@ -43,18 +43,21 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-neutral-50 px-4">
+    <div className="flex min-h-svh items-center justify-center bg-muted/30 px-4">
       <div className="w-full max-w-sm space-y-8">
         <div className="space-y-2 text-center">
           <Image
-            src="/logo-full.png"
-            alt="180 Degrees Consulting"
-            width={1521}
-            height={1546}
+            src="/logo-icon.png"
+            alt=""
+            width={987}
+            height={1006}
             priority
-            className="mx-auto h-24 w-auto"
+            className="mx-auto h-16 w-auto"
           />
-          <p className="text-sm text-neutral-500">
+          <div className="text-2xl font-semibold tracking-tight text-primary">
+            180 @ UCSC
+          </div>
+          <p className="text-sm text-muted-foreground">
             UCSC chapter operations portal
           </p>
         </div>
