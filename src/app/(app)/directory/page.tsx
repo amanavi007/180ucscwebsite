@@ -3,6 +3,7 @@ import { getDirectory } from "@/lib/data/directory";
 import { getActiveQuarter } from "@/lib/data/quarters";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getQuarterAttendanceRates } from "@/lib/data/attendance";
+import { getAttendanceAlertThreshold } from "@/lib/data/org-settings";
 import type { AttendanceRateResult } from "@/lib/attendance";
 import { isExec } from "@/lib/auth/roles";
 import { DirectoryView } from "./directory-view";
@@ -13,12 +14,16 @@ export default async function DirectoryPage() {
   const profile = await getCurrentProfile();
   const activeQuarter = await getActiveQuarter();
   const rows = await getDirectory(activeQuarter?.id ?? null);
+  const exec = isExec(profile.role);
 
   // Attendance rate is Exec-only, per the org's permission model.
-  const rates: Record<string, AttendanceRateResult> | undefined =
-    isExec(profile.role) && activeQuarter
-      ? await getQuarterAttendanceRates(activeQuarter.id, rows)
-      : undefined;
+  const [rates, attendanceThreshold]: [Record<string, AttendanceRateResult> | undefined, number] =
+    exec && activeQuarter
+      ? await Promise.all([
+          getQuarterAttendanceRates(activeQuarter.id, rows),
+          getAttendanceAlertThreshold(),
+        ])
+      : [undefined, 0.8];
 
   return (
     <div className="space-y-6">
@@ -29,7 +34,7 @@ export default async function DirectoryPage() {
         </p>
       </div>
 
-      <DirectoryView rows={rows} rates={rates} />
+      <DirectoryView rows={rows} rates={rates} attendanceThreshold={attendanceThreshold} />
     </div>
   );
 }

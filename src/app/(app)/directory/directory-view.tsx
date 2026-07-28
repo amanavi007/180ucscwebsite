@@ -19,7 +19,10 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 import { roleLabel, ROLE_LABELS } from "@/lib/auth/roles";
+import { toCsv, downloadCsv } from "@/lib/csv";
 import type { DirectoryRow } from "@/lib/data/directory";
 import type { AttendanceRateResult } from "@/lib/attendance";
 
@@ -36,14 +39,14 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-const LOW_ATTENDANCE_THRESHOLD = 0.8;
-
 export function DirectoryView({
   rows,
   rates,
+  attendanceThreshold = 0.8,
 }: {
   rows: DirectoryRow[];
   rates?: Record<string, AttendanceRateResult>;
+  attendanceThreshold?: number;
 }) {
   const [roleFilter, setRoleFilter] = useState(ALL);
   const [teamFilter, setTeamFilter] = useState(ALL);
@@ -67,6 +70,28 @@ export function DirectoryView({
     if (teamFilter !== ALL && teamFilter !== NO_TEAM && r.project_id !== teamFilter) return false;
     return true;
   });
+
+  function onExport() {
+    const headers = rates
+      ? ["Name", "Role", "Team", "Attendance %", "Present", "Tardy", "Excused", "Unexcused"]
+      : ["Name", "Role", "Team"];
+
+    const csvRows = filtered.map((r) => {
+      const base = [r.name, roleLabel(r.role), r.client_name ?? "No team"];
+      if (!rates) return base;
+      const result = rates[r.user_id];
+      return [
+        ...base,
+        result && result.rate !== null ? Math.round(result.rate * 100) : "",
+        result?.presentCount ?? "",
+        result?.tardyCount ?? "",
+        result?.excusedCount ?? "",
+        result?.unexcusedCount ?? "",
+      ];
+    });
+
+    downloadCsv(`directory-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(headers, csvRows));
+  }
 
   return (
     <div className="space-y-4">
@@ -107,6 +132,11 @@ export function DirectoryView({
             ))}
           </SelectContent>
         </Select>
+
+        <Button variant="outline" size="sm" className="ml-auto gap-1.5" onClick={onExport}>
+          <Download className="size-3.5" />
+          Export CSV
+        </Button>
       </div>
 
       <Table>
@@ -155,7 +185,7 @@ export function DirectoryView({
                         <Badge
                           variant="outline"
                           className={
-                            result.rate < LOW_ATTENDANCE_THRESHOLD
+                            result.rate < attendanceThreshold
                               ? "border-transparent bg-destructive/10 text-destructive"
                               : "border-transparent bg-primary/10 text-primary"
                           }
