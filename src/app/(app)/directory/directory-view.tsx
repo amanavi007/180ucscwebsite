@@ -18,8 +18,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { roleLabel, ROLE_LABELS } from "@/lib/auth/roles";
 import type { DirectoryRow } from "@/lib/data/directory";
+import type { AttendanceRateResult } from "@/lib/attendance";
 
 const ALL = "__all__";
 const NO_TEAM = "__no_team__";
@@ -34,7 +36,15 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-export function DirectoryView({ rows }: { rows: DirectoryRow[] }) {
+const LOW_ATTENDANCE_THRESHOLD = 0.8;
+
+export function DirectoryView({
+  rows,
+  rates,
+}: {
+  rows: DirectoryRow[];
+  rates?: Record<string, AttendanceRateResult>;
+}) {
   const [roleFilter, setRoleFilter] = useState(ALL);
   const [teamFilter, setTeamFilter] = useState(ALL);
 
@@ -105,38 +115,73 @@ export function DirectoryView({ rows }: { rows: DirectoryRow[] }) {
             <TableHead>Name</TableHead>
             <TableHead>Role</TableHead>
             <TableHead>Team</TableHead>
+            {rates && <TableHead>Attendance</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
           {filtered.length === 0 && (
             <TableRow>
-              <TableCell colSpan={3} className="text-center text-muted-foreground">
+              <TableCell colSpan={rates ? 4 : 3} className="text-center text-muted-foreground">
                 No members match these filters.
               </TableCell>
             </TableRow>
           )}
-          {filtered.map((r) => (
-            <TableRow key={r.user_id}>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <Avatar className="size-7">
-                    <AvatarFallback className="text-xs">{initials(r.name)}</AvatarFallback>
-                  </Avatar>
-                  <span className="font-medium">{r.name}</span>
-                </div>
-              </TableCell>
-              <TableCell className="text-muted-foreground">{roleLabel(r.role)}</TableCell>
-              <TableCell className="text-muted-foreground">
-                {r.project_id && r.client_name ? (
-                  <Link href={`/projects/${r.project_id}`} className="hover:underline">
-                    {r.client_name}
-                  </Link>
-                ) : (
-                  "No team"
+          {filtered.map((r) => {
+            const result = rates?.[r.user_id];
+            return (
+              <TableRow key={r.user_id}>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Avatar className="size-7">
+                      <AvatarFallback className="text-xs">{initials(r.name)}</AvatarFallback>
+                    </Avatar>
+                    <span className="font-medium">{r.name}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-muted-foreground">{roleLabel(r.role)}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {r.project_id && r.client_name ? (
+                    <Link href={`/projects/${r.project_id}`} className="hover:underline">
+                      {r.client_name}
+                    </Link>
+                  ) : (
+                    "No team"
+                  )}
+                </TableCell>
+                {rates && (
+                  <TableCell>
+                    {result && result.rate !== null ? (
+                      <div className="flex items-center gap-1.5">
+                        <Badge
+                          variant="outline"
+                          className={
+                            result.rate < LOW_ATTENDANCE_THRESHOLD
+                              ? "border-transparent bg-destructive/10 text-destructive"
+                              : "border-transparent bg-primary/10 text-primary"
+                          }
+                        >
+                          {Math.round(result.rate * 100)}%
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {result.excusedCount}E / {result.unexcusedCount}U / {result.tardyCount}T
+                        </span>
+                        {result.missingSessionDates.length > 0 && (
+                          <span
+                            title={`Team hasn't logged ${result.missingSessionDates.length} session(s) other teams logged this quarter`}
+                            className="text-xs text-amber-600"
+                          >
+                            ⚠
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
                 )}
-              </TableCell>
-            </TableRow>
-          ))}
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>

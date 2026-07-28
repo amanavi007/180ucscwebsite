@@ -1,0 +1,112 @@
+import "server-only";
+import { createClient } from "@/lib/supabase/server";
+import type { AttendanceMark } from "@/lib/supabase/database.types";
+
+/** Distinct session dates logged org-wide for a quarter -- the shared rate denominator. */
+export async function getQuarterSessionDates(quarterId: string): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("attendance_sessions")
+    .select("date, project:projects!inner(quarter_id)")
+    .eq("project.quarter_id", quarterId);
+
+  if (error) throw error;
+  return [...new Set((data as unknown as { date: string }[]).map((d) => d.date))].sort();
+}
+
+/** Distinct session dates a specific team has logged this quarter. */
+export async function getProjectSessionDates(projectId: string): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("attendance_sessions")
+    .select("date")
+    .eq("project_id", projectId);
+
+  if (error) throw error;
+  return [...new Set(data.map((d) => d.date))].sort();
+}
+
+export interface SessionWithMarks {
+  id: string;
+  date: string;
+  taken_by: string;
+  marks: { user_id: string; mark: AttendanceMark }[];
+}
+
+export async function getSessionForDate(
+  projectId: string,
+  date: string,
+): Promise<SessionWithMarks | null> {
+  const supabase = await createClient();
+  const { data: session, error } = await supabase
+    .from("attendance_sessions")
+    .select("id, date, taken_by")
+    .eq("project_id", projectId)
+    .eq("date", date)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!session) return null;
+
+  const { data: marks, error: marksError } = await supabase
+    .from("attendance_marks")
+    .select("user_id, mark")
+    .eq("session_id", session.id);
+
+  if (marksError) throw marksError;
+  return { ...session, marks };
+}
+
+export interface AttendanceHistoryRow {
+  id: string;
+  date: string;
+  taken_by_name: string;
+  excused: number;
+  unexcused: number;
+  tardy: number;
+}
+
+export async function getAttendanceHistory(projectId: string): Promise<AttendanceHistoryRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("attendance_sessions")
+    .select("id, date, taken_by:profiles(name), marks:attendance_marks(mark)")
+    .eq("project_id", projectId)
+    .order("date", { ascending: false });
+
+  if (error) throw error;
+
+  return (
+    data as unknown as {
+      id: string;
+      date: string;
+      taken_by: { name: string } | null;
+      marks: { mark: AttendanceMark }[];
+    }[]
+  ).map((s) => ({
+    id: s.id,
+    date: s.date,
+    taken_by_name: s.taken_by?.name ?? "Unknown",
+    excused: s.marks.filter((m) => m.mark === "excused").length,
+    unexcused: s.marks.filter((m) => m.mark === "unexcused").length,
+    tardy: s.marks.filter((m) => m.mark === "tardy").length,
+  }));
+}
+
+/** This member's excused/unexcused/tardy marks across all their sessions in a quarter. */
+export async function getUserMarksInQuarter(
+  userId: string,
+  quarterId: string,
+): Promise<{ date: string; mark: AttendanceMark }[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("attendance_marks")
+    .select("mark, session:attendance_sessions!inner(date, project:projects!inner(quarter_id))")
+    .eq("user_id", userId)
+    .eq("session.project.quarter_id", quarterId);
+
+  if (error) throw error;
+  return (
+    data as unknown as { mark: AttendanceMark; session: { date: string } }[]
+  ).map((m) => ({ date: m.session.date, mark: m.mark }));
+}

@@ -1,4 +1,5 @@
 import type { ProjectHealth, TaskStatus } from "@/lib/supabase/database.types";
+import { formatOrgDate } from "@/lib/date";
 
 interface HealthTask {
   status: TaskStatus;
@@ -28,7 +29,7 @@ export function computeProjectHealth(
     return project.health_manual_override;
   }
 
-  const todayStr = today.toISOString().slice(0, 10);
+  const todayStr = formatOrgDate(today);
 
   const hasOverdueTask = tasks.some(
     (t) => t.status !== "done" && t.due_date !== null && t.due_date < todayStr,

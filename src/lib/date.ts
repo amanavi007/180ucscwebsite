@@ -8,3 +8,23 @@ export function parseLocalDate(dateString: string): Date {
   const [year, month, day] = dateString.split("-").map(Number);
   return new Date(year, month - 1, day);
 }
+
+/**
+ * A Date as "YYYY-MM-DD" in the org's own timezone (Santa Cruz). The server
+ * (Vercel functions run in UTC) has no idea where the user physically is,
+ * and this app is tied to a specific campus's Tue/Thu meeting schedule, so
+ * "today" should always mean today in Santa Cruz -- not UTC, and not
+ * wherever a traveling exec's laptop happens to be set.
+ */
+export function formatOrgDate(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Los_Angeles",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+export function getOrgTodayDateString(): string {
+  return formatOrgDate(new Date());
+}
