@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getVisibleTasks } from "@/lib/data/tasks";
 import { getProjects } from "@/lib/data/projects";
+import { isExec } from "@/lib/auth/roles";
 import { TasksView } from "./tasks-view";
 
 export const metadata: Metadata = { title: "Tasks" };
@@ -39,7 +40,14 @@ export default async function TasksPage({
         </p>
       </div>
 
-      <TasksView tasks={tasks} projects={projects} mine={mine} filters={params} />
+      <TasksView
+        tasks={tasks}
+        projects={projects}
+        mine={mine}
+        filters={params}
+        currentUserId={profile.id}
+        isExec={isExec(profile.role)}
+      />
     </div>
   );
 }

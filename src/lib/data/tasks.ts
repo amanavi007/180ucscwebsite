@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { sortTasksByStage } from "@/lib/project-labels";
 import type { TaskStatus, TaskType } from "@/lib/supabase/database.types";
 import type { TaskWithAssignee, TaskWithProject } from "./types";
 
@@ -12,7 +13,7 @@ export async function getTasksForProject(projectId: string): Promise<TaskWithAss
     .order("created_at", { ascending: true });
 
   if (error) throw error;
-  return data as unknown as TaskWithAssignee[];
+  return sortTasksByStage(data as unknown as TaskWithAssignee[]);
 }
 
 export interface TaskFilters {

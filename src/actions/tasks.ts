@@ -2,7 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { Database, TaskPriority, TaskStatus } from "@/lib/supabase/database.types";
+import { getCurrentProfile } from "@/lib/data/profile";
+import { isExec } from "@/lib/auth/roles";
+import { statusForStageStep } from "@/lib/project-labels";
+import type {
+  Database,
+  TaskPriority,
+  TaskStageStep,
+  TaskStatus,
+  TaskType,
+} from "@/lib/supabase/database.types";
 
 type TaskUpdate = Database["public"]["Tables"]["tasks"]["Update"];
 
@@ -10,25 +19,46 @@ export interface ActionResult {
   error?: string;
 }
 
-export async function createSubTask(input: {
+async function canLeadProject(projectId: string, profileId: string, execRole: boolean) {
+  if (execRole) return true;
+  const supabase = await createClient();
+  const { data: project } = await supabase
+    .from("projects")
+    .select("project_manager_id, senior_consultant_id")
+    .eq("id", projectId)
+    .single();
+  return (
+    !!project &&
+    (project.project_manager_id === profileId || project.senior_consultant_id === profileId)
+  );
+}
+
+export async function createTask(input: {
   projectId: string;
-  parentTaskId: string;
   taskName: string;
   assigneeId?: string | null;
   dueDate?: string | null;
   priority: TaskPriority;
+  taskType: TaskType;
 }): Promise<ActionResult> {
-  const supabase = await createClient();
+  const profile = await getCurrentProfile();
+  const exec = isExec(profile.role);
+  const leads = await canLeadProject(input.projectId, profile.id, exec);
 
-  // task_type is inherited from the parent milestone via DB trigger.
+  // Base members may only create tasks for themselves.
+  const assigneeId = input.assigneeId || null;
+  if (!leads && assigneeId !== profile.id) {
+    return { error: "You can only create tasks assigned to yourself." };
+  }
+
+  const supabase = await createClient();
   const { error } = await supabase.from("tasks").insert({
     project_id: input.projectId,
-    parent_task_id: input.parentTaskId,
     task_name: input.taskName,
-    assignee_id: input.assigneeId || null,
+    assignee_id: assigneeId,
     due_date: input.dueDate || null,
     priority: input.priority,
-    task_type: "initial_research",
+    task_type: input.taskType,
   });
 
   if (error) return { error: error.message };
@@ -66,7 +96,108 @@ export async function updateTask(
   return {};
 }
 
+/**
+ * Due dates on the 5 default stage tasks are shared across the whole team --
+ * a PM/SC/exec setting one propagates to every member's copy of that same
+ * stage. Custom tasks (and any edit by a base member on their own task)
+ * stay single-row.
+ */
+export async function updateTaskDueDate(
+  taskId: string,
+  projectId: string,
+  dueDate: string | null,
+): Promise<ActionResult> {
+  const profile = await getCurrentProfile();
+  const exec = isExec(profile.role);
+  const leads = await canLeadProject(projectId, profile.id, exec);
+
+  const supabase = await createClient();
+
+  if (leads) {
+    const { data: task } = await supabase
+      .from("tasks")
+      .select("task_type, is_default_task")
+      .eq("id", taskId)
+      .single();
+
+    if (task?.is_default_task) {
+      const { error } = await supabase
+        .from("tasks")
+        .update({ due_date: dueDate })
+        .eq("project_id", projectId)
+        .eq("task_type", task.task_type)
+        .eq("is_default_task", true);
+
+      if (error) return { error: error.message };
+      revalidatePath(`/projects/${projectId}`);
+      revalidatePath("/tasks");
+      return {};
+    }
+  }
+
+  const { error } = await supabase.from("tasks").update({ due_date: dueDate }).eq("id", taskId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/tasks");
+  return {};
+}
+
+/** Advances/sets a stepped task's position on its 4-step timeline; keeps `status` in sync. */
+export async function updateTaskStageStep(
+  taskId: string,
+  projectId: string,
+  step: TaskStageStep,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tasks")
+    .update({ stage_step: step, status: statusForStageStep(step) })
+    .eq("id", taskId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/tasks");
+  return {};
+}
+
+/** Un-starts a stepped task, back to the plain "Not started" state. */
+export async function resetTaskStage(taskId: string, projectId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tasks")
+    .update({ stage_step: null, status: "not_started" })
+    .eq("id", taskId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/tasks");
+  return {};
+}
+
 export async function deleteTask(taskId: string, projectId: string): Promise<ActionResult> {
+  const profile = await getCurrentProfile();
+  const exec = isExec(profile.role);
+  const leads = await canLeadProject(projectId, profile.id, exec);
+
+  if (!leads) {
+    const supabase = await createClient();
+    const { data: task } = await supabase
+      .from("tasks")
+      .select("assignee_id, is_default_task")
+      .eq("id", taskId)
+      .single();
+
+    if (!task || task.assignee_id !== profile.id) {
+      return { error: "You can only delete your own tasks." };
+    }
+    if (task.is_default_task) {
+      return { error: "The default tracked tasks can't be deleted -- ask your PM/SC." };
+    }
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.from("tasks").delete().eq("id", taskId);
   if (error) return { error: error.message };

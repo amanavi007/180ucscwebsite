@@ -3,9 +3,9 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Play, Trash2 } from "lucide-react";
 import { format } from "date-fns";
-import { updateTask, deleteTask } from "@/actions/tasks";
+import { updateTask, updateTaskDueDate, updateTaskStageStep, deleteTask } from "@/actions/tasks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -16,8 +16,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from "@/lib/project-labels";
+import { TaskStageTimeline } from "@/components/task-stage-timeline";
+import {
+  STEPPED_TASK_TYPES,
+  TASK_PRIORITY_LABELS,
+  TASK_PRIORITY_DOT_CLASS,
+  TASK_STATUS_LABELS,
+  TASK_STATUS_BADGE_CLASS,
+  taskTypeLabel,
+} from "@/lib/project-labels";
 import { parseLocalDate } from "@/lib/date";
+import { cn } from "@/lib/utils";
 import type { TaskPriority, TaskStatus } from "@/lib/supabase/database.types";
 import type { TaskWithAssignee } from "@/lib/data/types";
 
@@ -26,28 +35,41 @@ const UNASSIGNED = "__unassigned__";
 export function TaskRow({
   task,
   projectId,
-  canEdit,
-  canDelete,
+  canManage,
+  isOwn,
   rosterProfiles,
-  currentUserId,
-  indented,
 }: {
   task: TaskWithAssignee;
   projectId: string;
-  canEdit: boolean;
-  canDelete: boolean;
+  canManage: boolean;
+  isOwn: boolean;
   rosterProfiles: { id: string; name: string }[];
-  currentUserId: string;
-  indented?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+
+  const canEditFields = canManage || isOwn;
+  const canDelete = canManage || (isOwn && !task.is_default_task);
 
   function apply(patch: Parameters<typeof updateTask>[2]) {
     startTransition(async () => {
       const result = await updateTask(task.id, projectId, patch);
       if (result?.error) toast.error(result.error);
       else router.refresh();
+    });
+  }
+
+  function applyDueDate(dueDate: string | null) {
+    startTransition(async () => {
+      const result = await updateTaskDueDate(task.id, projectId, dueDate);
+      if (result?.error) {
+        toast.error(result.error);
+        return;
+      }
+      if (canManage && task.is_default_task) {
+        toast.success(`Due date set for everyone's "${task.task_name}".`);
+      }
+      router.refresh();
     });
   }
 
@@ -59,26 +81,42 @@ export function TaskRow({
     });
   }
 
-  // Base users may update status on tasks assigned to them even without full edit rights.
-  const statusEditable = canEdit || task.assignee_id === currentUserId;
+  function startTimeline() {
+    startTransition(async () => {
+      const result = await updateTaskStageStep(task.id, projectId, "draft_in_progress");
+      if (result?.error) toast.error(result.error);
+      else router.refresh();
+    });
+  }
+
+  const isStepped = STEPPED_TASK_TYPES.includes(task.task_type);
 
   return (
-    <div
-      className={`flex flex-wrap items-center gap-2 border-b py-2 last:border-b-0 ${
-        indented ? "pl-6" : ""
-      }`}
-    >
-      <span className={`min-w-40 flex-1 text-sm ${task.is_milestone ? "font-medium" : ""}`}>
-        {task.task_name}
-      </span>
+    <div className="grid grid-cols-[1fr_7rem_9rem_9rem_13rem_2rem] items-center gap-3 border-b px-3 py-2.5 last:border-b-0">
+      <div className="min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span
+            className={cn("size-1.5 shrink-0 rounded-full", TASK_PRIORITY_DOT_CLASS[task.priority])}
+            title={`${TASK_PRIORITY_LABELS[task.priority]} priority`}
+          />
+          <span className={`truncate text-sm ${task.is_default_task ? "font-medium" : ""}`}>
+            {task.task_name}
+          </span>
+        </div>
+        {taskTypeLabel(task.task_type) !== task.task_name && (
+          <span className="ml-3 text-xs text-muted-foreground">
+            {taskTypeLabel(task.task_type)}
+          </span>
+        )}
+      </div>
 
-      {canEdit ? (
+      {canEditFields ? (
         <Select
           value={task.priority}
           onValueChange={(v) => apply({ priority: v as TaskPriority })}
           disabled={isPending}
         >
-          <SelectTrigger size="sm" className="w-24">
+          <SelectTrigger size="sm" className="w-full">
             <SelectValue>{(value: TaskPriority) => TASK_PRIORITY_LABELS[value]}</SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -95,13 +133,13 @@ export function TaskRow({
         </Badge>
       )}
 
-      {canEdit ? (
+      {canManage ? (
         <Select
           value={task.assignee_id ?? UNASSIGNED}
           onValueChange={(v) => apply({ assigneeId: v === UNASSIGNED ? null : v })}
           disabled={isPending}
         >
-          <SelectTrigger size="sm" className="w-36">
+          <SelectTrigger size="sm" className="w-full">
             <SelectValue placeholder="Unassigned">
               {(value: string) =>
                 value === UNASSIGNED
@@ -120,32 +158,60 @@ export function TaskRow({
           </SelectContent>
         </Select>
       ) : (
-        <span className="w-36 text-sm text-muted-foreground">
+        <span className="truncate text-sm text-muted-foreground">
           {task.assignee?.name ?? "Unassigned"}
         </span>
       )}
 
-      {canEdit ? (
+      {canEditFields ? (
         <Input
           type="date"
           value={task.due_date ?? ""}
-          onChange={(e) => apply({ dueDate: e.target.value || null })}
+          onChange={(e) => applyDueDate(e.target.value || null)}
           disabled={isPending}
-          className="w-36"
+          className="w-full"
         />
       ) : (
-        <span className="w-28 text-sm text-muted-foreground">
+        <span className="text-sm text-muted-foreground">
           {task.due_date ? format(parseLocalDate(task.due_date), "MMM d") : "—"}
         </span>
       )}
 
-      {statusEditable ? (
+      {task.stage_step ? (
+        <TaskStageTimeline
+          taskId={task.id}
+          projectId={projectId}
+          currentStep={task.stage_step}
+          editable={canEditFields}
+        />
+      ) : isStepped ? (
+        canEditFields ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={startTimeline}
+            disabled={isPending}
+            className="h-7 w-fit gap-1.5 px-2 text-xs font-medium text-muted-foreground"
+          >
+            <Play className="size-3" />
+            Start
+          </Button>
+        ) : (
+          <Badge variant="outline" className={cn("w-fit", TASK_STATUS_BADGE_CLASS.not_started)}>
+            Not started
+          </Badge>
+        )
+      ) : canEditFields ? (
         <Select
           value={task.status}
           onValueChange={(v) => apply({ status: v as TaskStatus })}
           disabled={isPending}
         >
-          <SelectTrigger size="sm" className="w-32">
+          <SelectTrigger
+            size="sm"
+            className={cn("w-full border-transparent", TASK_STATUS_BADGE_CLASS[task.status])}
+          >
             <SelectValue>{(value: TaskStatus) => TASK_STATUS_LABELS[value]}</SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -157,10 +223,12 @@ export function TaskRow({
           </SelectContent>
         </Select>
       ) : (
-        <Badge variant="secondary">{TASK_STATUS_LABELS[task.status]}</Badge>
+        <Badge variant="outline" className={cn("w-fit", TASK_STATUS_BADGE_CLASS[task.status])}>
+          {TASK_STATUS_LABELS[task.status]}
+        </Badge>
       )}
 
-      {canDelete && (
+      {canDelete ? (
         <Button
           variant="ghost"
           size="icon-sm"
@@ -170,6 +238,8 @@ export function TaskRow({
         >
           <Trash2 className="size-3.5" />
         </Button>
+      ) : (
+        <span />
       )}
     </div>
   );

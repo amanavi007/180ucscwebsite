@@ -26,14 +26,13 @@ export type TaskStatus = "not_started" | "in_progress" | "done";
 
 export type TaskPriority = "low" | "medium" | "high";
 
-export type TaskType =
-  | "initial_research"
-  | "issue_tree"
-  | "preliminary_research"
-  | "implementable_creation"
-  | "deliverable_slide_work"
-  | "presentation_practice"
-  | "ready_for_final_deliverable";
+export type TaskType = "preliminary_research" | "implementables" | "deliverable" | "other";
+
+export type TaskStageStep =
+  | "draft_in_progress"
+  | "draft_complete"
+  | "revisions_in_progress"
+  | "complete";
 
 export type MeetingNoteType = "client_call" | "officer_meeting" | "team_checkin";
 
@@ -146,8 +145,8 @@ export interface Database {
           status: TaskStatus;
           priority: TaskPriority;
           task_type: TaskType;
-          parent_task_id: string | null;
-          is_milestone: boolean;
+          stage_step: TaskStageStep | null;
+          is_default_task: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -160,8 +159,8 @@ export interface Database {
           status?: TaskStatus;
           priority?: TaskPriority;
           task_type: TaskType;
-          parent_task_id?: string | null;
-          is_milestone?: boolean;
+          stage_step?: TaskStageStep | null;
+          is_default_task?: boolean;
           created_at?: string;
           updated_at?: string;
         };

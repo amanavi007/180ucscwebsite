@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
-import { createSubTask } from "@/actions/tasks";
+import { createTask } from "@/actions/tasks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -26,13 +26,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Field, FieldGroup, FieldLabel, FieldError } from "@/components/ui/field";
-import { TASK_PRIORITY_LABELS } from "@/lib/project-labels";
-import type { TaskPriority } from "@/lib/supabase/database.types";
+import { TASK_PRIORITY_LABELS, TASK_TYPES, taskTypeLabel } from "@/lib/project-labels";
+import type { TaskPriority, TaskType } from "@/lib/supabase/database.types";
 
 const UNASSIGNED = "__unassigned__";
 
 const schema = z.object({
   taskName: z.string().min(1, "Give the task a name."),
+  taskType: z.enum(["preliminary_research", "implementables", "deliverable", "other"]),
   assigneeId: z.string(),
   dueDate: z.string(),
   priority: z.enum(["low", "medium", "high"]),
@@ -40,16 +41,16 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-export function AddSubtaskDialog({
+export function AddTaskDialog({
   projectId,
-  parentTaskId,
-  milestoneName,
+  defaultAssigneeId,
   rosterProfiles,
+  canAssignOthers,
 }: {
   projectId: string;
-  parentTaskId: string;
-  milestoneName: string;
+  defaultAssigneeId: string;
   rosterProfiles: { id: string; name: string }[];
+  canAssignOthers: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -63,15 +64,21 @@ export function AddSubtaskDialog({
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { taskName: "", assigneeId: UNASSIGNED, dueDate: "", priority: "medium" },
+    defaultValues: {
+      taskName: "",
+      taskType: "other",
+      assigneeId: defaultAssigneeId,
+      dueDate: "",
+      priority: "medium",
+    },
   });
 
   function onSubmit(values: FormValues) {
     startTransition(async () => {
-      const result = await createSubTask({
+      const result = await createTask({
         projectId,
-        parentTaskId,
         taskName: values.taskName,
+        taskType: values.taskType as TaskType,
         assigneeId: values.assigneeId === UNASSIGNED ? null : values.assigneeId,
         dueDate: values.dueDate || null,
         priority: values.priority,
@@ -98,7 +105,7 @@ export function AddSubtaskDialog({
       />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add task under {milestoneName}</DialogTitle>
+          <DialogTitle>Add task</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <FieldGroup>
@@ -110,27 +117,21 @@ export function AddSubtaskDialog({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Field>
-                <FieldLabel>Assignee</FieldLabel>
+                <FieldLabel>Phase</FieldLabel>
                 <Controller
                   control={control}
-                  name="assigneeId"
+                  name="taskType"
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger className="w-full">
                         <SelectValue>
-                          {(value: string) =>
-                            value === UNASSIGNED
-                              ? "Unassigned"
-                              : (rosterProfiles.find((p) => p.id === value)?.name ??
-                                "Unassigned")
-                          }
+                          {(value: TaskType) => taskTypeLabel(value)}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
-                        {rosterProfiles.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name}
+                        {TASK_TYPES.map((t) => (
+                          <SelectItem key={t} value={t}>
+                            {taskTypeLabel(t)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -165,6 +166,38 @@ export function AddSubtaskDialog({
                 />
               </Field>
             </div>
+
+            {canAssignOthers && (
+              <Field>
+                <FieldLabel>Assignee</FieldLabel>
+                <Controller
+                  control={control}
+                  name="assigneeId"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue>
+                          {(value: string) =>
+                            value === UNASSIGNED
+                              ? "Unassigned"
+                              : (rosterProfiles.find((p) => p.id === value)?.name ??
+                                "Unassigned")
+                          }
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
+                        {rosterProfiles.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </Field>
+            )}
 
             <Field>
               <FieldLabel htmlFor="dueDate">Due date</FieldLabel>
