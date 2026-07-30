@@ -13,6 +13,7 @@ import {
 } from "@/lib/data/attendance";
 import { getAttendanceAlertThreshold } from "@/lib/data/org-settings";
 import { getMeetingDatesForQuarter } from "@/lib/data/meeting-dates";
+import { getRoomBookingForProject } from "@/lib/data/room-bookings";
 import { isExec, roleLabel } from "@/lib/auth/roles";
 import { getOrgTodayDateString, formatOrgDate, parseLocalDate } from "@/lib/date";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { HealthBadge } from "@/components/health-badge";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, MapPin } from "lucide-react";
 import { TASK_PRIORITY_LABELS } from "@/lib/project-labels";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -102,6 +103,30 @@ export default async function DashboardPage() {
     pendingAttendanceNudges = checks.filter((c): c is { projectId: string; clientName: string } => !!c);
   }
 
+  // Where each of my teams is meeting next (today if it's a meeting day, otherwise
+  // the closest upcoming one) -- so a room booked ahead of time is visible right away,
+  // not just on the day of.
+  let nextRooms: { projectId: string; clientName: string; room: string; isToday: boolean }[] = [];
+  const nextMeetingDate = meetingDates.find((d) => d >= today) ?? null;
+  if (nextMeetingDate) {
+    const roomChecks = await Promise.all(
+      myProjects.map(async (project) => {
+        const room = await getRoomBookingForProject(project.id, nextMeetingDate);
+        return room
+          ? {
+              projectId: project.id,
+              clientName: project.client_name,
+              room,
+              isToday: nextMeetingDate === today,
+            }
+          : null;
+      }),
+    );
+    nextRooms = roomChecks.filter(
+      (r): r is { projectId: string; clientName: string; room: string; isToday: boolean } => !!r,
+    );
+  }
+
   let summary: {
     activeProjects: number;
     atRisk: number;
@@ -164,6 +189,23 @@ export default async function DashboardPage() {
           {roleLabel(profile.role)} · {activeQuarter.name}
         </p>
       </div>
+
+      {nextRooms.length > 0 && (
+        <div className="space-y-2">
+          {nextRooms.map((r) => (
+            <div
+              key={r.projectId}
+              className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary"
+            >
+              <MapPin className="size-4 shrink-0" />
+              {r.clientName} meets in <span className="font-medium">{r.room}</span>{" "}
+              {r.isToday
+                ? "today."
+                : `next time (${nextMeetingDate ? format(parseLocalDate(nextMeetingDate), "EEE, MMM d") : ""}).`}
+            </div>
+          ))}
+        </div>
+      )}
 
       {pendingAttendanceNudges.length > 0 && (
         <div className="space-y-2">

@@ -319,6 +319,26 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["meeting_dates"]["Insert"]>;
         Relationships: [];
       };
+      room_bookings: {
+        Row: {
+          id: string;
+          project_id: string;
+          date: string;
+          room_name: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          date: string;
+          room_name: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["room_bookings"]["Insert"]>;
+        Relationships: [];
+      };
       team_plans: {
         Row: {
           id: string;

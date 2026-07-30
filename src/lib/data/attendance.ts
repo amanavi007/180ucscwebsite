@@ -120,6 +120,7 @@ export async function getQuarterAttendanceRates(
 }
 
 export interface MyAttendanceSummary extends AttendanceRateResult {
+  projectId: string | null;
   projectName: string | null;
   marks: { date: string; mark: AttendanceMark }[];
 }
@@ -151,7 +152,7 @@ export async function getMyAttendanceSummary(
 
   const result = computeAttendanceRate({ totalSessionDates, teamSessionDates, marks });
 
-  return { ...result, projectName: myProject?.client_name ?? null, marks };
+  return { ...result, projectId: myProject?.id ?? null, projectName: myProject?.client_name ?? null, marks };
 }
 
 /** This member's excused/unexcused/tardy marks across all their sessions in a quarter. */

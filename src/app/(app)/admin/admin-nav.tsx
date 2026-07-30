@@ -8,6 +8,7 @@ const ADMIN_NAV = [
   { href: "/admin", label: "Members" },
   { href: "/admin/quarters", label: "Quarters" },
   { href: "/admin/meeting-days", label: "Meeting Days" },
+  { href: "/admin/rooms", label: "Rooms" },
   { href: "/admin/settings", label: "Settings" },
   { href: "/admin/team-builder", label: "Team Builder" },
   { href: "/admin/activity", label: "Activity" },

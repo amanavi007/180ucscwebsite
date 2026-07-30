@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, MapPin } from "lucide-react";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getActiveQuarter } from "@/lib/data/quarters";
 import { getProjects, getProjectMembers } from "@/lib/data/projects";
@@ -11,6 +11,7 @@ import {
 } from "@/lib/data/attendance";
 import { getAttendanceAlertThreshold } from "@/lib/data/org-settings";
 import { getMeetingDatesForQuarter } from "@/lib/data/meeting-dates";
+import { getRoomBookingForProject } from "@/lib/data/room-bookings";
 import { isExec, isElevatedOrAbove } from "@/lib/auth/roles";
 import { isProjectLead } from "@/lib/auth/project-access";
 import { getOrgTodayDateString } from "@/lib/date";
@@ -46,6 +47,10 @@ export default async function AttendancePage({
       getMyAttendanceSummary(profile.id, activeQuarter.id),
       getAttendanceAlertThreshold(),
     ]);
+    const todayForRoom = getOrgTodayDateString();
+    const todayRoom = summary.projectId
+      ? await getRoomBookingForProject(summary.projectId, todayForRoom)
+      : null;
 
     return (
       <div className="space-y-6">
@@ -53,6 +58,12 @@ export default async function AttendancePage({
           <h1 className="text-2xl font-semibold tracking-tight">Attendance</h1>
           <p className="text-sm text-muted-foreground">{activeQuarter.name}</p>
         </div>
+        {todayRoom && (
+          <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
+            <MapPin className="size-4 shrink-0" />
+            {summary.projectName} meets in <span className="font-medium">{todayRoom}</span> today.
+          </div>
+        )}
         <MyAttendanceStats summary={summary} quarterName={activeQuarter.name} threshold={threshold} />
       </div>
     );
@@ -70,11 +81,12 @@ export default async function AttendancePage({
   const today = getOrgTodayDateString();
   const exec = isExec(profile.role);
 
-  const [roster, history, todaySession, meetingDates] = await Promise.all([
+  const [roster, history, todaySession, meetingDates, todayRoom] = await Promise.all([
     selectedProject ? getProjectMembers(selectedProject.id) : Promise.resolve([]),
     selectedProject ? getAttendanceHistory(selectedProject.id) : Promise.resolve([]),
     selectedProject ? getSessionForDate(selectedProject.id, today) : Promise.resolve(null),
     getMeetingDatesForQuarter(activeQuarter.id),
+    selectedProject ? getRoomBookingForProject(selectedProject.id, today) : Promise.resolve(null),
   ]);
   const todayIsMeetingDay = meetingDates.includes(today);
 
@@ -88,6 +100,14 @@ export default async function AttendancePage({
         <h1 className="text-2xl font-semibold tracking-tight">Attendance</h1>
         <p className="text-sm text-muted-foreground">{activeQuarter.name}</p>
       </div>
+
+      {todayRoom && selectedProject && (
+        <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
+          <MapPin className="size-4 shrink-0" />
+          {selectedProject.client_name} meets in <span className="font-medium">{todayRoom}</span>{" "}
+          today.
+        </div>
+      )}
 
       {needsTodayNudge && selectedProject && (
         <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
