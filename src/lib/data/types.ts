@@ -10,6 +10,8 @@ export type NamedProfile = Pick<Profile, "id" | "name"> | null;
 export interface ProjectWithRelations extends Project {
   project_manager: NamedProfile;
   senior_consultant: NamedProfile;
+  /** user_ids with a 'pm'/'sc' membership on this project -- covers additional, non-primary leads too. */
+  lead_ids?: string[];
 }
 
 export interface ProjectWithQuarter extends ProjectWithRelations {

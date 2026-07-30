@@ -5,6 +5,7 @@ import { getProject, getProjectMembers } from "@/lib/data/projects";
 import { getTasksForProject } from "@/lib/data/tasks";
 import { getAllProfiles } from "@/lib/data/members";
 import { isExec } from "@/lib/auth/roles";
+import { isProjectLead } from "@/lib/auth/project-access";
 import { computeProjectHealth } from "@/lib/project-health";
 import { ProjectHeader } from "./project-header";
 import { TeamRoster } from "./team-roster";
@@ -40,10 +41,7 @@ export default async function ProjectDetailPage({
   }
   if (!project) notFound();
 
-  const canEdit =
-    isExec(profile.role) ||
-    project.project_manager_id === profile.id ||
-    project.senior_consultant_id === profile.id;
+  const canEdit = await isProjectLead(id, profile.id, isExec(profile.role));
 
   const [tasks, members, allProfiles] = await Promise.all([
     getTasksForProject(id),

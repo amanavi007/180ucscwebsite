@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Users2 } from "lucide-react";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { isExec } from "@/lib/auth/roles";
 import { getQuarters } from "@/lib/data/quarters";
 import { getAllProfiles } from "@/lib/data/members";
 import { getAttendanceAlertThreshold } from "@/lib/data/org-settings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { QuartersPanel } from "./quarters-panel";
 import { MembersPanel } from "./members-panel";
 import { SettingsPanel } from "./settings-panel";
@@ -26,11 +29,24 @@ export default async function AdminPage() {
 
   return (
     <div className="max-w-3xl space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Admin</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage quarters, member accounts, and org-wide settings.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Admin</h1>
+          <p className="text-sm text-muted-foreground">
+            Manage quarters, member accounts, and org-wide settings.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          className="gap-1.5"
+          nativeButton={false}
+          render={
+            <Link href="/admin/team-builder">
+              <Users2 className="size-4" />
+              Team Builder
+            </Link>
+          }
+        />
       </div>
 
       <Tabs defaultValue="members">

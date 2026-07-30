@@ -75,11 +75,7 @@ export function TasksView({
   function canManageProject(projectId: string) {
     if (isExec) return true;
     const project = projects.find((p) => p.id === projectId);
-    return (
-      !!project &&
-      (project.project_manager_id === currentUserId ||
-        project.senior_consultant_id === currentUserId)
-    );
+    return !!project && (project.lead_ids ?? []).includes(currentUserId);
   }
 
   const groups = new Map<string, { id: string; name: string; tasks: TaskWithProject[] }>();

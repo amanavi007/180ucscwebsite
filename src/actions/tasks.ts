@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { isExec } from "@/lib/auth/roles";
+import { isProjectLead } from "@/lib/auth/project-access";
 import { statusForStageStep } from "@/lib/project-labels";
 import type {
   Database,
@@ -19,19 +20,7 @@ export interface ActionResult {
   error?: string;
 }
 
-async function canLeadProject(projectId: string, profileId: string, execRole: boolean) {
-  if (execRole) return true;
-  const supabase = await createClient();
-  const { data: project } = await supabase
-    .from("projects")
-    .select("project_manager_id, senior_consultant_id")
-    .eq("id", projectId)
-    .single();
-  return (
-    !!project &&
-    (project.project_manager_id === profileId || project.senior_consultant_id === profileId)
-  );
-}
+const canLeadProject = isProjectLead;
 
 export async function createTask(input: {
   projectId: string;

@@ -9,6 +9,7 @@ import {
 } from "@/lib/data/attendance";
 import { getAttendanceAlertThreshold } from "@/lib/data/org-settings";
 import { isExec, isElevatedOrAbove } from "@/lib/auth/roles";
+import { isProjectLead } from "@/lib/auth/project-access";
 import { getOrgTodayDateString } from "@/lib/date";
 import { AttendanceView } from "./attendance-view";
 import { MyAttendanceStats } from "./my-attendance-stats";
@@ -60,9 +61,7 @@ export default async function AttendancePage({
 
   const canSubmit =
     !!selectedProject &&
-    (isExec(profile.role) ||
-      selectedProject.project_manager_id === profile.id ||
-      selectedProject.senior_consultant_id === profile.id);
+    (await isProjectLead(selectedProject.id, profile.id, isExec(profile.role)));
 
   const today = getOrgTodayDateString();
 

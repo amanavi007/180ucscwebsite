@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { isExec } from "@/lib/auth/roles";
-import type { ProjectHealth, ProjectStatus } from "@/lib/supabase/database.types";
+import { isProjectLead } from "@/lib/auth/project-access";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database, ProjectHealth, ProjectStatus } from "@/lib/supabase/database.types";
 
 export interface ActionResult {
   error?: string;
@@ -21,18 +23,7 @@ async function requireExec() {
 /** Exec can edit any project; a project's own PM/SC can edit their project. */
 async function requireProjectEditAccess(projectId: string) {
   const profile = await getCurrentProfile();
-  if (isExec(profile.role)) return { error: undefined, profile } as const;
-
-  const supabase = await createClient();
-  const { data: project } = await supabase
-    .from("projects")
-    .select("project_manager_id, senior_consultant_id")
-    .eq("id", projectId)
-    .single();
-
-  const leads =
-    project &&
-    (project.project_manager_id === profile.id || project.senior_consultant_id === profile.id);
+  const leads = await isProjectLead(projectId, profile.id, isExec(profile.role));
 
   if (!leads) {
     return { error: "You don't have permission to edit this project.", profile } as const;
@@ -40,13 +31,34 @@ async function requireProjectEditAccess(projectId: string) {
   return { error: undefined, profile } as const;
 }
 
-/** Make sure a user assigned as PM/SC also has a membership row, so they show up in the roster/directory. */
-async function ensureMembership(projectId: string, userId: string | null | undefined) {
-  if (!userId) return;
-  const supabase = await createClient();
+/**
+ * The single-select PM/SC dropdowns (project-header.tsx, new-project-dialog.tsx)
+ * express "this one person is the PM" -- demote whoever currently holds the role,
+ * then hand it to the new pick. `team_role` memberships are the source of truth;
+ * `projects.project_manager_id`/`senior_consultant_id` are kept in sync by a DB
+ * trigger. Adding a *second* PM/SC without demoting the first is only exposed via
+ * the Team Builder's `assignToTeam`.
+ */
+async function reconcileLead(
+  supabase: SupabaseClient<Database>,
+  projectId: string,
+  role: "pm" | "sc",
+  userId: string | null | undefined,
+) {
   await supabase
     .from("memberships")
-    .upsert({ project_id: projectId, user_id: userId }, { onConflict: "project_id,user_id" });
+    .update({ team_role: "member" })
+    .eq("project_id", projectId)
+    .eq("team_role", role);
+
+  if (!userId) return;
+
+  await supabase
+    .from("memberships")
+    .upsert(
+      { project_id: projectId, user_id: userId, team_role: role },
+      { onConflict: "project_id,user_id" },
+    );
 }
 
 export async function createProject(input: {
@@ -69,8 +81,6 @@ export async function createProject(input: {
     .insert({
       client_name: input.clientName,
       quarter_id: input.quarterId,
-      project_manager_id: input.projectManagerId || null,
-      senior_consultant_id: input.seniorConsultantId || null,
       industry: input.industry || null,
       start_date: input.startDate || null,
       deadline: input.deadline || null,
@@ -81,14 +91,19 @@ export async function createProject(input: {
 
   if (error) return { error: error.message };
 
-  const memberIds = new Set(input.memberIds);
-  if (input.projectManagerId) memberIds.add(input.projectManagerId);
-  if (input.seniorConsultantId) memberIds.add(input.seniorConsultantId);
+  const roles = new Map<string, "pm" | "sc" | "member">();
+  for (const memberId of input.memberIds) roles.set(memberId, "member");
+  if (input.projectManagerId) roles.set(input.projectManagerId, "pm");
+  if (input.seniorConsultantId) roles.set(input.seniorConsultantId, "sc");
 
-  if (memberIds.size > 0) {
-    const { error: membershipError } = await supabase
-      .from("memberships")
-      .insert([...memberIds].map((user_id) => ({ project_id: data.id, user_id })));
+  if (roles.size > 0) {
+    const { error: membershipError } = await supabase.from("memberships").insert(
+      [...roles].map(([user_id, team_role]) => ({
+        project_id: data.id,
+        user_id,
+        team_role,
+      })),
+    );
     if (membershipError) return { error: membershipError.message };
   }
 
@@ -118,8 +133,6 @@ export async function updateProject(
     .update({
       client_name: input.clientName,
       status: input.status,
-      project_manager_id: input.projectManagerId || null,
-      senior_consultant_id: input.seniorConsultantId || null,
       industry: input.industry || null,
       start_date: input.startDate || null,
       deadline: input.deadline || null,
@@ -129,8 +142,8 @@ export async function updateProject(
 
   if (error) return { error: error.message };
 
-  await ensureMembership(id, input.projectManagerId);
-  await ensureMembership(id, input.seniorConsultantId);
+  await reconcileLead(supabase, id, "pm", input.projectManagerId);
+  await reconcileLead(supabase, id, "sc", input.seniorConsultantId);
 
   revalidatePath("/projects");
   revalidatePath(`/projects/${id}`);

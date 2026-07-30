@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getSessionForDate, type SessionWithMarks } from "@/lib/data/attendance";
 import { isExec } from "@/lib/auth/roles";
+import { isProjectLead } from "@/lib/auth/project-access";
 import type { AttendanceMark } from "@/lib/supabase/database.types";
 
 export interface ActionResult {
@@ -13,18 +14,7 @@ export interface ActionResult {
 
 async function requireAttendanceAccess(projectId: string) {
   const profile = await getCurrentProfile();
-  if (isExec(profile.role)) return { error: undefined, profile } as const;
-
-  const supabase = await createClient();
-  const { data: project } = await supabase
-    .from("projects")
-    .select("project_manager_id, senior_consultant_id")
-    .eq("id", projectId)
-    .single();
-
-  const leads =
-    project &&
-    (project.project_manager_id === profile.id || project.senior_consultant_id === profile.id);
+  const leads = await isProjectLead(projectId, profile.id, isExec(profile.role));
 
   if (!leads) {
     return { error: "Only your project's lead or exec can submit attendance.", profile } as const;

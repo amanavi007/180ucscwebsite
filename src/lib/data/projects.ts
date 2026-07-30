@@ -38,6 +38,36 @@ async function withComputedHealth<T extends ProjectWithRelations>(
   }));
 }
 
+/** Attaches `lead_ids` (any 'pm'/'sc' membership, not just the primary) for client-side permission checks. */
+async function withLeadIds<T extends ProjectWithRelations>(
+  supabase: SupabaseClient<Database>,
+  projects: T[],
+): Promise<T[]> {
+  if (projects.length === 0) return projects;
+
+  const { data: leads, error } = await supabase
+    .from("memberships")
+    .select("project_id, user_id")
+    .in(
+      "project_id",
+      projects.map((p) => p.id),
+    )
+    .in("team_role", ["pm", "sc"]);
+  if (error) throw error;
+
+  const leadsByProject = new Map<string, string[]>();
+  for (const lead of leads ?? []) {
+    const list = leadsByProject.get(lead.project_id) ?? [];
+    list.push(lead.user_id);
+    leadsByProject.set(lead.project_id, list);
+  }
+
+  return projects.map((project) => ({
+    ...project,
+    lead_ids: leadsByProject.get(project.id) ?? [],
+  }));
+}
+
 export async function getProjects(quarterId?: string): Promise<ProjectWithRelations[]> {
   const supabase = await createClient();
   let query = supabase
@@ -53,7 +83,8 @@ export async function getProjects(quarterId?: string): Promise<ProjectWithRelati
 
   const { data, error } = await query;
   if (error) throw error;
-  return withComputedHealth(supabase, data as unknown as ProjectWithRelations[]);
+  const withHealth = await withComputedHealth(supabase, data as unknown as ProjectWithRelations[]);
+  return withLeadIds(supabase, withHealth);
 }
 
 export async function getProject(id: string): Promise<ProjectWithQuarter> {
