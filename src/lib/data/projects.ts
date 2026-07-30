@@ -126,7 +126,7 @@ export async function getProjectMembers(projectId: string): Promise<MembershipWi
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("memberships")
-    .select("id, user_id, profile:profiles(id,name,role,email)")
+    .select("id, user_id, team_role, profile:profiles(id,name,role,email)")
     .eq("project_id", projectId);
 
   if (error) throw error;

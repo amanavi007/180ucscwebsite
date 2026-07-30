@@ -1,4 +1,4 @@
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database, MembershipTeamRole } from "@/lib/supabase/database.types";
 
 type Project = Database["public"]["Tables"]["projects"]["Row"];
 type Task = Database["public"]["Tables"]["tasks"]["Row"];
@@ -29,6 +29,7 @@ export interface TaskWithProject extends TaskWithAssignee {
 export interface MembershipWithProfile {
   id: string;
   user_id: string;
+  team_role: MembershipTeamRole;
   profile: Pick<Profile, "id" | "name" | "role" | "email"> | null;
 }
 

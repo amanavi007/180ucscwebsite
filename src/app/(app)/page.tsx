@@ -3,17 +3,19 @@ import Link from "next/link";
 import { addDays, format } from "date-fns";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getActiveQuarter } from "@/lib/data/quarters";
-import { getProjects, getMyProjects, getMyTeamRole } from "@/lib/data/projects";
+import { getProjects, getMyProjects, getMyTeamRole, getProjectMembers } from "@/lib/data/projects";
 import { getVisibleTasks } from "@/lib/data/tasks";
 import { getDirectory } from "@/lib/data/directory";
 import {
+  getMyAttendanceSummary,
   getQuarterAttendanceRates,
   getSessionForDate,
   getTeamAttendanceStatus,
 } from "@/lib/data/attendance";
 import { getAttendanceAlertThreshold } from "@/lib/data/org-settings";
 import { getMeetingDatesForQuarter } from "@/lib/data/meeting-dates";
-import { getRoomBookingForProject } from "@/lib/data/room-bookings";
+import { getRoomBookingForProject, getRoomBookingsForDate } from "@/lib/data/room-bookings";
+import { getExecTodos } from "@/lib/data/exec-todos";
 import { isExec, roleLabel } from "@/lib/auth/roles";
 import { getOrgTodayDateString, formatOrgDate, parseLocalDate } from "@/lib/date";
 import { Button } from "@/components/ui/button";
@@ -26,8 +28,12 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { HealthBadge } from "@/components/health-badge";
+import { RosterAvatars } from "@/components/roster-avatars";
+import { ExecTodoList } from "./exec-todo-list";
 import { AlertTriangle, MapPin } from "lucide-react";
 import { TASK_PRIORITY_LABELS } from "@/lib/project-labels";
+import { cn } from "@/lib/utils";
+import type { TaskWithProject } from "@/lib/data/types";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -75,19 +81,31 @@ export default async function DashboardPage() {
   }
 
   const today = getOrgTodayDateString();
+  const weekOut = formatOrgDate(addDays(new Date(), 7));
 
-  const [myProjects, myTasksRaw, meetingDates] = await Promise.all([
+  const [myProjects, myTasksRaw, meetingDates, attendanceSummary, threshold] = await Promise.all([
     getMyProjects(profile.id, activeQuarter.id),
     getVisibleTasks({ assigneeId: profile.id }),
     getMeetingDatesForQuarter(activeQuarter.id),
+    getMyAttendanceSummary(profile.id, activeQuarter.id),
+    getAttendanceAlertThreshold(),
   ]);
   const todayIsMeetingDay = meetingDates.includes(today);
 
   const myProjectIds = new Set(myProjects.map((p) => p.id));
-  const myTasks = myTasksRaw
-    .filter((t) => t.status !== "done" && t.project_id && myProjectIds.has(t.project_id))
-    .sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"))
-    .slice(0, 6);
+  const myAllTasks = myTasksRaw.filter((t) => t.project_id && myProjectIds.has(t.project_id));
+  const doneTaskCount = myAllTasks.filter((t) => t.status === "done").length;
+  const openTasks = myAllTasks
+    .filter((t) => t.status !== "done")
+    .sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"));
+  const myTasks = openTasks.slice(0, 8);
+
+  const roster = new Map<string, Awaited<ReturnType<typeof getProjectMembers>>>();
+  await Promise.all(
+    myProjects.map(async (project) => {
+      roster.set(project.id, await getProjectMembers(project.id));
+    }),
+  );
 
   // Direct nudge for whoever leads one of their own teams: don't let today's attendance slip.
   let pendingAttendanceNudges: { projectId: string; clientName: string }[] = [];
@@ -129,22 +147,25 @@ export default async function DashboardPage() {
 
   let summary: {
     activeProjects: number;
-    atRisk: number;
     tasksDueThisWeek: number;
-    belowThreshold: number;
-    missingToday: number | null;
+    atRiskProjects: { id: string; clientName: string }[];
+    belowThresholdMembers: { userId: string; name: string; rate: number }[];
+    missingAttendanceTeams: { projectId: string; clientName: string }[];
+    unbookedRoomTeams: { projectId: string; clientName: string }[];
   } | null = null;
+  let execTodos: Awaited<ReturnType<typeof getExecTodos>> = [];
+  let execMembers: { id: string; name: string }[] = [];
 
   if (exec) {
-    const weekOut = formatOrgDate(addDays(new Date(), 7));
-
     const [allProjects, orgTasks] = await Promise.all([
       getProjects(activeQuarter.id),
       getVisibleTasks({}),
     ]);
     const activeProjectIds = new Set(allProjects.map((p) => p.id));
 
-    const atRisk = allProjects.filter((p) => p.health !== "on_track").length;
+    const atRiskProjects = allProjects
+      .filter((p) => p.health !== "on_track")
+      .map((p) => ({ id: p.id, clientName: p.client_name }));
     const tasksDueThisWeek = orgTasks.filter(
       (t) =>
         t.project_id &&
@@ -156,28 +177,54 @@ export default async function DashboardPage() {
     ).length;
 
     const directoryRows = await getDirectory(activeQuarter.id);
-    const [rates, threshold] = await Promise.all([
-      getQuarterAttendanceRates(activeQuarter.id, directoryRows),
-      getAttendanceAlertThreshold(),
-    ]);
-    const belowThreshold = Object.values(rates).filter(
-      (r) => r.rate !== null && r.rate < threshold,
-    ).length;
+    const rates = await getQuarterAttendanceRates(activeQuarter.id, directoryRows);
+    const belowThresholdMembers = directoryRows
+      .filter((m) => {
+        const r = rates[m.user_id];
+        return r && r.rate !== null && r.rate < threshold;
+      })
+      .map((m) => ({ userId: m.user_id, name: m.name, rate: rates[m.user_id].rate as number }));
 
-    let missingToday: number | null = null;
+    execMembers = directoryRows.filter((m) => isExec(m.role)).map((m) => ({ id: m.user_id, name: m.name }));
+    execTodos = await getExecTodos();
+
+    let missingAttendanceTeams: { projectId: string; clientName: string }[] = [];
     if (todayIsMeetingDay) {
       const teamStatus = await getTeamAttendanceStatus(activeQuarter.id, today);
-      missingToday = teamStatus.filter((t) => !t.loggedToday).length;
+      missingAttendanceTeams = teamStatus
+        .filter((t) => !t.loggedToday)
+        .map((t) => ({ projectId: t.projectId, clientName: t.clientName }));
+    }
+
+    let unbookedRoomTeams: { projectId: string; clientName: string }[] = [];
+    if (nextMeetingDate) {
+      const bookings = await getRoomBookingsForDate(activeQuarter.id, nextMeetingDate);
+      unbookedRoomTeams = bookings
+        .filter((b) => !b.roomName)
+        .map((b) => ({ projectId: b.projectId, clientName: b.clientName }));
     }
 
     summary = {
       activeProjects: allProjects.filter((p) => p.status !== "archived").length,
-      atRisk,
       tasksDueThisWeek,
-      belowThreshold,
-      missingToday,
+      atRiskProjects,
+      belowThresholdMembers,
+      missingAttendanceTeams,
+      unbookedRoomTeams,
     };
   }
+
+  const taskGroups: { label: string; tasks: TaskWithProject[] }[] = [
+    { label: "Overdue", tasks: myTasks.filter((t) => t.due_date && t.due_date < today) },
+    {
+      label: "This week",
+      tasks: myTasks.filter((t) => t.due_date && t.due_date >= today && t.due_date <= weekOut),
+    },
+    {
+      label: "Later",
+      tasks: myTasks.filter((t) => !t.due_date || t.due_date > weekOut),
+    },
+  ].filter((g) => g.tasks.length > 0);
 
   return (
     <div className="space-y-6">
@@ -223,120 +270,275 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {summary && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <SummaryTile label="Active projects" value={summary.activeProjects} href="/projects" />
-          <SummaryTile
-            label="At risk"
-            value={summary.atRisk}
-            href="/projects"
-            tone={summary.atRisk > 0 ? "warning" : undefined}
+      {myProjects.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <MiniStat
+            label="Your attendance"
+            value={attendanceSummary.rate === null ? "--" : `${Math.round(attendanceSummary.rate * 100)}%`}
+            detail={
+              attendanceSummary.rate === null
+                ? "No sessions logged yet"
+                : attendanceSummary.rate < threshold
+                  ? `Below the ${Math.round(threshold * 100)}% target`
+                  : "This quarter"
+            }
+            tone={attendanceSummary.rate !== null && attendanceSummary.rate < threshold ? "warning" : undefined}
+            href="/attendance"
           />
-          <SummaryTile
-            label="Tasks due this week"
-            value={summary.tasksDueThisWeek}
-            href="/tasks?mine=0"
+          <MiniStat
+            label="Tasks this quarter"
+            value={`${doneTaskCount}/${myAllTasks.length}`}
+            detail={myAllTasks.length === 0 ? "Nothing assigned yet" : "Done"}
+            href="/tasks"
           />
-          <SummaryTile
-            label="Below attendance threshold"
-            value={summary.belowThreshold}
-            href="/directory"
-            tone={summary.belowThreshold > 0 ? "warning" : undefined}
-          />
-          {summary.missingToday !== null && (
-            <SummaryTile
-              label="Missing today's attendance"
-              value={summary.missingToday}
-              href="/attendance"
-              tone={summary.missingToday > 0 ? "warning" : undefined}
-            />
-          )}
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">My tasks</CardTitle>
-            <CardDescription>Open tasks assigned to you this quarter.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            {myTasks.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing on your plate right now.</p>
-            ) : (
-              myTasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="flex flex-wrap items-center justify-between gap-2 border-b py-2 last:border-b-0"
-                >
-                  <div className="min-w-0">
-                    <Link
-                      href={`/projects/${task.project_id}`}
-                      className="block truncate text-sm font-medium hover:underline"
-                    >
-                      {task.task_name}
-                    </Link>
-                    <span className="text-xs text-muted-foreground">
-                      {task.project?.client_name ?? "Unknown project"}
-                    </span>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Badge variant="secondary">{TASK_PRIORITY_LABELS[task.priority]}</Badge>
-                    <span className="text-xs text-muted-foreground">
-                      {task.due_date ? format(parseLocalDate(task.due_date), "MMM d") : "No due date"}
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
-            <div className="pt-2">
-              <Link href="/tasks" className="text-sm text-primary hover:underline">
-                View all tasks
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+      {myProjects.length > 0 && (
+        <div className="space-y-2">
+          {myProjects.map((project) => (
+            <Link
+              key={project.id}
+              href={`/projects/${project.id}`}
+              className="flex flex-wrap items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
+            >
+              <div className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">{project.client_name}</span>
+                <span className="text-xs text-muted-foreground">
+                  PM: {project.project_manager?.name ?? "Unassigned"}
+                  {project.senior_consultant && ` · SC: ${project.senior_consultant.name}`}
+                </span>
+              </div>
+              <RosterAvatars members={roster.get(project.id) ?? []} />
+              <div className="flex shrink-0 items-center gap-2">
+                <HealthBadge health={project.health} />
+                {project.deadline && (
+                  <span className="text-xs text-muted-foreground">
+                    Due {format(parseLocalDate(project.deadline), "MMM d")}
+                  </span>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">My team{myProjects.length === 1 ? "" : "s"}</CardTitle>
-            <CardDescription>Projects you&apos;re on this quarter.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            {myProjects.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                You&apos;re not on a team this quarter yet.
-              </p>
-            ) : (
-              myProjects.map((project) => (
-                <Link
-                  key={project.id}
-                  href={`/projects/${project.id}`}
-                  className="flex flex-wrap items-center justify-between gap-2 border-b py-2 last:border-b-0 hover:bg-muted/50"
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">My tasks</CardTitle>
+          <CardDescription>Open tasks assigned to you this quarter.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {myProjects.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              You&apos;re not on a team this quarter yet.
+            </p>
+          ) : taskGroups.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nothing on your plate right now.</p>
+          ) : (
+            taskGroups.map((group) => (
+              <div key={group.label} className="space-y-1">
+                <p
+                  className={cn(
+                    "text-xs font-medium tracking-wide uppercase",
+                    group.label === "Overdue" ? "text-destructive" : "text-muted-foreground",
+                  )}
                 >
-                  <div className="min-w-0">
-                    <span className="block truncate text-sm font-medium">
-                      {project.client_name}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      PM: {project.project_manager?.name ?? "Unassigned"}
-                    </span>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <HealthBadge health={project.health} />
-                    {project.deadline && (
+                  {group.label}
+                </p>
+                {group.tasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="flex flex-wrap items-center justify-between gap-2 border-b py-2 last:border-b-0"
+                  >
+                    <div className="min-w-0">
+                      <Link
+                        href={`/projects/${task.project_id}`}
+                        className="block truncate text-sm font-medium hover:underline"
+                      >
+                        {task.task_name}
+                      </Link>
                       <span className="text-xs text-muted-foreground">
-                        Due {format(parseLocalDate(project.deadline), "MMM d")}
+                        {task.project?.client_name ?? "Unknown project"}
                       </span>
-                    )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Badge variant="secondary">{TASK_PRIORITY_LABELS[task.priority]}</Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {task.due_date ? format(parseLocalDate(task.due_date), "MMM d") : "No due date"}
+                      </span>
+                    </div>
                   </div>
-                </Link>
-              ))
-            )}
-          </CardContent>
-        </Card>
+                ))}
+              </div>
+            ))
+          )}
+          <div>
+            <Link href="/tasks" className="text-sm text-primary hover:underline">
+              View all tasks
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {summary && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-start gap-4">
+            <div className="flex shrink-0 flex-wrap items-center gap-3">
+              <h2 className="text-sm font-medium text-muted-foreground">Org overview</h2>
+              <SummaryTile label="Active projects" value={summary.activeProjects} href="/projects" />
+              <SummaryTile
+                label="Tasks due this week"
+                value={summary.tasksDueThisWeek}
+                href="/tasks?mine=0"
+              />
+            </div>
+
+            <Card className="min-w-[280px] flex-1">
+              <CardHeader>
+                <CardTitle className="text-base">Exec to-dos</CardTitle>
+                <CardDescription>Shared admin checklist -- not tied to a project.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ExecTodoList todos={execTodos} execMembers={execMembers} today={today} />
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Needs attention</CardTitle>
+              <CardDescription>Org-wide items worth a look right now.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {summary.atRiskProjects.length === 0 &&
+              summary.belowThresholdMembers.length === 0 &&
+              summary.missingAttendanceTeams.length === 0 &&
+              summary.unbookedRoomTeams.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nothing needs attention right now -- everything&apos;s on track.
+                </p>
+              ) : (
+                <div>
+                  <AttentionRow
+                    icon={AlertTriangle}
+                    label={`${summary.atRiskProjects.length} project${summary.atRiskProjects.length === 1 ? "" : "s"} at risk`}
+                    items={summary.atRiskProjects.map((p) => ({
+                      key: p.id,
+                      label: p.clientName,
+                      href: `/projects/${p.id}`,
+                    }))}
+                  />
+                  <AttentionRow
+                    icon={AlertTriangle}
+                    label={`${summary.belowThresholdMembers.length} below attendance target`}
+                    items={summary.belowThresholdMembers.map((m) => ({
+                      key: m.userId,
+                      label: `${m.name} (${Math.round(m.rate * 100)}%)`,
+                      href: "/directory",
+                    }))}
+                  />
+                  <AttentionRow
+                    icon={AlertTriangle}
+                    label={`${summary.missingAttendanceTeams.length} haven't logged today's attendance`}
+                    items={summary.missingAttendanceTeams.map((t) => ({
+                      key: t.projectId,
+                      label: t.clientName,
+                      href: `/attendance?team=${t.projectId}`,
+                    }))}
+                  />
+                  <AttentionRow
+                    icon={MapPin}
+                    label={`${summary.unbookedRoomTeams.length} need a room for ${
+                      nextMeetingDate ? format(parseLocalDate(nextMeetingDate), "EEE, MMM d") : "the next meeting"
+                    }`}
+                    items={summary.unbookedRoomTeams.map((t) => ({
+                      key: t.projectId,
+                      label: t.clientName,
+                      href: "/admin/rooms",
+                    }))}
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AttentionRow({
+  icon: Icon,
+  label,
+  items,
+}: {
+  icon: typeof AlertTriangle;
+  label: string;
+  items: { key: string; label: string; href: string }[];
+}) {
+  if (items.length === 0) return null;
+  const shown = items.slice(0, 8);
+  const overflow = items.length - shown.length;
+
+  return (
+    <div className="flex flex-wrap items-start gap-2 border-b py-3 last:border-b-0">
+      <div className="flex w-full items-center gap-2 text-sm font-medium text-amber-700 sm:w-64 sm:shrink-0 dark:text-amber-400">
+        <Icon className="size-4 shrink-0" />
+        {label}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {shown.map((item) => (
+          <Link
+            key={item.key}
+            href={item.href}
+            className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs text-amber-700 hover:bg-amber-500/20 dark:text-amber-400"
+          >
+            {item.label}
+          </Link>
+        ))}
+        {overflow > 0 && (
+          <span className="px-1 py-0.5 text-xs text-muted-foreground">+{overflow} more</span>
+        )}
       </div>
     </div>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+  detail,
+  tone,
+  href,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone?: "warning";
+  href: string;
+}) {
+  return (
+    <Link href={href}>
+      <Card className="transition-colors hover:bg-muted/50">
+        <CardContent className="flex items-center justify-between py-4">
+          <div>
+            <p className="text-sm font-medium">{label}</p>
+            <p className={cn("text-xs", tone === "warning" ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")}>
+              {detail}
+            </p>
+          </div>
+          <p
+            className={cn(
+              "text-2xl font-semibold",
+              tone === "warning" && "text-amber-600 dark:text-amber-400",
+            )}
+          >
+            {value}
+          </p>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }
 
@@ -353,18 +555,17 @@ function SummaryTile({
 }) {
   return (
     <Link href={href}>
-      <Card className="transition-colors hover:bg-muted/50">
-        <CardContent className="pt-6">
+      <Card className="w-fit transition-colors hover:bg-muted/50">
+        <CardContent className="flex items-center gap-2 px-3 py-2">
           <p
-            className={
-              tone === "warning"
-                ? "text-3xl font-semibold text-amber-600 dark:text-amber-400"
-                : "text-3xl font-semibold"
-            }
+            className={cn(
+              "text-lg font-semibold",
+              tone === "warning" && "text-amber-600 dark:text-amber-400",
+            )}
           >
             {value}
           </p>
-          <p className="text-sm text-muted-foreground">{label}</p>
+          <p className="text-xs text-muted-foreground">{label}</p>
         </CardContent>
       </Card>
     </Link>
