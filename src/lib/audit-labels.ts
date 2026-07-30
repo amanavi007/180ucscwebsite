@@ -14,6 +14,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "team_plan.finalized": "Finalized team draft",
   "team_plan.unfinalized": "Unfinalized team draft",
   "team_plan.applied": "Applied team draft to live rosters",
+  "meeting_dates.updated": "Updated meeting day calendar",
 };
 
 export function auditActionLabel(action: string): string {

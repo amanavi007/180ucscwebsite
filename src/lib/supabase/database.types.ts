@@ -303,6 +303,22 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["audit_log"]["Insert"]>;
         Relationships: [];
       };
+      meeting_dates: {
+        Row: {
+          id: string;
+          quarter_id: string;
+          date: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          quarter_id: string;
+          date: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["meeting_dates"]["Insert"]>;
+        Relationships: [];
+      };
       team_plans: {
         Row: {
           id: string;

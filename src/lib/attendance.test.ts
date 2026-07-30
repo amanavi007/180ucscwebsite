@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeAttendanceRate } from "./attendance";
+import { computeAttendanceRate, getMeetingDatesInRange, isMeetingDate } from "./attendance";
 
 const DATES_5 = ["2026-01-06", "2026-01-08", "2026-01-13", "2026-01-15", "2026-01-20"];
 
@@ -102,5 +102,40 @@ describe("computeAttendanceRate", () => {
     // missingSessionDates separately instead of silently trusting the rate.
     expect(result.presentCount).toBe(5);
     expect(result.rate).toBe(1);
+  });
+});
+
+describe("isMeetingDate", () => {
+  it("is true for Tuesdays and Thursdays", () => {
+    expect(isMeetingDate("2026-01-06")).toBe(true); // Tue
+    expect(isMeetingDate("2026-01-08")).toBe(true); // Thu
+  });
+
+  it("is false for every other weekday", () => {
+    expect(isMeetingDate("2026-01-05")).toBe(false); // Mon
+    expect(isMeetingDate("2026-01-07")).toBe(false); // Wed
+    expect(isMeetingDate("2026-01-09")).toBe(false); // Fri
+    expect(isMeetingDate("2026-01-10")).toBe(false); // Sat
+    expect(isMeetingDate("2026-01-11")).toBe(false); // Sun
+  });
+});
+
+describe("getMeetingDatesInRange", () => {
+  it("lists every Tue/Thu between two dates, inclusive, in order", () => {
+    expect(getMeetingDatesInRange("2026-01-01", "2026-01-15")).toEqual([
+      "2026-01-01",
+      "2026-01-06",
+      "2026-01-08",
+      "2026-01-13",
+      "2026-01-15",
+    ]);
+  });
+
+  it("returns an empty list when the range contains no meeting day", () => {
+    expect(getMeetingDatesInRange("2026-01-09", "2026-01-11")).toEqual([]);
+  });
+
+  it("includes a single-day range if that day itself is a meeting day", () => {
+    expect(getMeetingDatesInRange("2026-01-06", "2026-01-06")).toEqual(["2026-01-06"]);
   });
 });

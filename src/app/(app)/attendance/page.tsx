@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AlertTriangle } from "lucide-react";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getActiveQuarter } from "@/lib/data/quarters";
 import { getProjects, getProjectMembers } from "@/lib/data/projects";
@@ -6,13 +7,16 @@ import {
   getAttendanceHistory,
   getMyAttendanceSummary,
   getSessionForDate,
+  getTeamAttendanceStatus,
 } from "@/lib/data/attendance";
 import { getAttendanceAlertThreshold } from "@/lib/data/org-settings";
+import { getMeetingDatesForQuarter } from "@/lib/data/meeting-dates";
 import { isExec, isElevatedOrAbove } from "@/lib/auth/roles";
 import { isProjectLead } from "@/lib/auth/project-access";
 import { getOrgTodayDateString } from "@/lib/date";
 import { AttendanceView } from "./attendance-view";
 import { MyAttendanceStats } from "./my-attendance-stats";
+import { TeamAttendanceStatusCard } from "./team-attendance-status";
 
 export const metadata: Metadata = { title: "Attendance" };
 
@@ -64,14 +68,19 @@ export default async function AttendancePage({
     (await isProjectLead(selectedProject.id, profile.id, isExec(profile.role)));
 
   const today = getOrgTodayDateString();
+  const exec = isExec(profile.role);
 
-  const [roster, history, todaySession] = selectedProject
-    ? await Promise.all([
-        getProjectMembers(selectedProject.id),
-        getAttendanceHistory(selectedProject.id),
-        getSessionForDate(selectedProject.id, today),
-      ])
-    : [[], [], null];
+  const [roster, history, todaySession, meetingDates] = await Promise.all([
+    selectedProject ? getProjectMembers(selectedProject.id) : Promise.resolve([]),
+    selectedProject ? getAttendanceHistory(selectedProject.id) : Promise.resolve([]),
+    selectedProject ? getSessionForDate(selectedProject.id, today) : Promise.resolve(null),
+    getMeetingDatesForQuarter(activeQuarter.id),
+  ]);
+  const todayIsMeetingDay = meetingDates.includes(today);
+
+  const teamStatus = exec ? await getTeamAttendanceStatus(activeQuarter.id, today) : null;
+
+  const needsTodayNudge = canSubmit && todayIsMeetingDay && !todaySession;
 
   return (
     <div className="space-y-6">
@@ -79,6 +88,18 @@ export default async function AttendancePage({
         <h1 className="text-2xl font-semibold tracking-tight">Attendance</h1>
         <p className="text-sm text-muted-foreground">{activeQuarter.name}</p>
       </div>
+
+      {needsTodayNudge && selectedProject && (
+        <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+          <AlertTriangle className="size-4 shrink-0" />
+          {selectedProject.client_name} hasn&apos;t logged today&apos;s attendance yet -- it&apos;s a
+          meeting day.
+        </div>
+      )}
+
+      {teamStatus && teamStatus.length > 0 && (
+        <TeamAttendanceStatusCard teams={teamStatus} todayIsMeetingDay={todayIsMeetingDay} />
+      )}
 
       {projects.length === 0 ? (
         <p className="text-sm text-muted-foreground">

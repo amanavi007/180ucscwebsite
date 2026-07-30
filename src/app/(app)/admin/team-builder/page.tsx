@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getQuarters } from "@/lib/data/quarters";
 import { getPlanBoard, getPlansForQuarter } from "@/lib/data/team-builder";
 import { TeamBuilderBoard } from "./team-builder-board";
-import { QuarterSelect } from "./quarter-select";
+import { QuarterSelect } from "@/components/quarter-select";
 import { PlanSelect } from "./plan-select";
 import { EmptyPlanState } from "./empty-plan-state";
 
@@ -39,7 +39,11 @@ export default async function TeamBuilderPage({
           Sketch out roster drafts, then Finalize the one you want to apply.
         </p>
         <div className="flex items-center gap-2">
-          <QuarterSelect quarters={quarters} selectedId={selectedQuarter.id} />
+          <QuarterSelect
+            quarters={quarters}
+            selectedId={selectedQuarter.id}
+            basePath="/admin/team-builder"
+          />
           {plans.length > 0 && (
             <PlanSelect quarterId={selectedQuarter.id} plans={plans} selectedPlan={selectedPlan} />
           )}

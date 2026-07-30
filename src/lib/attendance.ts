@@ -1,3 +1,33 @@
+/** Org-wide meeting schedule: Tuesday and Thursday, per the org's locked-in schedule. */
+const MEETING_WEEKDAYS = [2, 4];
+
+function parseDateOnly(dateString: string): Date {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function toDateString(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export function isMeetingDate(dateString: string): boolean {
+  return MEETING_WEEKDAYS.includes(parseDateOnly(dateString).getDay());
+}
+
+/** Every Tue/Thu between start and end (both inclusive, "YYYY-MM-DD"), in order. */
+export function getMeetingDatesInRange(startDate: string, endDate: string): string[] {
+  const start = parseDateOnly(startDate);
+  const end = parseDateOnly(endDate);
+  const dates: string[] = [];
+  for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    if (MEETING_WEEKDAYS.includes(d.getDay())) dates.push(toDateString(d));
+  }
+  return dates;
+}
+
 export type AttendanceMark = "excused" | "unexcused" | "tardy";
 
 export interface AttendanceMarkEntry {

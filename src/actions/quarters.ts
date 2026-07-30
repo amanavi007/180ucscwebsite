@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { isExec } from "@/lib/auth/roles";
 import { logAudit } from "@/lib/audit";
+import { getMeetingDatesInRange } from "@/lib/attendance";
 
 export interface ActionResult {
   error?: string;
@@ -33,14 +34,26 @@ export async function createQuarter(input: {
     await supabase.from("quarters").update({ is_active: false }).eq("is_active", true);
   }
 
-  const { error } = await supabase.from("quarters").insert({
-    name: input.name,
-    start_date: input.startDate,
-    end_date: input.endDate,
-    is_active: input.makeActive,
-  });
+  const { data: quarter, error } = await supabase
+    .from("quarters")
+    .insert({
+      name: input.name,
+      start_date: input.startDate,
+      end_date: input.endDate,
+      is_active: input.makeActive,
+    })
+    .select("id")
+    .single();
 
   if (error) return { error: error.message };
+
+  // Auto-seed the default Tue/Thu meeting calendar; exec can adjust it in Admin > Meeting Days.
+  const seedDates = getMeetingDatesInRange(input.startDate, input.endDate);
+  if (seedDates.length > 0) {
+    await supabase
+      .from("meeting_dates")
+      .insert(seedDates.map((date) => ({ quarter_id: quarter.id, date })));
+  }
 
   const actor = await getCurrentProfile();
   await logAudit(actor.id, "quarter.created", input.name);

@@ -2,7 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { computeProjectHealth } from "@/lib/project-health";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database, TaskStatus } from "@/lib/supabase/database.types";
+import type { Database, MembershipTeamRole, TaskStatus } from "@/lib/supabase/database.types";
 import type { ProjectWithRelations, ProjectWithQuarter, MembershipWithProfile } from "./types";
 
 /**
@@ -131,4 +131,19 @@ export async function getProjectMembers(projectId: string): Promise<MembershipWi
 
   if (error) throw error;
   return data as unknown as MembershipWithProfile[];
+}
+
+/** This user's real team_role (pm/sc/member) on a project, or null if they're not on it. */
+export async function getMyTeamRole(
+  projectId: string,
+  userId: string,
+): Promise<MembershipTeamRole | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("memberships")
+    .select("team_role")
+    .eq("project_id", projectId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  return data?.team_role ?? null;
 }

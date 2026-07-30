@@ -12,17 +12,16 @@ import {
 export function QuarterSelect({
   quarters,
   selectedId,
+  basePath,
 }: {
   quarters: { id: string; name: string; is_active: boolean }[];
   selectedId: string;
+  basePath: string;
 }) {
   const router = useRouter();
 
   return (
-    <Select
-      value={selectedId}
-      onValueChange={(v) => router.push(`/admin/team-builder?quarter=${v}`)}
-    >
+    <Select value={selectedId} onValueChange={(v) => v && router.push(`${basePath}?quarter=${v}`)}>
       <SelectTrigger size="sm" className="w-56">
         <SelectValue>
           {(value: string) => {
