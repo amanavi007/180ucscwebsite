@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentProfile } from "@/lib/data/profile";
+import { logAudit } from "@/lib/audit";
 
 export interface ActionResult {
   error?: string;
@@ -20,6 +22,9 @@ export async function updateAttendanceAlertThreshold(percent: number): Promise<A
     .eq("key", "attendance_alert_threshold");
 
   if (error) return { error: error.message };
+
+  const actor = await getCurrentProfile();
+  await logAudit(actor.id, "settings.attendance_threshold_changed", undefined, `Set to ${percent}%`);
 
   revalidatePath("/admin");
   revalidatePath("/");
@@ -40,6 +45,10 @@ export async function updateDefaultBulkPassword(password: string): Promise<Actio
     .upsert({ key: "default_bulk_password", value: password }, { onConflict: "key" });
 
   if (error) return { error: error.message };
+
+  // Deliberately don't log the new value -- just that it changed.
+  const actor = await getCurrentProfile();
+  await logAudit(actor.id, "settings.default_password_changed");
 
   revalidatePath("/admin");
   return {};

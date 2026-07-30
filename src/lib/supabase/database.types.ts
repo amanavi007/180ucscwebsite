@@ -283,6 +283,26 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["lead_candidates"]["Insert"]>;
         Relationships: [];
       };
+      audit_log: {
+        Row: {
+          id: string;
+          actor_id: string | null;
+          action: string;
+          target_label: string | null;
+          detail: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          actor_id?: string | null;
+          action: string;
+          target_label?: string | null;
+          detail?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["audit_log"]["Insert"]>;
+        Relationships: [];
+      };
       team_plans: {
         Row: {
           id: string;

@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentProfile } from "@/lib/data/profile";
-import { isExec } from "@/lib/auth/roles";
+import { isExec, roleLabel } from "@/lib/auth/roles";
 import { getDefaultBulkPassword } from "@/lib/data/org-settings";
+import { logAudit } from "@/lib/audit";
 import type { UserRole } from "@/lib/supabase/database.types";
 
 export interface ActionResult {
@@ -81,6 +82,12 @@ export async function bulkCreateMembers(
     results.push({ name, email, status: "created" });
   }
 
+  const createdCount = results.filter((r) => r.status === "created").length;
+  if (createdCount > 0) {
+    const actor = await getCurrentProfile();
+    await logAudit(actor.id, "member.bulk_created", undefined, `Created ${createdCount} account(s)`);
+  }
+
   revalidatePath("/admin");
   return { results };
 }
@@ -96,11 +103,16 @@ export async function resetMemberPassword(userId: string): Promise<ActionResult>
   });
   if (authError) return { error: authError.message };
 
-  const { error: profileError } = await admin
+  const { data: target, error: profileError } = await admin
     .from("profiles")
     .update({ must_reset_password: true })
-    .eq("id", userId);
+    .eq("id", userId)
+    .select("name")
+    .single();
   if (profileError) return { error: profileError.message };
+
+  const actor = await getCurrentProfile();
+  await logAudit(actor.id, "member.password_reset", target.name);
 
   revalidatePath("/admin");
   return {};
@@ -111,8 +123,24 @@ export async function updateMemberRole(userId: string, role: UserRole): Promise<
   if (denied) return denied;
 
   const supabase = await createClient();
+  const { data: before } = await supabase
+    .from("profiles")
+    .select("name, role")
+    .eq("id", userId)
+    .single();
+
   const { error } = await supabase.from("profiles").update({ role }).eq("id", userId);
   if (error) return { error: error.message };
+
+  if (before) {
+    const actor = await getCurrentProfile();
+    await logAudit(
+      actor.id,
+      "member.role_changed",
+      before.name,
+      `${roleLabel(before.role)} -> ${roleLabel(role)}`,
+    );
+  }
 
   revalidatePath("/admin");
   revalidatePath("/directory");

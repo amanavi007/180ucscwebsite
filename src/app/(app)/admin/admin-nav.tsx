@@ -9,6 +9,7 @@ const ADMIN_NAV = [
   { href: "/admin/quarters", label: "Quarters" },
   { href: "/admin/settings", label: "Settings" },
   { href: "/admin/team-builder", label: "Team Builder" },
+  { href: "/admin/activity", label: "Activity" },
 ];
 
 export function AdminNav() {

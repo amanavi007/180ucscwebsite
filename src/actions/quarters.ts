@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { isExec } from "@/lib/auth/roles";
+import { logAudit } from "@/lib/audit";
 
 export interface ActionResult {
   error?: string;
@@ -41,6 +42,9 @@ export async function createQuarter(input: {
 
   if (error) return { error: error.message };
 
+  const actor = await getCurrentProfile();
+  await logAudit(actor.id, "quarter.created", input.name);
+
   revalidatePath("/admin");
   return {};
 }
@@ -52,12 +56,17 @@ export async function setActiveQuarter(quarterId: string): Promise<ActionResult>
   const supabase = await createClient();
 
   await supabase.from("quarters").update({ is_active: false }).eq("is_active", true);
-  const { error } = await supabase
+  const { data: quarter, error } = await supabase
     .from("quarters")
     .update({ is_active: true })
-    .eq("id", quarterId);
+    .eq("id", quarterId)
+    .select("name")
+    .single();
 
   if (error) return { error: error.message };
+
+  const actor = await getCurrentProfile();
+  await logAudit(actor.id, "quarter.activated", quarter.name);
 
   revalidatePath("/admin");
   return {};
@@ -68,12 +77,17 @@ export async function deactivateQuarter(quarterId: string): Promise<ActionResult
   if (denied) return denied;
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: quarter, error } = await supabase
     .from("quarters")
     .update({ is_active: false })
-    .eq("id", quarterId);
+    .eq("id", quarterId)
+    .select("name")
+    .single();
 
   if (error) return { error: error.message };
+
+  const actor = await getCurrentProfile();
+  await logAudit(actor.id, "quarter.deactivated", quarter.name);
 
   revalidatePath("/admin");
   return {};
@@ -103,6 +117,12 @@ export async function deleteQuarter(quarterId: string): Promise<ActionResult> {
   if (denied) return denied;
 
   const supabase = await createClient();
+  const { data: quarter } = await supabase
+    .from("quarters")
+    .select("name")
+    .eq("id", quarterId)
+    .single();
+
   const { error } = await supabase.from("quarters").delete().eq("id", quarterId);
 
   if (error) {
@@ -113,6 +133,9 @@ export async function deleteQuarter(quarterId: string): Promise<ActionResult> {
     }
     return { error: error.message };
   }
+
+  const actor = await getCurrentProfile();
+  await logAudit(actor.id, "quarter.deleted", quarter?.name);
 
   revalidatePath("/admin");
   return {};

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { isExec } from "@/lib/auth/roles";
 import { isProjectLead } from "@/lib/auth/project-access";
+import { logAudit } from "@/lib/audit";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, ProjectHealth, ProjectStatus } from "@/lib/supabase/database.types";
 
@@ -106,6 +107,8 @@ export async function createProject(input: {
     );
     if (membershipError) return { error: membershipError.message };
   }
+
+  await logAudit(denied.profile.id, "project.created", input.clientName);
 
   revalidatePath("/projects");
   return { id: data.id };

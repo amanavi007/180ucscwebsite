@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { isExec } from "@/lib/auth/roles";
+import { logAudit } from "@/lib/audit";
 import type { LeadCandidateRole, MembershipTeamRole } from "@/lib/supabase/database.types";
 
 export interface ActionResult {
@@ -35,6 +36,9 @@ export async function createPlan(
     .select("id")
     .single();
   if (error) return { error: error.message };
+
+  const actor = await getCurrentProfile();
+  await logAudit(actor.id, "team_plan.created", name.trim());
 
   revalidatePath("/admin/team-builder");
   return { id: data.id };
@@ -122,7 +126,7 @@ export async function deletePlan(planId: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { data: plan } = await supabase
     .from("team_plans")
-    .select("is_finalized")
+    .select("name, is_finalized")
     .eq("id", planId)
     .single();
   if (plan?.is_finalized) {
@@ -131,6 +135,9 @@ export async function deletePlan(planId: string): Promise<ActionResult> {
 
   const { error } = await supabase.from("team_plans").delete().eq("id", planId);
   if (error) return { error: error.message };
+
+  const actor = await getCurrentProfile();
+  await logAudit(actor.id, "team_plan.deleted", plan?.name);
 
   revalidatePath("/admin/team-builder");
   return {};
@@ -245,11 +252,16 @@ export async function finalizePlan(planId: string): Promise<ActionResult> {
   if (denied.error) return { error: denied.error };
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: plan, error } = await supabase
     .from("team_plans")
     .update({ is_finalized: true, finalized_at: new Date().toISOString() })
-    .eq("id", planId);
+    .eq("id", planId)
+    .select("name")
+    .single();
   if (error) return { error: error.message };
+
+  const actor = await getCurrentProfile();
+  await logAudit(actor.id, "team_plan.finalized", plan.name);
 
   revalidatePath("/admin/team-builder");
   return {};
@@ -261,11 +273,16 @@ export async function unfinalizePlan(planId: string): Promise<ActionResult> {
   if (denied.error) return { error: denied.error };
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: plan, error } = await supabase
     .from("team_plans")
     .update({ is_finalized: false, finalized_at: null })
-    .eq("id", planId);
+    .eq("id", planId)
+    .select("name")
+    .single();
   if (error) return { error: error.message };
+
+  const actor = await getCurrentProfile();
+  await logAudit(actor.id, "team_plan.unfinalized", plan.name);
 
   revalidatePath("/admin/team-builder");
   return {};
@@ -289,7 +306,7 @@ export async function applyPlan(planId: string): Promise<ActionResult> {
 
   const { data: plan, error: planError } = await supabase
     .from("team_plans")
-    .select("id, quarter_id, is_finalized")
+    .select("id, name, quarter_id, is_finalized")
     .eq("id", planId)
     .single();
   if (planError) return { error: planError.message };
@@ -376,6 +393,9 @@ export async function applyPlan(planId: string): Promise<ActionResult> {
     const { error: insertError } = await supabase.from("memberships").insert(toInsert);
     if (insertError) return { error: insertError.message };
   }
+
+  const actor = await getCurrentProfile();
+  await logAudit(actor.id, "team_plan.applied", plan.name);
 
   revalidatePath("/admin/team-builder");
   revalidatePath("/projects");
