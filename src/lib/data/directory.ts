@@ -9,6 +9,7 @@ export interface DirectoryRow {
   project_id: string | null;
   client_name: string | null;
   quarter_id: string | null;
+  email: string;
 }
 
 /** Everyone's name/role/current team for the given quarter. Members with no team show up too (project_id null). */

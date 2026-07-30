@@ -73,11 +73,11 @@ export function DirectoryView({
 
   function onExport() {
     const headers = rates
-      ? ["Name", "Role", "Team", "Attendance %", "Present", "Tardy", "Excused", "Unexcused"]
-      : ["Name", "Role", "Team"];
+      ? ["Name", "Email", "Role", "Team", "Attendance %", "Present", "Tardy", "Excused", "Unexcused"]
+      : ["Name", "Email", "Role", "Team"];
 
     const csvRows = filtered.map((r) => {
-      const base = [r.name, roleLabel(r.role), r.client_name ?? "No team"];
+      const base = [r.name, r.email, roleLabel(r.role), r.client_name ?? "No team"];
       if (!rates) return base;
       const result = rates[r.user_id];
       return [
@@ -143,6 +143,7 @@ export function DirectoryView({
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
+            <TableHead>Email</TableHead>
             <TableHead>Role</TableHead>
             <TableHead>Team</TableHead>
             {rates && <TableHead>Attendance</TableHead>}
@@ -151,7 +152,7 @@ export function DirectoryView({
         <TableBody>
           {filtered.length === 0 && (
             <TableRow>
-              <TableCell colSpan={rates ? 4 : 3} className="text-center text-muted-foreground">
+              <TableCell colSpan={rates ? 5 : 4} className="text-center text-muted-foreground">
                 No members match these filters.
               </TableCell>
             </TableRow>
@@ -167,6 +168,11 @@ export function DirectoryView({
                     </Avatar>
                     <span className="font-medium">{r.name}</span>
                   </div>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  <a href={`mailto:${r.email}`} className="hover:underline">
+                    {r.email}
+                  </a>
                 </TableCell>
                 <TableCell className="text-muted-foreground">{roleLabel(r.role)}</TableCell>
                 <TableCell className="text-muted-foreground">

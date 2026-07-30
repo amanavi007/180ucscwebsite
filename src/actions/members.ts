@@ -5,13 +5,13 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { isExec } from "@/lib/auth/roles";
+import { getDefaultBulkPassword } from "@/lib/data/org-settings";
 import type { UserRole } from "@/lib/supabase/database.types";
 
 export interface ActionResult {
   error?: string;
 }
 
-const DEFAULT_PASSWORD = "ucsc180dc$";
 const EMAIL_DOMAIN = /@180dc\.org$/i;
 
 async function requireExec() {
@@ -43,6 +43,7 @@ export async function bulkCreateMembers(
   if (rows.length === 0) return { error: "No rows to create." };
 
   const admin = createAdminClient();
+  const defaultPassword = await getDefaultBulkPassword();
   const results: BulkCreateResult[] = [];
 
   for (const row of rows) {
@@ -62,7 +63,7 @@ export async function bulkCreateMembers(
     // row (name/role), so there's no separate profiles insert here.
     const { data: created, error: createError } = await admin.auth.admin.createUser({
       email,
-      password: DEFAULT_PASSWORD,
+      password: defaultPassword,
       email_confirm: true,
       user_metadata: { name, role: "consultant" },
     });
@@ -89,8 +90,9 @@ export async function resetMemberPassword(userId: string): Promise<ActionResult>
   if (denied) return denied;
 
   const admin = createAdminClient();
+  const defaultPassword = await getDefaultBulkPassword();
   const { error: authError } = await admin.auth.admin.updateUserById(userId, {
-    password: DEFAULT_PASSWORD,
+    password: defaultPassword,
   });
   if (authError) return { error: authError.message };
 

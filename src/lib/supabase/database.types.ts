@@ -353,6 +353,7 @@ export interface Database {
           project_id: string | null;
           client_name: string | null;
           quarter_id: string | null;
+          email: string;
         };
         Relationships: [];
       };

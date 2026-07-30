@@ -60,7 +60,13 @@ function parseRows(text: string) {
     });
 }
 
-export function MembersPanel({ members }: { members: Member[] }) {
+export function MembersPanel({
+  members,
+  defaultPassword,
+}: {
+  members: Member[];
+  defaultPassword: string;
+}) {
   const [bulkText, setBulkText] = useState("");
   const [isPending, startTransition] = useTransition();
   const [results, setResults] = useState<BulkCreateResult[] | null>(null);
@@ -98,8 +104,8 @@ export function MembersPanel({ members }: { members: Member[] }) {
           <CardTitle>Add members</CardTitle>
           <CardDescription>
             One per line: <code>Name, email@180dc.org</code>. New accounts get the default
-            password <code>ucsc180dc$</code> and a consultant role, and are forced to set
-            their own password on first login.
+            password <code>{defaultPassword}</code> and a consultant role, and are forced to set
+            their own password on first login. Change the default password in Settings.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -182,7 +188,7 @@ export function MembersPanel({ members }: { members: Member[] }) {
                 </TableRow>
               )}
               {members.map((m) => (
-                <MemberRow key={m.id} member={m} />
+                <MemberRow key={m.id} member={m} defaultPassword={defaultPassword} />
               ))}
             </TableBody>
           </Table>
@@ -192,7 +198,7 @@ export function MembersPanel({ members }: { members: Member[] }) {
   );
 }
 
-function MemberRow({ member }: { member: Member }) {
+function MemberRow({ member, defaultPassword }: { member: Member; defaultPassword: string }) {
   const [isPending, startTransition] = useTransition();
   const [resetOpen, setResetOpen] = useState(false);
 
@@ -248,8 +254,8 @@ function MemberRow({ member }: { member: Member }) {
               <AlertDialogTitle>Reset {member.name}&apos;s password?</AlertDialogTitle>
               <AlertDialogDescription>
                 Their password will be set back to the default (
-                <code>ucsc180dc$</code>) and they&apos;ll be required to set a new one on next
-                login.
+                <code>{defaultPassword}</code>) and they&apos;ll be required to set a new one on
+                next login.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
