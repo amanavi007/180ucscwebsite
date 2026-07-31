@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 import { SidebarNav } from "./sidebar-nav";
 import { NotificationBell } from "./notification-bell";
 import { CommandPalette } from "./command-palette";
@@ -48,6 +49,22 @@ export function AppShell({
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (localStorage.getItem("sidebar-collapsed") === "1") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing from localStorage, an external store, on mount
+      setCollapsed(true);
+    }
+  }, []);
+
+  function toggleCollapsed() {
+    setCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("sidebar-collapsed", next ? "1" : "0");
+      return next;
+    });
+  }
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -62,14 +79,21 @@ export function AppShell({
 
   return (
     <div className="flex min-h-svh">
-      <aside className="hidden w-60 shrink-0 border-r border-sidebar-border bg-sidebar md:flex md:flex-col">
-        <div className="flex items-center gap-2 px-4 py-4">
+      <aside
+        className={cn(
+          "hidden shrink-0 border-r border-sidebar-border bg-sidebar md:flex md:flex-col",
+          collapsed ? "w-16" : "w-60",
+        )}
+      >
+        <div className={cn("flex items-center gap-2 px-4 py-4", collapsed && "justify-center px-0")}>
           <Image src="/logo-icon.png" alt="" width={987} height={1006} className="h-6 w-auto" />
-          <span className="font-brand text-lg font-bold tracking-tight text-primary">
-            180 @ UCSC
-          </span>
+          {!collapsed && (
+            <span className="font-brand text-lg font-bold tracking-tight text-primary">
+              180 @ UCSC
+            </span>
+          )}
         </div>
-        <SidebarNav isExec={isExec} />
+        <SidebarNav isExec={isExec} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">

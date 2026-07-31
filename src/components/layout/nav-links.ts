@@ -24,21 +24,24 @@ export interface NavLink {
   execOnly?: boolean;
   /** Extra terms this page should also match on in search, beyond its label. */
   keywords?: string;
+  /** Sidebar grouping only -- unset means "ungrouped" (rendered on its own). */
+  group?: "work" | "people";
 }
 
 export const NAV_LINKS: NavLink[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/projects", label: "Projects", icon: Kanban },
-  { href: "/tasks", label: "Tasks", icon: ListTodo },
+  { href: "/projects", label: "Projects", icon: Kanban, group: "work" },
+  { href: "/tasks", label: "Tasks", icon: ListTodo, group: "work" },
   {
     href: "/calendar",
     label: "Calendar",
     icon: CalendarDays,
     keywords: "meeting days deadlines events schedule",
+    group: "work",
   },
-  { href: "/clients", label: "Clients", icon: Building2 },
-  { href: "/directory", label: "Directory", icon: Users },
-  { href: "/attendance", label: "Attendance", icon: ClipboardCheck },
+  { href: "/clients", label: "Clients", icon: Building2, group: "people" },
+  { href: "/directory", label: "Directory", icon: Users, group: "people" },
+  { href: "/attendance", label: "Attendance", icon: ClipboardCheck, group: "people" },
   { href: "/resources", label: "Resources", icon: BookOpen },
   { href: "/admin", label: "Admin", icon: ShieldCheck, execOnly: true },
 ];
