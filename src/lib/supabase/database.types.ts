@@ -92,6 +92,7 @@ export interface Database {
           id: string;
           quarter_id: string;
           client_name: string;
+          client_id: string | null;
           status: ProjectStatus;
           project_manager_id: string | null;
           senior_consultant_id: string | null;
@@ -108,6 +109,7 @@ export interface Database {
           id?: string;
           quarter_id: string;
           client_name: string;
+          client_id?: string | null;
           status?: ProjectStatus;
           project_manager_id?: string | null;
           senior_consultant_id?: string | null;
@@ -121,6 +123,30 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["projects"]["Insert"]>;
+        Relationships: [];
+      };
+      clients: {
+        Row: {
+          id: string;
+          name: string;
+          contact_name: string | null;
+          contact_email: string | null;
+          notes: string | null;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          contact_name?: string | null;
+          contact_email?: string | null;
+          notes?: string | null;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["clients"]["Insert"]>;
         Relationships: [];
       };
       memberships: {
@@ -317,6 +343,18 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["meeting_dates"]["Insert"]>;
+        Relationships: [];
+      };
+      notification_reads: {
+        Row: {
+          user_id: string;
+          last_read_at: string;
+        };
+        Insert: {
+          user_id: string;
+          last_read_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["notification_reads"]["Insert"]>;
         Relationships: [];
       };
       exec_todos: {

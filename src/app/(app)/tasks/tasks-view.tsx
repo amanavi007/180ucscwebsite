@@ -1,16 +1,9 @@
 "use client";
 
-import { useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { format } from "date-fns";
-import { Play } from "lucide-react";
-import { updateTask, updateTaskDueDate, updateTaskStageStep } from "@/actions/tasks";
-import { TaskStageTimeline } from "@/components/task-stage-timeline";
+import { TaskRow } from "@/components/task-row";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Select,
@@ -19,18 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  STEPPED_TASK_TYPES,
-  TASK_PRIORITY_LABELS,
-  TASK_PRIORITY_DOT_CLASS,
-  TASK_STATUS_LABELS,
-  TASK_STATUS_BADGE_CLASS,
-  TASK_TYPES,
-  taskTypeLabel,
-} from "@/lib/project-labels";
-import { parseLocalDate } from "@/lib/date";
-import { cn } from "@/lib/utils";
-import type { TaskPriority, TaskStatus } from "@/lib/supabase/database.types";
+import { TASK_STATUS_LABELS, TASK_TYPES, taskTypeLabel } from "@/lib/project-labels";
 import type { ProjectWithRelations } from "@/lib/data/types";
 import type { TaskWithProject } from "@/lib/data/types";
 
@@ -194,165 +176,19 @@ export function TasksView({
                   ))}
                 </div>
                 {group.tasks.map((task) => (
-                  <GlobalTaskRow
+                  <TaskRow
                     key={task.id}
                     task={task}
-                    canEdit={canManageProject(task.project_id) || task.assignee_id === currentUserId}
+                    projectId={task.project_id}
+                    canManage={canManageProject(task.project_id)}
+                    isOwn={task.assignee_id === currentUserId}
+                    showDeleteColumn={false}
                   />
                 ))}
               </CardContent>
             </Card>
           ))}
         </div>
-      )}
-    </div>
-  );
-}
-
-function GlobalTaskRow({ task, canEdit }: { task: TaskWithProject; canEdit: boolean }) {
-  const [isPending, startTransition] = useTransition();
-  const router = useRouter();
-  const isStepped = STEPPED_TASK_TYPES.includes(task.task_type);
-
-  function applyStatus(status: TaskStatus) {
-    startTransition(async () => {
-      const result = await updateTask(task.id, task.project_id, { status });
-      if (result?.error) toast.error(result.error);
-      else router.refresh();
-    });
-  }
-
-  function applyPriority(priority: TaskPriority) {
-    startTransition(async () => {
-      const result = await updateTask(task.id, task.project_id, { priority });
-      if (result?.error) toast.error(result.error);
-      else router.refresh();
-    });
-  }
-
-  function applyDueDate(dueDate: string | null) {
-    startTransition(async () => {
-      const result = await updateTaskDueDate(task.id, task.project_id, dueDate);
-      if (result?.error) {
-        toast.error(result.error);
-        return;
-      }
-      router.refresh();
-    });
-  }
-
-  function startTimeline() {
-    startTransition(async () => {
-      const result = await updateTaskStageStep(task.id, task.project_id, "draft_in_progress");
-      if (result?.error) toast.error(result.error);
-      else router.refresh();
-    });
-  }
-
-  return (
-    <div className="grid grid-cols-[1fr_7rem_9rem_9rem_13rem] items-center gap-3 border-b px-4 py-2.5 last:border-b-0">
-      <div className="min-w-0">
-        <div className="flex items-center gap-1.5">
-          <span
-            className={cn("size-1.5 shrink-0 rounded-full", TASK_PRIORITY_DOT_CLASS[task.priority])}
-            title={`${TASK_PRIORITY_LABELS[task.priority]} priority`}
-          />
-          <span className={`truncate text-sm ${task.is_default_task ? "font-medium" : ""}`}>
-            {task.task_name}
-          </span>
-        </div>
-      </div>
-
-      {canEdit ? (
-        <Select
-          value={task.priority}
-          onValueChange={(v) => applyPriority(v as TaskPriority)}
-          disabled={isPending}
-        >
-          <SelectTrigger size="sm" className="w-full">
-            <SelectValue>{(value: TaskPriority) => TASK_PRIORITY_LABELS[value]}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(TASK_PRIORITY_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      ) : (
-        <Badge variant="secondary" className="w-fit">
-          {TASK_PRIORITY_LABELS[task.priority]}
-        </Badge>
-      )}
-
-      <span className="truncate text-sm text-muted-foreground">
-        {task.assignee?.name ?? "Unassigned"}
-      </span>
-
-      {canEdit ? (
-        <Input
-          type="date"
-          value={task.due_date ?? ""}
-          onChange={(e) => applyDueDate(e.target.value || null)}
-          disabled={isPending}
-          className="w-full"
-        />
-      ) : (
-        <span className="text-sm text-muted-foreground">
-          {task.due_date ? format(parseLocalDate(task.due_date), "MMM d, yyyy") : "—"}
-        </span>
-      )}
-
-      {task.stage_step ? (
-        <TaskStageTimeline
-          taskId={task.id}
-          projectId={task.project_id}
-          currentStep={task.stage_step}
-          editable={canEdit}
-        />
-      ) : isStepped ? (
-        canEdit ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={startTimeline}
-            disabled={isPending}
-            className="h-7 w-fit gap-1.5 px-2 text-xs font-medium text-muted-foreground"
-          >
-            <Play className="size-3" />
-            Start
-          </Button>
-        ) : (
-          <Badge variant="outline" className={cn("w-fit", TASK_STATUS_BADGE_CLASS.not_started)}>
-            Not started
-          </Badge>
-        )
-      ) : canEdit ? (
-        <Select
-          value={task.status}
-          onValueChange={(v) => applyStatus(v as TaskStatus)}
-          disabled={isPending}
-        >
-          <SelectTrigger
-            size="sm"
-            className={cn("w-32 border-transparent", TASK_STATUS_BADGE_CLASS[task.status])}
-          >
-            <SelectValue>{(value: TaskStatus) => TASK_STATUS_LABELS[value]}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(TASK_STATUS_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      ) : (
-        <Badge variant="outline" className={TASK_STATUS_BADGE_CLASS[task.status]}>
-          {TASK_STATUS_LABELS[task.status]}
-        </Badge>
       )}
     </div>
   );

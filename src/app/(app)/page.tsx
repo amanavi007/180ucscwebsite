@@ -18,6 +18,7 @@ import { getRoomBookingForProject, getRoomBookingsForDate } from "@/lib/data/roo
 import { getExecTodos } from "@/lib/data/exec-todos";
 import { isExec, roleLabel } from "@/lib/auth/roles";
 import { getOrgTodayDateString, formatOrgDate, parseLocalDate } from "@/lib/date";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -100,50 +101,54 @@ export default async function DashboardPage() {
     .sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"));
   const myTasks = openTasks.slice(0, 8);
 
-  const roster = new Map<string, Awaited<ReturnType<typeof getProjectMembers>>>();
-  await Promise.all(
-    myProjects.map(async (project) => {
-      roster.set(project.id, await getProjectMembers(project.id));
-    }),
-  );
+  // Roster, attendance nudge, and room-for-next-meeting are all independent per-project
+  // lookups -- run all three batches concurrently rather than one after another.
+  const nextMeetingDate = meetingDates.find((d) => d >= today) ?? null;
+
+  const [rosterEntries, nudgeChecks, roomChecks] = await Promise.all([
+    Promise.all(
+      myProjects.map(async (project) => [project.id, await getProjectMembers(project.id)] as const),
+    ),
+    todayIsMeetingDay
+      ? Promise.all(
+          myProjects.map(async (project) => {
+            const role = await getMyTeamRole(project.id, profile.id);
+            if (role !== "pm" && role !== "sc") return null;
+            const session = await getSessionForDate(project.id, today);
+            return session ? null : { projectId: project.id, clientName: project.client_name };
+          }),
+        )
+      : Promise.resolve([]),
+    nextMeetingDate
+      ? Promise.all(
+          myProjects.map(async (project) => {
+            const room = await getRoomBookingForProject(project.id, nextMeetingDate);
+            return room
+              ? {
+                  projectId: project.id,
+                  clientName: project.client_name,
+                  room,
+                  isToday: nextMeetingDate === today,
+                }
+              : null;
+          }),
+        )
+      : Promise.resolve([]),
+  ]);
+
+  const roster = new Map(rosterEntries);
 
   // Direct nudge for whoever leads one of their own teams: don't let today's attendance slip.
-  let pendingAttendanceNudges: { projectId: string; clientName: string }[] = [];
-  if (todayIsMeetingDay) {
-    const checks = await Promise.all(
-      myProjects.map(async (project) => {
-        const role = await getMyTeamRole(project.id, profile.id);
-        if (role !== "pm" && role !== "sc") return null;
-        const session = await getSessionForDate(project.id, today);
-        return session ? null : { projectId: project.id, clientName: project.client_name };
-      }),
-    );
-    pendingAttendanceNudges = checks.filter((c): c is { projectId: string; clientName: string } => !!c);
-  }
+  const pendingAttendanceNudges = nudgeChecks.filter(
+    (c): c is { projectId: string; clientName: string } => !!c,
+  );
 
   // Where each of my teams is meeting next (today if it's a meeting day, otherwise
   // the closest upcoming one) -- so a room booked ahead of time is visible right away,
   // not just on the day of.
-  let nextRooms: { projectId: string; clientName: string; room: string; isToday: boolean }[] = [];
-  const nextMeetingDate = meetingDates.find((d) => d >= today) ?? null;
-  if (nextMeetingDate) {
-    const roomChecks = await Promise.all(
-      myProjects.map(async (project) => {
-        const room = await getRoomBookingForProject(project.id, nextMeetingDate);
-        return room
-          ? {
-              projectId: project.id,
-              clientName: project.client_name,
-              room,
-              isToday: nextMeetingDate === today,
-            }
-          : null;
-      }),
-    );
-    nextRooms = roomChecks.filter(
-      (r): r is { projectId: string; clientName: string; room: string; isToday: boolean } => !!r,
-    );
-  }
+  const nextRooms = roomChecks.filter(
+    (r): r is { projectId: string; clientName: string; room: string; isToday: boolean } => !!r,
+  );
 
   let summary: {
     activeProjects: number;
@@ -157,10 +162,18 @@ export default async function DashboardPage() {
   let execMembers: { id: string; name: string }[] = [];
 
   if (exec) {
-    const [allProjects, orgTasks] = await Promise.all([
-      getProjects(activeQuarter.id),
-      getVisibleTasks({}),
-    ]);
+    // All independent of each other -- fire concurrently rather than one round trip at a time.
+    const [allProjects, orgTasks, directoryRows, todosResult, teamStatusResult, bookingsResult] =
+      await Promise.all([
+        getProjects(activeQuarter.id),
+        getVisibleTasks({}),
+        getDirectory(activeQuarter.id),
+        getExecTodos(),
+        todayIsMeetingDay ? getTeamAttendanceStatus(activeQuarter.id, today) : Promise.resolve(null),
+        nextMeetingDate ? getRoomBookingsForDate(activeQuarter.id, nextMeetingDate) : Promise.resolve(null),
+      ]);
+    execTodos = todosResult;
+
     const activeProjectIds = new Set(allProjects.map((p) => p.id));
 
     const atRiskProjects = allProjects
@@ -176,7 +189,7 @@ export default async function DashboardPage() {
         t.due_date <= weekOut,
     ).length;
 
-    const directoryRows = await getDirectory(activeQuarter.id);
+    // Depends on directoryRows, so this is the one fetch that can't join the batch above.
     const rates = await getQuarterAttendanceRates(activeQuarter.id, directoryRows);
     const belowThresholdMembers = directoryRows
       .filter((m) => {
@@ -186,23 +199,14 @@ export default async function DashboardPage() {
       .map((m) => ({ userId: m.user_id, name: m.name, rate: rates[m.user_id].rate as number }));
 
     execMembers = directoryRows.filter((m) => isExec(m.role)).map((m) => ({ id: m.user_id, name: m.name }));
-    execTodos = await getExecTodos();
 
-    let missingAttendanceTeams: { projectId: string; clientName: string }[] = [];
-    if (todayIsMeetingDay) {
-      const teamStatus = await getTeamAttendanceStatus(activeQuarter.id, today);
-      missingAttendanceTeams = teamStatus
-        .filter((t) => !t.loggedToday)
-        .map((t) => ({ projectId: t.projectId, clientName: t.clientName }));
-    }
+    const missingAttendanceTeams = (teamStatusResult ?? [])
+      .filter((t) => !t.loggedToday)
+      .map((t) => ({ projectId: t.projectId, clientName: t.clientName }));
 
-    let unbookedRoomTeams: { projectId: string; clientName: string }[] = [];
-    if (nextMeetingDate) {
-      const bookings = await getRoomBookingsForDate(activeQuarter.id, nextMeetingDate);
-      unbookedRoomTeams = bookings
-        .filter((b) => !b.roomName)
-        .map((b) => ({ projectId: b.projectId, clientName: b.clientName }));
-    }
+    const unbookedRoomTeams = (bookingsResult ?? [])
+      .filter((b) => !b.roomName)
+      .map((b) => ({ projectId: b.projectId, clientName: b.clientName }));
 
     summary = {
       activeProjects: allProjects.filter((p) => p.status !== "archived").length,
@@ -240,16 +244,13 @@ export default async function DashboardPage() {
       {nextRooms.length > 0 && (
         <div className="space-y-2">
           {nextRooms.map((r) => (
-            <div
-              key={r.projectId}
-              className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary"
-            >
-              <MapPin className="size-4 shrink-0" />
+            <Alert key={r.projectId} tone="primary">
+              <MapPin />
               {r.clientName} meets in <span className="font-medium">{r.room}</span>{" "}
               {r.isToday
                 ? "today."
                 : `next time (${nextMeetingDate ? format(parseLocalDate(nextMeetingDate), "EEE, MMM d") : ""}).`}
-            </div>
+            </Alert>
           ))}
         </div>
       )}
@@ -257,22 +258,21 @@ export default async function DashboardPage() {
       {pendingAttendanceNudges.length > 0 && (
         <div className="space-y-2">
           {pendingAttendanceNudges.map((n) => (
-            <Link
+            <Alert
               key={n.projectId}
-              href={`/attendance?team=${n.projectId}`}
-              className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 hover:bg-amber-500/15 dark:text-amber-400"
+              render={<Link href={`/attendance?team=${n.projectId}`} />}
             >
-              <AlertTriangle className="size-4 shrink-0" />
+              <AlertTriangle />
               {n.clientName} hasn&apos;t logged today&apos;s attendance yet -- it&apos;s a meeting
               day. Log it now.
-            </Link>
+            </Alert>
           ))}
         </div>
       )}
 
       {myProjects.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2">
-          <MiniStat
+          <StatTile
             label="Your attendance"
             value={attendanceSummary.rate === null ? "--" : `${Math.round(attendanceSummary.rate * 100)}%`}
             detail={
@@ -285,7 +285,7 @@ export default async function DashboardPage() {
             tone={attendanceSummary.rate !== null && attendanceSummary.rate < threshold ? "warning" : undefined}
             href="/attendance"
           />
-          <MiniStat
+          <StatTile
             label="Tasks this quarter"
             value={`${doneTaskCount}/${myAllTasks.length}`}
             detail={myAllTasks.length === 0 ? "Nothing assigned yet" : "Done"}
@@ -386,8 +386,9 @@ export default async function DashboardPage() {
           <div className="flex flex-wrap items-start gap-4">
             <div className="flex shrink-0 flex-wrap items-center gap-3">
               <h2 className="text-sm font-medium text-muted-foreground">Org overview</h2>
-              <SummaryTile label="Active projects" value={summary.activeProjects} href="/projects" />
-              <SummaryTile
+              <StatTile size="sm" label="Active projects" value={summary.activeProjects} href="/projects" />
+              <StatTile
+                size="sm"
                 label="Tasks due this week"
                 value={summary.tasksDueThisWeek}
                 href="/tasks?mine=0"
@@ -483,7 +484,7 @@ function AttentionRow({
 
   return (
     <div className="flex flex-wrap items-start gap-2 border-b py-3 last:border-b-0">
-      <div className="flex w-full items-center gap-2 text-sm font-medium text-amber-700 sm:w-64 sm:shrink-0 dark:text-amber-400">
+      <div className="flex w-full items-center gap-2 text-sm font-medium text-warning sm:w-64 sm:shrink-0">
         <Icon className="size-4 shrink-0" />
         {label}
       </div>
@@ -492,7 +493,7 @@ function AttentionRow({
           <Link
             key={item.key}
             href={item.href}
-            className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs text-amber-700 hover:bg-amber-500/20 dark:text-amber-400"
+            className="rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-xs text-warning hover:bg-warning/20"
           >
             {item.label}
           </Link>
@@ -505,67 +506,48 @@ function AttentionRow({
   );
 }
 
-function MiniStat({
+/** One stat idiom, two sizes: "lg" (label + detail + big value) for personal stats, "sm" (compact, inline) for org overview counts. */
+function StatTile({
   label,
   value,
   detail,
   tone,
   href,
+  size = "lg",
 }: {
   label: string;
-  value: string;
-  detail: string;
+  value: string | number;
+  detail?: string;
   tone?: "warning";
   href: string;
+  size?: "sm" | "lg";
 }) {
+  const warn = tone === "warning";
+
+  if (size === "sm") {
+    return (
+      <Link href={href}>
+        <Card className="w-fit transition-colors hover:bg-muted/50">
+          <CardContent className="flex items-center gap-2 px-3 py-2">
+            <p className={cn("text-lg font-semibold", warn && "text-warning")}>{value}</p>
+            <p className="text-xs text-muted-foreground">{label}</p>
+          </CardContent>
+        </Card>
+      </Link>
+    );
+  }
+
   return (
     <Link href={href}>
       <Card className="transition-colors hover:bg-muted/50">
         <CardContent className="flex items-center justify-between py-4">
           <div>
             <p className="text-sm font-medium">{label}</p>
-            <p className={cn("text-xs", tone === "warning" ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground")}>
-              {detail}
-            </p>
+            {detail && (
+              <p className={cn("text-xs", warn ? "text-warning" : "text-muted-foreground")}>{detail}</p>
+            )}
           </div>
-          <p
-            className={cn(
-              "text-2xl font-semibold",
-              tone === "warning" && "text-amber-600 dark:text-amber-400",
-            )}
-          >
-            {value}
-          </p>
-        </CardContent>
-      </Card>
-    </Link>
-  );
-}
-
-function SummaryTile({
-  label,
-  value,
-  href,
-  tone,
-}: {
-  label: string;
-  value: number;
-  href: string;
-  tone?: "warning";
-}) {
-  return (
-    <Link href={href}>
-      <Card className="w-fit transition-colors hover:bg-muted/50">
-        <CardContent className="flex items-center gap-2 px-3 py-2">
-          <p
-            className={cn(
-              "text-lg font-semibold",
-              tone === "warning" && "text-amber-600 dark:text-amber-400",
-            )}
-          >
-            {value}
-          </p>
-          <p className="text-xs text-muted-foreground">{label}</p>
+          <p className={cn("text-2xl font-semibold", warn && "text-warning")}>{value}</p>
         </CardContent>
       </Card>
     </Link>

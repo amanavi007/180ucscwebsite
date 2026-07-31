@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AlertTriangle, MapPin } from "lucide-react";
+import { Alert } from "@/components/ui/alert";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getActiveQuarter } from "@/lib/data/quarters";
 import { getProjects, getProjectMembers } from "@/lib/data/projects";
@@ -59,10 +60,10 @@ export default async function AttendancePage({
           <p className="text-sm text-muted-foreground">{activeQuarter.name}</p>
         </div>
         {todayRoom && (
-          <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
-            <MapPin className="size-4 shrink-0" />
+          <Alert tone="primary">
+            <MapPin />
             {summary.projectName} meets in <span className="font-medium">{todayRoom}</span> today.
-          </div>
+          </Alert>
         )}
         <MyAttendanceStats summary={summary} quarterName={activeQuarter.name} threshold={threshold} />
       </div>
@@ -102,19 +103,19 @@ export default async function AttendancePage({
       </div>
 
       {todayRoom && selectedProject && (
-        <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
-          <MapPin className="size-4 shrink-0" />
+        <Alert tone="primary">
+          <MapPin />
           {selectedProject.client_name} meets in <span className="font-medium">{todayRoom}</span>{" "}
           today.
-        </div>
+        </Alert>
       )}
 
       {needsTodayNudge && selectedProject && (
-        <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
-          <AlertTriangle className="size-4 shrink-0" />
+        <Alert>
+          <AlertTriangle />
           {selectedProject.client_name} hasn&apos;t logged today&apos;s attendance yet -- it&apos;s a
           meeting day.
-        </div>
+        </Alert>
       )}
 
       {teamStatus && teamStatus.length > 0 && (

@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TaskStageTimeline } from "@/components/task-stage-timeline";
+import { TaskStatusSelect } from "@/components/task-status-select";
 import {
   STEPPED_TASK_TYPES,
   TASK_PRIORITY_LABELS,
@@ -32,24 +33,33 @@ import type { TaskWithAssignee } from "@/lib/data/types";
 
 const UNASSIGNED = "__unassigned__";
 
+/**
+ * Shared task row for both the project-detail task list and the global tasks
+ * page. `rosterProfiles` (reassign UI) and `showDeleteColumn` are optional
+ * because the global list doesn't have per-project roster data and never
+ * offers delete.
+ */
 export function TaskRow({
   task,
   projectId,
   canManage,
   isOwn,
   rosterProfiles,
+  showDeleteColumn = true,
 }: {
   task: TaskWithAssignee;
   projectId: string;
   canManage: boolean;
   isOwn: boolean;
-  rosterProfiles: { id: string; name: string }[];
+  rosterProfiles?: { id: string; name: string }[];
+  showDeleteColumn?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
   const canEditFields = canManage || isOwn;
   const canDelete = canManage || (isOwn && !task.is_default_task);
+  const canReassign = canManage && !!rosterProfiles;
 
   function apply(patch: Parameters<typeof updateTask>[2]) {
     startTransition(async () => {
@@ -92,7 +102,14 @@ export function TaskRow({
   const isStepped = STEPPED_TASK_TYPES.includes(task.task_type);
 
   return (
-    <div className="grid grid-cols-[1fr_7rem_9rem_9rem_13rem_2rem] items-center gap-3 border-b px-3 py-2.5 last:border-b-0">
+    <div
+      className={cn(
+        "grid items-center gap-3 border-b px-3 py-2.5 last:border-b-0",
+        showDeleteColumn
+          ? "grid-cols-[1fr_7rem_9rem_9rem_13rem_2rem]"
+          : "grid-cols-[1fr_7rem_9rem_9rem_13rem]",
+      )}
+    >
       <div className="min-w-0">
         <div className="flex items-center gap-1.5">
           <span
@@ -104,16 +121,14 @@ export function TaskRow({
           </span>
         </div>
         {taskTypeLabel(task.task_type) !== task.task_name && (
-          <span className="ml-3 text-xs text-muted-foreground">
-            {taskTypeLabel(task.task_type)}
-          </span>
+          <span className="ml-3 text-xs text-muted-foreground">{taskTypeLabel(task.task_type)}</span>
         )}
       </div>
 
       {canEditFields ? (
         <Select
           value={task.priority}
-          onValueChange={(v) => apply({ priority: v as TaskPriority })}
+          onValueChange={(v) => v && apply({ priority: v as TaskPriority })}
           disabled={isPending}
         >
           <SelectTrigger size="sm" className="w-full">
@@ -133,10 +148,10 @@ export function TaskRow({
         </Badge>
       )}
 
-      {canManage ? (
+      {canReassign ? (
         <Select
           value={task.assignee_id ?? UNASSIGNED}
-          onValueChange={(v) => apply({ assigneeId: v === UNASSIGNED ? null : v })}
+          onValueChange={(v) => v && apply({ assigneeId: v === UNASSIGNED ? null : v })}
           disabled={isPending}
         >
           <SelectTrigger size="sm" className="w-full">
@@ -144,13 +159,13 @@ export function TaskRow({
               {(value: string) =>
                 value === UNASSIGNED
                   ? "Unassigned"
-                  : (rosterProfiles.find((p) => p.id === value)?.name ?? "Unassigned")
+                  : (rosterProfiles!.find((p) => p.id === value)?.name ?? "Unassigned")
               }
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
-            {rosterProfiles.map((p) => (
+            {rosterProfiles!.map((p) => (
               <SelectItem key={p.id} value={p.id}>
                 {p.name}
               </SelectItem>
@@ -203,44 +218,31 @@ export function TaskRow({
           </Badge>
         )
       ) : canEditFields ? (
-        <Select
+        <TaskStatusSelect
           value={task.status}
-          onValueChange={(v) => apply({ status: v as TaskStatus })}
+          onValueChange={(status: TaskStatus) => apply({ status })}
           disabled={isPending}
-        >
-          <SelectTrigger
-            size="sm"
-            className={cn("w-full border-transparent", TASK_STATUS_BADGE_CLASS[task.status])}
-          >
-            <SelectValue>{(value: TaskStatus) => TASK_STATUS_LABELS[value]}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(TASK_STATUS_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        />
       ) : (
         <Badge variant="outline" className={cn("w-fit", TASK_STATUS_BADGE_CLASS[task.status])}>
           {TASK_STATUS_LABELS[task.status]}
         </Badge>
       )}
 
-      {canDelete ? (
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          disabled={isPending}
-          onClick={onDelete}
-          aria-label={`Delete ${task.task_name}`}
-        >
-          <Trash2 className="size-3.5" />
-        </Button>
-      ) : (
-        <span />
-      )}
+      {showDeleteColumn &&
+        (canDelete ? (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            disabled={isPending}
+            onClick={onDelete}
+            aria-label={`Delete ${task.task_name}`}
+          >
+            <Trash2 className="size-3.5" />
+          </Button>
+        ) : (
+          <span />
+        ))}
     </div>
   );
 }

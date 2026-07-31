@@ -20,7 +20,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { AlertTriangle, Download } from "lucide-react";
 import { roleLabel, ROLE_LABELS } from "@/lib/auth/roles";
 import { toCsv, downloadCsv } from "@/lib/csv";
 import type { DirectoryRow } from "@/lib/data/directory";
@@ -202,12 +202,10 @@ export function DirectoryView({
                           {result.excusedCount}E / {result.unexcusedCount}U / {result.tardyCount}T
                         </span>
                         {result.missingSessionDates.length > 0 && (
-                          <span
-                            title={`Team hasn't logged ${result.missingSessionDates.length} session(s) other teams logged this quarter`}
-                            className="text-xs text-amber-600 dark:text-amber-400"
-                          >
-                            ⚠
-                          </span>
+                          <AlertTriangle
+                            className="size-3.5 text-amber-500"
+                            aria-label={`Team hasn't logged ${result.missingSessionDates.length} session(s) other teams logged this quarter`}
+                          />
                         )}
                       </div>
                     ) : (

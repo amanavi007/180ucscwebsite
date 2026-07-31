@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { TaskRow } from "./task-row";
+import { TaskRow } from "@/components/task-row";
 import { AddTaskDialog } from "./add-task-dialog";
 import type { TaskWithAssignee } from "@/lib/data/types";
 

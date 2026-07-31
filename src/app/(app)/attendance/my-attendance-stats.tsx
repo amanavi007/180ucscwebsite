@@ -18,7 +18,7 @@ const MARK_LABELS = { excused: "Excused", unexcused: "Unexcused", tardy: "Tardy"
 const MARK_BADGE_CLASS = {
   excused: "bg-muted text-muted-foreground border-transparent",
   unexcused: "bg-destructive/10 text-destructive border-transparent",
-  tardy: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-transparent",
+  tardy: "bg-warning/10 text-warning border-transparent",
 } as const;
 
 function StatBlock({ label, value }: { label: string; value: number }) {

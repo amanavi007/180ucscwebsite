@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { MoreHorizontal } from "lucide-react";
+import { Download, MoreHorizontal } from "lucide-react";
 import { parseLocalDate } from "@/lib/date";
 import {
   createQuarter,
@@ -15,6 +15,8 @@ import {
   setActiveQuarter,
   updateQuarter,
 } from "@/actions/quarters";
+import { exportQuarterCsv } from "@/actions/quarter-export";
+import { toCsv, downloadCsv } from "@/lib/csv";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -230,6 +232,43 @@ function QuarterRow({ quarter: q }: { quarter: Quarter }) {
     });
   }
 
+  function onExport() {
+    startTransition(async () => {
+      const result = await exportQuarterCsv(q.id);
+      if (result.error || !result.rows) {
+        toast.error(result.error ?? "Couldn't build the export.");
+        return;
+      }
+      const headers = [
+        "Name",
+        "Email",
+        "Org role",
+        "Team",
+        "Team role",
+        "Attendance rate",
+        "Tasks done",
+        "Tasks total",
+        "Project status",
+        "Project health",
+        "Project deadline",
+      ];
+      const csvRows = result.rows.map((r) => [
+        r.name,
+        r.email,
+        r.orgRole,
+        r.team,
+        r.teamRole,
+        r.attendanceRate,
+        r.tasksDone,
+        r.tasksTotal,
+        r.projectStatus,
+        r.projectHealth,
+        r.projectDeadline,
+      ]);
+      downloadCsv(`${q.name.replace(/\s+/g, "-").toLowerCase()}-report.csv`, toCsv(headers, csvRows));
+    });
+  }
+
   return (
     <TableRow>
       <TableCell className="font-medium">{q.name}</TableCell>
@@ -253,6 +292,10 @@ function QuarterRow({ quarter: q }: { quarter: Quarter }) {
             <DropdownMenuItem onClick={() => setEditOpen(true)}>Edit</DropdownMenuItem>
             <DropdownMenuItem disabled={isPending} onClick={onToggleActive}>
               {q.is_active ? "Deactivate" : "Set active"}
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={isPending} onClick={onExport}>
+              <Download />
+              Export report (CSV)
             </DropdownMenuItem>
             <DropdownMenuItem
               variant="destructive"

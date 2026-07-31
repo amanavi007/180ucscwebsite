@@ -125,7 +125,7 @@ export function RoomMap({ date, teams }: { date: string; teams: RoomBooking[] })
                 {t.roomName ? `· ${t.roomName}` : "· Unassigned"}
               </span>
               {collides && (
-                <AlertTriangle className={cn("size-3", active ? "text-white" : "text-amber-500")} />
+                <AlertTriangle className={cn("size-3", active ? "text-white" : "text-warning")} />
               )}
             </button>
           );
@@ -217,7 +217,7 @@ export function RoomMap({ date, teams }: { date: string; teams: RoomBooking[] })
               }}
             >
               {occupants.length > 0 && spot.name}
-              {occupants.length > 1 && <AlertTriangle className="size-2.5 text-amber-300" />}
+              {occupants.length > 1 && <AlertTriangle className="size-2.5 text-warning" />}
             </button>
           );
         })}

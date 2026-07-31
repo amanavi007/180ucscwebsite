@@ -46,7 +46,7 @@ export function TeamAttendanceStatusCard({
               )}
               {t.missingDates.length > 0 && (
                 <span
-                  className="text-xs text-amber-600 dark:text-amber-400"
+                  className="text-xs text-warning"
                   title={t.missingDates
                     .map((d) => format(parseLocalDate(d), "MMM d"))
                     .join(", ")}

@@ -25,8 +25,6 @@ export const ROOM_HOTSPOTS: RoomHotspot[] = [
   { name: "310", top: 50.75, left: 5.83, width: 8.74, height: 6.25 },
 ];
 
-export const COMMON_ROOMS: string[] = ROOM_HOTSPOTS.map((h) => h.name);
-
 export const ROOM_MAP_IMAGE = "/rooms/sne-upper-level.png";
 export const ROOM_MAP_IMAGE_WIDTH = 1545;
 export const ROOM_MAP_IMAGE_HEIGHT = 2000;

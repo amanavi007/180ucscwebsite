@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { ExternalLink, Pencil } from "lucide-react";
+import { Building2, ExternalLink, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { updateProject, setHealthOverride } from "@/actions/projects";
 import { ProjectStatusSelect } from "../project-status-select";
@@ -271,6 +272,16 @@ export function ProjectHeader({
           >
             Deliverable <ExternalLink className="size-3.5" />
           </a>
+        )}
+
+        {project.client_id && (
+          <Link
+            href={`/clients/${project.client_id}`}
+            className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+          >
+            <Building2 className="size-3.5" />
+            Client history
+          </Link>
         )}
       </div>
 

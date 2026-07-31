@@ -100,19 +100,27 @@ export async function getQuarterAttendanceRates(
   quarterId: string,
   rows: { user_id: string; project_id: string | null }[],
 ): Promise<Record<string, AttendanceRateResult>> {
-  const totalSessionDates = await getQuarterSessionDates(quarterId);
-  const teamDatesCache = new Map<string, string[]>();
-  const rates: Record<string, AttendanceRateResult> = {};
+  const uniqueProjectIds = [
+    ...new Set(rows.map((r) => r.project_id).filter((id): id is string => !!id)),
+  ];
 
+  // Every member's session dates + marks are independent lookups -- fire them all
+  // concurrently instead of one round trip per row (this was previously an N+1).
+  const [totalSessionDates, teamDatesEntries, marksEntries] = await Promise.all([
+    getQuarterSessionDates(quarterId),
+    Promise.all(uniqueProjectIds.map(async (id) => [id, await getProjectSessionDates(id)] as const)),
+    Promise.all(
+      rows.map(async (r) => [r.user_id, await getUserMarksInQuarter(r.user_id, quarterId)] as const),
+    ),
+  ]);
+
+  const teamDatesByProject = new Map(teamDatesEntries);
+  const marksByUser = new Map(marksEntries);
+
+  const rates: Record<string, AttendanceRateResult> = {};
   for (const row of rows) {
-    let teamSessionDates: string[] = [];
-    if (row.project_id) {
-      if (!teamDatesCache.has(row.project_id)) {
-        teamDatesCache.set(row.project_id, await getProjectSessionDates(row.project_id));
-      }
-      teamSessionDates = teamDatesCache.get(row.project_id)!;
-    }
-    const marks = await getUserMarksInQuarter(row.user_id, quarterId);
+    const teamSessionDates = row.project_id ? (teamDatesByProject.get(row.project_id) ?? []) : [];
+    const marks = marksByUser.get(row.user_id) ?? [];
     rates[row.user_id] = computeAttendanceRate({ totalSessionDates, teamSessionDates, marks });
   }
 
