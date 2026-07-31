@@ -26,24 +26,73 @@ export interface NavLink {
   keywords?: string;
   /** Sidebar grouping only -- unset means "ungrouped" (rendered on its own). */
   group?: "work" | "people";
+  /** One-sentence explanation shown for this page in the first-time sidebar tour. */
+  tourDescription?: string;
 }
 
 export const NAV_LINKS: NavLink[] = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/projects", label: "Projects", icon: Kanban, group: "work" },
-  { href: "/tasks", label: "Tasks", icon: ListTodo, group: "work" },
+  {
+    href: "/",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    tourDescription: "Your home base -- a quick view of your tasks, your team, and anything that needs attention.",
+  },
+  {
+    href: "/projects",
+    label: "Projects",
+    icon: Kanban,
+    group: "work",
+    tourDescription: "Every client project this quarter, tracked by status and health.",
+  },
+  {
+    href: "/tasks",
+    label: "Tasks",
+    icon: ListTodo,
+    group: "work",
+    tourDescription: "All your tasks across every project, in one list.",
+  },
   {
     href: "/calendar",
     label: "Calendar",
     icon: CalendarDays,
     keywords: "meeting days deadlines events schedule",
     group: "work",
+    tourDescription: "Meeting days, project deadlines, and chapter events in one place.",
   },
-  { href: "/clients", label: "Clients", icon: Building2, group: "people" },
-  { href: "/directory", label: "Directory", icon: Users, group: "people" },
-  { href: "/attendance", label: "Attendance", icon: ClipboardCheck, group: "people" },
-  { href: "/resources", label: "Resources", icon: BookOpen },
-  { href: "/admin", label: "Admin", icon: ShieldCheck, execOnly: true },
+  {
+    href: "/clients",
+    label: "Clients",
+    icon: Building2,
+    group: "people",
+    tourDescription: "Every client 180 has worked with -- your current projects are highlighted.",
+  },
+  {
+    href: "/directory",
+    label: "Directory",
+    icon: Users,
+    group: "people",
+    tourDescription: "Everyone in the chapter, searchable by name or role.",
+  },
+  {
+    href: "/attendance",
+    label: "Attendance",
+    icon: ClipboardCheck,
+    group: "people",
+    tourDescription: "Check in for meetings and see your attendance rate.",
+  },
+  {
+    href: "/resources",
+    label: "Resources",
+    icon: BookOpen,
+    tourDescription: "The chapter wiki -- training docs, templates, and guides.",
+  },
+  {
+    href: "/admin",
+    label: "Admin",
+    icon: ShieldCheck,
+    execOnly: true,
+    tourDescription: "Manage members, quarters, rooms, and team assignments.",
+  },
 ];
 
 /** Admin sub-pages -- shared between the Admin tab bar and the command palette. */

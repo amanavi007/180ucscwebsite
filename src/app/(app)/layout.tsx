@@ -13,7 +13,13 @@ export default async function AppLayout({
   const notifications = await getMyNotifications(profile.id, exec);
 
   return (
-    <AppShell name={profile.name} role={profile.role} isExec={exec} notifications={notifications}>
+    <AppShell
+      name={profile.name}
+      role={profile.role}
+      isExec={exec}
+      notifications={notifications}
+      showOnboarding={profile.onboarding_completed_at === null}
+    >
       {children}
     </AppShell>
   );

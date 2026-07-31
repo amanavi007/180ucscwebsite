@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Menu, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,8 @@ import { cn } from "@/lib/utils";
 import { SidebarNav } from "./sidebar-nav";
 import { NotificationBell } from "./notification-bell";
 import { CommandPalette } from "./command-palette";
+import { OnboardingTour, type TourStep } from "./onboarding-tour";
+import { NAV_LINKS } from "./nav-links";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { logout } from "@/actions/auth";
 import { roleLabel } from "@/lib/auth/roles";
@@ -39,23 +41,29 @@ export function AppShell({
   role,
   isExec,
   notifications,
+  showOnboarding,
   children,
 }: {
   name: string;
   role: UserRole;
   isExec: boolean;
   notifications: NotificationFeed;
+  showOnboarding: boolean;
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [tourRun, setTourRun] = useState(showOnboarding);
+  const collapsedBeforeTourRef = useRef(false);
 
   useEffect(() => {
+    if (showOnboarding) return;
     if (localStorage.getItem("sidebar-collapsed") === "1") {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing from localStorage, an external store, on mount
       setCollapsed(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function toggleCollapsed() {
@@ -65,6 +73,21 @@ export function AppShell({
       return next;
     });
   }
+
+  function startTour() {
+    collapsedBeforeTourRef.current = collapsed;
+    setCollapsed(false);
+    setTourRun(true);
+  }
+
+  function finishTour() {
+    setTourRun(false);
+    setCollapsed(collapsedBeforeTourRef.current);
+  }
+
+  const tourSteps: TourStep[] = NAV_LINKS.filter((l) => (!l.execOnly || isExec) && l.tourDescription).map(
+    (l) => ({ href: l.href, label: l.label, description: l.tourDescription! }),
+  );
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -93,7 +116,12 @@ export function AppShell({
             </span>
           )}
         </div>
-        <SidebarNav isExec={isExec} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
+        <SidebarNav
+          isExec={isExec}
+          collapsed={collapsed}
+          onToggleCollapsed={toggleCollapsed}
+          onReplayTour={startTour}
+        />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -182,6 +210,7 @@ export function AppShell({
       </Sheet>
 
       <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} isExec={isExec} />
+      <OnboardingTour steps={tourSteps} run={tourRun} onFinish={finishTour} />
     </div>
   );
 }

@@ -74,6 +74,7 @@ export interface Database {
           email: string;
           role: UserRole;
           must_reset_password: boolean;
+          onboarding_completed_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -82,6 +83,7 @@ export interface Database {
           email: string;
           role?: UserRole;
           must_reset_password?: boolean;
+          onboarding_completed_at?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;

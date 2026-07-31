@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronsLeft, ChevronsRight } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NAV_LINKS } from "./nav-links";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -14,11 +14,13 @@ export function SidebarNav({
   onNavigate,
   collapsed = false,
   onToggleCollapsed,
+  onReplayTour,
 }: {
   isExec: boolean;
   onNavigate?: () => void;
   collapsed?: boolean;
   onToggleCollapsed?: () => void;
+  onReplayTour?: () => void;
 }) {
   const pathname = usePathname();
   const links = NAV_LINKS.filter((link) => !link.execOnly || isExec);
@@ -34,6 +36,7 @@ export function SidebarNav({
 
     const linkEl = (
       <Link
+        id={`nav-link-${link.href}`}
         href={link.href}
         onClick={onNavigate}
         aria-label={collapsed ? link.label : undefined}
@@ -75,16 +78,50 @@ export function SidebarNav({
     <TooltipProvider delay={200}>
       <div className="flex flex-1 flex-col">
         <nav className="flex flex-col gap-0.5 px-2">{items}</nav>
-        {onToggleCollapsed && (
-          <div className={cn("mt-auto flex px-2 pb-2", collapsed ? "justify-center" : "justify-end")}>
-            <button
-              type="button"
-              onClick={onToggleCollapsed}
-              className="flex size-7 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              {collapsed ? <ChevronsRight className="size-4" /> : <ChevronsLeft className="size-4" />}
-            </button>
+        {(onReplayTour || onToggleCollapsed) && (
+          <div
+            className={cn(
+              "mt-auto flex gap-1 px-2 pb-2",
+              collapsed ? "flex-col items-center" : "items-center justify-end",
+            )}
+          >
+            {onReplayTour &&
+              (collapsed ? (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        type="button"
+                        onClick={onReplayTour}
+                        className="flex size-7 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        aria-label="Replay tour"
+                      >
+                        <HelpCircle className="size-4" />
+                      </button>
+                    }
+                  />
+                  <TooltipContent>Replay tour</TooltipContent>
+                </Tooltip>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onReplayTour}
+                  className="flex size-7 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  aria-label="Replay tour"
+                >
+                  <HelpCircle className="size-4" />
+                </button>
+              ))}
+            {onToggleCollapsed && (
+              <button
+                type="button"
+                onClick={onToggleCollapsed}
+                className="flex size-7 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                {collapsed ? <ChevronsRight className="size-4" /> : <ChevronsLeft className="size-4" />}
+              </button>
+            )}
           </div>
         )}
       </div>
