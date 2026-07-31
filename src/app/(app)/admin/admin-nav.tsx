@@ -3,23 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-
-const ADMIN_NAV = [
-  { href: "/admin", label: "Members" },
-  { href: "/admin/quarters", label: "Quarters" },
-  { href: "/admin/meeting-days", label: "Meeting Days" },
-  { href: "/admin/rooms", label: "Rooms" },
-  { href: "/admin/settings", label: "Settings" },
-  { href: "/admin/team-builder", label: "Team Builder" },
-  { href: "/admin/activity", label: "Activity" },
-];
+import { ADMIN_NAV_LINKS } from "@/components/layout/nav-links";
 
 export function AdminNav() {
   const pathname = usePathname();
 
   return (
     <div className="inline-flex w-fit items-center gap-[3px] rounded-lg bg-muted p-[3px]">
-      {ADMIN_NAV.map((item) => {
+      {ADMIN_NAV_LINKS.map((item) => {
         const active = pathname === item.href;
         return (
           <Link

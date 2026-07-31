@@ -157,7 +157,7 @@ export function AppShell({
         </SheetContent>
       </Sheet>
 
-      <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
+      <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} isExec={isExec} />
     </div>
   );
 }
