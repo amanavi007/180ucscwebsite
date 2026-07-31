@@ -75,6 +75,7 @@ export interface Database {
           role: UserRole;
           must_reset_password: boolean;
           onboarding_completed_at: string | null;
+          archived_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -84,6 +85,7 @@ export interface Database {
           role?: UserRole;
           must_reset_password?: boolean;
           onboarding_completed_at?: string | null;
+          archived_at?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
@@ -504,6 +506,11 @@ export interface Database {
         Relationships: [];
       };
     };
-    Functions: Record<string, never>;
+    Functions: {
+      member_has_history: {
+        Args: { target: string };
+        Returns: boolean;
+      };
+    };
   };
 }

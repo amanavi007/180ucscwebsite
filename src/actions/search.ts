@@ -32,7 +32,12 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
       .ilike("task_name", like)
       .limit(5),
     supabase.from("wiki_pages").select("id, title, slug, section").ilike("title", like).limit(5),
-    supabase.from("profiles").select("id, name, role").ilike("name", like).limit(5),
+    supabase
+      .from("profiles")
+      .select("id, name, role")
+      .ilike("name", like)
+      .is("archived_at", null)
+      .limit(5),
     supabase.from("clients").select("id, name").ilike("name", like).limit(5),
   ]);
 

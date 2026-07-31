@@ -6,7 +6,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { isExec, roleLabel } from "@/lib/auth/roles";
 import { getDefaultBulkPassword } from "@/lib/data/org-settings";
+import { getActiveQuarter } from "@/lib/data/quarters";
 import { logAudit } from "@/lib/audit";
+import { EXEC_ROLES } from "@/lib/auth/roles";
 import type { UserRole } from "@/lib/supabase/database.types";
 
 export interface ActionResult {
@@ -141,6 +143,142 @@ export async function updateMemberRole(userId: string, role: UserRole): Promise<
       `${roleLabel(before.role)} -> ${roleLabel(role)}`,
     );
   }
+
+  revalidatePath("/admin");
+  revalidatePath("/directory");
+  return {};
+}
+
+/** Blocks archiving/deleting the last remaining active exec, so Admin never locks everyone out. */
+async function isLastActiveExec(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  role: UserRole,
+): Promise<boolean> {
+  if (!isExec(role)) return false;
+  const { count } = await supabase
+    .from("profiles")
+    .select("id", { count: "exact", head: true })
+    .in("role", EXEC_ROLES)
+    .is("archived_at", null)
+    .neq("id", userId);
+  return !count;
+}
+
+export async function archiveMember(userId: string): Promise<ActionResult> {
+  const denied = await requireExec();
+  if (denied) return denied;
+
+  const actor = await getCurrentProfile();
+  if (actor.id === userId) return { error: "You can't archive your own account." };
+
+  const supabase = await createClient();
+  const { data: target, error: targetError } = await supabase
+    .from("profiles")
+    .select("name, role, archived_at")
+    .eq("id", userId)
+    .single();
+  if (targetError || !target) return { error: "Member not found." };
+  if (target.archived_at) return { error: "Already archived." };
+  if (await isLastActiveExec(supabase, userId, target.role)) {
+    return { error: "Can't archive the last active exec." };
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ archived_at: new Date().toISOString() })
+    .eq("id", userId);
+  if (error) return { error: error.message };
+
+  // Drop them from their current-quarter team so rosters stay accurate --
+  // past quarters' membership rows are untouched. The sync_project_leads
+  // trigger clears projects.project_manager_id/senior_consultant_id for us
+  // when the matching membership row disappears.
+  const activeQuarter = await getActiveQuarter();
+  if (activeQuarter) {
+    const { data: rows } = await supabase
+      .from("memberships")
+      .select("id, project:projects(quarter_id)")
+      .eq("user_id", userId);
+    const toRemove = ((rows ?? []) as unknown as { id: string; project: { quarter_id: string } | null }[])
+      .filter((r) => r.project?.quarter_id === activeQuarter.id)
+      .map((r) => r.id);
+    if (toRemove.length > 0) {
+      await supabase.from("memberships").delete().in("id", toRemove);
+    }
+  }
+
+  await logAudit(actor.id, "member.archived", target.name);
+
+  revalidatePath("/admin");
+  revalidatePath("/directory");
+  revalidatePath("/projects");
+  return {};
+}
+
+export async function restoreMember(userId: string): Promise<ActionResult> {
+  const denied = await requireExec();
+  if (denied) return denied;
+
+  const supabase = await createClient();
+  const { data: target, error: targetError } = await supabase
+    .from("profiles")
+    .select("name, archived_at")
+    .eq("id", userId)
+    .single();
+  if (targetError || !target) return { error: "Member not found." };
+  if (!target.archived_at) return { error: "Not archived." };
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ archived_at: null })
+    .eq("id", userId);
+  if (error) return { error: error.message };
+
+  const actor = await getCurrentProfile();
+  await logAudit(actor.id, "member.restored", target.name);
+
+  revalidatePath("/admin");
+  revalidatePath("/directory");
+  return {};
+}
+
+/**
+ * Permanently deletes an account -- only possible for an already-archived
+ * member with zero activity anywhere (checked via member_has_history()).
+ * Requiring "archived first" means the current-team cleanup from
+ * archiveMember already happened, and gives a confirm-then-confirm buffer
+ * before an irreversible action.
+ */
+export async function deleteMemberPermanently(userId: string): Promise<ActionResult> {
+  const denied = await requireExec();
+  if (denied) return denied;
+
+  const actor = await getCurrentProfile();
+  if (actor.id === userId) return { error: "You can't delete your own account." };
+
+  const supabase = await createClient();
+  const { data: target, error: targetError } = await supabase
+    .from("profiles")
+    .select("name, archived_at")
+    .eq("id", userId)
+    .single();
+  if (targetError || !target) return { error: "Member not found." };
+  if (!target.archived_at) return { error: "Archive this member first." };
+
+  const { data: hasHistory, error: historyError } = await supabase.rpc("member_has_history", {
+    target: userId,
+  });
+  if (historyError) return { error: historyError.message };
+  if (hasHistory) {
+    return { error: "Can't permanently delete -- this account has activity history. It stays archived instead." };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.deleteUser(userId);
+  if (error) return { error: error.message };
+
+  await logAudit(actor.id, "member.deleted", target.name);
 
   revalidatePath("/admin");
   revalidatePath("/directory");

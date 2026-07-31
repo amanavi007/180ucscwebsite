@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
-import { getAllProfiles } from "@/lib/data/members";
+import { getAllProfiles, getArchivedProfiles } from "@/lib/data/members";
 import { getDefaultBulkPassword } from "@/lib/data/org-settings";
 import { MembersPanel } from "./members-panel";
 
 export const metadata: Metadata = { title: "Admin · Members" };
 
 export default async function AdminMembersPage() {
-  const [members, defaultPassword] = await Promise.all([getAllProfiles(), getDefaultBulkPassword()]);
-  return <MembersPanel members={members} defaultPassword={defaultPassword} />;
+  const [members, archivedMembers, defaultPassword] = await Promise.all([
+    getAllProfiles(),
+    getArchivedProfiles(),
+    getDefaultBulkPassword(),
+  ]);
+  return (
+    <MembersPanel members={members} archivedMembers={archivedMembers} defaultPassword={defaultPassword} />
+  );
 }
