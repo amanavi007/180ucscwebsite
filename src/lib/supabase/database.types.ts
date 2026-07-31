@@ -345,6 +345,32 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["meeting_dates"]["Insert"]>;
         Relationships: [];
       };
+      org_events: {
+        Row: {
+          id: string;
+          title: string;
+          date: string;
+          time: string | null;
+          location: string | null;
+          description: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          date: string;
+          time?: string | null;
+          location?: string | null;
+          description?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["org_events"]["Insert"]>;
+        Relationships: [];
+      };
       notification_reads: {
         Row: {
           user_id: string;
