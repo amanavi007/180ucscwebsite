@@ -76,6 +76,10 @@ export interface Database {
           must_reset_password: boolean;
           onboarding_completed_at: string | null;
           archived_at: string | null;
+          departure_reason: "graduated" | "left" | null;
+          current_title: string | null;
+          current_company: string | null;
+          linkedin_url: string | null;
           created_at: string;
         };
         Insert: {
@@ -86,6 +90,10 @@ export interface Database {
           must_reset_password?: boolean;
           onboarding_completed_at?: string | null;
           archived_at?: string | null;
+          departure_reason?: "graduated" | "left" | null;
+          current_title?: string | null;
+          current_company?: string | null;
+          linkedin_url?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
@@ -502,6 +510,22 @@ export interface Database {
           client_name: string | null;
           quarter_id: string | null;
           email: string;
+        };
+        Relationships: [];
+      };
+      alumni_view: {
+        Row: {
+          user_id: string;
+          name: string;
+          role: UserRole;
+          email: string;
+          archived_at: string;
+          current_title: string | null;
+          current_company: string | null;
+          linkedin_url: string | null;
+          project_id: string | null;
+          client_name: string | null;
+          quarter_name: string | null;
         };
         Relationships: [];
       };

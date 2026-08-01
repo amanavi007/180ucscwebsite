@@ -10,11 +10,22 @@ import {
   archiveMember,
   restoreMember,
   deleteMemberPermanently,
+  type ArchiveMemberInput,
   type BulkCreateResult,
 } from "@/actions/members";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -239,12 +250,14 @@ function MemberRow({ member, defaultPassword }: { member: Member; defaultPasswor
     });
   }
 
-  function onArchive() {
+  function onArchive(input: ArchiveMemberInput) {
     startTransition(async () => {
-      const result = await archiveMember(member.id);
-      setArchiveOpen(false);
+      const result = await archiveMember(member.id, input);
       if (result?.error) toast.error(result.error);
-      else toast.success(`${member.name} archived.`);
+      else {
+        setArchiveOpen(false);
+        toast.success(`${member.name} archived.`);
+      }
     });
   }
 
@@ -307,27 +320,124 @@ function MemberRow({ member, defaultPassword }: { member: Member; defaultPasswor
           </AlertDialogContent>
         </AlertDialog>
 
-        <AlertDialog open={archiveOpen} onOpenChange={setArchiveOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Archive {member.name}?</AlertDialogTitle>
-              <AlertDialogDescription>
-                They&apos;ll drop off the directory, search, and any team/task pickers, and lose
-                their spot on this quarter&apos;s team if they have one. They can still sign in,
-                and everything else about their history stays intact. You can restore them from
-                the Archived list at any time.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={onArchive} disabled={isPending}>
-                Archive
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <ArchiveMemberDialog
+          open={archiveOpen}
+          onOpenChange={setArchiveOpen}
+          memberName={member.name}
+          isPending={isPending}
+          onSubmit={onArchive}
+        />
       </TableCell>
     </TableRow>
+  );
+}
+
+function ArchiveMemberDialog({
+  open,
+  onOpenChange,
+  memberName,
+  isPending,
+  onSubmit,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  memberName: string;
+  isPending: boolean;
+  onSubmit: (input: ArchiveMemberInput) => void;
+}) {
+  const [reason, setReason] = useState<"graduated" | "left">("graduated");
+  const [currentTitle, setCurrentRole] = useState("");
+  const [currentCompany, setCurrentCompany] = useState("");
+  const [linkedinUrl, setLinkedinUrl] = useState("");
+
+  function handleOpenChange(next: boolean) {
+    if (next) {
+      setReason("graduated");
+      setCurrentRole("");
+      setCurrentCompany("");
+      setLinkedinUrl("");
+    }
+    onOpenChange(next);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Archive {memberName}?</DialogTitle>
+          <DialogDescription>
+            They&apos;ll drop off the directory, search, and any team/task pickers, and lose their
+            spot on this quarter&apos;s team if they have one. They can still sign in, and
+            everything else about their history stays intact. You can restore them from the
+            Archived list at any time.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <Field>
+            <FieldLabel htmlFor="archive-reason">Reason</FieldLabel>
+            <Select value={reason} onValueChange={(v) => v && setReason(v as "graduated" | "left")}>
+              <SelectTrigger id="archive-reason" size="sm">
+                <SelectValue>{(value: string) => (value === "graduated" ? "Graduated" : "Left")}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="graduated">Graduated</SelectItem>
+                <SelectItem value="left">Left</SelectItem>
+              </SelectContent>
+            </Select>
+            <FieldDescription>
+              Graduated members show up in the org-wide Alumni directory. &quot;Left&quot; stays
+              private, same as today.
+            </FieldDescription>
+          </Field>
+
+          {reason === "graduated" && (
+            <>
+              <Field>
+                <FieldLabel htmlFor="archive-role">Current title (optional)</FieldLabel>
+                <Input
+                  id="archive-role"
+                  placeholder="Product Manager"
+                  value={currentTitle}
+                  onChange={(e) => setCurrentRole(e.target.value)}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="archive-company">Current company (optional)</FieldLabel>
+                <Input
+                  id="archive-company"
+                  placeholder="Notion"
+                  value={currentCompany}
+                  onChange={(e) => setCurrentCompany(e.target.value)}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="archive-linkedin">LinkedIn (optional)</FieldLabel>
+                <Input
+                  id="archive-linkedin"
+                  placeholder="https://linkedin.com/in/..."
+                  value={linkedinUrl}
+                  onChange={(e) => setLinkedinUrl(e.target.value)}
+                />
+              </Field>
+            </>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isPending}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            disabled={isPending}
+            onClick={() => onSubmit({ reason, currentTitle, currentCompany, linkedinUrl })}
+          >
+            Archive
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

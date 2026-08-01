@@ -165,9 +165,20 @@ async function isLastActiveExec(
   return !count;
 }
 
-export async function archiveMember(userId: string): Promise<ActionResult> {
+export interface ArchiveMemberInput {
+  reason: "graduated" | "left";
+  currentTitle?: string;
+  currentCompany?: string;
+  linkedinUrl?: string;
+}
+
+export async function archiveMember(userId: string, input: ArchiveMemberInput): Promise<ActionResult> {
   const denied = await requireExec();
   if (denied) return denied;
+
+  if (input.reason !== "graduated" && input.reason !== "left") {
+    return { error: "Pick a reason for archiving." };
+  }
 
   const actor = await getCurrentProfile();
   if (actor.id === userId) return { error: "You can't archive your own account." };
@@ -186,7 +197,13 @@ export async function archiveMember(userId: string): Promise<ActionResult> {
 
   const { error } = await supabase
     .from("profiles")
-    .update({ archived_at: new Date().toISOString() })
+    .update({
+      archived_at: new Date().toISOString(),
+      departure_reason: input.reason,
+      current_title: input.reason === "graduated" ? input.currentTitle?.trim() || null : null,
+      current_company: input.reason === "graduated" ? input.currentCompany?.trim() || null : null,
+      linkedin_url: input.reason === "graduated" ? input.linkedinUrl?.trim() || null : null,
+    })
     .eq("id", userId);
   if (error) return { error: error.message };
 
@@ -208,7 +225,7 @@ export async function archiveMember(userId: string): Promise<ActionResult> {
     }
   }
 
-  await logAudit(actor.id, "member.archived", target.name);
+  await logAudit(actor.id, "member.archived", target.name, input.reason === "graduated" ? "Graduated" : "Left");
 
   revalidatePath("/admin");
   revalidatePath("/directory");
@@ -231,7 +248,7 @@ export async function restoreMember(userId: string): Promise<ActionResult> {
 
   const { error } = await supabase
     .from("profiles")
-    .update({ archived_at: null })
+    .update({ archived_at: null, departure_reason: null, current_title: null, current_company: null })
     .eq("id", userId);
   if (error) return { error: error.message };
 
