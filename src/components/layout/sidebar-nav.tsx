@@ -44,7 +44,7 @@ export function SidebarNav({
           "flex items-center gap-2.5 rounded-md py-2 text-sm font-medium transition-colors",
           collapsed ? "justify-center px-0" : "px-3",
           active
-            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+            ? "bg-primary/15 text-primary ring-1 ring-primary/30"
             : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         )}
       >

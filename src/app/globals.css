@@ -67,9 +67,18 @@
   --accent-foreground: #3d621f;
   --destructive: oklch(0.577 0.245 27.325);
   --warning: #b45309;
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
+  --border: oklch(0.87 0 0);
+  --input: oklch(0.87 0 0);
   --ring: #588a2c;
+  --glass-panel-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.07), inset 0 1px 0 0 rgba(255, 255, 255, 0.7),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+  --glass-overlay-shadow:
+    0 20px 45px rgba(0, 0, 0, 0.12), inset 0 1px 0 0 rgba(255, 255, 255, 0.8),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+  --glass-sidebar-shadow:
+    0 20px 45px -15px rgba(0, 0, 0, 0.18), inset 0 1px 0 0 rgba(255, 255, 255, 0.8),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.05);
   --chart-1: #588a2c;
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -106,6 +115,15 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: #86c24a;
+  --glass-panel-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.28), inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --glass-overlay-shadow:
+    0 24px 50px rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --glass-sidebar-shadow:
+    0 25px 60px -15px rgba(0, 0, 0, 0.55), inset 0 1px 0 0 rgba(255, 255, 255, 0.16),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
   --chart-1: #86c24a;
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -154,26 +172,17 @@
      background, while the blur keeps it glass rather than flat. */
   .glass-panel {
     @apply bg-card/65 ring-1 ring-foreground/20 backdrop-blur-2xl backdrop-saturate-150;
-    box-shadow:
-      0 8px 24px rgba(0, 0, 0, 0.28),
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    box-shadow: var(--glass-panel-shadow);
   }
   /* Elevated glass surfaces -- popovers, menus, dialogs, sheets. */
   .glass-overlay {
     @apply bg-popover/50 ring-1 ring-foreground/14 backdrop-blur-3xl backdrop-saturate-150;
-    box-shadow:
-      0 24px 50px rgba(0, 0, 0, 0.4),
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    box-shadow: var(--glass-overlay-shadow);
   }
   /* Floating iOS-style sidebar panel -- heavier blur/saturation and a bright
      top specular edge so it reads as a distinct pane of glass over the page. */
   .glass-sidebar {
     @apply bg-sidebar/40 ring-1 ring-foreground/15 backdrop-blur-3xl backdrop-saturate-200;
-    box-shadow:
-      0 25px 60px -15px rgba(0, 0, 0, 0.55),
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.16),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    box-shadow: var(--glass-sidebar-shadow);
   }
 }
