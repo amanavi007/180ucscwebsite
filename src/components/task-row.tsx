@@ -45,6 +45,7 @@ export function TaskRow({
   canManage,
   isOwn,
   rosterProfiles,
+  showAssignee = true,
   showDeleteColumn = true,
 }: {
   task: TaskWithAssignee;
@@ -52,6 +53,7 @@ export function TaskRow({
   canManage: boolean;
   isOwn: boolean;
   rosterProfiles?: { id: string; name: string }[];
+  showAssignee?: boolean;
   showDeleteColumn?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -104,10 +106,14 @@ export function TaskRow({
   return (
     <div
       className={cn(
-        "grid items-center gap-3 border-b px-3 py-2.5 last:border-b-0",
-        showDeleteColumn
-          ? "grid-cols-[1fr_7rem_9rem_9rem_13rem_2rem]"
-          : "grid-cols-[1fr_7rem_9rem_9rem_13rem]",
+        "grid items-center gap-6 border-b px-3 py-2.5 last:border-b-0",
+        showAssignee
+          ? showDeleteColumn
+            ? "grid-cols-[1fr_7rem_9rem_9rem_13rem_2rem]"
+            : "grid-cols-[1fr_7rem_9rem_9rem_13rem]"
+          : showDeleteColumn
+            ? "grid-cols-[1fr_7rem_9rem_13rem_2rem]"
+            : "grid-cols-[1fr_7rem_9rem_13rem]",
       )}
     >
       <div className="min-w-0">
@@ -148,35 +154,36 @@ export function TaskRow({
         </Badge>
       )}
 
-      {canReassign ? (
-        <Select
-          value={task.assignee_id ?? UNASSIGNED}
-          onValueChange={(v) => v && apply({ assigneeId: v === UNASSIGNED ? null : v })}
-          disabled={isPending}
-        >
-          <SelectTrigger size="sm" className="w-full">
-            <SelectValue placeholder="Unassigned">
-              {(value: string) =>
-                value === UNASSIGNED
-                  ? "Unassigned"
-                  : (rosterProfiles!.find((p) => p.id === value)?.name ?? "Unassigned")
-              }
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
-            {rosterProfiles!.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      ) : (
-        <span className="truncate text-sm text-muted-foreground">
-          {task.assignee?.name ?? "Unassigned"}
-        </span>
-      )}
+      {showAssignee &&
+        (canReassign ? (
+          <Select
+            value={task.assignee_id ?? UNASSIGNED}
+            onValueChange={(v) => v && apply({ assigneeId: v === UNASSIGNED ? null : v })}
+            disabled={isPending}
+          >
+            <SelectTrigger size="sm" className="w-full">
+              <SelectValue placeholder="Unassigned">
+                {(value: string) =>
+                  value === UNASSIGNED
+                    ? "Unassigned"
+                    : (rosterProfiles!.find((p) => p.id === value)?.name ?? "Unassigned")
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
+              {rosterProfiles!.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <span className="truncate text-sm text-muted-foreground">
+            {task.assignee?.name ?? "Unassigned"}
+          </span>
+        ))}
 
       {canEditFields ? (
         <Input

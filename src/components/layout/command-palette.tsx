@@ -196,7 +196,7 @@ export function CommandPalette({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg" showCloseButton={false}>
-        <div className="flex items-center gap-2 border-b px-3">
+        <div className="flex items-center gap-2 border-b border-foreground/10 px-3">
           <Search className="size-4 shrink-0 text-muted-foreground" />
           <Input
             autoFocus
@@ -207,10 +207,10 @@ export function CommandPalette({
               setActiveIndex(0);
             }}
             onKeyDown={onInputKeyDown}
-            className="h-11 border-none px-0 shadow-none focus-visible:ring-0"
+            className="h-11 border-none bg-transparent px-0 shadow-none focus-visible:ring-0"
           />
         </div>
-        <div className="max-h-96 overflow-y-auto p-1.5">
+        <div className="max-h-96 overflow-y-auto p-2">
           {flatItems.length === 0 ? (
             <p className="p-4 text-center text-sm text-muted-foreground">
               {canSearch && isSearching ? "Searching..." : `No results for "${query}".`}
@@ -232,8 +232,8 @@ export function CommandPalette({
                       onClick={() => go(item)}
                       onMouseEnter={() => setActiveIndex(i)}
                       className={cn(
-                        "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm",
-                        i === clampedIndex ? "bg-muted" : "hover:bg-muted/50",
+                        "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm transition-colors",
+                        i === clampedIndex ? "bg-accent text-accent-foreground" : "hover:bg-foreground/5",
                       )}
                     >
                       <Icon className="size-4 shrink-0 text-muted-foreground" />

@@ -35,32 +35,35 @@ export function AttendanceView({
 
   return (
     <div className="space-y-4">
-      {projects.length > 1 && (
-        <Select
-          value={selectedProjectId ?? undefined}
-          onValueChange={(v) => v && router.push(`/attendance?team=${v}`)}
-        >
-          <SelectTrigger className="w-56">
-            <SelectValue placeholder="Select a team">
-              {(value: string) => projects.find((p) => p.id === value)?.client_name}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {projects.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.client_name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-
       {selectedProjectId && (
         <Tabs defaultValue={canSubmit ? "entry" : "history"}>
-          <TabsList>
-            {canSubmit && <TabsTrigger value="entry">Quick entry</TabsTrigger>}
-            <TabsTrigger value="history">History</TabsTrigger>
-          </TabsList>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {projects.length > 1 ? (
+              <Select
+                value={selectedProjectId ?? undefined}
+                onValueChange={(v) => v && router.push(`/attendance?team=${v}`)}
+              >
+                <SelectTrigger className="w-56">
+                  <SelectValue placeholder="Select a team">
+                    {(value: string) => projects.find((p) => p.id === value)?.client_name}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.client_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <span />
+            )}
+            <TabsList>
+              {canSubmit && <TabsTrigger value="entry">Quick entry</TabsTrigger>}
+              <TabsTrigger value="history">History</TabsTrigger>
+            </TabsList>
+          </div>
           {canSubmit && (
             <TabsContent value="entry">
               <QuickEntryForm

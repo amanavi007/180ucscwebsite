@@ -101,10 +101,10 @@ export function AppShell({
   }, []);
 
   return (
-    <div className="flex min-h-svh">
+    <div className="flex min-h-svh md:gap-3 md:p-3">
       <aside
         className={cn(
-          "hidden shrink-0 border-r border-sidebar-border bg-sidebar md:flex md:flex-col",
+          "glass-sidebar hidden shrink-0 overflow-hidden rounded-3xl md:flex md:flex-col",
           collapsed ? "w-16" : "w-60",
         )}
       >
@@ -125,7 +125,7 @@ export function AppShell({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center justify-between border-b px-4">
+        <header className="glass-overlay sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between px-4 md:mb-3 md:rounded-2xl">
           <Button
             variant="ghost"
             size="icon"
@@ -141,14 +141,14 @@ export function AppShell({
           </span>
 
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => setCommandOpen(true)}
-            className="ml-2 hidden w-64 justify-start gap-2 text-muted-foreground md:flex"
+            className="ml-2 hidden w-64 justify-start gap-2 rounded-full border border-foreground/10 bg-foreground/5 text-muted-foreground hover:bg-foreground/10 md:flex"
           >
             <Search className="size-3.5" />
             Search...
-            <kbd className="ml-auto rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px]">
+            <kbd className="ml-auto rounded-full border border-foreground/10 bg-foreground/5 px-1.5 py-0.5 font-mono text-[10px]">
               ⌘K
             </kbd>
           </Button>

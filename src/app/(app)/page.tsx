@@ -151,8 +151,6 @@ export default async function DashboardPage() {
   );
 
   let summary: {
-    activeProjects: number;
-    tasksDueThisWeek: number;
     atRiskProjects: { id: string; clientName: string }[];
     belowThresholdMembers: { userId: string; name: string; rate: number }[];
     missingAttendanceTeams: { projectId: string; clientName: string }[];
@@ -163,10 +161,9 @@ export default async function DashboardPage() {
 
   if (exec) {
     // All independent of each other -- fire concurrently rather than one round trip at a time.
-    const [allProjects, orgTasks, directoryRows, todosResult, teamStatusResult, bookingsResult] =
+    const [allProjects, directoryRows, todosResult, teamStatusResult, bookingsResult] =
       await Promise.all([
         getProjects(activeQuarter.id),
-        getVisibleTasks({}),
         getDirectory(activeQuarter.id),
         getExecTodos(),
         todayIsMeetingDay ? getTeamAttendanceStatus(activeQuarter.id, today) : Promise.resolve(null),
@@ -174,20 +171,9 @@ export default async function DashboardPage() {
       ]);
     execTodos = todosResult;
 
-    const activeProjectIds = new Set(allProjects.map((p) => p.id));
-
     const atRiskProjects = allProjects
       .filter((p) => p.health !== "on_track")
       .map((p) => ({ id: p.id, clientName: p.client_name }));
-    const tasksDueThisWeek = orgTasks.filter(
-      (t) =>
-        t.project_id &&
-        activeProjectIds.has(t.project_id) &&
-        t.status !== "done" &&
-        t.due_date &&
-        t.due_date >= today &&
-        t.due_date <= weekOut,
-    ).length;
 
     // Depends on directoryRows, so this is the one fetch that can't join the batch above.
     const rates = await getQuarterAttendanceRates(activeQuarter.id, directoryRows);
@@ -209,8 +195,6 @@ export default async function DashboardPage() {
       .map((b) => ({ projectId: b.projectId, clientName: b.clientName }));
 
     summary = {
-      activeProjects: allProjects.filter((p) => p.status !== "archived").length,
-      tasksDueThisWeek,
       atRiskProjects,
       belowThresholdMembers,
       missingAttendanceTeams,
@@ -383,28 +367,15 @@ export default async function DashboardPage() {
 
       {summary && (
         <div className="space-y-3">
-          <div className="flex flex-wrap items-start gap-4">
-            <div className="flex shrink-0 flex-wrap items-center gap-3">
-              <h2 className="text-sm font-medium text-muted-foreground">Org overview</h2>
-              <StatTile size="sm" label="Active projects" value={summary.activeProjects} href="/projects" />
-              <StatTile
-                size="sm"
-                label="Tasks due this week"
-                value={summary.tasksDueThisWeek}
-                href="/tasks?mine=0"
-              />
-            </div>
-
-            <Card className="min-w-[280px] flex-1">
-              <CardHeader>
-                <CardTitle className="text-base">Exec to-dos</CardTitle>
-                <CardDescription>Shared admin checklist -- not tied to a project.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ExecTodoList todos={execTodos} execMembers={execMembers} today={today} />
-              </CardContent>
-            </Card>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Exec to-dos</CardTitle>
+              <CardDescription>Shared admin checklist -- not tied to a project.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ExecTodoList todos={execTodos} execMembers={execMembers} today={today} />
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
@@ -506,36 +477,20 @@ function AttentionRow({
   );
 }
 
-/** One stat idiom, two sizes: "lg" (label + detail + big value) for personal stats, "sm" (compact, inline) for org overview counts. */
 function StatTile({
   label,
   value,
   detail,
   tone,
   href,
-  size = "lg",
 }: {
   label: string;
   value: string | number;
   detail?: string;
   tone?: "warning";
   href: string;
-  size?: "sm" | "lg";
 }) {
   const warn = tone === "warning";
-
-  if (size === "sm") {
-    return (
-      <Link href={href}>
-        <Card className="w-fit transition-colors hover:bg-muted/50">
-          <CardContent className="flex items-center gap-2 px-3 py-2">
-            <p className={cn("text-lg font-semibold", warn && "text-warning")}>{value}</p>
-            <p className="text-xs text-muted-foreground">{label}</p>
-          </CardContent>
-        </Card>
-      </Link>
-    );
-  }
 
   return (
     <Link href={href}>

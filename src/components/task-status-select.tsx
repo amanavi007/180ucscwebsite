@@ -31,7 +31,7 @@ export function TaskStatusSelect({
     >
       <SelectTrigger
         size="sm"
-        className={cn("w-full border-transparent", TASK_STATUS_BADGE_CLASS[value], className)}
+        className={cn("w-fit border-transparent", TASK_STATUS_BADGE_CLASS[value], className)}
       >
         <SelectValue>{(v: TaskStatus) => TASK_STATUS_LABELS[v]}</SelectValue>
       </SelectTrigger>

@@ -70,7 +70,7 @@ export function TaskList({
         <CardTitle className="text-base">Tasks</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div className="hidden grid-cols-[1fr_7rem_9rem_9rem_13rem_2rem] gap-3 px-3 text-xs font-medium text-muted-foreground sm:grid">
+        <div className="hidden grid-cols-[1fr_7rem_9rem_9rem_13rem_2rem] gap-6 px-3 text-xs font-medium text-muted-foreground sm:grid">
           {COLUMN_HEADERS.map((h, i) => (
             <span key={i}>{h}</span>
           ))}

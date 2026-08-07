@@ -13,11 +13,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TASK_STATUS_LABELS, TASK_TYPES, taskTypeLabel } from "@/lib/project-labels";
+import { cn } from "@/lib/utils";
 import type { ProjectWithRelations } from "@/lib/data/types";
 import type { TaskWithProject } from "@/lib/data/types";
 
 const ALL = "__all__";
-const COLUMN_HEADERS = ["Task", "Priority", "Assignee", "Due", "Status"];
 
 interface Filters {
   project?: string;
@@ -69,6 +69,9 @@ export function TasksView({
     groups.get(key)!.tasks.push(task);
   }
   const groupList = [...groups.values()].sort((a, b) => a.name.localeCompare(b.name));
+  const columnHeaders = mine
+    ? ["Task", "Priority", "Due", "Status"]
+    : ["Task", "Priority", "Assignee", "Due", "Status"];
 
   return (
     <div className="space-y-4">
@@ -170,8 +173,13 @@ export function TasksView({
                 </span>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="hidden grid-cols-[1fr_7rem_9rem_9rem_13rem] gap-3 px-4 py-2 text-xs font-medium text-muted-foreground sm:grid">
-                  {COLUMN_HEADERS.map((h) => (
+                <div
+                  className={cn(
+                    "hidden gap-6 px-4 py-2 text-xs font-medium text-muted-foreground sm:grid",
+                    mine ? "grid-cols-[1fr_7rem_9rem_13rem]" : "grid-cols-[1fr_7rem_9rem_9rem_13rem]",
+                  )}
+                >
+                  {columnHeaders.map((h) => (
                     <span key={h}>{h}</span>
                   ))}
                 </div>
@@ -182,6 +190,7 @@ export function TasksView({
                     projectId={task.project_id}
                     canManage={canManageProject(task.project_id)}
                     isOwn={task.assignee_id === currentUserId}
+                    showAssignee={!mine}
                     showDeleteColumn={false}
                   />
                 ))}
