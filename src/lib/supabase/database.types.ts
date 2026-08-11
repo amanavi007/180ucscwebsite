@@ -303,6 +303,32 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["org_settings"]["Insert"]>;
         Relationships: [];
       };
+      quick_links: {
+        Row: {
+          id: string;
+          title: string;
+          url: string;
+          description: string | null;
+          category: string | null;
+          sort_order: number;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          url: string;
+          description?: string | null;
+          category?: string | null;
+          sort_order?: number;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["quick_links"]["Insert"]>;
+        Relationships: [];
+      };
       lead_candidates: {
         Row: {
           id: string;

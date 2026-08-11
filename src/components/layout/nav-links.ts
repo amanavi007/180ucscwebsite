@@ -15,6 +15,7 @@ import {
   SlidersHorizontal,
   Users2,
   History,
+  Link2,
 } from "lucide-react";
 
 export interface NavLink {
@@ -85,6 +86,13 @@ export const NAV_LINKS: NavLink[] = [
     label: "Resources",
     icon: BookOpen,
     tourDescription: "The chapter wiki -- training docs, templates, and guides.",
+  },
+  {
+    href: "/quick-links",
+    label: "Quick Links",
+    icon: Link2,
+    keywords: "drive docs slack outside resources",
+    tourDescription: "Fast access to shared docs, Drive folders, and other outside resources.",
   },
   {
     href: "/admin",
