@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowUpRight, BarChart3, Handshake, LineChart, Megaphone, Search, TrendingUp } from "lucide-react";
+import { BarChart3, Handshake, LineChart, Megaphone, Search, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PhotoPlaceholder } from "@/components/marketing/photo-placeholder";
 
 export const metadata: Metadata = { title: "Our Services" };
 
@@ -56,21 +57,22 @@ const EXAMPLE_ENGAGEMENTS = [
 export default function ServicesPage() {
   return (
     <div>
-      <section className="mx-auto max-w-6xl px-6 pt-20 pb-16 sm:pt-28">
-        <p className="text-sm font-medium tracking-wide text-primary uppercase">Our Services</p>
-        <h1 className="font-brand mt-3 max-w-2xl text-4xl leading-[1.1] font-bold tracking-tight text-balance sm:text-5xl">
-          Consulting support for organizations doing good work.
-        </h1>
-        <p className="mt-6 max-w-2xl text-lg text-muted-foreground text-pretty">
-          We partner with nonprofits, social enterprises, and mission-driven
-          teams for a full academic quarter -- free of charge -- to tackle a
-          real strategic challenge alongside a dedicated student team.
-        </p>
-        <div className="mt-8">
-          <Button nativeButton={false} size="lg" render={<Link href="/apply" />} className="gap-1.5">
-            Become a Client
-            <ArrowUpRight className="size-4" />
-          </Button>
+      <section className="mx-auto max-w-6xl px-4 pt-14 sm:px-6">
+        <div className="mint-panel rounded-[2.5rem] p-8 sm:p-12">
+          <p className="text-sm font-bold tracking-wide text-primary uppercase">Our Services</p>
+          <h1 className="font-brand mt-3 max-w-2xl text-4xl leading-[1.05] font-bold tracking-tight text-balance sm:text-5xl">
+            Consulting support for organizations doing good work.
+          </h1>
+          <p className="mt-6 max-w-2xl text-lg text-foreground/70 text-pretty">
+            We partner with nonprofits, social enterprises, and mission-driven
+            teams for a full academic quarter, free of charge, to tackle a
+            real strategic challenge alongside a dedicated student team.
+          </p>
+          <div className="mt-8">
+            <Button nativeButton={false} size="lg" className="rounded-full" render={<Link href="/apply" />}>
+              Become a Client
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -78,7 +80,7 @@ export default function ServicesPage() {
         <h2 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl">What we do</h2>
         <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {SERVICES.map((service) => (
-            <div key={service.title} className="glass-panel rounded-2xl p-6">
+            <div key={service.title} className="rounded-2xl border border-primary/15 bg-primary/5 p-6">
               <service.icon className="size-6 text-primary" />
               <h3 className="mt-4 font-semibold">{service.title}</h3>
               <p className="mt-2 text-sm text-muted-foreground">{service.body}</p>
@@ -92,9 +94,13 @@ export default function ServicesPage() {
           The kind of work we take on
         </h2>
         <p className="mt-2 max-w-2xl text-muted-foreground">
-          A few illustrative examples of past engagement types -- every
+          A few illustrative examples of past engagement types. Every
           project is scoped to the client&apos;s actual need.
         </p>
+        <PhotoPlaceholder
+          label="Photo: consultants presenting to a client"
+          className="mt-8 aspect-[21/9] w-full"
+        />
         <div className="mt-8 grid gap-6 sm:grid-cols-3">
           {EXAMPLE_ENGAGEMENTS.map((eg) => (
             <div key={eg.sector} className="rounded-2xl border border-foreground/10 p-6">
@@ -105,18 +111,18 @@ export default function ServicesPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 py-16 pb-24">
-        <div className="glass-panel flex flex-col items-start justify-between gap-6 rounded-3xl p-10 sm:flex-row sm:items-center">
+      <section className="mx-auto max-w-6xl px-4 py-16 pb-24 sm:px-6">
+        <div className="mint-panel flex flex-col items-start justify-between gap-6 rounded-[2.5rem] p-10 sm:flex-row sm:items-center">
           <div>
             <h2 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl">
               Think we could help?
             </h2>
-            <p className="mt-2 max-w-md text-muted-foreground">
+            <p className="mt-2 max-w-md text-foreground/70">
               Tell us about your organization and what you&apos;re working
-              through -- we review client applications every quarter.
+              through. We review client applications every quarter.
             </p>
           </div>
-          <Button nativeButton={false} size="lg" render={<Link href="/apply" />} className="shrink-0">
+          <Button nativeButton={false} size="lg" className="shrink-0 rounded-full" render={<Link href="/apply" />}>
             Become a Client
           </Button>
         </div>

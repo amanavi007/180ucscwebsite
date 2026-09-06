@@ -11,6 +11,9 @@
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --font-brand: var(--font-quicksand);
+  --color-warm: var(--warm);
+  --color-warm-foreground: var(--warm-foreground);
+  --color-mint: var(--mint);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -67,6 +70,9 @@
   --accent-foreground: #3d621f;
   --destructive: oklch(0.577 0.245 27.325);
   --warning: #b45309;
+  --warm: #c2571f;
+  --warm-foreground: #fff8f3;
+  --mint: #e3efd7;
   --border: oklch(0.87 0 0);
   --input: oklch(0.87 0 0);
   --ring: #588a2c;
@@ -112,6 +118,8 @@
   --accent-foreground: #aad980;
   --destructive: oklch(0.704 0.191 22.216);
   --warning: #fbbf24;
+  --warm: #ff9a66;
+  --warm-foreground: #341206;
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: #86c24a;
@@ -137,6 +145,63 @@
   --sidebar-accent-foreground: #aad980;
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: #86c24a;
+}
+
+/* Soft on-brand green ambient wash behind the marketing site so the light
+   background doesn't read as flat white -- echoes the portal's ambient glow
+   but tuned much lighter and green-only, matching 180DC's own site. */
+.marketing-light {
+  position: relative;
+  isolation: isolate;
+}
+.marketing-light::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(42rem 34rem at 8% 0%, color-mix(in oklch, var(--primary) 20%, transparent), transparent 62%),
+    radial-gradient(38rem 32rem at 100% 0%, color-mix(in oklch, var(--primary) 14%, transparent), transparent 60%),
+    radial-gradient(44rem 38rem at 50% 100%, color-mix(in oklch, var(--primary) 16%, transparent), transparent 65%);
+}
+
+/* Public marketing site is light-mode only, regardless of the app-wide theme
+   toggle (which stays dark-by-default for the ops portal). Only needs to
+   exist under .dark since :root is already light. */
+.dark .marketing-light {
+  color-scheme: light;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: #588a2c;
+  --primary-foreground: #ffffff;
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: #eef4e4;
+  --accent-foreground: #3d621f;
+  --destructive: oklch(0.577 0.245 27.325);
+  --warning: #b45309;
+  --warm: #c2571f;
+  --warm-foreground: #fff8f3;
+  --mint: #e3efd7;
+  --border: oklch(0.87 0 0);
+  --input: oklch(0.87 0 0);
+  --ring: #588a2c;
+  --glass-panel-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.07), inset 0 1px 0 0 rgba(255, 255, 255, 0.7),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+  --glass-overlay-shadow:
+    0 20px 45px rgba(0, 0, 0, 0.12), inset 0 1px 0 0 rgba(255, 255, 255, 0.8),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+  --glass-sidebar-shadow:
+    0 20px 45px -15px rgba(0, 0, 0, 0.18), inset 0 1px 0 0 rgba(255, 255, 255, 0.8),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.05);
 }
 
 @layer base {
@@ -184,5 +249,16 @@
   .glass-sidebar {
     @apply bg-sidebar/40 ring-1 ring-foreground/15 backdrop-blur-3xl backdrop-saturate-200;
     box-shadow: var(--glass-sidebar-shadow);
+  }
+  /* Marked placeholder for real photography -- swap for an <Image> once real
+     member/client photos exist; the dashed border keeps it unmistakably a
+     stand-in rather than finished art. */
+  .photo-placeholder {
+    @apply relative flex items-center justify-center overflow-hidden border-2 border-dashed border-primary/40 bg-background text-primary;
+  }
+  /* Pale mint rounded panel -- the signature 180DC-brand card treatment used
+     for hero/intro sections across the marketing site. */
+  .mint-panel {
+    @apply bg-mint;
   }
 }

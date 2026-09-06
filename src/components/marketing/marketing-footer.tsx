@@ -14,18 +14,11 @@ export function MarketingFooter() {
       <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-12 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-3">
           <Image
-            src="/logo-banner-dark.svg"
+            src="/logo-banner-tricolor.svg"
             alt="180 Degrees Consulting at UC Santa Cruz"
             width={1610}
             height={538}
-            className="h-7 w-auto dark:hidden"
-          />
-          <Image
-            src="/logo-banner-light.svg"
-            alt="180 Degrees Consulting at UC Santa Cruz"
-            width={1610}
-            height={538}
-            className="hidden h-7 w-auto dark:block"
+            className="h-7 w-auto"
           />
           <p className="max-w-xs text-sm text-muted-foreground">
             A student-run, pro-bono consultancy connecting UC Santa Cruz
@@ -47,7 +40,7 @@ export function MarketingFooter() {
             href="/login"
             className="text-foreground/70 transition-colors hover:text-foreground"
           >
-            Member Operations
+            Log in
           </Link>
         </nav>
       </div>
