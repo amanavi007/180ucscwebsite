@@ -56,7 +56,7 @@ export async function getMyNotifications(
     items.push({
       id: `task-${t.id}`,
       message: `You're assigned "${t.task_name}"${t.project ? ` for ${t.project.client_name}` : ""}.`,
-      href: `/projects/${t.project_id}`,
+      href: `/portal/projects/${t.project_id}`,
       occurredAt: t.updated_at,
     });
   }
@@ -72,7 +72,7 @@ export async function getMyNotifications(
       items.push({
         id: `todo-${td.id}`,
         message: `You're assigned the to-do "${td.title}".`,
-        href: "/",
+        href: "/portal",
         occurredAt: td.updated_at,
       });
     }
@@ -93,7 +93,7 @@ export async function getMyNotifications(
     items.push({
       id: `team-${m.project_id}`,
       message: `You were added to ${m.project?.client_name ?? "a team"}.`,
-      href: `/projects/${m.project_id}`,
+      href: `/portal/projects/${m.project_id}`,
       occurredAt: m.created_at,
     });
   }
@@ -117,7 +117,7 @@ export async function getMyNotifications(
       items.push({
         id: `room-${b.project_id}-${b.date}`,
         message: `${b.project?.client_name ?? "Your team"} is in ${b.room_name} on ${b.date}.`,
-        href: "/",
+        href: "/portal",
         occurredAt: b.updated_at,
       });
     }

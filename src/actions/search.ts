@@ -53,7 +53,7 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
       type: "project",
       title: p.client_name,
       subtitle: p.quarter?.name ?? null,
-      href: `/projects/${p.id}`,
+      href: `/portal/projects/${p.id}`,
     });
   }
 
@@ -68,7 +68,7 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
       type: "task",
       title: t.task_name,
       subtitle: t.project?.client_name ?? null,
-      href: `/projects/${t.project_id}`,
+      href: `/portal/projects/${t.project_id}`,
     });
   }
 
@@ -83,7 +83,7 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
       type: "wiki",
       title: w.title,
       subtitle: "Resources",
-      href: `/resources?section=${w.section}&page=${w.slug}`,
+      href: `/portal/resources?section=${w.section}&page=${w.slug}`,
     });
   }
 
@@ -93,7 +93,7 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
       type: "member",
       title: m.name,
       subtitle: roleLabel(m.role),
-      href: "/directory",
+      href: "/portal/directory",
     });
   }
 
@@ -103,7 +103,7 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
       type: "client",
       title: c.name,
       subtitle: "Client",
-      href: `/clients/${c.id}`,
+      href: `/portal/clients/${c.id}`,
     });
   }
 

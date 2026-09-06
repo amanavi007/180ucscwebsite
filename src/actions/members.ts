@@ -90,7 +90,7 @@ export async function bulkCreateMembers(
     await logAudit(actor.id, "member.bulk_created", undefined, `Created ${createdCount} account(s)`);
   }
 
-  revalidatePath("/admin");
+  revalidatePath("/portal/admin");
   return { results };
 }
 
@@ -116,7 +116,7 @@ export async function resetMemberPassword(userId: string): Promise<ActionResult>
   const actor = await getCurrentProfile();
   await logAudit(actor.id, "member.password_reset", target.name);
 
-  revalidatePath("/admin");
+  revalidatePath("/portal/admin");
   return {};
 }
 
@@ -144,8 +144,8 @@ export async function updateMemberRole(userId: string, role: UserRole): Promise<
     );
   }
 
-  revalidatePath("/admin");
-  revalidatePath("/directory");
+  revalidatePath("/portal/admin");
+  revalidatePath("/portal/directory");
   return {};
 }
 
@@ -227,9 +227,9 @@ export async function archiveMember(userId: string, input: ArchiveMemberInput): 
 
   await logAudit(actor.id, "member.archived", target.name, input.reason === "graduated" ? "Graduated" : "Left");
 
-  revalidatePath("/admin");
-  revalidatePath("/directory");
-  revalidatePath("/projects");
+  revalidatePath("/portal/admin");
+  revalidatePath("/portal/directory");
+  revalidatePath("/portal/projects");
   return {};
 }
 
@@ -255,8 +255,8 @@ export async function restoreMember(userId: string): Promise<ActionResult> {
   const actor = await getCurrentProfile();
   await logAudit(actor.id, "member.restored", target.name);
 
-  revalidatePath("/admin");
-  revalidatePath("/directory");
+  revalidatePath("/portal/admin");
+  revalidatePath("/portal/directory");
   return {};
 }
 
@@ -297,7 +297,7 @@ export async function deleteMemberPermanently(userId: string): Promise<ActionRes
 
   await logAudit(actor.id, "member.deleted", target.name);
 
-  revalidatePath("/admin");
-  revalidatePath("/directory");
+  revalidatePath("/portal/admin");
+  revalidatePath("/portal/directory");
   return {};
 }

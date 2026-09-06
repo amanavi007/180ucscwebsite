@@ -40,7 +40,7 @@ export async function createPlan(
   const actor = await getCurrentProfile();
   await logAudit(actor.id, "team_plan.created", name.trim());
 
-  revalidatePath("/admin/team-builder");
+  revalidatePath("/portal/admin/team-builder");
   return { id: data.id };
 }
 
@@ -102,7 +102,7 @@ export async function duplicatePlan(
     }
   }
 
-  revalidatePath("/admin/team-builder");
+  revalidatePath("/portal/admin/team-builder");
   return { id: newPlan.id };
 }
 
@@ -115,7 +115,7 @@ export async function renamePlan(planId: string, name: string): Promise<ActionRe
   const { error } = await supabase.from("team_plans").update({ name: name.trim() }).eq("id", planId);
   if (error) return { error: error.message };
 
-  revalidatePath("/admin/team-builder");
+  revalidatePath("/portal/admin/team-builder");
   return {};
 }
 
@@ -139,7 +139,7 @@ export async function deletePlan(planId: string): Promise<ActionResult> {
   const actor = await getCurrentProfile();
   await logAudit(actor.id, "team_plan.deleted", plan?.name);
 
-  revalidatePath("/admin/team-builder");
+  revalidatePath("/portal/admin/team-builder");
   return {};
 }
 
@@ -161,7 +161,7 @@ export async function createPlanTeam(
     .single();
   if (error) return { error: error.message };
 
-  revalidatePath("/admin/team-builder");
+  revalidatePath("/portal/admin/team-builder");
   return { id: data.id };
 }
 
@@ -177,7 +177,7 @@ export async function renamePlanTeam(planTeamId: string, clientName: string): Pr
     .eq("id", planTeamId);
   if (error) return { error: error.message };
 
-  revalidatePath("/admin/team-builder");
+  revalidatePath("/portal/admin/team-builder");
   return {};
 }
 
@@ -189,7 +189,7 @@ export async function deletePlanTeam(planTeamId: string): Promise<ActionResult> 
   const { error } = await supabase.from("team_plan_teams").delete().eq("id", planTeamId);
   if (error) return { error: error.message };
 
-  revalidatePath("/admin/team-builder");
+  revalidatePath("/portal/admin/team-builder");
   return {};
 }
 
@@ -223,7 +223,7 @@ export async function assignInPlan(
     );
   if (error) return { error: error.message };
 
-  revalidatePath("/admin/team-builder");
+  revalidatePath("/portal/admin/team-builder");
   return {};
 }
 
@@ -240,7 +240,7 @@ export async function unassignInPlan(userId: string, planId: string): Promise<Ac
     .eq("user_id", userId);
   if (error) return { error: error.message };
 
-  revalidatePath("/admin/team-builder");
+  revalidatePath("/portal/admin/team-builder");
   return {};
 }
 
@@ -263,7 +263,7 @@ export async function finalizePlan(planId: string): Promise<ActionResult> {
   const actor = await getCurrentProfile();
   await logAudit(actor.id, "team_plan.finalized", plan.name);
 
-  revalidatePath("/admin/team-builder");
+  revalidatePath("/portal/admin/team-builder");
   return {};
 }
 
@@ -284,7 +284,7 @@ export async function unfinalizePlan(planId: string): Promise<ActionResult> {
   const actor = await getCurrentProfile();
   await logAudit(actor.id, "team_plan.unfinalized", plan.name);
 
-  revalidatePath("/admin/team-builder");
+  revalidatePath("/portal/admin/team-builder");
   return {};
 }
 
@@ -397,13 +397,13 @@ export async function applyPlan(planId: string): Promise<ActionResult> {
   const actor = await getCurrentProfile();
   await logAudit(actor.id, "team_plan.applied", plan.name);
 
-  revalidatePath("/admin/team-builder");
-  revalidatePath("/projects");
-  revalidatePath("/directory");
-  revalidatePath("/");
-  revalidatePath("/attendance");
+  revalidatePath("/portal/admin/team-builder");
+  revalidatePath("/portal/projects");
+  revalidatePath("/portal/directory");
+  revalidatePath("/portal");
+  revalidatePath("/portal/attendance");
   for (const projectId of new Set(planTeamToProjectId.values())) {
-    revalidatePath(`/projects/${projectId}`);
+    revalidatePath(`/portal/projects/${projectId}`);
   }
 
   return {};
@@ -443,6 +443,6 @@ export async function setLeadCandidate(
     if (upsertError) return { error: upsertError.message };
   }
 
-  revalidatePath("/admin/team-builder");
+  revalidatePath("/portal/admin/team-builder");
   return {};
 }

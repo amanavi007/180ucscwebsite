@@ -78,7 +78,7 @@ function fuzzyScore(query: string, target: string): number | null {
 }
 
 function matchPages(query: string, isExec: boolean): { link: NavLink; isAdmin: boolean }[] {
-  const topLevel = NAV_LINKS.filter((l) => (!l.execOnly || isExec) && l.href !== "/admin").map(
+  const topLevel = NAV_LINKS.filter((l) => (!l.execOnly || isExec) && l.href !== "/portal/admin").map(
     (l) => ({ link: l, isAdmin: false }),
   );
 

@@ -21,6 +21,6 @@ export async function completeOnboarding(): Promise<ActionResult> {
     .eq("id", user.id);
   if (error) return { error: error.message };
 
-  revalidatePath("/", "layout");
+  revalidatePath("/portal", "layout");
   return {};
 }

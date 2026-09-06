@@ -45,8 +45,8 @@ export async function setRoomBooking(
     if (error) return { error: error.message };
   }
 
-  revalidatePath("/admin/rooms");
-  revalidatePath("/attendance");
-  revalidatePath("/");
+  revalidatePath("/portal/admin/rooms");
+  revalidatePath("/portal/attendance");
+  revalidatePath("/portal");
   return {};
 }

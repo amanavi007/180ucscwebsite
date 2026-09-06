@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "./database.types";
 
-const PUBLIC_PATHS = ["/login"];
+const PORTAL_PREFIX = "/portal";
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -31,21 +31,24 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isPublicPath = PUBLIC_PATHS.includes(path);
+  const isPortalPath = path === PORTAL_PREFIX || path.startsWith(`${PORTAL_PREFIX}/`);
+  const isLoginPath = path === "/login";
 
-  if (!user && !isPublicPath) {
+  // Only /portal (the member operations tool) requires auth -- everything
+  // else (marketing site, login) is public by default.
+  if (!user && isPortalPath) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  if (user && isPublicPath) {
+  if (user && isLoginPath) {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    url.pathname = PORTAL_PREFIX;
     return NextResponse.redirect(url);
   }
 
-  if (user && path !== "/force-password-reset") {
+  if (user && isPortalPath && path !== `${PORTAL_PREFIX}/force-password-reset`) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("must_reset_password")
@@ -54,7 +57,7 @@ export async function updateSession(request: NextRequest) {
 
     if (profile?.must_reset_password) {
       const url = request.nextUrl.clone();
-      url.pathname = "/force-password-reset";
+      url.pathname = `${PORTAL_PREFIX}/force-password-reset`;
       return NextResponse.redirect(url);
     }
   }

@@ -26,10 +26,10 @@ export async function updateAttendanceAlertThreshold(percent: number): Promise<A
   const actor = await getCurrentProfile();
   await logAudit(actor.id, "settings.attendance_threshold_changed", undefined, `Set to ${percent}%`);
 
-  revalidatePath("/admin");
-  revalidatePath("/");
-  revalidatePath("/directory");
-  revalidatePath("/attendance");
+  revalidatePath("/portal/admin");
+  revalidatePath("/portal");
+  revalidatePath("/portal/directory");
+  revalidatePath("/portal/attendance");
   return {};
 }
 
@@ -50,6 +50,6 @@ export async function updateDefaultBulkPassword(password: string): Promise<Actio
   const actor = await getCurrentProfile();
   await logAudit(actor.id, "settings.default_password_changed");
 
-  revalidatePath("/admin");
+  revalidatePath("/portal/admin");
   return {};
 }

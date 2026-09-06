@@ -49,7 +49,7 @@ export async function createOrgEvent(input: EventInput): Promise<ActionResult> {
   });
   if (error) return { error: error.message };
 
-  revalidatePath("/calendar");
+  revalidatePath("/portal/calendar");
   return {};
 }
 
@@ -74,7 +74,7 @@ export async function updateOrgEvent(id: string, input: EventInput): Promise<Act
     .eq("id", id);
   if (error) return { error: error.message };
 
-  revalidatePath("/calendar");
+  revalidatePath("/portal/calendar");
   return {};
 }
 
@@ -86,6 +86,6 @@ export async function deleteOrgEvent(id: string): Promise<ActionResult> {
   const { error } = await supabase.from("org_events").delete().eq("id", id);
   if (error) return { error: error.message };
 
-  revalidatePath("/calendar");
+  revalidatePath("/portal/calendar");
   return {};
 }

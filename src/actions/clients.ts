@@ -41,7 +41,7 @@ export async function createClientRecord(input: {
     .single();
   if (error) return { error: error.message };
 
-  revalidatePath("/clients");
+  revalidatePath("/portal/clients");
   return { id: data.id };
 }
 
@@ -65,7 +65,7 @@ export async function updateClientRecord(
     .eq("id", id);
   if (error) return { error: error.message };
 
-  revalidatePath("/clients");
-  revalidatePath(`/clients/${id}`);
+  revalidatePath("/portal/clients");
+  revalidatePath(`/portal/clients/${id}`);
   return {};
 }

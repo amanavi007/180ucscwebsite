@@ -44,7 +44,7 @@ export async function createQuickLink(input: QuickLinkInput): Promise<ActionResu
 
   if (error) return { error: error.message };
 
-  revalidatePath("/quick-links");
+  revalidatePath("/portal/quick-links");
   return { id: data.id };
 }
 
@@ -65,7 +65,7 @@ export async function updateQuickLink(linkId: string, input: QuickLinkInput): Pr
 
   if (error) return { error: error.message };
 
-  revalidatePath("/quick-links");
+  revalidatePath("/portal/quick-links");
   return {};
 }
 
@@ -77,6 +77,6 @@ export async function deleteQuickLink(linkId: string): Promise<ActionResult> {
   const { error } = await supabase.from("quick_links").delete().eq("id", linkId);
   if (error) return { error: error.message };
 
-  revalidatePath("/quick-links");
+  revalidatePath("/portal/quick-links");
   return {};
 }

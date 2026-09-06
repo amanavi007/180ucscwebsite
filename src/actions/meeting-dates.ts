@@ -48,8 +48,8 @@ export async function setMeetingDatesForQuarter(
     `${dates.length} meeting day(s) set`,
   );
 
-  revalidatePath("/admin/meeting-days");
-  revalidatePath("/attendance");
-  revalidatePath("/");
+  revalidatePath("/portal/admin/meeting-days");
+  revalidatePath("/portal/attendance");
+  revalidatePath("/portal");
   return {};
 }

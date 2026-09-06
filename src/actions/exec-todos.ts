@@ -35,7 +35,7 @@ export async function createExecTodo(
   });
   if (error) return { error: error.message };
 
-  revalidatePath("/");
+  revalidatePath("/portal");
   return {};
 }
 
@@ -50,7 +50,7 @@ export async function toggleExecTodo(id: string, done: boolean): Promise<ActionR
     .eq("id", id);
   if (error) return { error: error.message };
 
-  revalidatePath("/");
+  revalidatePath("/portal");
   return {};
 }
 
@@ -62,6 +62,6 @@ export async function deleteExecTodo(id: string): Promise<ActionResult> {
   const { error } = await supabase.from("exec_todos").delete().eq("id", id);
   if (error) return { error: error.message };
 
-  revalidatePath("/");
+  revalidatePath("/portal");
   return {};
 }

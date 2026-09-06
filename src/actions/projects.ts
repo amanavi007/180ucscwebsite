@@ -110,7 +110,7 @@ export async function createProject(input: {
 
   await logAudit(denied.profile.id, "project.created", input.clientName);
 
-  revalidatePath("/projects");
+  revalidatePath("/portal/projects");
   return { id: data.id };
 }
 
@@ -148,9 +148,9 @@ export async function updateProject(
   await reconcileLead(supabase, id, "pm", input.projectManagerId);
   await reconcileLead(supabase, id, "sc", input.seniorConsultantId);
 
-  revalidatePath("/projects");
-  revalidatePath(`/projects/${id}`);
-  revalidatePath("/clients");
+  revalidatePath("/portal/projects");
+  revalidatePath(`/portal/projects/${id}`);
+  revalidatePath("/portal/clients");
   return {};
 }
 
@@ -165,8 +165,8 @@ export async function updateProjectStatus(
   const { error } = await supabase.from("projects").update({ status }).eq("id", id);
   if (error) return { error: error.message };
 
-  revalidatePath("/projects");
-  revalidatePath(`/projects/${id}`);
+  revalidatePath("/portal/projects");
+  revalidatePath(`/portal/projects/${id}`);
   return {};
 }
 
@@ -184,7 +184,7 @@ export async function setHealthOverride(
     .eq("id", id);
   if (error) return { error: error.message };
 
-  revalidatePath(`/projects/${id}`);
+  revalidatePath(`/portal/projects/${id}`);
   return {};
 }
 
@@ -198,7 +198,7 @@ export async function addMember(projectId: string, userId: string): Promise<Acti
     .insert({ project_id: projectId, user_id: userId });
   if (error) return { error: error.message };
 
-  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/portal/projects/${projectId}`);
   return {};
 }
 
@@ -214,6 +214,6 @@ export async function removeMember(projectId: string, userId: string): Promise<A
     .eq("user_id", userId);
   if (error) return { error: error.message };
 
-  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/portal/projects/${projectId}`);
   return {};
 }

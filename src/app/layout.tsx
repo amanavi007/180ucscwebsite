@@ -22,10 +22,11 @@ const quicksand = Quicksand({
 
 export const metadata: Metadata = {
   title: {
-    default: "UCSC 180",
-    template: "%s · UCSC 180",
+    default: "180 Degrees Consulting at UC Santa Cruz",
+    template: "%s · 180 Degrees Consulting at UCSC",
   },
-  description: "180 Degrees Consulting UCSC chapter operations portal",
+  description:
+    "180 Degrees Consulting at UC Santa Cruz is a student-run pro-bono consultancy connecting nonprofits and social enterprises with strategy, research, and growth support.",
 };
 
 export default function RootLayout({

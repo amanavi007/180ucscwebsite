@@ -58,7 +58,7 @@ export async function createQuarter(input: {
   const actor = await getCurrentProfile();
   await logAudit(actor.id, "quarter.created", input.name);
 
-  revalidatePath("/admin");
+  revalidatePath("/portal/admin");
   return {};
 }
 
@@ -81,7 +81,7 @@ export async function setActiveQuarter(quarterId: string): Promise<ActionResult>
   const actor = await getCurrentProfile();
   await logAudit(actor.id, "quarter.activated", quarter.name);
 
-  revalidatePath("/admin");
+  revalidatePath("/portal/admin");
   return {};
 }
 
@@ -102,7 +102,7 @@ export async function deactivateQuarter(quarterId: string): Promise<ActionResult
   const actor = await getCurrentProfile();
   await logAudit(actor.id, "quarter.deactivated", quarter.name);
 
-  revalidatePath("/admin");
+  revalidatePath("/portal/admin");
   return {};
 }
 
@@ -121,7 +121,7 @@ export async function updateQuarter(
 
   if (error) return { error: error.message };
 
-  revalidatePath("/admin");
+  revalidatePath("/portal/admin");
   return {};
 }
 
@@ -150,6 +150,6 @@ export async function deleteQuarter(quarterId: string): Promise<ActionResult> {
   const actor = await getCurrentProfile();
   await logAudit(actor.id, "quarter.deleted", quarter?.name);
 
-  revalidatePath("/admin");
+  revalidatePath("/portal/admin");
   return {};
 }

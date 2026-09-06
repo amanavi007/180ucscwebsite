@@ -52,8 +52,8 @@ export async function createTask(input: {
 
   if (error) return { error: error.message };
 
-  revalidatePath(`/projects/${input.projectId}`);
-  revalidatePath("/tasks");
+  revalidatePath(`/portal/projects/${input.projectId}`);
+  revalidatePath("/portal/tasks");
   return {};
 }
 
@@ -80,8 +80,8 @@ export async function updateTask(
   const { error } = await supabase.from("tasks").update(patch).eq("id", taskId);
   if (error) return { error: error.message };
 
-  revalidatePath(`/projects/${projectId}`);
-  revalidatePath("/tasks");
+  revalidatePath(`/portal/projects/${projectId}`);
+  revalidatePath("/portal/tasks");
   return {};
 }
 
@@ -118,8 +118,8 @@ export async function updateTaskDueDate(
         .eq("is_default_task", true);
 
       if (error) return { error: error.message };
-      revalidatePath(`/projects/${projectId}`);
-      revalidatePath("/tasks");
+      revalidatePath(`/portal/projects/${projectId}`);
+      revalidatePath("/portal/tasks");
       return {};
     }
   }
@@ -127,8 +127,8 @@ export async function updateTaskDueDate(
   const { error } = await supabase.from("tasks").update({ due_date: dueDate }).eq("id", taskId);
   if (error) return { error: error.message };
 
-  revalidatePath(`/projects/${projectId}`);
-  revalidatePath("/tasks");
+  revalidatePath(`/portal/projects/${projectId}`);
+  revalidatePath("/portal/tasks");
   return {};
 }
 
@@ -146,8 +146,8 @@ export async function updateTaskStageStep(
 
   if (error) return { error: error.message };
 
-  revalidatePath(`/projects/${projectId}`);
-  revalidatePath("/tasks");
+  revalidatePath(`/portal/projects/${projectId}`);
+  revalidatePath("/portal/tasks");
   return {};
 }
 
@@ -161,8 +161,8 @@ export async function resetTaskStage(taskId: string, projectId: string): Promise
 
   if (error) return { error: error.message };
 
-  revalidatePath(`/projects/${projectId}`);
-  revalidatePath("/tasks");
+  revalidatePath(`/portal/projects/${projectId}`);
+  revalidatePath("/portal/tasks");
   return {};
 }
 
@@ -191,7 +191,7 @@ export async function deleteTask(taskId: string, projectId: string): Promise<Act
   const { error } = await supabase.from("tasks").delete().eq("id", taskId);
   if (error) return { error: error.message };
 
-  revalidatePath(`/projects/${projectId}`);
-  revalidatePath("/tasks");
+  revalidatePath(`/portal/projects/${projectId}`);
+  revalidatePath("/portal/tasks");
   return {};
 }

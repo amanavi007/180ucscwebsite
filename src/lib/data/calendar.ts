@@ -78,7 +78,7 @@ export async function getCalendarEvents(): Promise<CalendarEvent[]> {
       time: null,
       location: null,
       description: null,
-      href: `/projects/${p.id}`,
+      href: `/portal/projects/${p.id}`,
     });
   }
 

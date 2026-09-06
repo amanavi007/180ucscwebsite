@@ -26,11 +26,12 @@ export function SidebarNav({
   const links = NAV_LINKS.filter((link) => !link.execOnly || isExec);
 
   const items = links.map((link, i) => {
-    const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
+    const active =
+      link.href === "/portal" ? pathname === "/portal" : pathname.startsWith(link.href);
     const Icon = link.icon;
     const lastGroup = links[i - 1]?.group;
     const groupChanged = link.group !== lastGroup;
-    const showDivider = link.href === "/admin";
+    const showDivider = link.href === "/portal/admin";
     const showGroupLabel = !collapsed && !!link.group && groupChanged;
     const showGap = collapsed && groupChanged && !showDivider && (!!link.group || !!lastGroup);
 

@@ -66,8 +66,8 @@ export async function submitAttendance(input: {
     if (insertError) return { error: insertError.message };
   }
 
-  revalidatePath("/attendance");
-  revalidatePath(`/projects/${input.projectId}`);
+  revalidatePath("/portal/attendance");
+  revalidatePath(`/portal/projects/${input.projectId}`);
   return {};
 }
 

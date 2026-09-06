@@ -46,7 +46,7 @@ export async function createWikiPage(input: {
 
   if (error) return { error: error.message };
 
-  revalidatePath("/resources");
+  revalidatePath("/portal/resources");
   return { id: data.id };
 }
 
@@ -71,7 +71,7 @@ export async function updateWikiPage(
 
   if (error) return { error: error.message };
 
-  revalidatePath("/resources");
+  revalidatePath("/portal/resources");
   return {};
 }
 
@@ -83,6 +83,6 @@ export async function deleteWikiPage(pageId: string): Promise<ActionResult> {
   const { error } = await supabase.from("wiki_pages").delete().eq("id", pageId);
   if (error) return { error: error.message };
 
-  revalidatePath("/resources");
+  revalidatePath("/portal/resources");
   return {};
 }
