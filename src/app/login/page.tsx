@@ -45,21 +45,23 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-svh items-center justify-center bg-muted/30 px-4">
       <div className="w-full max-w-sm space-y-8">
-        <div className="space-y-2 text-center">
+        <div className="text-center">
           <Image
-            src="/logo-icon.png"
-            alt=""
-            width={987}
-            height={1006}
+            src="/logo-stacked-dark.png"
+            alt="180 Degrees Consulting UC Santa Cruz"
+            width={982}
+            height={1374}
             priority
-            className="mx-auto h-16 w-auto"
+            className="mx-auto h-52 w-auto dark:hidden"
           />
-          <div className="font-brand text-2xl font-bold tracking-tight text-primary">
-            180 @ UCSC
-          </div>
-          <p className="text-sm text-muted-foreground">
-            UCSC chapter operations portal
-          </p>
+          <Image
+            src="/logo-stacked-light.png"
+            alt="180 Degrees Consulting UC Santa Cruz"
+            width={982}
+            height={1374}
+            priority
+            className="mx-auto hidden h-52 w-auto dark:block"
+          />
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate>

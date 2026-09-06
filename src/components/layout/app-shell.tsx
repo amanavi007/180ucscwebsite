@@ -109,11 +109,25 @@ export function AppShell({
         )}
       >
         <div className={cn("flex items-center gap-2 px-4 py-4", collapsed && "justify-center px-0")}>
-          <Image src="/logo-icon.png" alt="" width={987} height={1006} className="h-6 w-auto" />
-          {!collapsed && (
-            <span className="font-brand text-lg font-bold tracking-tight text-primary">
-              180 @ UCSC
-            </span>
+          {collapsed ? (
+            <Image src="/logo-icon.png" alt="" width={987} height={1006} className="h-6 w-auto" />
+          ) : (
+            <>
+              <Image
+                src="/logo-banner-dark.svg"
+                alt="180 Degrees Consulting UC Santa Cruz"
+                width={1610}
+                height={538}
+                className="h-16 w-auto dark:hidden"
+              />
+              <Image
+                src="/logo-banner-light.svg"
+                alt="180 Degrees Consulting UC Santa Cruz"
+                width={1610}
+                height={538}
+                className="hidden h-16 w-auto dark:block"
+              />
+            </>
           )}
         </div>
         <SidebarNav
