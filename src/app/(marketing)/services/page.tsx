@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { BarChart3, Handshake, LineChart, Megaphone, Search, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,27 @@ const EXAMPLE_ENGAGEMENTS = [
     body: "Built a go-to-market plan for a new program aimed at first-generation college students.",
   },
 ];
+
+const CLIENTS = [
+  { name: "Habitat for Humanity", src: "/clients/habitat-for-humanity.png" },
+  { name: "Sankara Eye Foundation", src: "/clients/sankara-eye-foundation.png" },
+  { name: "Family Giving Tree", src: "/clients/family-giving-tree.png" },
+  { name: "Starfall Education Foundation", src: "/clients/starfall-education-foundation.png" },
+  { name: "Santa Cruz SPCA", src: "/clients/santa-cruz-spca.png" },
+  { name: "Animal Rescue Foundation", src: "/clients/animal-rescue-foundation.png" },
+  { name: "Ditto", src: "/clients/ditto.png" },
+];
+
+// TODO: add real client testimonials (quote, name, organization) once available.
+const TESTIMONIALS: { quote: string; name: string; org: string }[] = [];
+
+function TestimonialsComingSoon() {
+  return (
+    <div className="rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-8 text-center text-sm text-muted-foreground">
+      Client testimonials coming soon.
+    </div>
+  );
+}
 
 export default function ServicesPage() {
   return (
@@ -109,6 +131,58 @@ export default function ServicesPage() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+        <div className="mint-panel rounded-[2.5rem] p-8 sm:p-12">
+          <p className="text-center text-sm font-bold tracking-wide text-primary uppercase">
+            Trusted by
+          </p>
+          <h2 className="font-brand mt-3 text-center text-2xl font-bold tracking-tight sm:text-3xl">
+            Organizations we&apos;ve worked with
+          </h2>
+          <p className="mx-auto mt-2 max-w-2xl text-center text-foreground/70">
+            A sample of the nonprofits, social enterprises, and startups our
+            consultants have partnered with.
+          </p>
+          <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {CLIENTS.map((client) => (
+              <div
+                key={client.name}
+                className="flex h-28 items-center justify-center rounded-2xl bg-background p-6 shadow-sm transition-transform hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <Image
+                  src={client.src}
+                  alt={client.name}
+                  width={160}
+                  height={64}
+                  className="h-auto max-h-14 w-auto max-w-full object-contain"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-6 py-16">
+        <h2 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl">
+          What our clients say
+        </h2>
+        {TESTIMONIALS.length > 0 ? (
+          <div className="mt-8 grid gap-6 sm:grid-cols-3">
+            {TESTIMONIALS.map((testimonial) => (
+              <div key={testimonial.name} className="rounded-2xl border border-primary/15 bg-primary/5 p-6">
+                <p className="text-sm text-foreground/80 text-pretty">&ldquo;{testimonial.quote}&rdquo;</p>
+                <p className="mt-4 text-sm font-semibold">{testimonial.name}</p>
+                <p className="text-xs text-muted-foreground">{testimonial.org}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-8">
+            <TestimonialsComingSoon />
+          </div>
+        )}
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-16 pb-24 sm:px-6">
