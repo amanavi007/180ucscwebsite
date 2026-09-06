@@ -114,7 +114,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 py-16">
+      <section className="mx-auto max-w-6xl px-6 pt-16 pb-24">
         <div className="grid gap-10 sm:grid-cols-2 sm:items-center">
           <PhotoPlaceholder
             label="Photo: members working with a client"
@@ -137,34 +137,6 @@ export default function HomePage() {
             >
               Meet the team
               <ArrowRight className="size-4" />
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-6xl px-4 pb-24 sm:px-6">
-        <div className="mint-panel flex flex-col items-start justify-between gap-6 rounded-[2.5rem] p-10 sm:flex-row sm:items-center">
-          <div>
-            <h2 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl">
-              Ready to get involved?
-            </h2>
-            <p className="mt-2 max-w-md text-foreground/70">
-              Whether you want to join as a consultant or bring us on as a
-              client, we&apos;d love to hear from you.
-            </p>
-          </div>
-          <div className="flex shrink-0 flex-wrap gap-3">
-            <Button nativeButton={false} size="lg" className="rounded-full" render={<Link href="/apply" />}>
-              Apply Now
-            </Button>
-            <Button
-              nativeButton={false}
-              size="lg"
-              variant="outline"
-              className="rounded-full bg-background/70"
-              render={<Link href="/about" />}
-            >
-              Learn More
             </Button>
           </div>
         </div>
