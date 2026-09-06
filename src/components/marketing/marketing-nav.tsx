@@ -13,6 +13,7 @@ const LINKS = [
   { href: "/about", label: "About Us" },
   { href: "/services", label: "Our Services" },
   { href: "/team", label: "Our Team" },
+  { href: "/apply", label: "Join Us" },
 ];
 
 export function MarketingNav() {
@@ -75,14 +76,14 @@ export function MarketingNav() {
 
         <div
           className={cn(
-            "hidden items-center justify-end gap-5 transition-all duration-500 ease-in-out lg:flex",
+            "hidden items-center justify-end transition-all duration-500 ease-in-out lg:flex",
             folded ? "pointer-events-none scale-95 opacity-0" : "scale-100 opacity-100",
           )}
         >
-          <Button nativeButton={false} render={<Link href="/apply" />} className="rounded-full">
-            Apply Now
-          </Button>
-          <Link href="/login" className="text-sm text-foreground/60 transition-colors hover:text-foreground">
+          <Link
+            href="/login"
+            className="rounded-full border border-primary/25 px-5 py-2 text-sm font-bold tracking-wide text-foreground/70 uppercase transition-colors hover:bg-foreground/5 hover:text-foreground"
+          >
             Log in
           </Link>
         </div>
@@ -122,13 +123,6 @@ export function MarketingNav() {
             ))}
           </nav>
           <div className="mt-2 flex flex-col gap-2 px-3">
-            <Button
-              nativeButton={false}
-              className="rounded-full"
-              render={<Link href="/apply" onClick={() => setMobileOpen(false)} />}
-            >
-              Apply Now
-            </Button>
             <Link
               href="/login"
               onClick={() => setMobileOpen(false)}
