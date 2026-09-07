@@ -20,13 +20,28 @@ const quicksand = Quicksand({
   weight: ["600", "700"],
 });
 
+const SITE_TITLE = "180 Degrees Consulting at UC Santa Cruz";
+const SITE_DESCRIPTION =
+  "180 Degrees Consulting at UC Santa Cruz is a student-run pro-bono consultancy connecting nonprofits and social enterprises with strategy, research, and growth support.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://180ucsc.vercel.app"),
   title: {
-    default: "180 Degrees Consulting at UC Santa Cruz",
+    default: SITE_TITLE,
     template: "%s · 180 Degrees Consulting at UCSC",
   },
-  description:
-    "180 Degrees Consulting at UC Santa Cruz is a student-run pro-bono consultancy connecting nonprofits and social enterprises with strategy, research, and growth support.",
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: SITE_TITLE }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: ["/og-image.png"],
+  },
 };
 
 export default function RootLayout({
