@@ -1,12 +1,14 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { ArrowRight, Compass, HeartHandshake, Sparkles, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PhotoPlaceholder } from "@/components/marketing/photo-placeholder";
+import { StatsBand } from "@/components/marketing/stats-band";
 
 export const metadata: Metadata = { title: "Home" };
 
-const STATS = [
+const STATS: { value: string; lines: [string, string] }[] = [
   { value: "180+", lines: ["Universities", "worldwide"] },
   { value: "35+", lines: ["Countries with a", "180DC presence"] },
   { value: "20+", lines: ["Years of pro-bono", "consulting"] },
@@ -34,59 +36,50 @@ const PILLARS = [
 export default function HomePage() {
   return (
     <div>
-      <section className="mx-auto max-w-6xl px-4 pt-14 sm:px-6">
-        <div className="mint-panel grid gap-10 rounded-[2.5rem] p-8 sm:p-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-16 lg:p-16">
-          <div>
-            <p className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-background/70 px-3 py-1 text-xs font-bold tracking-wide text-primary uppercase">
-              <Sparkles className="size-3.5" />
-              UC Santa Cruz Chapter
-            </p>
-            <h1 className="font-brand mt-6 text-4xl leading-[1.05] font-bold tracking-tight text-balance sm:text-6xl">
-              Turning good organizations into great ones.
-            </h1>
-            <p className="mt-6 max-w-xl text-lg text-foreground/70 text-pretty">
-              180 Degrees Consulting is the world&apos;s largest student
-              consultancy. Our UC Santa Cruz chapter pairs student consultants
-              with nonprofits and social enterprises, pro bono, to solve real
-              strategy and growth challenges.
-            </p>
-            <div className="mt-10 flex flex-wrap items-center gap-3">
-              <Button nativeButton={false} size="lg" render={<Link href="/apply" />} className="rounded-full">
-                Apply Now
-              </Button>
-              <Button
-                nativeButton={false}
-                size="lg"
-                variant="outline"
-                className="rounded-full bg-background/70"
-                render={<Link href="/services" />}
-              >
-                Become a Client
-              </Button>
-            </div>
+      <section className="relative isolate flex min-h-[36rem] w-full flex-col justify-end overflow-hidden sm:min-h-[42rem] lg:min-h-[48rem]">
+        <Image
+          src="/stock/hero-team.jpg"
+          alt="180DC UCSC chapter members collaborating"
+          fill
+          priority
+          className="absolute inset-0 -z-20 object-cover"
+        />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/85 via-black/45 to-black/10" />
+        <div className="absolute inset-0 -z-10 bg-primary/25 mix-blend-multiply" />
+
+        <div className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6 sm:pb-20 lg:pb-24">
+          <p className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-bold tracking-wide text-white uppercase backdrop-blur-sm">
+            <Sparkles className="size-3.5" />
+            UC Santa Cruz Chapter
+          </p>
+          <h1 className="font-brand mt-6 max-w-2xl text-4xl leading-[1.05] font-bold tracking-tight text-balance text-white sm:text-6xl">
+            Turning good organizations into great ones.
+          </h1>
+          <p className="mt-6 max-w-xl text-lg text-white/80 text-pretty">
+            180 Degrees Consulting is the world&apos;s largest student
+            consultancy. Our UC Santa Cruz chapter pairs student consultants
+            with nonprofits and social enterprises, pro bono, to solve real
+            strategy and growth challenges.
+          </p>
+          <div className="mt-10 flex flex-wrap items-center gap-3">
+            <Button nativeButton={false} size="lg" render={<Link href="/apply" />} className="rounded-full">
+              Apply Now
+            </Button>
+            <Button
+              nativeButton={false}
+              size="lg"
+              variant="outline"
+              className="rounded-full border-white/40 bg-white/10 text-white backdrop-blur-sm hover:bg-white/20 hover:text-white"
+              render={<Link href="/services" />}
+            >
+              Become a Client
+            </Button>
           </div>
-          <PhotoPlaceholder
-            label="Photo: chapter members at a team meeting"
-            className="aspect-[4/5] w-full rounded-[2rem] lg:aspect-auto lg:h-full lg:min-h-96"
-          />
         </div>
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <div className="bg-primary rounded-[2.5rem] px-8 py-14 sm:px-14 sm:py-16">
-          <div className="grid grid-cols-2 gap-y-10 sm:grid-cols-4 sm:divide-x sm:divide-primary-foreground/20">
-            {STATS.map((stat) => (
-              <div key={stat.value} className="text-center sm:px-6">
-                <p className="font-brand text-5xl font-bold text-primary-foreground sm:text-6xl">{stat.value}</p>
-                <p className="mt-2 text-sm font-medium tracking-wide text-primary-foreground uppercase">
-                  {stat.lines[0]}
-                  <br />
-                  {stat.lines[1]}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
+        <StatsBand stats={STATS} />
       </section>
 
       <section className="mx-auto max-w-6xl px-6 py-24">
@@ -118,6 +111,7 @@ export default function HomePage() {
         <div className="grid gap-10 sm:grid-cols-2 sm:items-center">
           <PhotoPlaceholder
             label="Photo: members working with a client"
+            src="/stock/home-client-work.jpg"
             className="aspect-[4/3] w-full rounded-2xl sm:order-2"
           />
           <div>

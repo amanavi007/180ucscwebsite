@@ -74,6 +74,7 @@ export default function ApplyPage() {
           </div>
           <PhotoPlaceholder
             label="Photo: prospective members at an info session"
+            src="/stock/apply-info-session.jpg"
             className="aspect-[4/3] w-full rounded-[2rem]"
           />
         </div>

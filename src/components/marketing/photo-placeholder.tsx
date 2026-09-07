@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Camera } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -6,12 +7,34 @@ export function PhotoPlaceholder({
   shape = "square",
   iconOnly = false,
   className,
+  src,
 }: {
   label: string;
   shape?: "square" | "circle";
   iconOnly?: boolean;
   className?: string;
+  src?: string;
 }) {
+  if (src) {
+    return (
+      <div
+        className={cn(
+          "relative overflow-hidden bg-muted",
+          shape === "circle" ? "rounded-full" : "rounded-2xl",
+          className,
+        )}
+      >
+        <Image
+          src={src}
+          alt={label}
+          fill
+          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+          className="object-cover"
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       title={label}

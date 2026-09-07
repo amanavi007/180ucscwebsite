@@ -121,6 +121,7 @@ export default function ServicesPage() {
         </p>
         <PhotoPlaceholder
           label="Photo: consultants presenting to a client"
+          src="/stock/services-presenting.jpg"
           className="mt-8 aspect-[21/9] w-full"
         />
         <div className="mt-8 grid gap-6 sm:grid-cols-3">
