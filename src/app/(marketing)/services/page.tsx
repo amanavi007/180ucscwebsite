@@ -129,7 +129,7 @@ function TestimonialsComingSoon() {
 export default function ServicesPage() {
   return (
     <div>
-      <section className="mx-auto max-w-6xl px-4 pt-14 sm:px-6">
+      <section className="mx-auto max-w-6xl px-4 pt-14 pb-16 sm:px-6">
         <div className="mint-panel rounded-[2.5rem] p-8 sm:p-12">
           <p className="text-sm font-bold tracking-wide text-primary uppercase">Our Services</p>
           <h1 className="font-brand mt-3 max-w-2xl text-4xl leading-[1.05] font-bold tracking-tight text-balance sm:text-5xl">
@@ -148,16 +148,18 @@ export default function ServicesPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 py-16">
-        <h2 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl">What we do</h2>
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {SERVICES.map((service) => (
-            <div key={service.title} className="rounded-2xl border border-primary/15 bg-primary/5 p-6">
-              <service.icon className="size-6 text-primary" />
-              <h3 className="mt-4 font-semibold">{service.title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{service.body}</p>
-            </div>
-          ))}
+      <section className="w-full bg-mint py-16">
+        <div className="mx-auto max-w-6xl px-6">
+          <h2 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl">What we do</h2>
+          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {SERVICES.map((service) => (
+              <div key={service.title} className="rounded-2xl bg-background p-6 shadow-sm">
+                <service.icon className="size-6 text-primary" />
+                <h3 className="mt-4 font-semibold">{service.title}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{service.body}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

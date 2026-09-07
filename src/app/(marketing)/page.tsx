@@ -82,28 +82,30 @@ export default function HomePage() {
         <StatsBand stats={STATS} />
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 py-24">
-        <div className="max-w-2xl">
-          <h2 className="font-brand text-3xl font-bold tracking-tight sm:text-4xl">
-            What we&apos;re about
-          </h2>
-          <p className="mt-4 text-muted-foreground text-pretty">
-            We believe every organization doing important work deserves
-            access to great strategy talent, not just the ones who can
-            afford it. Our members spend a quarter embedded with a client,
-            researching, analyzing, and building recommendations they can
-            actually use.
-          </p>
-        </div>
+      <section className="w-full bg-mint py-24">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="max-w-2xl">
+            <h2 className="font-brand text-3xl font-bold tracking-tight sm:text-4xl">
+              What we&apos;re about
+            </h2>
+            <p className="mt-4 text-foreground/70 text-pretty">
+              We believe every organization doing important work deserves
+              access to great strategy talent, not just the ones who can
+              afford it. Our members spend a quarter embedded with a client,
+              researching, analyzing, and building recommendations they can
+              actually use.
+            </p>
+          </div>
 
-        <div className="mt-12 grid gap-6 sm:grid-cols-3">
-          {PILLARS.map((pillar) => (
-            <div key={pillar.title} className="rounded-2xl border border-primary/15 bg-primary/5 p-6">
-              <pillar.icon className="size-6 text-primary" />
-              <h3 className="mt-4 font-semibold">{pillar.title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{pillar.body}</p>
-            </div>
-          ))}
+          <div className="mt-12 grid gap-6 sm:grid-cols-3">
+            {PILLARS.map((pillar) => (
+              <div key={pillar.title} className="rounded-2xl bg-background p-6 shadow-sm">
+                <pillar.icon className="size-6 text-primary" />
+                <h3 className="mt-4 font-semibold">{pillar.title}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{pillar.body}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
