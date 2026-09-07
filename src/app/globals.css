@@ -261,4 +261,30 @@
   .mint-panel {
     @apply bg-mint;
   }
+  /* Continuously scrolling logo strip -- the track renders its children
+     several times (see LogoMarquee's REPEAT) and slides by exactly one
+     copy-width (--marquee-distance) so the loop is seamless. If the track
+     only had two copies, a row whose content is narrower than the viewport
+     would show a blank gap right before it loops -- more copies means
+     always more than a full viewport of content queued up behind the
+     visible one. Per-row duration is set inline by LogoMarquee; this is
+     just the fallback. Sits still for reduced motion, where the wrapper
+     becomes horizontally scrollable instead. */
+  .animate-marquee {
+    animation: marquee 110s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-marquee {
+      animation: none;
+    }
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(var(--marquee-distance, -50%));
+  }
 }
