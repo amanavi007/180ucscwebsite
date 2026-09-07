@@ -50,6 +50,7 @@ export function LogoMarquee({
               alt={logo.name}
               width={220}
               height={90}
+              loading="eager"
               className="h-full w-auto max-w-[9rem] object-contain sm:max-w-[13rem]"
             />
           </div>
