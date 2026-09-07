@@ -47,7 +47,7 @@ export default function AboutPage() {
 
       <section className="w-full bg-mint py-16">
         <div className="mx-auto max-w-6xl px-6">
-          <h2 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl">Our values</h2>
+          <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">Our values</h2>
           <div className="mt-8 grid gap-6 sm:grid-cols-2">
             {VALUES.map((value) => (
               <div key={value.title} className="rounded-2xl bg-background p-6 shadow-sm">
@@ -61,7 +61,7 @@ export default function AboutPage() {
       </section>
 
       <section className="mx-auto max-w-6xl px-6 py-16">
-        <h2 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl">Our community</h2>
+        <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">Our community</h2>
         <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <PhotoPlaceholder
             label="Photo: a general meeting"
@@ -99,19 +99,19 @@ export default function AboutPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="rounded-2xl border border-foreground/10 bg-background/60 p-5">
-              <p className="font-brand text-2xl font-bold text-primary">Every major</p>
+              <p className="font-brand text-2xl font-bold tracking-wide text-primary uppercase">Every major</p>
               <p className="mt-1 text-sm text-muted-foreground">welcome to apply</p>
             </div>
             <div className="rounded-2xl border border-foreground/10 bg-background/60 p-5">
-              <p className="font-brand text-2xl font-bold text-primary">Pro bono</p>
+              <p className="font-brand text-2xl font-bold tracking-wide text-primary uppercase">Pro bono</p>
               <p className="mt-1 text-sm text-muted-foreground">every engagement</p>
             </div>
             <div className="rounded-2xl border border-foreground/10 bg-background/60 p-5">
-              <p className="font-brand text-2xl font-bold text-primary">Quarterly</p>
+              <p className="font-brand text-2xl font-bold tracking-wide text-primary uppercase">Quarterly</p>
               <p className="mt-1 text-sm text-muted-foreground">project cycles</p>
             </div>
             <div className="rounded-2xl border border-foreground/10 bg-background/60 p-5">
-              <p className="font-brand text-2xl font-bold text-primary">Global</p>
+              <p className="font-brand text-2xl font-bold tracking-wide text-primary uppercase">Global</p>
               <p className="mt-1 text-sm text-muted-foreground">180DC network</p>
             </div>
           </div>

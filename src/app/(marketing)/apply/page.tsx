@@ -81,7 +81,7 @@ export default function ApplyPage() {
       </section>
 
       <section className="mx-auto max-w-6xl px-6 py-16">
-        <h2 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl">
+        <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
           How recruitment works
         </h2>
         <div className="mt-8 grid gap-6 sm:grid-cols-3">
@@ -97,7 +97,7 @@ export default function ApplyPage() {
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-16 pb-24 sm:px-6">
-        <h2 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl">FAQs</h2>
+        <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">FAQs</h2>
         <div className="mt-8 grid gap-6 sm:grid-cols-2">
           {FAQS.map((faq) => (
             <div key={faq.q} className="rounded-2xl border border-foreground/10 p-6">
@@ -109,7 +109,7 @@ export default function ApplyPage() {
 
         <div className="mint-panel mt-12 flex flex-col items-start justify-between gap-6 rounded-[2.5rem] p-10 sm:flex-row sm:items-center">
           <div>
-            <h2 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl">
+            <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
               Ready to apply?
             </h2>
             <p className="mt-2 max-w-md text-foreground/70">

@@ -10,7 +10,7 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
-  --font-brand: var(--font-quicksand);
+  --font-brand: var(--font-big-shoulders);
   --color-warm: var(--warm);
   --color-warm-foreground: var(--warm-foreground);
   --color-mint: var(--mint);
@@ -260,6 +260,14 @@
      for hero/intro sections across the marketing site. */
   .mint-panel {
     @apply bg-mint;
+  }
+  /* Big Shoulders ships as one variable family spanning "Text" through
+     "Display" cuts via the opsz axis; without pinning it, headings render at
+     the default (small, text-oriented) optical size instead of the tall,
+     condensed "Display" look the brand font is chosen for. */
+  .font-brand {
+    font-variation-settings: "opsz" 72;
+    letter-spacing: -0.01em;
   }
   /* Continuously scrolling logo strip -- the track renders its children
      several times (see LogoMarquee's REPEAT) and slides by exactly one

@@ -88,7 +88,7 @@ export default function TeamPage() {
       </section>
 
       <section className="mx-auto max-w-6xl px-6 py-16">
-        <h2 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl">
+        <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
           Executive Board
         </h2>
         <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -99,7 +99,7 @@ export default function TeamPage() {
       </section>
 
       <section className="mx-auto max-w-6xl px-6 py-16">
-        <h2 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl">
+        <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
           Project Managers
         </h2>
         {PROJECT_MANAGERS.length > 0 ? (
@@ -116,7 +116,7 @@ export default function TeamPage() {
       </section>
 
       <section className="mx-auto max-w-6xl px-6 py-16">
-        <h2 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl">
+        <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
           Consultants
         </h2>
         {CONSULTANTS.length > 0 ? (
@@ -135,7 +135,7 @@ export default function TeamPage() {
       <section className="mx-auto max-w-6xl px-4 py-16 pb-24 sm:px-6">
         <div className="mint-panel flex flex-col items-start justify-between gap-6 rounded-[2.5rem] p-10 sm:flex-row sm:items-center">
           <div>
-            <h2 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl">
+            <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
               And a full roster of consultants
             </h2>
             <p className="mt-2 max-w-md text-foreground/70">

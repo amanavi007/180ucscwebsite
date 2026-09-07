@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
-import { ArrowRight, Compass, HeartHandshake, Sparkles, Users } from "lucide-react";
+import { ArrowRight, Compass, HeartHandshake, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PhotoPlaceholder } from "@/components/marketing/photo-placeholder";
 import { StatsBand } from "@/components/marketing/stats-band";
@@ -48,18 +48,13 @@ export default function HomePage() {
         <div className="absolute inset-0 -z-10 bg-primary/25 mix-blend-multiply" />
 
         <div className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6 sm:pb-20 lg:pb-24">
-          <p className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-bold tracking-wide text-white uppercase backdrop-blur-sm">
-            <Sparkles className="size-3.5" />
-            UC Santa Cruz Chapter
-          </p>
-          <h1 className="font-brand mt-6 max-w-2xl text-4xl leading-[1.05] font-bold tracking-tight text-balance text-white sm:text-6xl">
-            Turning good organizations into great ones.
+          <h1 className="font-brand text-5xl leading-[0.98] font-bold tracking-wide text-white uppercase sm:text-7xl lg:text-8xl">
+            180 Degrees
+            <br />
+            Consulting
           </h1>
-          <p className="mt-6 max-w-xl text-lg text-white/80 text-pretty">
-            180 Degrees Consulting is the world&apos;s largest student
-            consultancy. Our UC Santa Cruz chapter pairs student consultants
-            with nonprofits and social enterprises, pro bono, to solve real
-            strategy and growth challenges.
+          <p className="mt-5 max-w-md text-lg text-white/80">
+            World&apos;s largest student consultancy · UC Santa Cruz
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-3">
             <Button nativeButton={false} size="lg" render={<Link href="/apply" />} className="rounded-full">
@@ -85,7 +80,7 @@ export default function HomePage() {
       <section className="w-full bg-mint py-24">
         <div className="mx-auto max-w-6xl px-6">
           <div className="max-w-2xl">
-            <h2 className="font-brand text-3xl font-bold tracking-tight sm:text-4xl">
+            <h2 className="font-brand text-3xl font-bold tracking-wide uppercase sm:text-4xl">
               What we&apos;re about
             </h2>
             <p className="mt-4 text-foreground/70 text-pretty">
@@ -117,7 +112,7 @@ export default function HomePage() {
             className="aspect-[4/3] w-full rounded-2xl sm:order-2"
           />
           <div>
-            <h2 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl">
+            <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
               The people behind the work
             </h2>
             <p className="mt-4 text-muted-foreground text-pretty">

@@ -150,7 +150,7 @@ export default function ServicesPage() {
 
       <section className="w-full bg-mint py-16">
         <div className="mx-auto max-w-6xl px-6">
-          <h2 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl">What we do</h2>
+          <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">What we do</h2>
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {SERVICES.map((service) => (
               <div key={service.title} className="rounded-2xl bg-background p-6 shadow-sm">
@@ -164,7 +164,7 @@ export default function ServicesPage() {
       </section>
 
       <section className="mx-auto max-w-6xl px-6 py-16">
-        <h2 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl">
+        <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
           The kind of work we take on
         </h2>
         <p className="mt-2 max-w-2xl text-muted-foreground">
@@ -189,7 +189,7 @@ export default function ServicesPage() {
       <section className="w-full bg-mint py-16 sm:py-20">
         <div className="mx-auto max-w-2xl px-4 text-center sm:px-6">
           <p className="text-sm font-bold tracking-wide text-primary uppercase">Trusted by</p>
-          <h2 className="font-brand mt-3 text-2xl font-bold tracking-tight sm:text-3xl">
+          <h2 className="font-brand mt-3 text-2xl font-bold tracking-wide uppercase sm:text-3xl">
             Organizations we&apos;ve worked with
           </h2>
           <p className="mt-2 text-foreground/70">
@@ -206,7 +206,7 @@ export default function ServicesPage() {
       </section>
 
       <section className="mx-auto max-w-6xl px-6 py-16">
-        <h2 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl">
+        <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
           What our clients say
         </h2>
         {TESTIMONIALS.length > 0 ? (
@@ -229,7 +229,7 @@ export default function ServicesPage() {
       <section className="mx-auto max-w-6xl px-4 py-16 pb-24 sm:px-6">
         <div className="mint-panel flex flex-col items-start justify-between gap-6 rounded-[2.5rem] p-10 sm:flex-row sm:items-center">
           <div>
-            <h2 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl">
+            <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
               Think we could help?
             </h2>
             <p className="mt-2 max-w-md text-foreground/70">
