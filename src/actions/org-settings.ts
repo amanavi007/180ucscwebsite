@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { logAudit } from "@/lib/audit";
+import { invalidateAttendanceThresholdCache } from "@/lib/data/org-settings";
 
 export interface ActionResult {
   error?: string;
@@ -26,6 +27,7 @@ export async function updateAttendanceAlertThreshold(percent: number): Promise<A
   const actor = await getCurrentProfile();
   await logAudit(actor.id, "settings.attendance_threshold_changed", undefined, `Set to ${percent}%`);
 
+  invalidateAttendanceThresholdCache();
   revalidatePath("/portal/admin");
   revalidatePath("/portal");
   revalidatePath("/portal/directory");

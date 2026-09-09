@@ -26,26 +26,64 @@ export async function getMyNotifications(
 ): Promise<NotificationFeed> {
   const supabase = await createClient();
 
-  const { data: readRow } = await supabase
-    .from("notification_reads")
-    .select("last_read_at")
-    .eq("user_id", userId)
-    .maybeSingle();
+  // The four selects below are all independent of each other -- fire them
+  // concurrently instead of one round trip at a time. Room bookings is the
+  // one exception (it needs the project ids from memberships), so it's
+  // kicked off in a second wave once memberships resolves.
+  const [{ data: readRow }, { data: tasks }, { data: todos }, { data: memberships }] = await Promise.all([
+    supabase.from("notification_reads").select("last_read_at").eq("user_id", userId).maybeSingle(),
+    supabase
+      .from("tasks")
+      .select("id, task_name, project_id, updated_at, project:projects(client_name)")
+      .eq("assignee_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(15),
+    isExecUser
+      ? supabase
+          .from("exec_todos")
+          .select("id, title, updated_at")
+          .contains("assigned_to", [userId])
+          .order("updated_at", { ascending: false })
+          .limit(15)
+      : Promise.resolve({ data: null }),
+    supabase
+      .from("memberships")
+      .select("project_id, created_at, project:projects(client_name)")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(10),
+  ]);
+
+  const membershipRows = (memberships ?? []) as unknown as {
+    project_id: string;
+    created_at: string;
+    project: { client_name: string } | null;
+  }[];
+  const myProjectIds = membershipRows.map((m) => m.project_id);
 
   let lastReadAt = readRow?.last_read_at;
-  if (!lastReadAt) {
+  const needsReadMarker = !lastReadAt;
+  if (needsReadMarker) {
     lastReadAt = new Date().toISOString();
-    await supabase.from("notification_reads").insert({ user_id: userId, last_read_at: lastReadAt });
   }
+
+  const [, { data: bookings }] = await Promise.all([
+    needsReadMarker
+      ? supabase.from("notification_reads").insert({ user_id: userId, last_read_at: lastReadAt })
+      : Promise.resolve(null),
+    myProjectIds.length > 0
+      ? supabase
+          .from("room_bookings")
+          .select("project_id, room_name, date, updated_at, project:projects(client_name)")
+          .in("project_id", myProjectIds)
+          .gte("date", new Date().toISOString().slice(0, 10))
+          .order("updated_at", { ascending: false })
+          .limit(10)
+      : Promise.resolve({ data: null }),
+  ]);
 
   const items: NotificationItem[] = [];
 
-  const { data: tasks } = await supabase
-    .from("tasks")
-    .select("id, task_name, project_id, updated_at, project:projects(client_name)")
-    .eq("assignee_id", userId)
-    .order("updated_at", { ascending: false })
-    .limit(15);
   for (const t of (tasks ?? []) as unknown as {
     id: string;
     task_name: string;
@@ -61,34 +99,15 @@ export async function getMyNotifications(
     });
   }
 
-  if (isExecUser) {
-    const { data: todos } = await supabase
-      .from("exec_todos")
-      .select("id, title, updated_at")
-      .contains("assigned_to", [userId])
-      .order("updated_at", { ascending: false })
-      .limit(15);
-    for (const td of todos ?? []) {
-      items.push({
-        id: `todo-${td.id}`,
-        message: `You're assigned the to-do "${td.title}".`,
-        href: "/portal",
-        occurredAt: td.updated_at,
-      });
-    }
+  for (const td of (todos ?? []) as { id: string; title: string; updated_at: string }[]) {
+    items.push({
+      id: `todo-${td.id}`,
+      message: `You're assigned the to-do "${td.title}".`,
+      href: "/portal",
+      occurredAt: td.updated_at,
+    });
   }
 
-  const { data: memberships } = await supabase
-    .from("memberships")
-    .select("project_id, created_at, project:projects(client_name)")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(10);
-  const membershipRows = (memberships ?? []) as unknown as {
-    project_id: string;
-    created_at: string;
-    project: { client_name: string } | null;
-  }[];
   for (const m of membershipRows) {
     items.push({
       id: `team-${m.project_id}`,
@@ -98,29 +117,19 @@ export async function getMyNotifications(
     });
   }
 
-  const myProjectIds = membershipRows.map((m) => m.project_id);
-  if (myProjectIds.length > 0) {
-    const { data: bookings } = await supabase
-      .from("room_bookings")
-      .select("project_id, room_name, date, updated_at, project:projects(client_name)")
-      .in("project_id", myProjectIds)
-      .gte("date", new Date().toISOString().slice(0, 10))
-      .order("updated_at", { ascending: false })
-      .limit(10);
-    for (const b of (bookings ?? []) as unknown as {
-      project_id: string;
-      room_name: string;
-      date: string;
-      updated_at: string;
-      project: { client_name: string } | null;
-    }[]) {
-      items.push({
-        id: `room-${b.project_id}-${b.date}`,
-        message: `${b.project?.client_name ?? "Your team"} is in ${b.room_name} on ${b.date}.`,
-        href: "/portal",
-        occurredAt: b.updated_at,
-      });
-    }
+  for (const b of (bookings ?? []) as unknown as {
+    project_id: string;
+    room_name: string;
+    date: string;
+    updated_at: string;
+    project: { client_name: string } | null;
+  }[]) {
+    items.push({
+      id: `room-${b.project_id}-${b.date}`,
+      message: `${b.project?.client_name ?? "Your team"} is in ${b.room_name} on ${b.date}.`,
+      href: "/portal",
+      occurredAt: b.updated_at,
+    });
   }
 
   items.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));

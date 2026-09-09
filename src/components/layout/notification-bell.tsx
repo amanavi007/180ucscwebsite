@@ -1,29 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { formatDistanceToNowStrict } from "date-fns";
 import { Bell } from "lucide-react";
-import { markNotificationsRead } from "@/actions/notifications";
+import { markNotificationsRead, getMyNotificationsAction } from "@/actions/notifications";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import type { NotificationItem } from "@/lib/data/notifications";
+import type { NotificationFeed } from "@/lib/data/notifications";
 
-export function NotificationBell({
-  items,
-  unreadCount,
-}: {
-  items: NotificationItem[];
-  unreadCount: number;
-}) {
+/**
+ * Fetches its own data on mount instead of receiving it as a server-rendered
+ * prop -- this keeps the ~5 notification queries off the critical path of
+ * every page navigation (they're the same regardless of which tab you're on).
+ */
+export function NotificationBell() {
   const [open, setOpen] = useState(false);
-  const router = useRouter();
+  const [feed, setFeed] = useState<NotificationFeed | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getMyNotificationsAction().then((result) => {
+      if (!cancelled) setFeed(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const items = feed?.items ?? [];
+  const unreadCount = feed?.unreadCount ?? 0;
 
   function onOpenChange(next: boolean) {
     setOpen(next);
     if (next && unreadCount > 0) {
-      markNotificationsRead().then(() => router.refresh());
+      setFeed((prev) => (prev ? { ...prev, unreadCount: 0 } : prev));
+      markNotificationsRead();
     }
   }
 
@@ -41,7 +53,13 @@ export function NotificationBell({
       />
       <PopoverContent align="end" className="w-80 p-0">
         <div className="border-b px-3 py-2 text-sm font-medium">Notifications</div>
-        {items.length === 0 ? (
+        {feed === null ? (
+          <div className="space-y-2 p-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-10 animate-pulse rounded bg-muted" />
+            ))}
+          </div>
+        ) : items.length === 0 ? (
           <p className="p-4 text-sm text-muted-foreground">You&apos;re all caught up.</p>
         ) : (
           <div className="max-h-96 overflow-y-auto">

@@ -24,14 +24,15 @@ export default async function TasksPage({
   // Base-tier consultants only ever see their own tasks -- ignore the "mine" param for them.
   const mine = canViewAll ? params.mine !== "0" : true;
 
-  const tasks = await getVisibleTasks({
-    assigneeId: mine ? profile.id : undefined,
-    projectId: params.project,
-    status: params.status,
-    taskType: params.type,
-  });
-
-  const projects = await getProjects();
+  const [tasks, projects] = await Promise.all([
+    getVisibleTasks({
+      assigneeId: mine ? profile.id : undefined,
+      projectId: params.project,
+      status: params.status,
+      taskType: params.type,
+    }),
+    getProjects(),
+  ]);
 
   return (
     <div className="space-y-6">

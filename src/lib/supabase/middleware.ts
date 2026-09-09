@@ -26,9 +26,11 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims() verifies the JWT locally against a cached JWKS (this project uses
+  // asymmetric signing keys) instead of round-tripping to the Auth server on every
+  // request like getUser() does -- ~300ms vs ~2ms once the JWKS is cached.
+  const { data } = await supabase.auth.getClaims();
+  const userId = data?.claims.sub;
 
   const path = request.nextUrl.pathname;
   const isPortalPath = path === PORTAL_PREFIX || path.startsWith(`${PORTAL_PREFIX}/`);
@@ -36,23 +38,23 @@ export async function updateSession(request: NextRequest) {
 
   // Only /portal (the member operations tool) requires auth -- everything
   // else (marketing site, login) is public by default.
-  if (!user && isPortalPath) {
+  if (!userId && isPortalPath) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  if (user && isLoginPath) {
+  if (userId && isLoginPath) {
     const url = request.nextUrl.clone();
     url.pathname = PORTAL_PREFIX;
     return NextResponse.redirect(url);
   }
 
-  if (user && isPortalPath && path !== `${PORTAL_PREFIX}/force-password-reset`) {
+  if (userId && isPortalPath && path !== `${PORTAL_PREFIX}/force-password-reset`) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("must_reset_password")
-      .eq("id", user.id)
+      .eq("id", userId)
       .single();
 
     if (profile?.must_reset_password) {

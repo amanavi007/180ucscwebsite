@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Admin · Settings" };
 
 export default async function AdminSettingsPage() {
   const [attendanceThreshold, defaultPassword] = await Promise.all([
-    getAttendanceAlertThreshold(),
+    getAttendanceAlertThreshold(true),
     getDefaultBulkPassword(),
   ]);
   return <SettingsPanel attendanceThreshold={attendanceThreshold} defaultPassword={defaultPassword} />;

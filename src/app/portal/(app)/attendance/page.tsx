@@ -46,7 +46,7 @@ export default async function AttendancePage({
   if (!isElevatedOrAbove(profile.role)) {
     const [summary, threshold] = await Promise.all([
       getMyAttendanceSummary(profile.id, activeQuarter.id),
-      getAttendanceAlertThreshold(),
+      getAttendanceAlertThreshold(isExec(profile.role)),
     ]);
     const todayForRoom = getOrgTodayDateString();
     const todayRoom = summary.projectId

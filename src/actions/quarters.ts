@@ -6,6 +6,7 @@ import { getCurrentProfile } from "@/lib/data/profile";
 import { isExec } from "@/lib/auth/roles";
 import { logAudit } from "@/lib/audit";
 import { getMeetingDatesInRange } from "@/lib/attendance";
+import { invalidateActiveQuarterCache } from "@/lib/data/quarters";
 
 export interface ActionResult {
   error?: string;
@@ -58,6 +59,7 @@ export async function createQuarter(input: {
   const actor = await getCurrentProfile();
   await logAudit(actor.id, "quarter.created", input.name);
 
+  if (input.makeActive) invalidateActiveQuarterCache();
   revalidatePath("/portal/admin");
   return {};
 }
@@ -81,6 +83,7 @@ export async function setActiveQuarter(quarterId: string): Promise<ActionResult>
   const actor = await getCurrentProfile();
   await logAudit(actor.id, "quarter.activated", quarter.name);
 
+  invalidateActiveQuarterCache();
   revalidatePath("/portal/admin");
   return {};
 }
@@ -102,6 +105,7 @@ export async function deactivateQuarter(quarterId: string): Promise<ActionResult
   const actor = await getCurrentProfile();
   await logAudit(actor.id, "quarter.deactivated", quarter.name);
 
+  invalidateActiveQuarterCache();
   revalidatePath("/portal/admin");
   return {};
 }
@@ -150,6 +154,7 @@ export async function deleteQuarter(quarterId: string): Promise<ActionResult> {
   const actor = await getCurrentProfile();
   await logAudit(actor.id, "quarter.deleted", quarter?.name);
 
+  invalidateActiveQuarterCache();
   revalidatePath("/portal/admin");
   return {};
 }

@@ -83,8 +83,16 @@ export async function getProjects(quarterId?: string): Promise<ProjectWithRelati
 
   const { data, error } = await query;
   if (error) throw error;
-  const withHealth = await withComputedHealth(supabase, data as unknown as ProjectWithRelations[]);
-  return withLeadIds(supabase, withHealth);
+
+  // Both enrichments only need the base project ids, not each other's output --
+  // run them concurrently instead of one round trip after the other, then merge.
+  const base = data as unknown as ProjectWithRelations[];
+  const [withHealth, withLeads] = await Promise.all([
+    withComputedHealth(supabase, base),
+    withLeadIds(supabase, base),
+  ]);
+  const leadIdsByProject = new Map(withLeads.map((p) => [p.id, p.lead_ids]));
+  return withHealth.map((p) => ({ ...p, lead_ids: leadIdsByProject.get(p.id) ?? [] }));
 }
 
 export async function getProject(id: string): Promise<ProjectWithQuarter> {

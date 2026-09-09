@@ -26,7 +26,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { logout } from "@/actions/auth";
 import { roleLabel } from "@/lib/auth/roles";
 import type { UserRole } from "@/lib/supabase/database.types";
-import type { NotificationFeed } from "@/lib/data/notifications";
 
 function initials(name: string) {
   return name
@@ -42,14 +41,12 @@ export function AppShell({
   name,
   role,
   isExec,
-  notifications,
   showOnboarding,
   children,
 }: {
   name: string;
   role: UserRole;
   isExec: boolean;
-  notifications: NotificationFeed;
   showOnboarding: boolean;
   children: React.ReactNode;
 }) {
@@ -193,7 +190,7 @@ export function AppShell({
             >
               <Search className="size-4.5" />
             </Button>
-            <NotificationBell items={notifications.items} unreadCount={notifications.unreadCount} />
+            <NotificationBell />
             <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger

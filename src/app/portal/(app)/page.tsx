@@ -89,7 +89,7 @@ export default async function DashboardPage() {
     getVisibleTasks({ assigneeId: profile.id }),
     getMeetingDatesForQuarter(activeQuarter.id),
     getMyAttendanceSummary(profile.id, activeQuarter.id),
-    getAttendanceAlertThreshold(),
+    getAttendanceAlertThreshold(exec),
   ]);
   const todayIsMeetingDay = meetingDates.includes(today);
 

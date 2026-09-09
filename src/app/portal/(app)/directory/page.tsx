@@ -24,7 +24,7 @@ export default async function DirectoryPage() {
     exec && activeQuarter
       ? await Promise.all([
           getQuarterAttendanceRates(activeQuarter.id, rows),
-          getAttendanceAlertThreshold(),
+          getAttendanceAlertThreshold(exec),
         ])
       : [undefined, 0.8];
 
