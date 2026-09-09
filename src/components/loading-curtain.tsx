@@ -5,7 +5,13 @@ export function LoadingCurtain() {
     <div
       role="status"
       aria-live="polite"
-      className="bg-background fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6 overflow-hidden"
+      className="flex flex-col items-center justify-center gap-6 overflow-hidden"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 2147483647,
+        background: "var(--background, #0a0a0a)",
+      }}
     >
       <div className="relative h-20 w-full shrink-0">
         <span className="loading-curtain-glow size-24" />
