@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { NavPendingWatcher } from "@/components/nav-loading";
 
 const LINKS = [
   { href: "/about", label: "About Us" },
@@ -38,9 +39,11 @@ export function MarketingFooter() {
           ))}
           <Link
             href="/login"
+            prefetch={false}
             className="text-foreground/70 transition-colors hover:text-foreground"
           >
             Log in
+            <NavPendingWatcher />
           </Link>
         </nav>
       </div>

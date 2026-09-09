@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { NavPendingWatcher } from "@/components/nav-loading";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
@@ -82,9 +83,11 @@ export function MarketingNav() {
         >
           <Link
             href="/login"
+            prefetch={false}
             className="rounded-full border border-primary/25 px-5 py-2 text-sm font-bold tracking-wide text-foreground/70 uppercase transition-colors hover:bg-foreground/5 hover:text-foreground"
           >
             Log in
+            <NavPendingWatcher />
           </Link>
         </div>
 
@@ -125,10 +128,12 @@ export function MarketingNav() {
           <div className="mt-2 flex flex-col gap-2 px-3">
             <Link
               href="/login"
+              prefetch={false}
               onClick={() => setMobileOpen(false)}
               className="rounded-xl px-3 py-2.5 text-center text-sm text-foreground/70 hover:bg-foreground/5"
             >
               Log in
+              <NavPendingWatcher />
             </Link>
           </div>
         </SheetContent>

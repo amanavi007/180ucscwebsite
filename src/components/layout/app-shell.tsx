@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Menu, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -14,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { NavPendingWatcher } from "@/components/nav-loading";
 import { cn } from "@/lib/utils";
 import { SidebarNav } from "./sidebar-nav";
 import { NotificationBell } from "./notification-bell";
@@ -109,26 +111,34 @@ export function AppShell({
         )}
       >
         <div className={cn("flex items-center gap-2 px-4 py-4", collapsed && "justify-center px-0")}>
-          {collapsed ? (
-            <Image src="/logo-icon.png" alt="" width={987} height={1006} className="h-6 w-auto" />
-          ) : (
-            <>
-              <Image
-                src="/logo-banner-dark.svg"
-                alt="180 Degrees Consulting UC Santa Cruz"
-                width={1610}
-                height={538}
-                className="h-16 w-auto dark:hidden"
-              />
-              <Image
-                src="/logo-banner-light.svg"
-                alt="180 Degrees Consulting UC Santa Cruz"
-                width={1610}
-                height={538}
-                className="hidden h-16 w-auto dark:block"
-              />
-            </>
-          )}
+          <Link
+            href="/"
+            prefetch={false}
+            aria-label="180 Degrees Consulting — view public site"
+            className="flex items-center gap-2 transition-opacity hover:opacity-75"
+          >
+            {collapsed ? (
+              <Image src="/logo-icon.png" alt="" width={987} height={1006} className="h-6 w-auto" />
+            ) : (
+              <>
+                <Image
+                  src="/logo-banner-dark.svg"
+                  alt="180 Degrees Consulting UC Santa Cruz"
+                  width={1610}
+                  height={538}
+                  className="h-16 w-auto dark:hidden"
+                />
+                <Image
+                  src="/logo-banner-light.svg"
+                  alt="180 Degrees Consulting UC Santa Cruz"
+                  width={1610}
+                  height={538}
+                  className="hidden h-16 w-auto dark:block"
+                />
+              </>
+            )}
+            <NavPendingWatcher />
+          </Link>
         </div>
         <SidebarNav
           isExec={isExec}
@@ -149,10 +159,16 @@ export function AppShell({
           >
             <Menu className="size-5" />
           </Button>
-          <span className="font-brand flex items-center gap-1.5 text-sm font-bold text-muted-foreground md:hidden">
+          <Link
+            href="/"
+            prefetch={false}
+            aria-label="180 Degrees Consulting — view public site"
+            className="font-brand flex items-center gap-1.5 text-sm font-bold text-muted-foreground md:hidden"
+          >
             <Image src="/logo-icon.png" alt="" width={987} height={1006} className="h-4 w-auto" />
             180 @ UCSC
-          </span>
+            <NavPendingWatcher />
+          </Link>
 
           <Button
             variant="ghost"

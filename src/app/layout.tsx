@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Big_Shoulders } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import { NavLoadingProvider, InitialLoadCurtain } from "@/components/nav-loading";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -57,7 +58,8 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <ThemeProvider>
-          {children}
+          <NavLoadingProvider>{children}</NavLoadingProvider>
+          <InitialLoadCurtain />
           <Toaster />
         </ThemeProvider>
       </body>

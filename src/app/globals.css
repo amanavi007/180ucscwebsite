@@ -286,6 +286,48 @@
       animation: none;
     }
   }
+  /* Loading curtain: the globe rolls in from off-screen once and parks at
+     center (rotation genuinely tied to horizontal motion -- correct here,
+     since it's depicting something rolling along the ground rather than
+     turning in 3D). We can't hook the exact moment Next swaps the
+     fallback for real content in this Next version, so instead of timing
+     an exit to that event, the roll is short (2.2s) and the rest state is
+     the centered position with a soft idle glow -- since this curtain
+     only ever shows for genuinely slow cross-layout navigations, it's
+     almost always already resting at center by the time the swap happens. */
+  .loading-curtain-ball {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation: curtain-roll-in 2.2s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  }
+  .loading-curtain-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in oklch, var(--primary) 35%, transparent) 0%, transparent 70%);
+    opacity: 0;
+    animation: curtain-settle-glow 1.8s ease-in-out 2.2s infinite;
+  }
+  .loading-curtain-wordmark {
+    opacity: 0;
+    animation: curtain-fade-in 0.5s ease-out 1.9s forwards;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .loading-curtain-ball {
+      animation: none;
+    }
+    .loading-curtain-glow {
+      animation: none;
+    }
+    .loading-curtain-wordmark {
+      animation: none;
+      opacity: 1;
+    }
+  }
 }
 
 @keyframes marquee {
@@ -294,5 +336,30 @@
   }
   to {
     transform: translateX(var(--marquee-distance, -50%));
+  }
+}
+
+@keyframes curtain-roll-in {
+  0% {
+    transform: translate(calc(-50vw - 50%), -50%) rotate(0deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(1080deg);
+  }
+}
+
+@keyframes curtain-settle-glow {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes curtain-fade-in {
+  to {
+    opacity: 1;
   }
 }
