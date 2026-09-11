@@ -121,8 +121,11 @@ Admin                        ← execs only, unchanged (own tab bar of 6 sub-pag
 
 Changes from today:
 
-- `GROUP_LABEL` in `sidebar-nav.tsx` renders sentence-case with a small
-  color dot (from the signal system) instead of tracked uppercase.
+- `GROUP_LABEL` in `sidebar-nav.tsx` renders sentence-case (medium weight,
+  muted color) instead of tracked uppercase. No dot here — the signal-dot
+  language is reserved for genuine status (health, priority, attendance); a
+  category heading like "Work" has no status to encode, so a dot on it
+  would be decoration, not signal.
 - `nav-links.ts`'s `NavLink.group` union gains a `"reference"` value;
   Resources and Quick Links (currently ungrouped/floating) move into it.
   This is the one structural nav change — everything else is a relabel of
@@ -147,8 +150,9 @@ content; only the block count and grouping change.
 - "My teams" (the `myProjects` list) becomes a plain hairline-divided list
   instead of individually bordered link-cards.
 - "My tasks" keeps its Overdue / This week / Later grouping, but the group
-  label switches from uppercase to sentence-case + colored dot (signal
-  language), matching the sidebar group labels.
+  label switches from uppercase to sentence-case. "Overdue" keeps a signal
+  dot (red) since lateness is a genuine status; "This week" / "Later" get
+  no dot, since they're neutral timing buckets, not a status.
 
 **Execs only:** the dashboard gains two tabs — **My Work** (everything
 above) and **Team** (Exec to-dos + Needs attention, i.e. the
@@ -173,8 +177,11 @@ treatment:
   pages are inconsistent about this today).
 - **Structure follows the data type, not one template:**
   - Tabular/browsable data (Clients, Directory, Admin → Members, Admin →
-    Rooms) → real tables (the existing, currently-unused
-    `components/ui/table.tsx`) with hairline row dividers, not card grids.
+    Rooms) → real tables (`components/ui/table.tsx`, already the pattern in
+    use on Clients, Directory, Admin → Members/Quarters/Activity, and
+    Attendance history — extend the same pattern to the few pages that
+    still use card grids for list data instead) with hairline row dividers,
+    not card grids.
   - Status-driven work (Projects, Tasks) → keep card/board treatment, since
     status columns are a functional fit for that data, not decoration.
   - Single-record detail pages (`projects/[id]`, `clients/[id]`) → two-column
