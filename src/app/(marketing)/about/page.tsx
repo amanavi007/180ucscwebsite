@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Globe2, Lightbulb, ShieldCheck, Sprout } from "lucide-react";
+import { PhotoPlaceholder } from "@/components/marketing/photo-placeholder";
 
 export const metadata: Metadata = { title: "About Us" };
 
@@ -30,17 +31,24 @@ export default function AboutPage() {
   return (
     <div>
       <section className="mx-auto max-w-6xl px-4 pt-14 pb-16 sm:px-6">
-        <div className="mint-panel rounded-[2.5rem] p-8 sm:p-12">
-          <p className="text-sm font-bold tracking-wide text-primary uppercase">About Us</p>
-          <h1 className="font-brand mt-3 max-w-2xl text-4xl leading-[1.05] font-bold tracking-tight text-balance sm:text-5xl">
-            A community of students who wanted their work to matter.
-          </h1>
-          <p className="mt-6 max-w-2xl text-lg text-foreground/70 text-pretty">
-            180 Degrees Consulting at UC Santa Cruz brings together students
-            from every corner of campus, from engineering and economics to
-            biology and the arts, around one shared goal: using real
-            consulting skills to help mission-driven organizations grow.
-          </p>
+        <div className="mint-panel grid gap-10 rounded-[2.5rem] p-8 sm:p-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-16">
+          <div>
+            <p className="text-sm font-bold tracking-wide text-primary uppercase">About Us</p>
+            <h1 className="font-brand mt-3 max-w-2xl text-4xl leading-[1.05] font-bold tracking-tight text-balance sm:text-5xl">
+              A community of students who wanted their work to matter.
+            </h1>
+            <p className="mt-6 max-w-2xl text-lg text-foreground/70 text-pretty">
+              180 Degrees Consulting at UC Santa Cruz brings together students
+              from every corner of campus, from engineering and economics to
+              biology and the arts, around one shared goal: using real
+              consulting skills to help mission-driven organizations grow.
+            </p>
+          </div>
+          <PhotoPlaceholder
+            label="180DC UCSC members working together"
+            src="/stock/about-hero.jpg"
+            className="aspect-[4/3] w-full rounded-[2rem]"
+          />
         </div>
       </section>
 

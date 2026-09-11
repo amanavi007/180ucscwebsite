@@ -73,7 +73,7 @@ export default function ApplyPage() {
             </div>
           </div>
           <PhotoPlaceholder
-            label="Photo: prospective members at an info session"
+            label="180DC UCSC members at a chapter event"
             src="/stock/apply-info-session.jpg"
             className="aspect-[4/3] w-full rounded-[2rem]"
           />
