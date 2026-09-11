@@ -62,6 +62,15 @@ retuned the same way):
 White and green stay the dominant identity throughout — amber/red are
 reserved strictly for status signals, never general decoration.
 
+**Constraint: breezy and modern, not austere.** Dropping glass/blur/shadow
+is a move toward clarity, not toward a dense, heavy, enterprise-utilitarian
+tool. Keep generous whitespace and line-height, keep the existing
+interaction-feedback motion (hover states, panel/sheet open transitions,
+tab switches) rather than stripping motion out entirely, and keep perceived
+performance fast (no new blur/backdrop-filter cost, fewer stacked layers to
+paint). "Flat and bordered" should still feel light and inviting to open
+every day, not like switching to a spreadsheet.
+
 **Structural change:** the sidebar stops being a separate dark "glass" panel
 and becomes the same flat `paper` canvas as the content, with a hairline
 border on its right edge and a slightly deeper background tint. This breaks
