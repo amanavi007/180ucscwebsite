@@ -205,6 +205,19 @@ etc.) and must be restyled onto the new flat surface system as part of the
 foundation phase — otherwise they'll visually clash with the rest of the
 redesigned shell.
 
+### 6. Marketing isolation constraint
+
+`Button` (`components/ui/button.tsx`) and `Sheet` (`components/ui/sheet.tsx`)
+are shared components the marketing site also consumes directly (its CTA
+buttons, and `marketing-nav.tsx`'s mobile menu). `Card`, `Dialog`, `Popover`,
+`DropdownMenu`, `Select`, `AlertDialog`, and `Tabs` are confirmed **not**
+used anywhere under `(marketing)` or `components/marketing`, so their base
+classes can be flattened globally with no marketing impact. Button and
+Sheet cannot be changed at the shared-component level without also
+reskinning marketing — any flattening there must be applied at the portal's
+own call sites (e.g. `app-shell.tsx`'s mobile nav `SheetContent`) via
+override classes, never by editing `button.tsx` / `sheet.tsx` themselves.
+
 ## Rollout plan
 
 Given the scope (shell + ~14 pages) and the goal of shipping before the new
