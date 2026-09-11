@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { Button } from "@/components/ui/button";
 import { PhotoPlaceholder } from "@/components/marketing/photo-placeholder";
@@ -73,18 +74,31 @@ function RosterComingSoon({ label }: { label: string }) {
 export default function TeamPage() {
   return (
     <div>
-      <section className="mx-auto max-w-6xl px-4 pt-14 sm:px-6">
-        <div className="mint-panel rounded-[2.5rem] p-8 sm:p-12">
-          <p className="text-sm font-bold tracking-wide text-primary uppercase">Our Team</p>
-          <h1 className="font-brand mt-3 max-w-2xl text-4xl leading-[1.05] font-bold tracking-tight text-balance sm:text-5xl">
+      <section className="relative isolate flex min-h-[20rem] w-full flex-col justify-end overflow-hidden sm:min-h-[24rem] lg:min-h-[28rem]">
+        <Image
+          src="/stock/team-hero-candid.jpg"
+          alt="180DC UCSC chapter members"
+          fill
+          priority
+          className="absolute inset-0 -z-20 object-cover"
+        />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/80 via-black/35 to-black/10" />
+        <div className="absolute inset-0 -z-10 bg-primary/20 mix-blend-multiply" />
+
+        <div className="mx-auto w-full max-w-6xl px-4 pb-10 sm:px-6 sm:pb-14">
+          <p className="text-sm font-bold tracking-wide text-white/80 uppercase">Our Team</p>
+          <h1 className="font-brand mt-2 max-w-2xl text-4xl leading-[1.05] font-bold tracking-wide text-balance text-white uppercase sm:text-5xl lg:text-6xl">
             Meet the people behind the work.
           </h1>
-          <p className="mt-6 max-w-2xl text-lg text-foreground/70 text-pretty">
-            Our chapter runs on student consultants, project managers, and an
-            executive board, every one of them balancing a full course load
-            with real client work.
-          </p>
         </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pt-10 sm:px-6">
+        <p className="max-w-2xl text-lg text-foreground/70 text-pretty">
+          Our chapter runs on student consultants, project managers, and an
+          executive board, every one of them balancing a full course load
+          with real client work.
+        </p>
       </section>
 
       <section className="mx-auto max-w-6xl px-6 py-16">

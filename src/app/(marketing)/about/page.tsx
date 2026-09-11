@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Globe2, Lightbulb, ShieldCheck, Sprout } from "lucide-react";
-import { PhotoPlaceholder } from "@/components/marketing/photo-placeholder";
 
 export const metadata: Metadata = { title: "About Us" };
 
@@ -62,30 +61,8 @@ export default function AboutPage() {
 
       <section className="mx-auto max-w-6xl px-6 py-16">
         <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">Our community</h2>
-        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <PhotoPlaceholder
-            label="Photo: a general meeting"
-            src="/stock/about-general-meeting.jpg"
-            className="aspect-square"
-          />
-          <PhotoPlaceholder
-            label="Photo: a client working session"
-            src="/stock/about-client-session.jpg"
-            className="aspect-square"
-          />
-          <PhotoPlaceholder
-            label="Photo: a project team"
-            src="/stock/about-project-team.jpg"
-            className="aspect-square"
-          />
-          <PhotoPlaceholder
-            label="Photo: a social event"
-            src="/stock/about-social-event.jpg"
-            className="aspect-square"
-          />
-        </div>
 
-        <div className="mint-panel mt-6 grid gap-10 rounded-[2.5rem] p-10 sm:grid-cols-2 sm:items-center">
+        <div className="mint-panel mt-8 grid gap-10 rounded-[2.5rem] p-10 sm:grid-cols-2 sm:items-center">
           <div>
             <p className="mt-1 text-foreground/70 text-pretty">
               {/* TODO: swap in the chapter's real member count, majors represented,

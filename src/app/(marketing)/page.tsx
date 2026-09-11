@@ -107,7 +107,7 @@ export default function HomePage() {
       <section className="mx-auto max-w-6xl px-6 pt-16 pb-24">
         <div className="grid gap-10 sm:grid-cols-2 sm:items-center">
           <PhotoPlaceholder
-            label="Photo: members working with a client"
+            label="180DC UCSC members working at a table"
             src="/stock/home-client-work.jpg"
             className="aspect-[4/3] w-full rounded-2xl sm:order-2"
           />

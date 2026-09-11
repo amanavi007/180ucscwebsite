@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { BarChart3, Handshake, LineChart, Megaphone, Search, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PhotoPlaceholder } from "@/components/marketing/photo-placeholder";
 import { LogoMarquee } from "@/components/marketing/logo-marquee";
 
 export const metadata: Metadata = { title: "Our Services" };
@@ -37,21 +36,6 @@ const SERVICES = [
     icon: Handshake,
     title: "Impact Measurement",
     body: "Frameworks for tracking and communicating the outcomes your organization is already creating.",
-  },
-];
-
-const EXAMPLE_ENGAGEMENTS = [
-  {
-    sector: "Environmental Nonprofit",
-    body: "Developed a volunteer recruitment and retention strategy ahead of a regional program expansion.",
-  },
-  {
-    sector: "Community Health Organization",
-    body: "Conducted market research on underserved patient populations to inform a new outreach initiative.",
-  },
-  {
-    sector: "Education-Focused Social Enterprise",
-    body: "Built a go-to-market plan for a new program aimed at first-generation college students.",
   },
 ];
 
@@ -160,29 +144,6 @@ export default function ServicesPage() {
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-6xl px-6 py-16">
-        <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
-          The kind of work we take on
-        </h2>
-        <p className="mt-2 max-w-2xl text-muted-foreground">
-          A few illustrative examples of past engagement types. Every
-          project is scoped to the client&apos;s actual need.
-        </p>
-        <PhotoPlaceholder
-          label="Photo: consultants presenting to a client"
-          src="/stock/services-presenting.jpg"
-          className="mt-8 aspect-[21/9] w-full"
-        />
-        <div className="mt-8 grid gap-6 sm:grid-cols-3">
-          {EXAMPLE_ENGAGEMENTS.map((eg) => (
-            <div key={eg.sector} className="rounded-2xl border border-foreground/10 p-6">
-              <p className="text-xs font-medium tracking-wide text-primary uppercase">{eg.sector}</p>
-              <p className="mt-3 text-sm text-muted-foreground">{eg.body}</p>
-            </div>
-          ))}
         </div>
       </section>
 
