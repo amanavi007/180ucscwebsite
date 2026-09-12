@@ -329,6 +329,30 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["quick_links"]["Insert"]>;
         Relationships: [];
       };
+      room_hotspots: {
+        Row: {
+          id: string;
+          name: string;
+          top: number;
+          left: number;
+          width: number;
+          height: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          top: number;
+          left: number;
+          width: number;
+          height: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["room_hotspots"]["Insert"]>;
+        Relationships: [];
+      };
       lead_candidates: {
         Row: {
           id: string;
