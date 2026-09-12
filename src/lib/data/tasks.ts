@@ -21,19 +21,24 @@ export interface TaskFilters {
   projectId?: string;
   status?: string;
   taskType?: string;
+  quarterId?: string;
 }
 
 export async function getVisibleTasks(filters: TaskFilters = {}): Promise<TaskWithProject[]> {
   const supabase = await createClient();
+  // `!inner` so a `quarterId` filter can constrain on the joined project's
+  // quarter_id -- project_id is required on every task, so this doesn't drop
+  // any rows a left join would have kept.
   let query = supabase
     .from("tasks")
-    .select("*, assignee:profiles(id,name), project:projects(id,client_name)")
+    .select("*, assignee:profiles(id,name), project:projects!inner(id,client_name,quarter_id)")
     .order("due_date", { ascending: true, nullsFirst: false });
 
   if (filters.assigneeId) query = query.eq("assignee_id", filters.assigneeId);
   if (filters.projectId) query = query.eq("project_id", filters.projectId);
   if (filters.status) query = query.eq("status", filters.status as TaskStatus);
   if (filters.taskType) query = query.eq("task_type", filters.taskType as TaskType);
+  if (filters.quarterId) query = query.eq("project.quarter_id", filters.quarterId);
 
   const { data, error } = await query;
   if (error) throw error;
