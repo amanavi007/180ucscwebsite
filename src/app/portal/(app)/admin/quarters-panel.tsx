@@ -96,7 +96,13 @@ const editSchema = z
 
 type EditFormValues = z.infer<typeof editSchema>;
 
-export function QuartersPanel({ quarters }: { quarters: Quarter[] }) {
+export function QuartersPanel({
+  quarters,
+  projectCounts,
+}: {
+  quarters: Quarter[];
+  projectCounts: Record<string, number>;
+}) {
   const [isPending, startTransition] = useTransition();
 
   const {
@@ -193,7 +199,7 @@ export function QuartersPanel({ quarters }: { quarters: Quarter[] }) {
               </TableRow>
             )}
             {quarters.map((q) => (
-              <QuarterRow key={q.id} quarter={q} />
+              <QuarterRow key={q.id} quarter={q} projectCount={projectCounts[q.id] ?? 0} />
             ))}
           </TableBody>
         </Table>
@@ -202,10 +208,18 @@ export function QuartersPanel({ quarters }: { quarters: Quarter[] }) {
   );
 }
 
-function QuarterRow({ quarter: q }: { quarter: Quarter }) {
+function QuarterRow({ quarter: q, projectCount }: { quarter: Quarter; projectCount: number }) {
   const [isPending, startTransition] = useTransition();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+
+  // Deleting a quarter with projects now cascades to those projects (and
+  // everything under them -- tasks, attendance, room bookings), so require
+  // typing the name back before the button is even clickable. An empty
+  // quarter has nothing to lose beyond itself, so it keeps the plain confirm.
+  const requiresTypedConfirm = projectCount > 0;
+  const canDelete = !requiresTypedConfirm || confirmText.trim() === q.name;
 
   function onToggleActive() {
     startTransition(async () => {
@@ -221,9 +235,11 @@ function QuarterRow({ quarter: q }: { quarter: Quarter }) {
   }
 
   function onDelete() {
+    if (!canDelete) return;
     startTransition(async () => {
       const result = await deleteQuarter(q.id);
       setDeleteOpen(false);
+      setConfirmText("");
       if (result?.error) {
         toast.error(result.error);
       } else {
@@ -308,18 +324,42 @@ function QuarterRow({ quarter: q }: { quarter: Quarter }) {
 
         <EditQuarterDialog quarter={q} open={editOpen} onOpenChange={setEditOpen} />
 
-        <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialog
+          open={deleteOpen}
+          onOpenChange={(open) => {
+            setDeleteOpen(open);
+            if (!open) setConfirmText("");
+          }}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete {q.name}?</AlertDialogTitle>
               <AlertDialogDescription>
-                This can&apos;t be undone. Quarters with projects already
-                linked to them can&apos;t be deleted.
+                {requiresTypedConfirm
+                  ? `This permanently deletes ${q.name} and its ${projectCount} project${projectCount === 1 ? "" : "s"} -- along with every task, attendance record, and room booking tied to ${projectCount === 1 ? "it" : "them"}. This can't be undone.`
+                  : "This can't be undone."}
               </AlertDialogDescription>
             </AlertDialogHeader>
+            {requiresTypedConfirm && (
+              <Field>
+                <FieldLabel htmlFor={`confirm-delete-${q.id}`}>
+                  Type <span className="font-medium">{q.name}</span> to confirm.
+                </FieldLabel>
+                <Input
+                  id={`confirm-delete-${q.id}`}
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  autoComplete="off"
+                />
+              </Field>
+            )}
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction disabled={isPending} onClick={onDelete}>
+              <AlertDialogAction
+                variant="destructive"
+                disabled={isPending || !canDelete}
+                onClick={onDelete}
+              >
                 Delete
               </AlertDialogAction>
             </AlertDialogFooter>

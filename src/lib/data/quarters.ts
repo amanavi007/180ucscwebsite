@@ -15,6 +15,23 @@ export async function getQuarters() {
   return data;
 }
 
+/**
+ * Project count per quarter -- only the admin Quarters panel needs this (to warn
+ * before a cascading delete), so it's kept out of getQuarters() to avoid an extra
+ * table scan for the other pages that just need quarter rows.
+ */
+export async function getQuarterProjectCounts(): Promise<Record<string, number>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("projects").select("quarter_id");
+  if (error) throw error;
+
+  const counts: Record<string, number> = {};
+  for (const row of data) {
+    counts[row.quarter_id] = (counts[row.quarter_id] ?? 0) + 1;
+  }
+  return counts;
+}
+
 // The active quarter changes at most a handful of times a term, and its RLS
 // policy (`to authenticated using (true)`) makes it identical for every
 // signed-in user -- there's no per-user variation to lose by sharing one

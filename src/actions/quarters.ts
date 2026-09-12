@@ -134,27 +134,34 @@ export async function deleteQuarter(quarterId: string): Promise<ActionResult> {
   if (denied) return denied;
 
   const supabase = await createClient();
-  const { data: quarter } = await supabase
-    .from("quarters")
-    .select("name")
-    .eq("id", quarterId)
-    .single();
+
+  // Fetched before the delete purely for the audit trail: quarter.quarter_id
+  // cascades, so this row and count would otherwise be unrecoverable context.
+  const [{ data: quarter }, { count: projectCount }] = await Promise.all([
+    supabase.from("quarters").select("name").eq("id", quarterId).single(),
+    supabase
+      .from("projects")
+      .select("id", { count: "exact", head: true })
+      .eq("quarter_id", quarterId),
+  ]);
 
   const { error } = await supabase.from("quarters").delete().eq("id", quarterId);
 
-  if (error) {
-    if (error.code === "23503") {
-      return {
-        error: "Can't delete this quarter — it still has projects linked to it.",
-      };
-    }
-    return { error: error.message };
-  }
+  if (error) return { error: error.message };
 
   const actor = await getCurrentProfile();
-  await logAudit(actor.id, "quarter.deleted", quarter?.name);
+  await logAudit(
+    actor.id,
+    "quarter.deleted",
+    quarter?.name,
+    projectCount ? `Cascaded ${projectCount} project(s)` : undefined,
+  );
 
   invalidateActiveQuarterCache();
   revalidatePath("/portal/admin");
+  revalidatePath("/portal/projects");
+  revalidatePath("/portal/directory");
+  revalidatePath("/portal");
+  revalidatePath("/portal/attendance");
   return {};
 }
