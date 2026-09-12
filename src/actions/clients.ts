@@ -54,10 +54,11 @@ export async function updateClientRecord(
   if (!input.name.trim()) return { error: "Client name is required." };
 
   const supabase = await createClient();
+  const name = input.name.trim();
   const { error } = await supabase
     .from("clients")
     .update({
-      name: input.name.trim(),
+      name,
       contact_name: input.contactName || null,
       contact_email: input.contactEmail || null,
       notes: input.notes || null,
@@ -65,7 +66,17 @@ export async function updateClientRecord(
     .eq("id", id);
   if (error) return { error: error.message };
 
+  // Keep the denormalized client_name on every one of this client's projects
+  // in sync with the rename -- the project list/board/detail views all read
+  // it directly rather than joining through clients.
+  const { error: projectsError } = await supabase
+    .from("projects")
+    .update({ client_name: name })
+    .eq("client_id", id);
+  if (projectsError) return { error: projectsError.message };
+
   revalidatePath("/portal/clients");
   revalidatePath(`/portal/clients/${id}`);
+  revalidatePath("/portal/projects");
   return {};
 }
