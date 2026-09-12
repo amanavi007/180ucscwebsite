@@ -1,6 +1,8 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { ListSearch } from "@/components/list-search";
+import { useFilteredList } from "@/lib/use-filtered-list";
 import type { WikiPageWithAuthor } from "@/lib/data/types";
 
 function TreeNode({
@@ -55,6 +57,13 @@ export function PageTree({
   selectedSlug: string | null;
   onSelect: (slug: string) => void;
 }) {
+  const { query, setQuery, filtered } = useFilteredList<WikiPageWithAuthor>(pages, ["title"]);
+  const isSearching = query.trim().length > 0;
+
+  if (pages.length === 0) {
+    return <p className="px-2 py-4 text-sm text-muted-foreground">No pages yet.</p>;
+  }
+
   const childrenByParent = new Map<string | null, WikiPageWithAuthor[]>();
   for (const page of pages) {
     const key = page.parent_id;
@@ -63,22 +72,41 @@ export function PageTree({
   }
   const topLevel = childrenByParent.get(null) ?? [];
 
-  if (pages.length === 0) {
-    return <p className="px-2 py-4 text-sm text-muted-foreground">No pages yet.</p>;
-  }
-
   return (
-    <div className="space-y-0.5">
-      {topLevel.map((page) => (
-        <TreeNode
-          key={page.id}
-          page={page}
-          childrenByParent={childrenByParent}
-          selectedSlug={selectedSlug}
-          depth={0}
-          onSelect={onSelect}
-        />
-      ))}
+    <div className="space-y-2">
+      <ListSearch value={query} onChange={setQuery} placeholder="Search pages..." />
+
+      {isSearching ? (
+        <div className="space-y-0.5">
+          {filtered.length === 0 ? (
+            <p className="px-2 py-4 text-sm text-muted-foreground">No pages match.</p>
+          ) : (
+            filtered.map((page) => (
+              <TreeNode
+                key={page.id}
+                page={page}
+                childrenByParent={new Map()}
+                selectedSlug={selectedSlug}
+                depth={0}
+                onSelect={onSelect}
+              />
+            ))
+          )}
+        </div>
+      ) : (
+        <div className="space-y-0.5">
+          {topLevel.map((page) => (
+            <TreeNode
+              key={page.id}
+              page={page}
+              childrenByParent={childrenByParent}
+              selectedSlug={selectedSlug}
+              depth={0}
+              onSelect={onSelect}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

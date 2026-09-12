@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { format } from "date-fns";
 import { getAuditLog } from "@/lib/data/audit";
 import { auditActionLabel } from "@/lib/audit-labels";
@@ -17,11 +18,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Admin · Activity" };
 
-export default async function AdminActivityPage() {
-  const entries = await getAuditLog();
+const PAGE_SIZE = 200;
+
+export default async function AdminActivityPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ offset?: string }>;
+}) {
+  const { offset: offsetParam } = await searchParams;
+  const offset = Math.max(0, Number(offsetParam) || 0);
+  const entries = await getAuditLog(PAGE_SIZE, offset);
+  const hasPrev = offset > 0;
+  const hasNext = entries.length === PAGE_SIZE;
+  const prevOffset = Math.max(0, offset - PAGE_SIZE);
+  const nextOffset = offset + PAGE_SIZE;
 
   return (
     <Card>
@@ -48,7 +62,7 @@ export default async function AdminActivityPage() {
             {entries.length === 0 && (
               <TableRow>
                 <TableCell colSpan={5} className="text-center text-muted-foreground">
-                  Nothing logged yet.
+                  {offset > 0 ? "Nothing further back." : "Nothing logged yet."}
                 </TableCell>
               </TableRow>
             )}
@@ -65,6 +79,26 @@ export default async function AdminActivityPage() {
             ))}
           </TableBody>
         </Table>
+
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!hasPrev}
+            nativeButton={false}
+            render={<Link href={`/portal/admin/activity?offset=${prevOffset}`}>Newer</Link>}
+          />
+          <p className="text-xs text-muted-foreground">
+            Showing {entries.length === 0 ? 0 : offset + 1}–{offset + entries.length}
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!hasNext}
+            nativeButton={false}
+            render={<Link href={`/portal/admin/activity?offset=${nextOffset}`}>Older / Load more</Link>}
+          />
+        </div>
       </CardContent>
     </Card>
   );

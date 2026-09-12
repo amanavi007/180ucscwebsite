@@ -8,6 +8,7 @@ import { deletePlanTeam, renamePlanTeam } from "@/actions/team-builder";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +38,8 @@ export function TeamColumn({
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(team.clientName);
   const router = useRouter();
+
+  const headcount = team.pm.length + team.sc.length + team.members.length;
 
   function onRename() {
     if (name.trim() === team.clientName) {
@@ -88,17 +91,20 @@ export function TeamColumn({
             <Pencil className="size-3 shrink-0 text-muted-foreground" />
           </button>
         )}
-        {!readOnly && (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            disabled={isPending}
-            onClick={() => setDeleteOpen(true)}
-            aria-label={`Delete ${team.clientName}`}
-          >
-            <Trash2 className="size-3.5" />
-          </Button>
-        )}
+        <div className="flex shrink-0 items-center gap-1">
+          <Badge variant="secondary">{headcount}</Badge>
+          {!readOnly && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              disabled={isPending}
+              onClick={() => setDeleteOpen(true)}
+              aria-label={`Delete ${team.clientName}`}
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         <div>

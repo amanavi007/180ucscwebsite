@@ -1,19 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getClients } from "@/lib/data/clients";
 import { isExec } from "@/lib/auth/roles";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import { NewClientDialog } from "./new-client-dialog";
+import { ClientsTable } from "./clients-table";
 
 export const metadata: Metadata = { title: "Clients" };
 
@@ -39,46 +29,7 @@ export default async function ClientsPage() {
           No clients recorded yet. Link a project to a client to start building history.
         </p>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Client</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Projects</TableHead>
-              <TableHead>Most recent</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {clients.map((c) => (
-              <TableRow key={c.id} className={cn(c.isCurrent && "bg-primary/5")}>
-                <TableCell>
-                  <Link href={`/portal/clients/${c.id}`} className="font-medium hover:underline">
-                    {c.name}
-                  </Link>
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {c.contactName || c.contactEmail ? (
-                    <>
-                      {c.contactName}
-                      {c.contactName && c.contactEmail && " · "}
-                      {c.contactEmail}
-                    </>
-                  ) : (
-                    "—"
-                  )}
-                </TableCell>
-                <TableCell className="text-sm">{c.projectCount}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {c.isCurrent ? (
-                    <Badge className="bg-primary/15 text-primary">Current</Badge>
-                  ) : (
-                    (c.lastQuarterName ?? "—")
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <ClientsTable clients={clients} />
       )}
     </div>
   );
