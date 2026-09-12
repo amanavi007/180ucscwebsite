@@ -7,6 +7,7 @@ import { Play, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { updateTask, updateTaskDueDate, updateTaskStageStep, deleteTask } from "@/actions/tasks";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -47,6 +48,9 @@ export function TaskRow({
   rosterProfiles,
   showAssignee = true,
   showDeleteColumn = true,
+  selectable = false,
+  selected = false,
+  onSelectChange,
 }: {
   task: TaskWithAssignee;
   projectId: string;
@@ -55,6 +59,10 @@ export function TaskRow({
   rosterProfiles?: { id: string; name: string }[];
   showAssignee?: boolean;
   showDeleteColumn?: boolean;
+  /** Bulk-select mode: renders a leading checkbox column. Off by default. */
+  selectable?: boolean;
+  selected?: boolean;
+  onSelectChange?: (selected: boolean) => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -103,19 +111,36 @@ export function TaskRow({
 
   const isStepped = STEPPED_TASK_TYPES.includes(task.task_type);
 
+  const gridColsClass = selectable
+    ? showAssignee
+      ? showDeleteColumn
+        ? "grid-cols-[1.5rem_1fr_7rem_9rem_9rem_13rem_2rem]"
+        : "grid-cols-[1.5rem_1fr_7rem_9rem_9rem_13rem]"
+      : showDeleteColumn
+        ? "grid-cols-[1.5rem_1fr_7rem_9rem_13rem_2rem]"
+        : "grid-cols-[1.5rem_1fr_7rem_9rem_13rem]"
+    : showAssignee
+      ? showDeleteColumn
+        ? "grid-cols-[1fr_7rem_9rem_9rem_13rem_2rem]"
+        : "grid-cols-[1fr_7rem_9rem_9rem_13rem]"
+      : showDeleteColumn
+        ? "grid-cols-[1fr_7rem_9rem_13rem_2rem]"
+        : "grid-cols-[1fr_7rem_9rem_13rem]";
+
   return (
     <div
       className={cn(
         "grid items-center gap-6 border-b px-3 py-2.5 last:border-b-0",
-        showAssignee
-          ? showDeleteColumn
-            ? "grid-cols-[1fr_7rem_9rem_9rem_13rem_2rem]"
-            : "grid-cols-[1fr_7rem_9rem_9rem_13rem]"
-          : showDeleteColumn
-            ? "grid-cols-[1fr_7rem_9rem_13rem_2rem]"
-            : "grid-cols-[1fr_7rem_9rem_13rem]",
+        gridColsClass,
       )}
     >
+      {selectable && (
+        <Checkbox
+          checked={selected}
+          onCheckedChange={(checked) => onSelectChange?.(checked === true)}
+          aria-label={`Select ${task.task_name}`}
+        />
+      )}
       <div className="min-w-0">
         <div className="flex items-center gap-1.5">
           <span
