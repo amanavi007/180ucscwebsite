@@ -27,9 +27,11 @@ export default async function AttendancePage({
 }: {
   searchParams: Promise<{ team?: string }>;
 }) {
-  const { team } = await searchParams;
-  const profile = await getCurrentProfile();
-  const activeQuarter = await getActiveQuarter();
+  const [{ team }, profile, activeQuarter] = await Promise.all([
+    searchParams,
+    getCurrentProfile(),
+    getActiveQuarter(),
+  ]);
 
   if (!activeQuarter) {
     return (

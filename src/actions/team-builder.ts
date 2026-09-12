@@ -80,26 +80,31 @@ export async function duplicatePlan(
   if (teamsError) return { error: teamsError.message };
   if (placementsError) return { error: placementsError.message };
 
-  for (const team of sourceTeams ?? []) {
-    const { data: newTeam, error: newTeamError } = await supabase
-      .from("team_plan_teams")
-      .insert({ plan_id: newPlan.id, client_name: team.client_name })
-      .select("id")
-      .single();
-    if (newTeamError) return { error: newTeamError.message };
+  // Pre-generate ids so teams + placements can each be inserted in a single
+  // batch call instead of one round trip per team.
+  const teamIdMap = new Map((sourceTeams ?? []).map((t) => [t.id, crypto.randomUUID()]));
 
-    const placementsForTeam = (sourcePlacements ?? []).filter((p) => p.plan_team_id === team.id);
-    if (placementsForTeam.length > 0) {
-      const { error: newPlacementsError } = await supabase.from("team_plan_placements").insert(
-        placementsForTeam.map((p) => ({
-          plan_id: newPlan.id,
-          plan_team_id: newTeam.id,
-          user_id: p.user_id,
-          team_role: p.team_role,
-        })),
-      );
-      if (newPlacementsError) return { error: newPlacementsError.message };
-    }
+  if (sourceTeams && sourceTeams.length > 0) {
+    const { error: newTeamsError } = await supabase.from("team_plan_teams").insert(
+      sourceTeams.map((team) => ({
+        id: teamIdMap.get(team.id)!,
+        plan_id: newPlan.id,
+        client_name: team.client_name,
+      })),
+    );
+    if (newTeamsError) return { error: newTeamsError.message };
+  }
+
+  if (sourcePlacements && sourcePlacements.length > 0) {
+    const { error: newPlacementsError } = await supabase.from("team_plan_placements").insert(
+      sourcePlacements.map((p) => ({
+        plan_id: newPlan.id,
+        plan_team_id: teamIdMap.get(p.plan_team_id)!,
+        user_id: p.user_id,
+        team_role: p.team_role,
+      })),
+    );
+    if (newPlacementsError) return { error: newPlacementsError.message };
   }
 
   revalidatePath("/portal/admin/team-builder");
@@ -329,21 +334,34 @@ export async function applyPlan(planId: string): Promise<ActionResult> {
     (realProjects ?? []).map((p) => [p.client_name.trim().toLowerCase(), p.id]),
   );
 
+  const nameByMissingKey = new Map<string, string>();
+  for (const team of planTeams ?? []) {
+    const key = team.client_name.trim().toLowerCase();
+    if (!realProjectIdByName.has(key) && !nameByMissingKey.has(key)) {
+      nameByMissingKey.set(key, team.client_name);
+    }
+  }
+
+  if (nameByMissingKey.size > 0) {
+    const { data: created, error: createError } = await supabase
+      .from("projects")
+      .insert(
+        [...nameByMissingKey.values()].map((clientName) => ({
+          client_name: clientName,
+          quarter_id: plan.quarter_id,
+        })),
+      )
+      .select("id, client_name");
+    if (createError) return { error: createError.message };
+    for (const p of created) {
+      realProjectIdByName.set(p.client_name.trim().toLowerCase(), p.id);
+    }
+  }
+
   const planTeamToProjectId = new Map<string, string>();
   for (const team of planTeams ?? []) {
     const key = team.client_name.trim().toLowerCase();
-    let projectId = realProjectIdByName.get(key);
-    if (!projectId) {
-      const { data: created, error: createError } = await supabase
-        .from("projects")
-        .insert({ client_name: team.client_name, quarter_id: plan.quarter_id })
-        .select("id")
-        .single();
-      if (createError) return { error: createError.message };
-      projectId = created.id;
-      realProjectIdByName.set(key, projectId);
-    }
-    planTeamToProjectId.set(team.id, projectId);
+    planTeamToProjectId.set(team.id, realProjectIdByName.get(key)!);
   }
 
   const desired = new Map<string, { projectId: string; teamRole: MembershipTeamRole }>();

@@ -31,15 +31,17 @@ export default async function ProjectDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const profile = await getCurrentProfile();
 
-  let project;
-  try {
-    project = await getProject(id);
-  } catch {
-    notFound();
-  }
-  if (!project) notFound();
+  // Independent of each other -- fetch concurrently instead of one after another.
+  const [profile, projectResult] = await Promise.all([
+    getCurrentProfile(),
+    getProject(id)
+      .then((p) => ({ ok: true as const, project: p }))
+      .catch(() => ({ ok: false as const, project: undefined })),
+  ]);
+
+  if (!projectResult.ok || !projectResult.project) notFound();
+  const project = projectResult.project;
 
   const canEdit = await isProjectLead(id, profile.id, isExec(profile.role));
 

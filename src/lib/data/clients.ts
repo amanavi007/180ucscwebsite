@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 export interface ClientListRow {
@@ -80,8 +81,12 @@ export async function getClients(): Promise<ClientListRow[]> {
     .sort((a, b) => Number(b.isCurrent) - Number(a.isCurrent));
 }
 
-/** A single client's contact info + every project they've been linked to, across quarters. */
-export async function getClient(id: string): Promise<ClientDetail | null> {
+/**
+ * A single client's contact info + every project they've been linked to, across quarters.
+ * Wrapped in cache() so generateMetadata and the page body -- both of which look up the
+ * same client -- share one query instead of two per request.
+ */
+export const getClient = cache(async function getClient(id: string): Promise<ClientDetail | null> {
   const supabase = await createClient();
   const { data: client, error } = await supabase
     .from("clients")
@@ -126,4 +131,4 @@ export async function getClient(id: string): Promise<ClientDetail | null> {
     notes: client.notes,
     projects: rows,
   };
-}
+});

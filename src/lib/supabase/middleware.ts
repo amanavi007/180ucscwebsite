@@ -50,19 +50,11 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (userId && isPortalPath && path !== `${PORTAL_PREFIX}/force-password-reset`) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("must_reset_password")
-      .eq("id", userId)
-      .single();
-
-    if (profile?.must_reset_password) {
-      const url = request.nextUrl.clone();
-      url.pathname = `${PORTAL_PREFIX}/force-password-reset`;
-      return NextResponse.redirect(url);
-    }
-  }
+  // The must_reset_password gate lives in `(app)/layout.tsx` instead of here:
+  // proxy is meant for fast, JWT-only checks (Next.js docs: "not intended for
+  // slow data fetching"), and the layout already loads the full profile row
+  // via `getCurrentProfile()`, so checking it there is free -- doing it here
+  // too would add a second DB round trip to every single portal navigation.
 
   return response;
 }

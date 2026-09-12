@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { computeProjectHealth } from "@/lib/project-health";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -95,7 +96,9 @@ export async function getProjects(quarterId?: string): Promise<ProjectWithRelati
   return withHealth.map((p) => ({ ...p, lead_ids: leadIdsByProject.get(p.id) ?? [] }));
 }
 
-export async function getProject(id: string): Promise<ProjectWithQuarter> {
+// Wrapped in cache() so generateMetadata and the page body -- both of which
+// look up the same project -- share one query instead of two per request.
+export const getProject = cache(async function getProject(id: string): Promise<ProjectWithQuarter> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("projects")
@@ -107,7 +110,7 @@ export async function getProject(id: string): Promise<ProjectWithQuarter> {
 
   if (error) throw error;
   return data as unknown as ProjectWithQuarter;
-}
+});
 
 /** Projects this member is on (via memberships, which PM/SC are auto-added to) for a quarter. */
 export async function getMyProjects(

@@ -47,42 +47,42 @@ export async function bulkCreateMembers(
 
   const admin = createAdminClient();
   const defaultPassword = await getDefaultBulkPassword();
-  const results: BulkCreateResult[] = [];
 
-  for (const row of rows) {
-    const name = row.name.trim();
-    const email = row.email.trim().toLowerCase();
+  // Each row is an independent auth signup (no batch endpoint exists), so run
+  // them concurrently rather than awaiting one at a time.
+  const results: BulkCreateResult[] = await Promise.all(
+    rows.map(async (row): Promise<BulkCreateResult> => {
+      const name = row.name.trim();
+      const email = row.email.trim().toLowerCase();
 
-    if (!name || !email) {
-      results.push({ name, email, status: "error", message: "Missing name or email." });
-      continue;
-    }
-    if (!EMAIL_DOMAIN.test(email)) {
-      results.push({ name, email, status: "error", message: "Must be a @180dc.org address." });
-      continue;
-    }
+      if (!name || !email) {
+        return { name, email, status: "error", message: "Missing name or email." };
+      }
+      if (!EMAIL_DOMAIN.test(email)) {
+        return { name, email, status: "error", message: "Must be a @180dc.org address." };
+      }
 
-    // The on_auth_user_created trigger mirrors user_metadata into a profiles
-    // row (name/role), so there's no separate profiles insert here.
-    const { data: created, error: createError } = await admin.auth.admin.createUser({
-      email,
-      password: defaultPassword,
-      email_confirm: true,
-      user_metadata: { name, role: "consultant" },
-    });
-
-    if (createError || !created.user) {
-      results.push({
-        name,
+      // The on_auth_user_created trigger mirrors user_metadata into a profiles
+      // row (name/role), so there's no separate profiles insert here.
+      const { data: created, error: createError } = await admin.auth.admin.createUser({
         email,
-        status: "error",
-        message: createError?.message ?? "Failed to create account.",
+        password: defaultPassword,
+        email_confirm: true,
+        user_metadata: { name, role: "consultant" },
       });
-      continue;
-    }
 
-    results.push({ name, email, status: "created" });
-  }
+      if (createError || !created.user) {
+        return {
+          name,
+          email,
+          status: "error",
+          message: createError?.message ?? "Failed to create account.",
+        };
+      }
+
+      return { name, email, status: "created" };
+    }),
+  );
 
   const createdCount = results.filter((r) => r.status === "created").length;
   if (createdCount > 0) {

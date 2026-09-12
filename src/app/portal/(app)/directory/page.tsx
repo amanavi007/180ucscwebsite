@@ -14,8 +14,7 @@ import { AlumniView } from "./alumni-view";
 export const metadata: Metadata = { title: "Directory" };
 
 export default async function DirectoryPage() {
-  const profile = await getCurrentProfile();
-  const activeQuarter = await getActiveQuarter();
+  const [profile, activeQuarter] = await Promise.all([getCurrentProfile(), getActiveQuarter()]);
   const [rows, alumni] = await Promise.all([getDirectory(activeQuarter?.id ?? null), getAlumni()]);
   const exec = isExec(profile.role);
 
