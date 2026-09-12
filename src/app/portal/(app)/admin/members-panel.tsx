@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
+import { ChevronDown, ChevronRight, Eye, EyeOff, MoreHorizontal } from "lucide-react";
 import {
   bulkCreateMembers,
   resetMemberPassword,
@@ -74,6 +74,28 @@ interface ArchivedMember extends Member {
 
 const ROLE_OPTIONS = Object.keys(ROLE_LABELS) as UserRole[];
 
+/**
+ * Execs legitimately need to read this off to a new member, so hide it behind
+ * a reveal toggle rather than exposing it in plain text everywhere it shows up.
+ */
+function MaskedSecret({ value }: { value: string }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <span className="inline-flex items-center gap-1 align-middle">
+      <code>{visible ? value : "•".repeat(value.length || 8)}</code>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        onClick={() => setVisible((v) => !v)}
+        aria-label={visible ? "Hide password" : "Show password"}
+      >
+        {visible ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+      </Button>
+    </span>
+  );
+}
+
 function parseRows(text: string) {
   return text
     .split("\n")
@@ -131,8 +153,9 @@ export function MembersPanel({
           <CardTitle>Add members</CardTitle>
           <CardDescription>
             One per line: <code>Name, email@180dc.org</code>. New accounts get the default
-            password <code>{defaultPassword}</code> and a consultant role, and are forced to set
-            their own password on first login. Change the default password in Settings.
+            password <MaskedSecret value={defaultPassword} /> and a consultant role, and are
+            forced to set their own password on first login. Change the default password in
+            Settings.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -231,11 +254,20 @@ function MemberRow({ member, defaultPassword }: { member: Member; defaultPasswor
   const [isPending, startTransition] = useTransition();
   const [resetOpen, setResetOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [roleChangeOpen, setRoleChangeOpen] = useState(false);
+  const [pendingRole, setPendingRole] = useState<UserRole | null>(null);
 
-  function onRoleChange(value: string | null) {
-    if (!value) return;
+  function onRoleSelect(value: string | null) {
+    if (!value || value === member.role) return;
+    setPendingRole(value as UserRole);
+    setRoleChangeOpen(true);
+  }
+
+  function onConfirmRoleChange() {
+    if (!pendingRole) return;
     startTransition(async () => {
-      const result = await updateMemberRole(member.id, value as UserRole);
+      const result = await updateMemberRole(member.id, pendingRole);
+      setRoleChangeOpen(false);
       if (result?.error) toast.error(result.error);
       else toast.success("Role updated.");
     });
@@ -266,7 +298,7 @@ function MemberRow({ member, defaultPassword }: { member: Member; defaultPasswor
       <TableCell className="font-medium">{member.name}</TableCell>
       <TableCell className="text-muted-foreground">{member.email}</TableCell>
       <TableCell>
-        <Select value={member.role} onValueChange={onRoleChange} disabled={isPending}>
+        <Select value={member.role} onValueChange={onRoleSelect} disabled={isPending}>
           <SelectTrigger size="sm" className="w-56">
             <SelectValue>{(value: UserRole) => roleLabel(value)}</SelectValue>
           </SelectTrigger>
@@ -278,6 +310,33 @@ function MemberRow({ member, defaultPassword }: { member: Member; defaultPasswor
             ))}
           </SelectContent>
         </Select>
+
+        <AlertDialog
+          open={roleChangeOpen}
+          onOpenChange={(open) => {
+            setRoleChangeOpen(open);
+            if (!open) setPendingRole(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Change {member.name}&apos;s role?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {member.name} will be set to{" "}
+                <span className="font-medium">
+                  {pendingRole ? ROLE_LABELS[pendingRole] : ""}
+                </span>
+                .
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={onConfirmRoleChange} disabled={isPending}>
+                Change role
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </TableCell>
       <TableCell className="text-right">
         <DropdownMenu>
@@ -307,8 +366,8 @@ function MemberRow({ member, defaultPassword }: { member: Member; defaultPasswor
               <AlertDialogTitle>Reset {member.name}&apos;s password?</AlertDialogTitle>
               <AlertDialogDescription>
                 Their password will be set back to the default (
-                <code>{defaultPassword}</code>) and they&apos;ll be required to set a new one on
-                next login.
+                <MaskedSecret value={defaultPassword} />) and they&apos;ll be required to set a
+                new one on next login.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

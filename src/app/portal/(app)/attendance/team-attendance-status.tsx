@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { format } from "date-fns";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,9 +24,10 @@ export function TeamAttendanceStatusCard({
       </CardHeader>
       <CardContent className="flex flex-wrap gap-2">
         {teams.map((t) => (
-          <div
+          <Link
             key={t.projectId}
-            className="flex items-center gap-1.5 rounded-full border py-1 pr-2.5 pl-3 text-xs"
+            href={`/portal/attendance?team=${t.projectId}`}
+            className="flex items-center gap-1.5 rounded-full border py-1 pr-2.5 pl-3 text-xs hover:bg-muted/50"
           >
             <span className="font-medium">{t.clientName}</span>
             {todayIsMeetingDay &&
@@ -42,7 +44,7 @@ export function TeamAttendanceStatusCard({
                 {t.missingDates.length} gap{t.missingDates.length === 1 ? "" : "s"}
               </span>
             )}
-          </div>
+          </Link>
         ))}
       </CardContent>
     </Card>

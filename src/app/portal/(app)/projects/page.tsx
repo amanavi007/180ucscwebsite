@@ -11,9 +11,10 @@ export const metadata: Metadata = { title: "Projects" };
 export default async function ProjectsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ quarter?: string }>;
+  searchParams: Promise<{ quarter?: string; view?: string }>;
 }) {
-  const { quarter } = await searchParams;
+  const { quarter, view } = await searchParams;
+  const selectedView = view === "table" ? "table" : "board";
   const [profile, quarters, activeQuarter] = await Promise.all([
     getCurrentProfile(),
     getQuarters(),
@@ -43,6 +44,7 @@ export default async function ProjectsPage({
         canCreate={isExec(profile.role)}
         currentUserId={profile.id}
         isExec={isExec(profile.role)}
+        view={selectedView}
       />
     </div>
   );

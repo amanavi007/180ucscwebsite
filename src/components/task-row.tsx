@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Play, Trash2 } from "lucide-react";
@@ -16,6 +16,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { TaskStageTimeline } from "@/components/task-stage-timeline";
 import { TaskStatusSelect } from "@/components/task-status-select";
 import {
@@ -57,6 +67,7 @@ export function TaskRow({
   showDeleteColumn?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const router = useRouter();
 
   const canEditFields = canManage || isOwn;
@@ -88,6 +99,7 @@ export function TaskRow({
   function onDelete() {
     startTransition(async () => {
       const result = await deleteTask(task.id, projectId);
+      setDeleteOpen(false);
       if (result?.error) toast.error(result.error);
       else router.refresh();
     });
@@ -238,15 +250,31 @@ export function TaskRow({
 
       {showDeleteColumn &&
         (canDelete ? (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            disabled={isPending}
-            onClick={onDelete}
-            aria-label={`Delete ${task.task_name}`}
-          >
-            <Trash2 className="size-3.5" />
-          </Button>
+          <>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              disabled={isPending}
+              onClick={() => setDeleteOpen(true)}
+              aria-label={`Delete ${task.task_name}`}
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+            <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete &quot;{task.task_name}&quot;?</AlertDialogTitle>
+                  <AlertDialogDescription>This can&apos;t be undone.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction variant="destructive" onClick={onDelete} disabled={isPending}>
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </>
         ) : (
           <span />
         ))}

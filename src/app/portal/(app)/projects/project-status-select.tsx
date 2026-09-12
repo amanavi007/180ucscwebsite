@@ -29,6 +29,7 @@ export function ProjectStatusSelect({
     startTransition(async () => {
       const result = await updateProjectStatus(projectId, value as ProjectStatus);
       if (result?.error) toast.error(result.error);
+      else toast.success(`Status updated to ${statusLabel(value as ProjectStatus)}.`);
     });
   }
 

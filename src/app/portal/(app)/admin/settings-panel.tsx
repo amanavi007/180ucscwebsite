@@ -81,6 +81,8 @@ export function SettingsPanel({
             <div className="flex gap-2">
               <Input
                 id="default-password"
+                type="password"
+                autoComplete="new-password"
                 value={passwordValue}
                 onChange={(e) => setPasswordValue(e.target.value)}
                 disabled={isPendingPassword}

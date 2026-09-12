@@ -26,6 +26,7 @@ export function ProjectsView({
   canCreate,
   currentUserId,
   isExec,
+  view,
 }: {
   projects: ProjectWithRelations[];
   quarters: Quarter[];
@@ -34,15 +35,27 @@ export function ProjectsView({
   canCreate: boolean;
   currentUserId: string;
   isExec: boolean;
+  view: "board" | "table";
 }) {
   const router = useRouter();
+
+  // Quarter and view are independent URL params on the same page -- changing
+  // one should carry the other along instead of resetting it.
+  function navigate(next: { quarter?: string; view?: string }) {
+    const params = new URLSearchParams();
+    const nextQuarter = next.quarter ?? selectedQuarterId;
+    const nextView = next.view ?? view;
+    if (nextQuarter) params.set("quarter", nextQuarter);
+    if (nextView) params.set("view", nextView);
+    router.push(`/portal/projects?${params.toString()}`);
+  }
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Select
           value={selectedQuarterId ?? undefined}
-          onValueChange={(value) => router.push(`/portal/projects?quarter=${value}`)}
+          onValueChange={(value) => value && navigate({ quarter: value })}
         >
           <SelectTrigger className="w-48">
             <SelectValue placeholder="Select a quarter">
@@ -71,7 +84,7 @@ export function ProjectsView({
         )}
       </div>
 
-      <Tabs defaultValue="board">
+      <Tabs value={view} onValueChange={(value) => value && navigate({ view: value as string })}>
         <TabsList>
           <TabsTrigger value="board">Board</TabsTrigger>
           <TabsTrigger value="table">Table</TabsTrigger>

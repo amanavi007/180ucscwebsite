@@ -12,10 +12,13 @@ export default async function CalendarPage() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Meeting days, project deadlines, and org events -- everything happening this month, in one
-        place.
-      </p>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Calendar</h1>
+        <p className="text-sm text-muted-foreground">
+          Meeting days, project deadlines, and org events -- everything happening this month, in
+          one place.
+        </p>
+      </div>
       <CalendarView events={events} today={getOrgTodayDateString()} isExec={isExec(profile.role)} />
     </div>
   );
