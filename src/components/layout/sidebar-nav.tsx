@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { NAV_LINKS } from "./nav-links";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-const GROUP_LABEL: Record<string, string> = { work: "Work", people: "People" };
+const GROUP_LABEL: Record<string, string> = { work: "Work", people: "People", reference: "Reference" };
 
 export function SidebarNav({
   isExec,
