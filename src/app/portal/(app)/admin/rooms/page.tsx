@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { getQuarters } from "@/lib/data/quarters";
 import { getMeetingDatesForQuarter } from "@/lib/data/meeting-dates";
 import { getRoomBookingsForDate } from "@/lib/data/room-bookings";
+import { getRoomHotspots } from "@/lib/data/room-hotspots";
+import { getCurrentProfile } from "@/lib/data/profile";
+import { isExec } from "@/lib/auth/roles";
 import { getOrgTodayDateString } from "@/lib/date";
 import { QuarterSelect } from "@/components/quarter-select";
 import { DateSelect } from "./date-select";
@@ -60,6 +63,9 @@ export default async function RoomsPage({
     (date && meetingDates.includes(date) ? date : null) ?? pickDefaultDate(meetingDates, today)!;
 
   const teams = await getRoomBookingsForDate(selectedQuarter.id, selectedDate);
+  const hotspots = await getRoomHotspots();
+  const profile = await getCurrentProfile();
+  const canEditHotspots = isExec(profile.role);
 
   return (
     <div className="space-y-6">
@@ -86,7 +92,12 @@ export default async function RoomsPage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <RoomMap date={selectedDate} teams={teams} />
+          <RoomMap
+            date={selectedDate}
+            teams={teams}
+            hotspots={hotspots}
+            canEditHotspots={canEditHotspots}
+          />
         </CardContent>
       </Card>
     </div>

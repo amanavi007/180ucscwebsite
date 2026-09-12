@@ -4,18 +4,15 @@ import { useMemo, useState, useTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { AlertTriangle, X } from "lucide-react";
+import { AlertTriangle, Pencil, X } from "lucide-react";
 import { setRoomBooking } from "@/actions/room-bookings";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  ROOM_HOTSPOTS,
-  ROOM_MAP_IMAGE,
-  ROOM_MAP_IMAGE_WIDTH,
-  ROOM_MAP_IMAGE_HEIGHT,
-} from "@/lib/rooms";
+import { ROOM_MAP_IMAGE, ROOM_MAP_IMAGE_WIDTH, ROOM_MAP_IMAGE_HEIGHT } from "@/lib/rooms";
 import type { RoomBooking } from "@/lib/data/room-bookings";
+import type { RoomHotspot } from "@/lib/data/room-hotspots";
+import { HotspotEditor } from "./hotspot-editor";
 
 const TEAM_COLORS = [
   "#2563eb",
@@ -30,12 +27,23 @@ const TEAM_COLORS = [
   "#ea580c",
 ];
 
-export function RoomMap({ date, teams }: { date: string; teams: RoomBooking[] }) {
+export function RoomMap({
+  date,
+  teams,
+  hotspots,
+  canEditHotspots,
+}: {
+  date: string;
+  teams: RoomBooking[];
+  hotspots: RoomHotspot[];
+  canEditHotspots: boolean;
+}) {
   const [activeId, setActiveId] = useState<string | null>(
     teams.find((t) => t.roomName === null)?.projectId ?? teams[0]?.projectId ?? null,
   );
   const [customValue, setCustomValue] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [editMode, setEditMode] = useState(false);
   const router = useRouter();
 
   const colorByTeam = useMemo(() => {
@@ -90,12 +98,43 @@ export function RoomMap({ date, teams }: { date: string; teams: RoomBooking[] })
     save(activeTeam.projectId, assigning ? roomName : null, assigning);
   }
 
+  if (editMode) {
+    return (
+      <HotspotEditor
+        hotspots={hotspots}
+        onCancel={() => setEditMode(false)}
+        onSaved={() => {
+          setEditMode(false);
+          router.refresh();
+        }}
+      />
+    );
+  }
+
   if (teams.length === 0) {
-    return <p className="text-sm text-muted-foreground">No teams in this quarter yet.</p>;
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-muted-foreground">No teams in this quarter yet.</p>
+        {canEditHotspots && (
+          <Button type="button" variant="outline" size="sm" onClick={() => setEditMode(true)}>
+            <Pencil />
+            Edit room map
+          </Button>
+        )}
+      </div>
+    );
   }
 
   return (
     <div className="space-y-4">
+      {canEditHotspots && (
+        <div className="flex justify-end">
+          <Button type="button" variant="outline" size="sm" onClick={() => setEditMode(true)}>
+            <Pencil />
+            Edit room map
+          </Button>
+        </div>
+      )}
       <div className="flex flex-wrap gap-1.5">
         {teams.map((t) => {
           const color = colorByTeam.get(t.projectId)!;
@@ -185,13 +224,13 @@ export function RoomMap({ date, teams }: { date: string; teams: RoomBooking[] })
           className="object-contain select-none"
           priority
         />
-        {ROOM_HOTSPOTS.map((spot) => {
+        {hotspots.map((spot) => {
           const occupants = teamsByRoom.get(spot.name) ?? [];
           const isActiveRoom = activeTeam?.roomName === spot.name;
           const color = occupants[0] ? colorByTeam.get(occupants[0].projectId) : undefined;
           return (
             <button
-              key={spot.name}
+              key={spot.id}
               type="button"
               onClick={() => handleHotspotClick(spot.name)}
               disabled={isPending}
