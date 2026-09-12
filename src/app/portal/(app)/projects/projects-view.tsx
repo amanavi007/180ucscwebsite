@@ -9,6 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ListSearch } from "@/components/list-search";
+import { useFilteredList } from "@/lib/use-filtered-list";
 import { ProjectBoard } from "./project-board";
 import { ProjectTable } from "./project-table";
 import { NewProjectDialog } from "./new-project-dialog";
@@ -37,30 +39,45 @@ export function ProjectsView({
 }) {
   const router = useRouter();
 
+  const { query, setQuery, filtered } = useFilteredList<ProjectWithRelations>(projects, [
+    "client_name",
+    (p) => p.project_manager?.name,
+    (p) => p.senior_consultant?.name,
+  ]);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Select
-          value={selectedQuarterId ?? undefined}
-          onValueChange={(value) => router.push(`/portal/projects?quarter=${value}`)}
-        >
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Select a quarter">
-              {(value: string) => {
-                const q = quarters.find((q) => q.id === value);
-                return q ? `${q.name}${q.is_active ? " (active)" : ""}` : "Select a quarter";
-              }}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {quarters.map((q) => (
-              <SelectItem key={q.id} value={q.id}>
-                {q.name}
-                {q.is_active ? " (active)" : ""}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap items-center gap-3">
+          <Select
+            value={selectedQuarterId ?? undefined}
+            onValueChange={(value) => router.push(`/portal/projects?quarter=${value}`)}
+          >
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Select a quarter">
+                {(value: string) => {
+                  const q = quarters.find((q) => q.id === value);
+                  return q ? `${q.name}${q.is_active ? " (active)" : ""}` : "Select a quarter";
+                }}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {quarters.map((q) => (
+                <SelectItem key={q.id} value={q.id}>
+                  {q.name}
+                  {q.is_active ? " (active)" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <ListSearch
+            value={query}
+            onChange={setQuery}
+            placeholder="Search client or PM..."
+            className="w-64"
+          />
+        </div>
 
         {canCreate && (
           <NewProjectDialog
@@ -77,10 +94,10 @@ export function ProjectsView({
           <TabsTrigger value="table">Table</TabsTrigger>
         </TabsList>
         <TabsContent value="board">
-          <ProjectBoard projects={projects} currentUserId={currentUserId} isExec={isExec} />
+          <ProjectBoard projects={filtered} currentUserId={currentUserId} isExec={isExec} />
         </TabsContent>
         <TabsContent value="table">
-          <ProjectTable projects={projects} />
+          <ProjectTable projects={filtered} />
         </TabsContent>
       </Tabs>
     </div>

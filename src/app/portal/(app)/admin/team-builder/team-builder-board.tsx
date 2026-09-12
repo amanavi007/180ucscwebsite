@@ -26,6 +26,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ListSearch } from "@/components/list-search";
+import { useFilteredList } from "@/lib/use-filtered-list";
 import {
   Dialog,
   DialogContent,
@@ -152,6 +155,9 @@ export function TeamBuilderBoard({
   const router = useRouter();
 
   const readOnly = plan.isFinalized;
+
+  const { query: unassignedQuery, setQuery: setUnassignedQuery, filtered: visibleUnassigned } =
+    useFilteredList(board.unassigned, ["name"]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
@@ -283,15 +289,27 @@ export function TeamBuilderBoard({
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="flex items-start gap-4">
           <Card className="w-64 shrink-0">
-            <CardHeader className="border-b py-3">
+            <CardHeader className="flex-row items-center justify-between gap-2 space-y-0 border-b py-3">
               <CardTitle className="text-base">Unassigned</CardTitle>
+              <Badge variant="secondary">{board.unassigned.length}</Badge>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-2">
+              <ListSearch
+                value={unassignedQuery}
+                onChange={setUnassignedQuery}
+                placeholder="Search..."
+              />
               <DropZone
                 id="unassigned"
-                placeholder={board.unassigned.length === 0 ? "Everyone's placed" : undefined}
+                placeholder={
+                  board.unassigned.length === 0
+                    ? "Everyone's placed"
+                    : visibleUnassigned.length === 0
+                      ? "No matches"
+                      : undefined
+                }
               >
-                {board.unassigned.map((p) => (
+                {visibleUnassigned.map((p) => (
                   <MemberChip
                     key={p.id}
                     profile={p}

@@ -10,13 +10,13 @@ export interface AuditLogRow {
   createdAt: string;
 }
 
-export async function getAuditLog(limit = 200): Promise<AuditLogRow[]> {
+export async function getAuditLog(limit = 200, offset = 0): Promise<AuditLogRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("audit_log")
     .select("id, action, target_label, detail, created_at, actor:profiles(name)")
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .range(offset, offset + limit - 1);
   if (error) throw error;
 
   return (

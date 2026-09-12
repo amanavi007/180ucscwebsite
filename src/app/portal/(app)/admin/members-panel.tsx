@@ -59,6 +59,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ROLE_LABELS, roleLabel } from "@/lib/auth/roles";
+import { ListSearch } from "@/components/list-search";
+import { useFilteredList } from "@/lib/use-filtered-list";
 import type { UserRole } from "@/lib/supabase/database.types";
 
 interface Member {
@@ -97,8 +99,16 @@ export function MembersPanel({
   const [bulkText, setBulkText] = useState("");
   const [isPending, startTransition] = useTransition();
   const [results, setResults] = useState<BulkCreateResult[] | null>(null);
+  const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
 
   const previewRows = parseRows(bulkText);
+
+  const { query, setQuery, filtered: searchedMembers } = useFilteredList<Member>(members, [
+    "name",
+    "email",
+  ]);
+  const visibleMembers =
+    roleFilter === "all" ? searchedMembers : searchedMembers.filter((m) => m.role === roleFilter);
 
   function onCreate() {
     const rows = parseRows(bulkText);
@@ -196,7 +206,30 @@ export function MembersPanel({
             {members.length} member{members.length === 1 ? "" : "s"} total.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <ListSearch
+              value={query}
+              onChange={setQuery}
+              placeholder="Search name or email..."
+              className="w-64"
+            />
+            <Select value={roleFilter} onValueChange={(v) => v && setRoleFilter(v as UserRole | "all")}>
+              <SelectTrigger size="sm" className="w-48">
+                <SelectValue>
+                  {(value: UserRole | "all") => (value === "all" ? "All roles" : roleLabel(value))}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All roles</SelectItem>
+                {ROLE_OPTIONS.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {ROLE_LABELS[r]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -207,14 +240,14 @@ export function MembersPanel({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {members.length === 0 && (
+              {visibleMembers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground">
-                    No members yet.
+                    {members.length === 0 ? "No members yet." : "No members match."}
                   </TableCell>
                 </TableRow>
               )}
-              {members.map((m) => (
+              {visibleMembers.map((m) => (
                 <MemberRow key={m.id} member={m} defaultPassword={defaultPassword} />
               ))}
             </TableBody>
