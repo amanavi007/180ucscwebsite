@@ -113,13 +113,26 @@ export function CommandPalette({
     if (!canSearch) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- debounced search loading indicator
     setIsSearching(true);
+    let cancelled = false;
     const timeout = setTimeout(() => {
-      globalSearch(query).then((r) => {
-        setResults(r);
-        setIsSearching(false);
-      });
+      globalSearch(query)
+        .then((r) => {
+          if (cancelled) return;
+          setResults(r);
+          setIsSearching(false);
+        })
+        .catch(() => {
+          // Falls back to "no results" instead of leaving the palette stuck
+          // on "Searching..." forever after a transient fetch failure.
+          if (cancelled) return;
+          setResults([]);
+          setIsSearching(false);
+        });
     }, 200);
-    return () => clearTimeout(timeout);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
   }, [query, canSearch]);
 
   const pageMatches = matchPages(query, isExec);

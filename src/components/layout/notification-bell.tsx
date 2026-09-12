@@ -20,9 +20,15 @@ export function NotificationBell() {
 
   useEffect(() => {
     let cancelled = false;
-    getMyNotificationsAction().then((result) => {
-      if (!cancelled) setFeed(result);
-    });
+    getMyNotificationsAction()
+      .then((result) => {
+        if (!cancelled) setFeed(result);
+      })
+      .catch(() => {
+        // Leaves the bell showing "caught up" rather than spinning forever
+        // on a transient fetch failure -- notifications aren't critical path.
+        if (!cancelled) setFeed({ items: [], unreadCount: 0 });
+      });
     return () => {
       cancelled = true;
     };

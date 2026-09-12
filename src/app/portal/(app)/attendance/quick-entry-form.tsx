@@ -46,9 +46,14 @@ export function QuickEntryForm({
     setDate(newDate);
     setIsLoadingDate(true);
     startTransition(async () => {
-      const session = newDate === today ? initialSession : await fetchSessionForDate(projectId, newDate);
-      setMarks(marksFromSession(session));
-      setIsLoadingDate(false);
+      try {
+        const session = newDate === today ? initialSession : await fetchSessionForDate(projectId, newDate);
+        setMarks(marksFromSession(session));
+      } catch {
+        toast.error("Couldn't load attendance for that date. Try again.");
+      } finally {
+        setIsLoadingDate(false);
+      }
     });
   }
 
