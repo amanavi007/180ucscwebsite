@@ -27,7 +27,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Field, FieldGroup, FieldLabel, FieldError } from "@/components/ui/field";
+import { MarkdownContent } from "@/components/markdown-content";
 import type { WikiSection } from "@/lib/supabase/database.types";
 import type { WikiPageWithAuthor } from "@/lib/data/types";
 
@@ -71,6 +73,7 @@ export function PageDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [slugTouched, setSlugTouched] = useState(!!page);
+  const [bodyTab, setBodyTab] = useState<"write" | "preview">("write");
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const isEdit = !!page;
@@ -139,9 +142,12 @@ export function PageDialog({
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next && !isEdit) {
-          reset();
-          setSlugTouched(false);
+        if (!next) {
+          setBodyTab("write");
+          if (!isEdit) {
+            reset();
+            setSlugTouched(false);
+          }
         }
       }}
     >
@@ -212,11 +218,37 @@ export function PageDialog({
 
             <Field>
               <FieldLabel htmlFor="body">Body</FieldLabel>
-              <Textarea
-                id="body"
-                rows={10}
-                placeholder="Markdown supported..."
-                {...register("body")}
+              <Controller
+                control={control}
+                name="body"
+                render={({ field }) => (
+                  <Tabs
+                    value={bodyTab}
+                    onValueChange={(v) => v && setBodyTab(v as "write" | "preview")}
+                  >
+                    <TabsList>
+                      <TabsTrigger value="write">Write</TabsTrigger>
+                      <TabsTrigger value="preview">Preview</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="write">
+                      <Textarea
+                        id="body"
+                        rows={10}
+                        placeholder="Markdown supported..."
+                        {...field}
+                      />
+                    </TabsContent>
+                    <TabsContent value="preview">
+                      <div className="min-h-40 rounded-lg border border-input px-2.5 py-2">
+                        {field.value ? (
+                          <MarkdownContent body={field.value} />
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Nothing to preview.</p>
+                        )}
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                )}
               />
             </Field>
           </FieldGroup>
