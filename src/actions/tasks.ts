@@ -166,6 +166,80 @@ export async function resetTaskStage(taskId: string, projectId: string): Promise
   return {};
 }
 
+/**
+ * Bulk version of `deleteTask` -- one batched `.in("id", ...)` delete instead
+ * of a loop, so reassigning/deleting a handful of tasks at once (e.g. moving
+ * everything off someone who just left) doesn't fire N separate DB writes.
+ * Gating mirrors `deleteTask`: leads may delete anything, everyone else only
+ * their own non-default tasks.
+ */
+export async function bulkDeleteTasks(taskIds: string[], projectId: string): Promise<ActionResult> {
+  if (taskIds.length === 0) return {};
+
+  const profile = await getCurrentProfile();
+  const exec = isExec(profile.role);
+  const leads = await canLeadProject(projectId, profile.id, exec);
+
+  const supabase = await createClient();
+
+  if (!leads) {
+    const { data: rows } = await supabase
+      .from("tasks")
+      .select("id, assignee_id, is_default_task")
+      .in("id", taskIds);
+
+    const allDeletable =
+      !!rows &&
+      rows.length === taskIds.length &&
+      rows.every((t) => t.assignee_id === profile.id && !t.is_default_task);
+
+    if (!allDeletable) {
+      return { error: "You can only delete your own tasks." };
+    }
+  }
+
+  const { error } = await supabase.from("tasks").delete().in("id", taskIds);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/portal/projects/${projectId}`);
+  revalidatePath("/portal/tasks");
+  return {};
+}
+
+/**
+ * Bulk reassign, one batched update instead of a loop. Reassigning others'
+ * tasks is a lead-only action (mirrors `canReassign` in TaskRow, which only
+ * ever renders the picker for `canManage` users), so this is gated to leads
+ * rather than mirroring `updateTask` (which has no gating of its own since
+ * the UI never exposes reassignment of others' tasks to base members).
+ */
+export async function bulkReassignTasks(
+  taskIds: string[],
+  newAssigneeId: string,
+  projectId: string,
+): Promise<ActionResult> {
+  if (taskIds.length === 0) return {};
+
+  const profile = await getCurrentProfile();
+  const exec = isExec(profile.role);
+  const leads = await canLeadProject(projectId, profile.id, exec);
+
+  if (!leads) {
+    return { error: "Only PMs/SCs can reassign tasks." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tasks")
+    .update({ assignee_id: newAssigneeId })
+    .in("id", taskIds);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/portal/projects/${projectId}`);
+  revalidatePath("/portal/tasks");
+  return {};
+}
+
 export async function deleteTask(taskId: string, projectId: string): Promise<ActionResult> {
   const profile = await getCurrentProfile();
   const exec = isExec(profile.role);
