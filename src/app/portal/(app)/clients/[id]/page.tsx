@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentProfile } from "@/lib/data/profile";
-import { getClient } from "@/lib/data/clients";
+import { getClient, getClients } from "@/lib/data/clients";
 import { getActiveQuarter } from "@/lib/data/quarters";
 import { isExec } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import type { ProjectStatus, ProjectHealth } from "@/lib/supabase/database.types";
 import type { ClientProject } from "@/lib/data/clients";
 import { EditClientDialog } from "./edit-client-dialog";
+import { MergeClientDialog } from "./merge-client-dialog";
 
 export async function generateMetadata({
   params,
@@ -34,6 +35,9 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   if (!client) notFound();
 
   const exec = isExec(profile.role);
+  const otherClients = exec
+    ? (await getClients()).filter((c) => c.id !== id).map((c) => ({ id: c.id, name: c.name }))
+    : [];
   const currentProjects = client.projects.filter((p) => p.quarterId === activeQuarter?.id);
   const pastProjects = client.projects.filter((p) => p.quarterId !== activeQuarter?.id);
 
@@ -46,7 +50,12 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
             {client.projects.length} project{client.projects.length === 1 ? "" : "s"} across quarters
           </p>
         </div>
-        {exec && <EditClientDialog client={client} />}
+        {exec && (
+          <div className="flex flex-wrap gap-2">
+            <EditClientDialog client={client} />
+            <MergeClientDialog client={client} otherClients={otherClients} />
+          </div>
+        )}
       </div>
 
       <Card>
