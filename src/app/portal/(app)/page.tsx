@@ -39,8 +39,7 @@ import type { TaskWithProject } from "@/lib/data/types";
 export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function DashboardPage() {
-  const profile = await getCurrentProfile();
-  const activeQuarter = await getActiveQuarter();
+  const [profile, activeQuarter] = await Promise.all([getCurrentProfile(), getActiveQuarter()]);
   const exec = isExec(profile.role);
 
   if (!activeQuarter) {
@@ -215,104 +214,104 @@ export default async function DashboardPage() {
   ].filter((g) => g.tasks.length > 0);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Welcome, {profile.name.split(" ")[0]}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {roleLabel(profile.role)} · {activeQuarter.name}
-        </p>
+    <div>
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Welcome, {profile.name.split(" ")[0]}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {roleLabel(profile.role)} · {activeQuarter.name}
+          </p>
+        </div>
+
+        {nextRooms.length > 0 && (
+          <div className="space-y-2">
+            {nextRooms.map((r) => (
+              <Alert key={r.projectId} tone="primary">
+                <MapPin />
+                {r.clientName} meets in <span className="font-medium">{r.room}</span>{" "}
+                {r.isToday
+                  ? "today."
+                  : `next time (${nextMeetingDate ? format(parseLocalDate(nextMeetingDate), "EEE, MMM d") : ""}).`}
+              </Alert>
+            ))}
+          </div>
+        )}
+
+        {pendingAttendanceNudges.length > 0 && (
+          <div className="space-y-2">
+            {pendingAttendanceNudges.map((n) => (
+              <Alert
+                key={n.projectId}
+                render={<Link href={`/portal/attendance?team=${n.projectId}`} />}
+              >
+                <AlertTriangle />
+                {n.clientName} hasn&apos;t logged today&apos;s attendance yet -- it&apos;s a meeting
+                day. Log it now.
+              </Alert>
+            ))}
+          </div>
+        )}
+
+        {myProjects.length > 0 && (
+          <div className="flex flex-wrap gap-x-10 gap-y-4">
+            <StatTile
+              label="Your attendance"
+              value={attendanceSummary.rate === null ? "--" : `${Math.round(attendanceSummary.rate * 100)}%`}
+              detail={
+                attendanceSummary.rate === null
+                  ? "No sessions logged yet"
+                  : attendanceSummary.rate < threshold
+                    ? `Below the ${Math.round(threshold * 100)}% target`
+                    : "This quarter"
+              }
+              tone={attendanceSummary.rate !== null && attendanceSummary.rate < threshold ? "warning" : undefined}
+              href="/portal/attendance"
+            />
+            <StatTile
+              label="Tasks this quarter"
+              value={`${doneTaskCount}/${myAllTasks.length}`}
+              detail={myAllTasks.length === 0 ? "Nothing assigned yet" : "Done"}
+              href="/portal/tasks"
+            />
+          </div>
+        )}
       </div>
 
-      {nextRooms.length > 0 && (
-        <div className="space-y-2">
-          {nextRooms.map((r) => (
-            <Alert key={r.projectId} tone="primary">
-              <MapPin />
-              {r.clientName} meets in <span className="font-medium">{r.room}</span>{" "}
-              {r.isToday
-                ? "today."
-                : `next time (${nextMeetingDate ? format(parseLocalDate(nextMeetingDate), "EEE, MMM d") : ""}).`}
-            </Alert>
-          ))}
-        </div>
-      )}
-
-      {pendingAttendanceNudges.length > 0 && (
-        <div className="space-y-2">
-          {pendingAttendanceNudges.map((n) => (
-            <Alert
-              key={n.projectId}
-              render={<Link href={`/portal/attendance?team=${n.projectId}`} />}
-            >
-              <AlertTriangle />
-              {n.clientName} hasn&apos;t logged today&apos;s attendance yet -- it&apos;s a meeting
-              day. Log it now.
-            </Alert>
-          ))}
-        </div>
-      )}
-
       {myProjects.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <StatTile
-            label="Your attendance"
-            value={attendanceSummary.rate === null ? "--" : `${Math.round(attendanceSummary.rate * 100)}%`}
-            detail={
-              attendanceSummary.rate === null
-                ? "No sessions logged yet"
-                : attendanceSummary.rate < threshold
-                  ? `Below the ${Math.round(threshold * 100)}% target`
-                  : "This quarter"
-            }
-            tone={attendanceSummary.rate !== null && attendanceSummary.rate < threshold ? "warning" : undefined}
-            href="/portal/attendance"
-          />
-          <StatTile
-            label="Tasks this quarter"
-            value={`${doneTaskCount}/${myAllTasks.length}`}
-            detail={myAllTasks.length === 0 ? "Nothing assigned yet" : "Done"}
-            href="/portal/tasks"
-          />
-        </div>
-      )}
-
-      {myProjects.length > 0 && (
-        <div className="space-y-2">
-          {myProjects.map((project) => (
-            <Link
-              key={project.id}
-              href={`/portal/projects/${project.id}`}
-              className="flex flex-wrap items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
-            >
-              <div className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium">{project.client_name}</span>
-                <span className="text-xs text-muted-foreground">
-                  PM: {project.project_manager?.name ?? "Unassigned"}
-                  {project.senior_consultant && ` · SC: ${project.senior_consultant.name}`}
-                </span>
-              </div>
-              <RosterAvatars members={roster.get(project.id) ?? []} />
-              <div className="flex shrink-0 items-center gap-2">
-                <HealthBadge health={project.health} />
-                {project.deadline && (
+        <Section title="My teams">
+          <div className="divide-y">
+            {myProjects.map((project) => (
+              <Link
+                key={project.id}
+                href={`/portal/projects/${project.id}`}
+                className="-mx-2 flex flex-wrap items-center gap-3 rounded-md px-2 py-3 transition-colors first:pt-0 hover:bg-muted/50"
+              >
+                <div className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">{project.client_name}</span>
                   <span className="text-xs text-muted-foreground">
-                    Due {format(parseLocalDate(project.deadline), "MMM d")}
+                    PM: {project.project_manager?.name ?? "Unassigned"}
+                    {project.senior_consultant && ` · SC: ${project.senior_consultant.name}`}
                   </span>
-                )}
-              </div>
-            </Link>
-          ))}
-        </div>
+                </div>
+                <RosterAvatars members={roster.get(project.id) ?? []} />
+                <div className="flex shrink-0 items-center gap-2">
+                  <HealthBadge health={project.health} />
+                  {project.deadline && (
+                    <span className="text-xs text-muted-foreground">
+                      Due {format(parseLocalDate(project.deadline), "MMM d")}
+                    </span>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </Section>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">My tasks</CardTitle>
-          <CardDescription>Open tasks assigned to you this quarter.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <Section title="My tasks" description="Open tasks assigned to you this quarter.">
+        <div className="space-y-4">
           {myProjects.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               You&apos;re not on a team this quarter yet.
@@ -324,7 +323,7 @@ export default async function DashboardPage() {
               <div key={group.label} className="space-y-1">
                 <p
                   className={cn(
-                    "text-xs font-medium tracking-wide uppercase",
+                    "text-xs font-medium",
                     group.label === "Overdue" ? "text-destructive" : "text-muted-foreground",
                   )}
                 >
@@ -362,81 +361,87 @@ export default async function DashboardPage() {
               View all tasks
             </Link>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </Section>
 
       {summary && (
-        <div className="space-y-3">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Exec to-dos</CardTitle>
-              <CardDescription>Shared admin checklist -- not tied to a project.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ExecTodoList todos={execTodos} execMembers={execMembers} today={today} />
-            </CardContent>
-          </Card>
+        <>
+          <Section title="Exec to-dos" description="Shared admin checklist -- not tied to a project.">
+            <ExecTodoList todos={execTodos} execMembers={execMembers} today={today} />
+          </Section>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Needs attention</CardTitle>
-              <CardDescription>Org-wide items worth a look right now.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {summary.atRiskProjects.length === 0 &&
-              summary.belowThresholdMembers.length === 0 &&
-              summary.missingAttendanceTeams.length === 0 &&
-              summary.unbookedRoomTeams.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Nothing needs attention right now -- everything&apos;s on track.
-                </p>
-              ) : (
-                <div>
-                  <AttentionRow
-                    icon={AlertTriangle}
-                    label={`${summary.atRiskProjects.length} project${summary.atRiskProjects.length === 1 ? "" : "s"} at risk`}
-                    items={summary.atRiskProjects.map((p) => ({
-                      key: p.id,
-                      label: p.clientName,
-                      href: `/portal/projects/${p.id}`,
-                    }))}
-                  />
-                  <AttentionRow
-                    icon={AlertTriangle}
-                    label={`${summary.belowThresholdMembers.length} below attendance target`}
-                    items={summary.belowThresholdMembers.map((m) => ({
-                      key: m.userId,
-                      label: `${m.name} (${Math.round(m.rate * 100)}%)`,
-                      href: "/portal/directory",
-                    }))}
-                  />
-                  <AttentionRow
-                    icon={AlertTriangle}
-                    label={`${summary.missingAttendanceTeams.length} haven't logged today's attendance`}
-                    items={summary.missingAttendanceTeams.map((t) => ({
-                      key: t.projectId,
-                      label: t.clientName,
-                      href: `/portal/attendance?team=${t.projectId}`,
-                    }))}
-                  />
-                  <AttentionRow
-                    icon={MapPin}
-                    label={`${summary.unbookedRoomTeams.length} need a room for ${
-                      nextMeetingDate ? format(parseLocalDate(nextMeetingDate), "EEE, MMM d") : "the next meeting"
-                    }`}
-                    items={summary.unbookedRoomTeams.map((t) => ({
-                      key: t.projectId,
-                      label: t.clientName,
-                      href: "/portal/admin/rooms",
-                    }))}
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+          <Section title="Needs attention" description="Org-wide items worth a look right now.">
+            {summary.atRiskProjects.length === 0 &&
+            summary.belowThresholdMembers.length === 0 &&
+            summary.missingAttendanceTeams.length === 0 &&
+            summary.unbookedRoomTeams.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Nothing needs attention right now -- everything&apos;s on track.
+              </p>
+            ) : (
+              <div>
+                <AttentionRow
+                  icon={AlertTriangle}
+                  label={`${summary.atRiskProjects.length} project${summary.atRiskProjects.length === 1 ? "" : "s"} at risk`}
+                  items={summary.atRiskProjects.map((p) => ({
+                    key: p.id,
+                    label: p.clientName,
+                    href: `/portal/projects/${p.id}`,
+                  }))}
+                />
+                <AttentionRow
+                  icon={AlertTriangle}
+                  label={`${summary.belowThresholdMembers.length} below attendance target`}
+                  items={summary.belowThresholdMembers.map((m) => ({
+                    key: m.userId,
+                    label: `${m.name} (${Math.round(m.rate * 100)}%)`,
+                    href: "/portal/directory",
+                  }))}
+                />
+                <AttentionRow
+                  icon={AlertTriangle}
+                  label={`${summary.missingAttendanceTeams.length} haven't logged today's attendance`}
+                  items={summary.missingAttendanceTeams.map((t) => ({
+                    key: t.projectId,
+                    label: t.clientName,
+                    href: `/portal/attendance?team=${t.projectId}`,
+                  }))}
+                />
+                <AttentionRow
+                  icon={MapPin}
+                  label={`${summary.unbookedRoomTeams.length} need a room for ${
+                    nextMeetingDate ? format(parseLocalDate(nextMeetingDate), "EEE, MMM d") : "the next meeting"
+                  }`}
+                  items={summary.unbookedRoomTeams.map((t) => ({
+                    key: t.projectId,
+                    label: t.clientName,
+                    href: "/portal/admin/rooms",
+                  }))}
+                />
+              </div>
+            )}
+          </Section>
+        </>
       )}
     </div>
+  );
+}
+
+function Section({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="mt-10 border-t pt-8">
+      <h2 className="text-base font-semibold">{title}</h2>
+      {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+      <div className="mt-4">{children}</div>
+    </section>
   );
 }
 
@@ -493,18 +498,12 @@ function StatTile({
   const warn = tone === "warning";
 
   return (
-    <Link href={href}>
-      <Card className="transition-colors hover:bg-muted/50">
-        <CardContent className="flex items-center justify-between py-4">
-          <div>
-            <p className="text-sm font-medium">{label}</p>
-            {detail && (
-              <p className={cn("text-xs", warn ? "text-warning" : "text-muted-foreground")}>{detail}</p>
-            )}
-          </div>
-          <p className={cn("text-2xl font-semibold", warn && "text-warning")}>{value}</p>
-        </CardContent>
-      </Card>
+    <Link href={href} className="group min-w-32">
+      <p className={cn("text-2xl font-semibold tabular-nums", warn && "text-warning")}>{value}</p>
+      <p className="text-sm font-medium group-hover:underline">{label}</p>
+      {detail && (
+        <p className={cn("text-xs", warn ? "text-warning" : "text-muted-foreground")}>{detail}</p>
+      )}
     </Link>
   );
 }
