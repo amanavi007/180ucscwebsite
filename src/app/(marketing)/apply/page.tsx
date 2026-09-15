@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { ArrowUpRight, FileText, MessageCircle, PartyPopper } from "lucide-react";
+import { ArrowUpRight, ChevronDown, FileText, MessageCircle, PartyPopper } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionPanel } from "@/components/ui/accordion";
 import { PhotoPlaceholder } from "@/components/marketing/photo-placeholder";
 
 export const metadata: Metadata = { title: "Apply Now" };
@@ -84,11 +85,15 @@ export default function ApplyPage() {
         <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
           How recruitment works
         </h2>
-        <div className="mt-8 grid gap-6 sm:grid-cols-3">
+        <div className="mt-10 grid gap-10 sm:grid-cols-3 sm:divide-x sm:divide-foreground/10">
           {STEPS.map((step, i) => (
-            <div key={step.title} className="rounded-2xl border border-primary/15 bg-primary/5 p-6">
-              <span className="font-brand text-sm font-bold text-primary">0{i + 1}</span>
-              <step.icon className="mt-3 size-6 text-primary" />
+            <div key={step.title} className="sm:px-8 sm:first:pl-0">
+              <div className="flex items-center gap-3">
+                <span className="font-brand flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                  0{i + 1}
+                </span>
+                <step.icon className="size-5 text-primary" />
+              </div>
               <h3 className="mt-4 font-semibold">{step.title}</h3>
               <p className="mt-2 text-sm text-muted-foreground">{step.body}</p>
             </div>
@@ -98,14 +103,19 @@ export default function ApplyPage() {
 
       <section className="mx-auto max-w-6xl px-4 py-16 pb-24 sm:px-6">
         <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">FAQs</h2>
-        <div className="mt-8 grid gap-6 sm:grid-cols-2">
+        <Accordion className="mt-8 border-t border-foreground/10">
           {FAQS.map((faq) => (
-            <div key={faq.q} className="rounded-2xl border border-foreground/10 p-6">
-              <h3 className="font-semibold">{faq.q}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{faq.a}</p>
-            </div>
+            <AccordionItem key={faq.q} value={faq.q}>
+              <AccordionTrigger>
+                <span className="flex-1 font-semibold">{faq.q}</span>
+                <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-panel-open:rotate-180" />
+              </AccordionTrigger>
+              <AccordionPanel>
+                <p className="text-muted-foreground text-pretty">{faq.a}</p>
+              </AccordionPanel>
+            </AccordionItem>
           ))}
-        </div>
+        </Accordion>
 
         <div className="mint-panel mt-12 flex flex-col items-start justify-between gap-6 rounded-[2.5rem] p-10 sm:flex-row sm:items-center">
           <div>

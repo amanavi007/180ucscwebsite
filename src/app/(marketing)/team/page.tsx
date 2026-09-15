@@ -64,11 +64,7 @@ function MemberCard({
 }
 
 function RosterComingSoon({ label }: { label: string }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-8 text-center text-sm text-muted-foreground">
-      {label} roster coming soon.
-    </div>
-  );
+  return <p className="py-4 text-sm text-muted-foreground/70">{label} roster coming soon.</p>;
 }
 
 export default function TeamPage() {
@@ -150,12 +146,11 @@ export default function TeamPage() {
         <div className="mint-panel flex flex-col items-start justify-between gap-6 rounded-[2.5rem] p-10 sm:flex-row sm:items-center">
           <div>
             <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
-              And a full roster of consultants
+              Want to be part of the next team?
             </h2>
             <p className="mt-2 max-w-md text-foreground/70">
-              Behind every client project is a team of project managers and
-              consultants pulled from majors across campus. Want to be one
-              of them next quarter?
+              Every project manager and consultant here started the same way
+              you would: an application and an interview.
             </p>
           </div>
           <Button nativeButton={false} size="lg" className="shrink-0 rounded-full" render={<Link href="/apply" />}>

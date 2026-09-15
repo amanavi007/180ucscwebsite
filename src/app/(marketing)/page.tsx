@@ -92,9 +92,9 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="mt-12 grid gap-6 sm:grid-cols-3">
+          <div className="mt-12 grid gap-10 sm:grid-cols-3 sm:divide-x sm:divide-foreground/10">
             {PILLARS.map((pillar) => (
-              <div key={pillar.title} className="rounded-2xl bg-background p-6 shadow-sm">
+              <div key={pillar.title} className="sm:px-8 sm:first:pl-0">
                 <pillar.icon className="size-6 text-primary" />
                 <h3 className="mt-4 font-semibold">{pillar.title}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{pillar.body}</p>
@@ -104,7 +104,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 pt-16 pb-24">
+      <section className="mx-auto max-w-6xl px-6 pt-16 pb-16">
         <div className="grid gap-10 sm:grid-cols-2 sm:items-center">
           <PhotoPlaceholder
             label="180DC UCSC members working at a table"
@@ -128,6 +128,33 @@ export default function HomePage() {
             >
               Meet the team
               <ArrowRight className="size-4" />
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pb-24 sm:px-6">
+        <div className="mint-panel flex flex-col items-start justify-between gap-6 rounded-[2.5rem] p-10 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
+              Ready to get involved?
+            </h2>
+            <p className="mt-2 max-w-md text-foreground/70">
+              Join the team, or bring us your organization&apos;s next strategic challenge.
+            </p>
+          </div>
+          <div className="flex shrink-0 gap-3">
+            <Button nativeButton={false} size="lg" className="rounded-full" render={<Link href="/apply" />}>
+              Apply Now
+            </Button>
+            <Button
+              nativeButton={false}
+              size="lg"
+              variant="outline"
+              className="rounded-full"
+              render={<Link href="/services" />}
+            >
+              Become a Client
             </Button>
           </div>
         </div>

@@ -1,11 +1,24 @@
-import Link from "next/link";
 import type { Metadata } from "next";
-import { BarChart3, Handshake, LineChart, Megaphone, Search, TrendingUp } from "lucide-react";
+import {
+  ArrowUpRight,
+  BarChart3,
+  ChevronDown,
+  Handshake,
+  LineChart,
+  Megaphone,
+  Search,
+  TrendingUp,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionPanel } from "@/components/ui/accordion";
 import { LogoMarquee } from "@/components/marketing/logo-marquee";
 
 export const metadata: Metadata = { title: "Our Services" };
+
+// TODO: point this at the real client-interest intake (Google Form, Typeform,
+// etc.) before launch. This is a placeholder -- distinct from the consultant
+// recruitment application at /apply.
+const CLIENT_FORM_URL = "https://forms.gle/replace-with-real-client-interest-link";
 
 const SERVICES = [
   {
@@ -131,8 +144,14 @@ export default function ServicesPage() {
             real strategic challenge alongside a dedicated student team.
           </p>
           <div className="mt-8">
-            <Button nativeButton={false} size="lg" className="rounded-full" render={<Link href="/apply" />}>
+            <Button
+              nativeButton={false}
+              size="lg"
+              className="gap-1.5 rounded-full"
+              render={<a href={CLIENT_FORM_URL} target="_blank" rel="noopener noreferrer" />}
+            >
               Become a Client
+              <ArrowUpRight className="size-4" />
             </Button>
           </div>
         </div>
@@ -140,33 +159,30 @@ export default function ServicesPage() {
 
       <section className="mx-auto max-w-6xl px-6 py-16">
         <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">What we do</h2>
-        <Tabs defaultValue={SERVICES[0].title} className="mt-8">
-          <TabsList className="h-auto flex-wrap justify-start gap-1.5 bg-transparent p-0 ring-0 backdrop-blur-none">
-            {SERVICES.map((service) => (
-              <TabsTrigger
-                key={service.title}
-                value={service.title}
-                className="h-9 gap-1.5 rounded-full border border-foreground/10 px-4 text-foreground/70 data-active:border-transparent data-active:bg-primary data-active:text-primary-foreground"
-              >
-                <service.icon className="size-4" />
-                {service.title}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-          {SERVICES.map((service) => (
-            <TabsContent key={service.title} value={service.title} className="mt-6">
-              <div className="flex flex-col gap-4 rounded-2xl border border-foreground/10 bg-background p-8 shadow-sm sm:flex-row sm:items-start sm:gap-6">
-                <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                  <service.icon className="size-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold">{service.title}</h3>
-                  <p className="mt-2 text-muted-foreground text-pretty">{service.body}</p>
-                </div>
-              </div>
-            </TabsContent>
+        <Accordion className="mt-8 grid gap-x-12 sm:grid-cols-2">
+          {[SERVICES.slice(0, 3), SERVICES.slice(3)].map((column, colIndex) => (
+            <div key={colIndex} className="border-t border-foreground/10">
+              {column.map((service, i) => {
+                const index = colIndex * 3 + i;
+                return (
+                  <AccordionItem key={service.title} value={service.title}>
+                    <AccordionTrigger>
+                      <span className="font-brand w-8 shrink-0 text-lg text-primary/50">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <service.icon className="size-5 shrink-0 text-primary" />
+                      <span className="flex-1 text-base font-semibold sm:text-lg">{service.title}</span>
+                      <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-panel-open:rotate-180" />
+                    </AccordionTrigger>
+                    <AccordionPanel>
+                      <p className="pl-8 text-muted-foreground text-pretty sm:pl-[4.25rem]">{service.body}</p>
+                    </AccordionPanel>
+                  </AccordionItem>
+                );
+              })}
+            </div>
           ))}
-        </Tabs>
+        </Accordion>
       </section>
 
       <section className="w-full bg-mint py-16 sm:py-20">
@@ -220,8 +236,14 @@ export default function ServicesPage() {
               through. We review client applications every quarter.
             </p>
           </div>
-          <Button nativeButton={false} size="lg" className="shrink-0 rounded-full" render={<Link href="/apply" />}>
+          <Button
+            nativeButton={false}
+            size="lg"
+            className="shrink-0 gap-1.5 rounded-full"
+            render={<a href={CLIENT_FORM_URL} target="_blank" rel="noopener noreferrer" />}
+          >
             Become a Client
+            <ArrowUpRight className="size-4" />
           </Button>
         </div>
       </section>

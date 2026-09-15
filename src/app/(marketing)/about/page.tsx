@@ -1,5 +1,7 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { Globe2, Lightbulb, ShieldCheck, Sprout } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { PhotoPlaceholder } from "@/components/marketing/photo-placeholder";
 
 export const metadata: Metadata = { title: "About Us" };
@@ -73,9 +75,9 @@ export default function AboutPage() {
       <section className="w-full bg-mint py-16">
         <div className="mx-auto max-w-6xl px-6">
           <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">Our values</h2>
-          <div className="mt-8 grid gap-6 sm:grid-cols-2">
+          <div className="mt-10 grid gap-x-10 gap-y-10 sm:grid-cols-2">
             {VALUES.map((value) => (
-              <div key={value.title} className="rounded-2xl bg-background p-6 shadow-sm">
+              <div key={value.title}>
                 <value.icon className="size-6 text-primary" />
                 <h3 className="mt-4 font-semibold">{value.title}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{value.body}</p>
@@ -97,16 +99,16 @@ export default function AboutPage() {
               engineer, or still figuring it out, there&apos;s a place for
               you here.
             </p>
-            <div className="mt-6 grid grid-cols-3 gap-3">
+            <div className="mt-8 flex flex-wrap gap-y-4 divide-x divide-foreground/15">
               {QUICK_FACTS.map((fact) => (
-                <div key={fact.label} className="rounded-2xl border border-foreground/10 bg-background/60 p-4">
+                <div key={fact.label} className="px-8 first:pl-0 last:pr-0">
                   <p className="font-brand text-lg font-bold tracking-wide text-primary uppercase">{fact.label}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">{fact.detail}</p>
                 </div>
               ))}
             </div>
           </div>
-          <div className="rounded-2xl border border-foreground/10 bg-background/60 p-6">
+          <div>
             <p className="text-sm font-bold tracking-wide text-primary uppercase">Majors represented</p>
             <div className="mt-4 space-y-3">
               {MAJORS.map((major) => (
@@ -124,6 +126,33 @@ export default function AboutPage() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 py-16 pb-24 sm:px-6">
+        <div className="mint-panel flex flex-col items-start justify-between gap-6 rounded-[2.5rem] p-10 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
+              Like the sound of this?
+            </h2>
+            <p className="mt-2 max-w-md text-foreground/70">
+              See what we actually do for clients, or apply to join the team yourself.
+            </p>
+          </div>
+          <div className="flex shrink-0 gap-3">
+            <Button nativeButton={false} size="lg" className="rounded-full" render={<Link href="/apply" />}>
+              Apply Now
+            </Button>
+            <Button
+              nativeButton={false}
+              size="lg"
+              variant="outline"
+              className="rounded-full"
+              render={<Link href="/services" />}
+            >
+              Our Services
+            </Button>
           </div>
         </div>
       </section>
