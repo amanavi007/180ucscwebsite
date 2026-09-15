@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, MapPin, Clock } from "lucide-react";
-import { deleteOrgEvent } from "@/actions/calendar";
-import type { CalendarEvent } from "@/lib/data/calendar";
+import { deleteOrgEvent, deleteProjectEvent } from "@/actions/calendar";
+import type { CalendarEvent, LeadProject } from "@/lib/data/calendar";
 import { parseLocalDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { EventFormDialog, type EventFormValues } from "./event-form-dialog";
+import { ProjectEventFormDialog, type ProjectEventFormValues } from "./project-event-form-dialog";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -29,15 +30,22 @@ const TYPE_STYLE: Record<CalendarEvent["type"], { dot: string; chip: string }> =
   meeting: { dot: "bg-primary", chip: "bg-primary/10 text-primary" },
   deadline: { dot: "bg-destructive", chip: "bg-destructive/10 text-destructive" },
   event: { dot: "bg-warning", chip: "bg-warning/10 text-warning" },
+  project: { dot: "bg-foreground/60", chip: "bg-foreground/10 text-foreground/70" },
 };
 
 const TYPE_LABEL: Record<CalendarEvent["type"], string> = {
   meeting: "Meeting day",
   deadline: "Project deadline",
   event: "Event",
+  project: "Project item",
 };
 
-const TYPE_ORDER: Record<CalendarEvent["type"], number> = { meeting: 0, deadline: 1, event: 2 };
+const TYPE_ORDER: Record<CalendarEvent["type"], number> = {
+  meeting: 0,
+  deadline: 1,
+  event: 2,
+  project: 3,
+};
 
 function toDateString(d: Date): string {
   const y = d.getFullYear();
@@ -55,14 +63,20 @@ const EMPTY_FORM: EventFormValues = {
   description: "",
 };
 
+function emptyProjectForm(projectId: string, date: string): ProjectEventFormValues {
+  return { id: null, projectId, consultantId: null, title: "", date, time: "", location: "", description: "" };
+}
+
 export function CalendarView({
   events,
   today,
   isExec,
+  leadProjects,
 }: {
   events: CalendarEvent[];
   today: string;
   isExec: boolean;
+  leadProjects: LeadProject[];
 }) {
   const router = useRouter();
   const [viewMonth, setViewMonth] = useState(() => {
@@ -71,8 +85,15 @@ export function CalendarView({
   });
   const [openDay, setOpenDay] = useState<string | null>(null);
   const [form, setForm] = useState<EventFormValues | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const [projectForm, setProjectForm] = useState<ProjectEventFormValues | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    title: string;
+    type: CalendarEvent["type"];
+    projectId: string | null;
+  } | null>(null);
   const [isDeleting, startDelete] = useTransition();
+  const canAddProjectItem = leadProjects.length > 0;
 
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
@@ -106,8 +127,26 @@ export function CalendarView({
     setForm({ ...EMPTY_FORM, date: dateStr });
   }
 
+  function openAddProjectDialog(dateStr: string) {
+    setOpenDay(null);
+    setProjectForm(emptyProjectForm(leadProjects[0]?.id ?? "", dateStr));
+  }
+
   function openEditDialog(e: CalendarEvent) {
     setOpenDay(null);
+    if (e.type === "project") {
+      setProjectForm({
+        id: e.sourceId,
+        projectId: e.projectId!,
+        consultantId: e.consultantId,
+        title: e.title,
+        date: e.date,
+        time: e.time ?? "",
+        location: e.location ?? "",
+        description: e.description ?? "",
+      });
+      return;
+    }
     setForm({
       id: e.sourceId,
       title: e.title,
@@ -122,12 +161,15 @@ export function CalendarView({
     if (!deleteTarget) return;
     const target = deleteTarget;
     startDelete(async () => {
-      const result = await deleteOrgEvent(target.id);
+      const result =
+        target.type === "project"
+          ? await deleteProjectEvent(target.id, target.projectId!)
+          : await deleteOrgEvent(target.id);
       if (result?.error) {
         toast.error(result.error);
         return;
       }
-      toast.success("Event deleted.");
+      toast.success("Deleted.");
       setDeleteTarget(null);
       router.refresh();
     });
@@ -181,6 +223,12 @@ export function CalendarView({
             <Button size="sm" onClick={() => openAddDialog(today)} className="gap-1.5">
               <Plus className="size-4" />
               Add event
+            </Button>
+          )}
+          {canAddProjectItem && (
+            <Button size="sm" variant="outline" onClick={() => openAddProjectDialog(today)} className="gap-1.5">
+              <Plus className="size-4" />
+              Add my item
             </Button>
           )}
         </div>
@@ -255,17 +303,30 @@ export function CalendarView({
                           day: "numeric",
                         })}
                       </p>
-                      {isExec && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 gap-1 px-2 text-xs"
-                          onClick={() => openAddDialog(dateStr)}
-                        >
-                          <Plus className="size-3.5" />
-                          Add
-                        </Button>
-                      )}
+                      <div className="flex gap-1">
+                        {isExec && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 gap-1 px-2 text-xs"
+                            onClick={() => openAddDialog(dateStr)}
+                          >
+                            <Plus className="size-3.5" />
+                            Event
+                          </Button>
+                        )}
+                        {canAddProjectItem && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 gap-1 px-2 text-xs"
+                            onClick={() => openAddProjectDialog(dateStr)}
+                          >
+                            <Plus className="size-3.5" />
+                            My item
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     {dayEvents.length === 0 ? (
                       <p className="text-sm text-muted-foreground">Nothing scheduled.</p>
@@ -314,14 +375,14 @@ export function CalendarView({
                                   <p className="mt-1 text-xs text-muted-foreground">{e.description}</p>
                                 )}
                               </div>
-                              {isExec && e.type === "event" && (
+                              {e.canManage && (e.type === "event" || e.type === "project") && (
                                 <div className="flex shrink-0 gap-0.5">
                                   <Button
                                     variant="ghost"
                                     size="icon"
                                     className="size-6"
                                     onClick={() => openEditDialog(e)}
-                                    aria-label="Edit event"
+                                    aria-label="Edit"
                                   >
                                     <Pencil className="size-3.5" />
                                   </Button>
@@ -331,9 +392,14 @@ export function CalendarView({
                                     className="size-6 text-destructive hover:text-destructive"
                                     onClick={() => {
                                       setOpenDay(null);
-                                      setDeleteTarget({ id: e.sourceId, title: e.title });
+                                      setDeleteTarget({
+                                        id: e.sourceId,
+                                        title: e.title,
+                                        type: e.type,
+                                        projectId: e.projectId,
+                                      });
                                     }}
-                                    aria-label="Delete event"
+                                    aria-label="Delete"
                                   >
                                     <Trash2 className="size-3.5" />
                                   </Button>
@@ -353,6 +419,13 @@ export function CalendarView({
       </div>
 
       {form && <EventFormDialog defaults={form} onClose={() => setForm(null)} />}
+      {projectForm && (
+        <ProjectEventFormDialog
+          defaults={projectForm}
+          leadProjects={leadProjects}
+          onClose={() => setProjectForm(null)}
+        />
+      )}
 
       <AlertDialog open={deleteTarget !== null} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>

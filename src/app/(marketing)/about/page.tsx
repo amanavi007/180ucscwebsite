@@ -4,6 +4,24 @@ import { PhotoPlaceholder } from "@/components/marketing/photo-placeholder";
 
 export const metadata: Metadata = { title: "About Us" };
 
+// TODO: swap in the chapter's real major breakdown once membership data
+// tracks it -- these are representative placeholder counts, not measured.
+const MAJORS = [
+  { label: "Economics", count: 18 },
+  { label: "Computer Science", count: 15 },
+  { label: "Business Management", count: 12 },
+  { label: "Biology", count: 9 },
+  { label: "Environmental Studies", count: 7 },
+  { label: "Other majors", count: 14 },
+];
+const MAJORS_MAX = Math.max(...MAJORS.map((m) => m.count));
+
+const QUICK_FACTS = [
+  { label: "Pro bono", detail: "every engagement" },
+  { label: "Quarterly", detail: "project cycles" },
+  { label: "Global", detail: "180DC network" },
+];
+
 const VALUES = [
   {
     icon: Sprout,
@@ -70,34 +88,41 @@ export default function AboutPage() {
       <section className="mx-auto max-w-6xl px-6 py-16">
         <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">Our community</h2>
 
-        <div className="mint-panel mt-8 grid gap-10 rounded-[2.5rem] p-10 sm:grid-cols-2 sm:items-center">
+        <div className="mint-panel mt-8 grid gap-10 rounded-[2.5rem] p-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <div>
-            <p className="mt-1 text-foreground/70 text-pretty">
-              {/* TODO: swap in the chapter's real member count, majors represented,
-                  and founding year once available. */}
-              Our members come from a wide range of majors and backgrounds,
-              but share a common drive: to build real strategy skills while
-              doing work that actually helps someone. Whether you&apos;re
-              pre-business, pre-med, an engineer, or still figuring it out,
-              there&apos;s a place for you here.
+            <p className="text-foreground/70 text-pretty">
+              Our members come from every corner of campus, united by wanting
+              to build real strategy skills while doing work that actually
+              helps someone. Whether you&apos;re pre-business, pre-med, an
+              engineer, or still figuring it out, there&apos;s a place for
+              you here.
             </p>
+            <div className="mt-6 grid grid-cols-3 gap-3">
+              {QUICK_FACTS.map((fact) => (
+                <div key={fact.label} className="rounded-2xl border border-foreground/10 bg-background/60 p-4">
+                  <p className="font-brand text-lg font-bold tracking-wide text-primary uppercase">{fact.label}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{fact.detail}</p>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-2xl border border-foreground/10 bg-background/60 p-5">
-              <p className="font-brand text-2xl font-bold tracking-wide text-primary uppercase">Every major</p>
-              <p className="mt-1 text-sm text-muted-foreground">welcome to apply</p>
-            </div>
-            <div className="rounded-2xl border border-foreground/10 bg-background/60 p-5">
-              <p className="font-brand text-2xl font-bold tracking-wide text-primary uppercase">Pro bono</p>
-              <p className="mt-1 text-sm text-muted-foreground">every engagement</p>
-            </div>
-            <div className="rounded-2xl border border-foreground/10 bg-background/60 p-5">
-              <p className="font-brand text-2xl font-bold tracking-wide text-primary uppercase">Quarterly</p>
-              <p className="mt-1 text-sm text-muted-foreground">project cycles</p>
-            </div>
-            <div className="rounded-2xl border border-foreground/10 bg-background/60 p-5">
-              <p className="font-brand text-2xl font-bold tracking-wide text-primary uppercase">Global</p>
-              <p className="mt-1 text-sm text-muted-foreground">180DC network</p>
+          <div className="rounded-2xl border border-foreground/10 bg-background/60 p-6">
+            <p className="text-sm font-bold tracking-wide text-primary uppercase">Majors represented</p>
+            <div className="mt-4 space-y-3">
+              {MAJORS.map((major) => (
+                <div key={major.label} className="flex items-center gap-3">
+                  <span className="w-40 shrink-0 truncate text-sm text-foreground/80">{major.label}</span>
+                  <div className="h-2 flex-1 rounded-full bg-foreground/10">
+                    <div
+                      className="h-full rounded-full bg-primary"
+                      style={{ width: `${(major.count / MAJORS_MAX) * 100}%` }}
+                    />
+                  </div>
+                  <span className="w-6 shrink-0 text-right text-sm font-semibold tabular-nums">
+                    {major.count}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </div>

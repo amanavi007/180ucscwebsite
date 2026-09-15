@@ -39,3 +39,18 @@ export const getCurrentProfile = cache(async function getCurrentProfile(): Promi
 
   return profile;
 });
+
+/**
+ * Same lookup as `getCurrentProfile`, but returns null instead of redirecting
+ * when signed out -- for pages that render for both logged-in and logged-out
+ * visitors (the marketing site), where a hard redirect would be wrong.
+ */
+export const getOptionalProfile = cache(async function getOptionalProfile(): Promise<Profile | null> {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const userId = data?.claims.sub;
+  if (!userId) return null;
+
+  const { data: profile } = await supabase.from("profiles").select("*").eq("id", userId).single();
+  return profile ?? null;
+});

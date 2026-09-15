@@ -433,6 +433,36 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["org_events"]["Insert"]>;
         Relationships: [];
       };
+      project_events: {
+        Row: {
+          id: string;
+          project_id: string;
+          consultant_id: string | null;
+          title: string;
+          date: string;
+          time: string | null;
+          location: string | null;
+          description: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          consultant_id?: string | null;
+          title: string;
+          date: string;
+          time?: string | null;
+          location?: string | null;
+          description?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["project_events"]["Insert"]>;
+        Relationships: [];
+      };
       notification_reads: {
         Row: {
           user_id: string;

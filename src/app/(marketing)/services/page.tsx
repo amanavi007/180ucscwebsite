@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { BarChart3, Handshake, LineChart, Megaphone, Search, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { LogoMarquee } from "@/components/marketing/logo-marquee";
 
 export const metadata: Metadata = { title: "Our Services" };
@@ -93,10 +94,15 @@ const CLIENTS = [
   { name: "YES! World", src: "/clients/yes-world.png" },
 ];
 
+// Contiguous chunks (not an interleaved i % 3 split) so that related/adjacent
+// entries -- e.g. the three separate Habitat for Humanity chapters -- land in
+// the same row instead of one per row, which reads as the same org repeating
+// across the whole section.
+const ROW_SIZE = Math.ceil(CLIENTS.length / 3);
 const CLIENT_ROWS = [
-  CLIENTS.filter((_, i) => i % 3 === 0),
-  CLIENTS.filter((_, i) => i % 3 === 1),
-  CLIENTS.filter((_, i) => i % 3 === 2),
+  CLIENTS.slice(0, ROW_SIZE),
+  CLIENTS.slice(ROW_SIZE, ROW_SIZE * 2),
+  CLIENTS.slice(ROW_SIZE * 2),
 ];
 
 // TODO: add real client testimonials (quote, name, organization) once available.
@@ -134,15 +140,33 @@ export default function ServicesPage() {
 
       <section className="mx-auto max-w-6xl px-6 py-16">
         <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">What we do</h2>
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <Tabs defaultValue={SERVICES[0].title} className="mt-8">
+          <TabsList className="h-auto flex-wrap justify-start gap-1.5 bg-transparent p-0 ring-0 backdrop-blur-none">
+            {SERVICES.map((service) => (
+              <TabsTrigger
+                key={service.title}
+                value={service.title}
+                className="h-9 gap-1.5 rounded-full border border-foreground/10 px-4 text-foreground/70 data-active:border-transparent data-active:bg-primary data-active:text-primary-foreground"
+              >
+                <service.icon className="size-4" />
+                {service.title}
+              </TabsTrigger>
+            ))}
+          </TabsList>
           {SERVICES.map((service) => (
-            <div key={service.title} className="rounded-2xl border border-foreground/10 bg-background p-6 shadow-sm">
-              <service.icon className="size-6 text-primary" />
-              <h3 className="mt-4 font-semibold">{service.title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{service.body}</p>
-            </div>
+            <TabsContent key={service.title} value={service.title} className="mt-6">
+              <div className="flex flex-col gap-4 rounded-2xl border border-foreground/10 bg-background p-8 shadow-sm sm:flex-row sm:items-start sm:gap-6">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                  <service.icon className="size-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">{service.title}</h3>
+                  <p className="mt-2 text-muted-foreground text-pretty">{service.body}</p>
+                </div>
+              </div>
+            </TabsContent>
           ))}
-        </div>
+        </Tabs>
       </section>
 
       <section className="w-full bg-mint py-16 sm:py-20">
