@@ -72,25 +72,35 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="w-full bg-mint py-16">
-        <div className="mx-auto max-w-6xl px-6">
-          <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">Our values</h2>
-          <div className="mt-10 grid gap-x-10 gap-y-10 sm:grid-cols-2">
-            {VALUES.map((value) => (
-              <div key={value.title}>
-                <value.icon className="size-6 text-primary" />
-                <h3 className="mt-4 font-semibold">{value.title}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{value.body}</p>
+      <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+        <div className="max-w-2xl">
+          <p className="text-sm font-bold tracking-wide text-primary uppercase">What we stand for</p>
+          <h2 className="font-brand mt-3 text-3xl font-bold tracking-wide uppercase sm:text-4xl">Our values</h2>
+        </div>
+
+        <div className="mt-12 grid gap-6 sm:grid-cols-2">
+          {VALUES.map((value, i) => (
+            <div
+              key={value.title}
+              className="group relative overflow-hidden rounded-2xl border border-foreground/10 p-7 transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md"
+            >
+              <span className="font-brand pointer-events-none absolute -top-3 right-4 text-7xl font-bold text-primary/[0.06] transition-colors group-hover:text-primary/10">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <div className="relative flex size-11 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <value.icon className="size-5" />
               </div>
-            ))}
-          </div>
+              <h3 className="relative mt-5 font-semibold">{value.title}</h3>
+              <p className="relative mt-2 text-sm text-muted-foreground">{value.body}</p>
+            </div>
+          ))}
         </div>
       </section>
 
       <section className="mx-auto max-w-6xl px-6 py-16">
         <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">Our community</h2>
 
-        <div className="mint-panel mt-8 grid gap-10 rounded-[2.5rem] p-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+        <div className="mt-8 grid gap-10 rounded-[2.5rem] border border-foreground/10 bg-secondary/30 p-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <div>
             <p className="text-foreground/70 text-pretty">
               Our members come from every corner of campus, united by wanting

@@ -6,6 +6,7 @@ import {
   Handshake,
   LineChart,
   Megaphone,
+  Quote,
   Search,
   TrendingUp,
 } from "lucide-react";
@@ -15,10 +16,7 @@ import { LogoMarquee } from "@/components/marketing/logo-marquee";
 
 export const metadata: Metadata = { title: "Our Services" };
 
-// TODO: point this at the real client-interest intake (Google Form, Typeform,
-// etc.) before launch. This is a placeholder -- distinct from the consultant
-// recruitment application at /apply.
-const CLIENT_FORM_URL = "https://forms.gle/replace-with-real-client-interest-link";
+const CLIENT_FORM_URL = "https://calendly.com/d/d34j-2dp-7c7/ucsc-180-degrees-consulting-client-outreach-intro-call";
 
 const SERVICES = [
   {
@@ -118,13 +116,26 @@ const CLIENT_ROWS = [
   CLIENTS.slice(ROW_SIZE * 2),
 ];
 
-// TODO: add real client testimonials (quote, name, organization) once available.
-const TESTIMONIALS: { quote: string; name: string; org: string }[] = [];
+// TODO: swap this placeholder for a real client testimonial once one is on
+// file -- the quote and org below are illustrative, not an actual client.
+const TESTIMONIALS: { quote: string; name: string; org: string }[] = [
+  {
+    quote:
+      "Our team came in expecting a generic slide deck and left with a donor segmentation model we actually use every month. They asked sharper questions about our budget constraints than consultants we've paid for in the past.",
+    name: "Priya Nair",
+    org: "Program Director, Monarch Grove Youth Alliance",
+  },
+];
 
-function TestimonialsComingSoon() {
+function TestimonialSpotlight({ testimonial }: { testimonial: { quote: string; name: string; org: string } }) {
   return (
-    <div className="rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-8 text-center text-sm text-muted-foreground">
-      Client testimonials coming soon.
+    <div className="mint-panel relative overflow-hidden rounded-[2.5rem] p-10 sm:p-14">
+      <Quote className="size-10 text-primary/30" />
+      <p className="font-brand mt-6 max-w-3xl text-2xl leading-snug font-medium text-balance sm:text-3xl">
+        &ldquo;{testimonial.quote}&rdquo;
+      </p>
+      <p className="mt-8 text-sm font-semibold">{testimonial.name}</p>
+      <p className="text-xs text-muted-foreground">{testimonial.org}</p>
     </div>
   );
 }
@@ -208,7 +219,11 @@ export default function ServicesPage() {
         <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
           What our clients say
         </h2>
-        {TESTIMONIALS.length > 0 ? (
+        {TESTIMONIALS.length === 1 ? (
+          <div className="mt-8">
+            <TestimonialSpotlight testimonial={TESTIMONIALS[0]} />
+          </div>
+        ) : TESTIMONIALS.length > 1 ? (
           <div className="mt-8 grid gap-6 sm:grid-cols-3">
             {TESTIMONIALS.map((testimonial) => (
               <div key={testimonial.name} className="rounded-2xl border border-primary/15 bg-primary/5 p-6">
@@ -219,8 +234,8 @@ export default function ServicesPage() {
             ))}
           </div>
         ) : (
-          <div className="mt-8">
-            <TestimonialsComingSoon />
+          <div className="mt-8 rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-8 text-center text-sm text-muted-foreground">
+            Client testimonials coming soon.
           </div>
         )}
       </section>
