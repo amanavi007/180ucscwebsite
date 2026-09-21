@@ -16,6 +16,7 @@ import {
   Users2,
   History,
   Link2,
+  BarChart3,
 } from "lucide-react";
 
 export interface NavLink {
@@ -121,6 +122,14 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     icon: Users2,
     execOnly: true,
     keywords: "drag drop roster draft plan pm sc",
+    group: "admin-people",
+  },
+  {
+    href: "/portal/admin/stats",
+    label: "Consultant Stats",
+    icon: BarChart3,
+    execOnly: true,
+    keywords: "attendance tasks deadlines rollup rankings",
     group: "admin-people",
   },
   { href: "/portal/admin/quarters", label: "Quarters", icon: CalendarRange, execOnly: true, group: "admin-quarter-setup" },
