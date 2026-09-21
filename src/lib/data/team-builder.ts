@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { getAllProfiles } from "./members";
+import { isExec } from "@/lib/auth/roles";
 import type { LeadCandidateRole, MembershipTeamRole, UserRole } from "@/lib/supabase/database.types";
 
 export interface BoardProfile {
@@ -102,7 +103,7 @@ export async function getPlanBoard(planId: string, quarterId: string): Promise<T
       team_role: MembershipTeamRole;
       profile: BoardProfile | null;
     }[]) {
-      if (!p.profile) continue;
+      if (!p.profile || isExec(p.profile.role)) continue;
       const bucket = buckets.get(p.plan_team_id);
       if (!bucket) continue;
       assignedIds.add(p.profile.id);
@@ -119,7 +120,11 @@ export async function getPlanBoard(planId: string, quarterId: string): Promise<T
     ...buckets.get(t.id)!,
   }));
 
-  const unassigned = allProfiles.filter((p) => !assignedIds.has(p.id)).map(withCandidate);
+  // Execs never sit on a project team -- keep them out of Team Builder entirely
+  // rather than showing them as draggable chips no one should ever place.
+  const unassigned = allProfiles
+    .filter((p) => !assignedIds.has(p.id) && !isExec(p.role))
+    .map(withCandidate);
 
   return { teams, unassigned };
 }
