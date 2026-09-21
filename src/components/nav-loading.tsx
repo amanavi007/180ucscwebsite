@@ -15,10 +15,12 @@ import { LoadingCurtain } from "@/components/loading-curtain";
 //
 // The curtain shows the instant a watched link goes pending -- no debounce
 // before showing, since a delay there reads as the UI stuttering before
-// reacting to the click. MIN_VISIBLE_MS still guards the *hide* side, so a
-// navigation that resolves a few ms after pending flips true doesn't
-// flicker the curtain on and immediately back off.
-const MIN_VISIBLE_MS = 350;
+// reacting to the click. Once shown, it always holds for the full branded
+// animation (roll-in + wordmark fade, see `.loading-curtain-*` in
+// globals.css) before hiding, rather than cutting the animation off as soon
+// as the destination happens to be ready -- keep this in sync with that
+// CSS's total duration.
+const CURTAIN_ANIMATION_MS = 1200;
 
 type ReportPending = (pending: boolean) => void;
 
@@ -43,7 +45,7 @@ export function NavLoadingProvider({ children }: { children: React.ReactNode }) 
     }
 
     if (shownAt.current !== null) {
-      const remaining = Math.max(0, MIN_VISIBLE_MS - (Date.now() - shownAt.current));
+      const remaining = Math.max(0, CURTAIN_ANIMATION_MS - (Date.now() - shownAt.current));
       hideTimer.current = setTimeout(() => {
         shownAt.current = null;
         hideTimer.current = null;
@@ -79,18 +81,19 @@ export function NavPendingWatcher() {
 
   useEffect(() => {
     report?.(pending);
+    // A navigation that swaps in a whole new layout (e.g. marketing -> portal)
+    // unmounts this watcher in the same commit that would have flipped
+    // `pending` back to false, so that transition never happens here -- without
+    // this cleanup the curtain reports pending forever and only a hard reload
+    // clears it.
+    return () => report?.(false);
   }, [pending, report]);
 
   return null;
 }
 
-// Long enough for the roll-in + settle + wordmark fade to actually play
-// out once, rather than a hydration-timed flash that could cut it off
-// a few frames in on a fast load.
-const INITIAL_LOAD_MS = 2400;
-
 /**
- * Shows the curtain from first paint through a fixed minimum duration --
+ * Shows the curtain from first paint through the full branded animation --
  * covers a cold page load or a hard reload, which the Suspense-based
  * loading.tsx isn't catching reliably. Treated as a deliberate first-paint
  * moment rather than a strict latency indicator, since actual hydration on
@@ -101,7 +104,7 @@ export function InitialLoadCurtain() {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    const timer = setTimeout(() => setVisible(false), INITIAL_LOAD_MS);
+    const timer = setTimeout(() => setVisible(false), CURTAIN_ANIMATION_MS);
     return () => clearTimeout(timer);
   }, []);
 

@@ -87,7 +87,7 @@ export async function getCalendarEvents(): Promise<CalendarEvent[]> {
     supabase
       .from("project_events")
       .select(
-        "id, project_id, consultant_id, title, date, time, location, description, project:projects(client_name), consultant:profiles(name)",
+        "id, project_id, consultant_id, title, date, time, location, description, project:projects(client_name), consultant:profiles!project_events_consultant_id_fkey(name)",
       )
       .order("date", { ascending: true }),
     supabase
