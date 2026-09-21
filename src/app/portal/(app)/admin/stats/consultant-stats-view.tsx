@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import type { ConsultantStatsRow } from "@/lib/data/consultant-stats";
 
@@ -68,6 +69,7 @@ export function ConsultantStatsView({
 }) {
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [hideExec, setHideExec] = useState(false);
 
   function onSort(key: SortKey) {
     if (sortKey === key) {
@@ -78,10 +80,15 @@ export function ConsultantStatsView({
     }
   }
 
+  const visible = useMemo(
+    () => (hideExec ? rows.filter((r) => !r.isExec) : rows),
+    [rows, hideExec],
+  );
+
   const sorted = useMemo(() => {
-    if (!sortKey) return rows;
+    if (!sortKey) return visible;
     const accessor = SORT_ACCESSORS[sortKey];
-    const copy = [...rows];
+    const copy = [...visible];
     copy.sort((a, b) => {
       const av = accessor(a);
       const bv = accessor(b);
@@ -89,78 +96,84 @@ export function ConsultantStatsView({
       return sortDir === "asc" ? cmp : -cmp;
     });
     return copy;
-  }, [rows, sortKey, sortDir]);
+  }, [visible, sortKey, sortDir]);
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <SortableHead label="Name" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={onSort} />
-          <SortableHead label="Team" sortKey="team" activeKey={sortKey} dir={sortDir} onSort={onSort} />
-          <SortableHead
-            label="Attendance"
-            sortKey="attendance"
-            activeKey={sortKey}
-            dir={sortDir}
-            onSort={onSort}
-          />
-          <SortableHead label="Tasks" sortKey="tasks" activeKey={sortKey} dir={sortDir} onSort={onSort} />
-          <SortableHead
-            label="Overdue"
-            sortKey="overdue"
-            activeKey={sortKey}
-            dir={sortDir}
-            onSort={onSort}
-          />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {sorted.length === 0 && (
+    <div className="space-y-3">
+      <label className="flex w-fit items-center gap-2 text-sm text-muted-foreground">
+        <Checkbox checked={hideExec} onCheckedChange={(checked) => setHideExec(checked === true)} />
+        Hide exec
+      </label>
+      <Table>
+        <TableHeader>
           <TableRow>
-            <TableCell colSpan={5} className="text-center text-muted-foreground">
-              No members with a team this quarter yet.
-            </TableCell>
+            <SortableHead label="Name" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={onSort} />
+            <SortableHead label="Team" sortKey="team" activeKey={sortKey} dir={sortDir} onSort={onSort} />
+            <SortableHead
+              label="Attendance"
+              sortKey="attendance"
+              activeKey={sortKey}
+              dir={sortDir}
+              onSort={onSort}
+            />
+            <SortableHead label="Tasks" sortKey="tasks" activeKey={sortKey} dir={sortDir} onSort={onSort} />
+            <SortableHead
+              label="Overdue"
+              sortKey="overdue"
+              activeKey={sortKey}
+              dir={sortDir}
+              onSort={onSort}
+            />
           </TableRow>
-        )}
-        {sorted.map((row) => (
-          <TableRow key={row.userId}>
-            <TableCell className="font-medium">{row.name}</TableCell>
-            <TableCell className="text-muted-foreground">{row.team}</TableCell>
-            <TableCell>
-              {row.attendanceRate === null ? (
-                <span className="text-muted-foreground">—</span>
-              ) : (
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "border-transparent",
-                    row.attendanceRate < attendanceThreshold
-                      ? "bg-destructive/10 text-destructive"
-                      : "bg-muted text-muted-foreground",
-                  )}
-                >
-                  {Math.round(row.attendanceRate * 100)}%
-                </Badge>
-              )}
-            </TableCell>
-            <TableCell className="text-muted-foreground">
-              {row.tasksDone}/{row.tasksTotal}
-              {row.tasksTotal > 0 && (
-                <span className="ml-1 text-xs">({Math.round((row.tasksDone / row.tasksTotal) * 100)}%)</span>
-              )}
-            </TableCell>
-            <TableCell>
-              {row.overdueTasks > 0 ? (
-                <Badge variant="outline" className="border-transparent bg-destructive/10 text-destructive">
-                  {row.overdueTasks}
-                </Badge>
-              ) : (
-                <span className="text-muted-foreground">0</span>
-              )}
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {sorted.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={5} className="text-center text-muted-foreground">
+                No members with a team this quarter yet.
+              </TableCell>
+            </TableRow>
+          )}
+          {sorted.map((row) => (
+            <TableRow key={row.userId}>
+              <TableCell className="font-medium">{row.name}</TableCell>
+              <TableCell className="text-muted-foreground">{row.team}</TableCell>
+              <TableCell>
+                {row.attendanceRate === null ? (
+                  <span className="text-muted-foreground">—</span>
+                ) : (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "border-transparent",
+                      row.attendanceRate < attendanceThreshold
+                        ? "bg-destructive/10 text-destructive"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {Math.round(row.attendanceRate * 100)}%
+                  </Badge>
+                )}
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {row.tasksDone}/{row.tasksTotal}
+                {row.tasksTotal > 0 && (
+                  <span className="ml-1 text-xs">({Math.round((row.tasksDone / row.tasksTotal) * 100)}%)</span>
+                )}
+              </TableCell>
+              <TableCell>
+                {row.overdueTasks > 0 ? (
+                  <Badge variant="outline" className="border-transparent bg-destructive/10 text-destructive">
+                    {row.overdueTasks}
+                  </Badge>
+                ) : (
+                  <span className="text-muted-foreground">0</span>
+                )}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

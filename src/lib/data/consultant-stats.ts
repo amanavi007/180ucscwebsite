@@ -3,13 +3,14 @@ import { createClient } from "@/lib/supabase/server";
 import { getDirectory } from "@/lib/data/directory";
 import { getQuarterAttendanceRates } from "@/lib/data/attendance";
 import { getOrgTodayDateString } from "@/lib/date";
-import { roleLabel } from "@/lib/auth/roles";
+import { roleLabel, isExec } from "@/lib/auth/roles";
 import type { AttendanceRateResult } from "@/lib/attendance";
 
 export interface ConsultantStatsRow {
   userId: string;
   name: string;
   orgRole: string;
+  isExec: boolean;
   team: string;
   attendanceRate: number | null;
   tasksDone: number;
@@ -60,6 +61,7 @@ export async function getConsultantStatsRollup(quarterId: string): Promise<Consu
       userId: row.user_id,
       name: row.name,
       orgRole: roleLabel(row.role),
+      isExec: isExec(row.role),
       team: row.client_name ?? "Unassigned",
       attendanceRate: rate?.rate ?? null,
       tasksDone: counts.done,
