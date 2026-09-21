@@ -142,7 +142,21 @@ export function TeamBuilderBoard({
   plan: PlanSummary;
   board: Board;
 }) {
+  // `useState(initialBoard)` only seeds on mount -- this component keeps the
+  // same key/instance across a create/rename/delete team action, so without
+  // re-syncing here, `router.refresh()` re-fetches the board server-side but
+  // the new `initialBoard` prop never makes it into local state, and the
+  // change doesn't show up until a full page reload. Drag-and-drop and
+  // candidate tagging avoided this by patching `board` optimistically before
+  // the request even goes out; this covers everything else (create/rename/
+  // delete team) that only calls router.refresh() on success. Adjusting state
+  // during render (rather than in a useEffect) avoids an extra render pass.
+  const [prevInitialBoard, setPrevInitialBoard] = useState(initialBoard);
   const [board, setBoard] = useState(initialBoard);
+  if (initialBoard !== prevInitialBoard) {
+    setPrevInitialBoard(initialBoard);
+    setBoard(initialBoard);
+  }
   const [activeProfile, setActiveProfile] = useState<BoardProfile | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [newTeamName, setNewTeamName] = useState("");
