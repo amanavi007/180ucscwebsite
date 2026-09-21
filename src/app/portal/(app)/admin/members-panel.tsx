@@ -1,8 +1,17 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, Eye, EyeOff, MoreHorizontal } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronDown,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  MoreHorizontal,
+} from "lucide-react";
 import {
   bulkCreateMembers,
   resetMemberPassword,
@@ -61,6 +70,7 @@ import {
 import { ROLE_LABELS, roleLabel } from "@/lib/auth/roles";
 import { ListSearch } from "@/components/list-search";
 import { useFilteredList } from "@/lib/use-filtered-list";
+import { cn } from "@/lib/utils";
 import type { UserRole } from "@/lib/supabase/database.types";
 
 interface Member {
@@ -98,6 +108,46 @@ function MaskedSecret({ value }: { value: string }) {
   );
 }
 
+type MemberSortKey = "name" | "role";
+type SortDir = "asc" | "desc";
+
+const MEMBER_SORT_ACCESSORS: Record<MemberSortKey, (m: Member) => string> = {
+  name: (m) => m.name,
+  role: (m) => roleLabel(m.role),
+};
+
+function SortableMemberHead({
+  label,
+  sortKey,
+  activeKey,
+  dir,
+  onSort,
+}: {
+  label: string;
+  sortKey: MemberSortKey;
+  activeKey: MemberSortKey | null;
+  dir: SortDir;
+  onSort: (key: MemberSortKey) => void;
+}) {
+  const isActive = activeKey === sortKey;
+  const Icon = isActive ? (dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <TableHead>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={cn(
+          "flex items-center gap-1 hover:text-foreground",
+          isActive ? "text-foreground" : "text-muted-foreground",
+        )}
+      >
+        {label}
+        <Icon className="size-3.5" />
+      </button>
+    </TableHead>
+  );
+}
+
 function parseRows(text: string) {
   return text
     .split("\n")
@@ -122,6 +172,8 @@ export function MembersPanel({
   const [isPending, startTransition] = useTransition();
   const [results, setResults] = useState<BulkCreateResult[] | null>(null);
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
+  const [sortKey, setSortKey] = useState<MemberSortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const previewRows = parseRows(bulkText);
 
@@ -129,8 +181,28 @@ export function MembersPanel({
     "name",
     "email",
   ]);
-  const visibleMembers =
+  const roleFiltered =
     roleFilter === "all" ? searchedMembers : searchedMembers.filter((m) => m.role === roleFilter);
+
+  function onSort(key: MemberSortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  const visibleMembers = useMemo(() => {
+    if (!sortKey) return roleFiltered;
+    const accessor = MEMBER_SORT_ACCESSORS[sortKey];
+    const copy = [...roleFiltered];
+    copy.sort((a, b) => {
+      const cmp = accessor(a).localeCompare(accessor(b));
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return copy;
+  }, [roleFiltered, sortKey, sortDir]);
 
   function onCreate() {
     const rows = parseRows(bulkText);
@@ -256,9 +328,9 @@ export function MembersPanel({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                <SortableMemberHead label="Name" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={onSort} />
                 <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
+                <SortableMemberHead label="Role" sortKey="role" activeKey={sortKey} dir={sortDir} onSort={onSort} />
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
