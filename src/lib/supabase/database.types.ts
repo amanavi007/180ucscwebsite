@@ -277,6 +277,7 @@ export interface Database {
           title: string;
           slug: string;
           body: string;
+          order_index: number;
           created_by: string | null;
           updated_by: string | null;
           created_at: string;
@@ -289,6 +290,7 @@ export interface Database {
           title: string;
           slug: string;
           body?: string;
+          order_index?: number;
           created_by?: string | null;
           updated_by?: string | null;
           created_at?: string;

@@ -142,7 +142,19 @@ export function PageDialog({
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next) {
+        if (next) {
+          // Re-seed from the current `page`/`defaultParentId` props: this dialog
+          // instance can stay mounted across selecting a different page, and
+          // useForm's defaultValues only apply on first mount, so without this
+          // the form would resubmit stale data from whichever page it last held.
+          reset({
+            title: page?.title ?? "",
+            slug: page?.slug ?? "",
+            parentId: page?.parent_id ?? defaultParentId ?? NONE,
+            body: page?.body ?? "",
+          });
+          setSlugTouched(!!page);
+        } else {
           setBodyTab("write");
           if (!isEdit) {
             reset();
