@@ -32,7 +32,7 @@ export function TeamColumn({
 }: {
   team: BoardTeam;
   readOnly: boolean;
-  onSetCandidate: (userId: string, role: LeadCandidateRole | null) => void;
+  onSetCandidate: (userId: string, role: LeadCandidateRole, active: boolean) => void;
   /** Wraps a mutation so the board's autosave indicator reflects it too. */
   onSave: <T,>(fn: () => Promise<T>) => Promise<T>;
 }) {
@@ -109,9 +109,10 @@ export function TeamColumn({
           )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="mx-auto w-[65%]">
-          <p className="mb-1 text-center text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+      <CardContent className="space-y-4">
+        <div className="mx-auto w-[65%] rounded-lg bg-primary/5 p-2">
+          <p className="mb-1.5 flex items-center justify-center gap-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+            <span className="size-1.5 rounded-full bg-primary" />
             PM
           </p>
           <DropZone
@@ -123,14 +124,15 @@ export function TeamColumn({
                 key={p.id}
                 profile={p}
                 readOnly={readOnly}
-                onSetCandidate={(role) => onSetCandidate(p.id, role)}
+                onSetCandidate={(role, active) => onSetCandidate(p.id, role, active)}
               />
             ))}
           </DropZone>
         </div>
 
-        <div className="mx-auto w-[85%]">
-          <p className="mb-1 text-center text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+        <div className="mx-auto w-[85%] rounded-lg bg-warm/5 p-2">
+          <p className="mb-1.5 flex items-center justify-center gap-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+            <span className="size-1.5 rounded-full bg-warm" />
             SC
           </p>
           <DropZone
@@ -142,19 +144,19 @@ export function TeamColumn({
                 key={p.id}
                 profile={p}
                 readOnly={readOnly}
-                onSetCandidate={(role) => onSetCandidate(p.id, role)}
+                onSetCandidate={(role, active) => onSetCandidate(p.id, role, active)}
               />
             ))}
           </DropZone>
         </div>
 
         <div>
-          <p className="mb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+          <p className="mb-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
             Members
           </p>
           <DropZone
             id={`team:${team.id}:member`}
-            className="grid grid-cols-2"
+            className="grid grid-cols-2 gap-2"
             placeholder={team.members.length === 0 ? "Drop members here" : undefined}
           >
             {team.members.map((p) => (
@@ -162,7 +164,7 @@ export function TeamColumn({
                 key={p.id}
                 profile={p}
                 readOnly={readOnly}
-                onSetCandidate={(role) => onSetCandidate(p.id, role)}
+                onSetCandidate={(role, active) => onSetCandidate(p.id, role, active)}
               />
             ))}
           </DropZone>

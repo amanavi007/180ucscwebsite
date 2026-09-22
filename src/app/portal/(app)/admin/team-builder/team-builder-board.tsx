@@ -140,8 +140,21 @@ function AutosaveIndicator({ status }: { status: "idle" | "saving" | "saved" }) 
   );
 }
 
-function setCandidateEverywhere(board: Board, userId: string, role: LeadCandidateRole | null): Board {
-  const patch = (p: BoardProfile) => (p.id === userId ? { ...p, candidateRole: role } : p);
+function setCandidateEverywhere(
+  board: Board,
+  userId: string,
+  role: LeadCandidateRole,
+  active: boolean,
+): Board {
+  const patch = (p: BoardProfile) =>
+    p.id !== userId
+      ? p
+      : {
+          ...p,
+          candidateRoles: active
+            ? [...p.candidateRoles, role]
+            : p.candidateRoles.filter((r) => r !== role),
+        };
   return {
     unassigned: board.unassigned.map(patch),
     teams: board.teams.map((t) => ({
@@ -231,10 +244,10 @@ export function TeamBuilderBoard({
     });
   }
 
-  function handleSetCandidate(userId: string, role: LeadCandidateRole | null) {
-    setBoard(setCandidateEverywhere(board, userId, role));
+  function handleSetCandidate(userId: string, role: LeadCandidateRole, active: boolean) {
+    setBoard(setCandidateEverywhere(board, userId, role, active));
     startTransition(async () => {
-      const result = await autosave.run(() => setLeadCandidate(userId, quarterId, role));
+      const result = await autosave.run(() => setLeadCandidate(userId, quarterId, role, active));
       if (result?.error) {
         toast.error(result.error);
         router.refresh();
@@ -324,7 +337,7 @@ export function TeamBuilderBoard({
       )}
 
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="space-y-4">
+        <div className="space-y-6">
           <Card>
             <CardHeader className="flex-row items-center justify-between gap-2 space-y-0 border-b py-3">
               <CardTitle className="text-base">Unassigned</CardTitle>
@@ -342,7 +355,7 @@ export function TeamBuilderBoard({
             <CardContent>
               <DropZone
                 id="unassigned"
-                className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))]"
+                className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-2"
                 placeholder={
                   board.unassigned.length === 0
                     ? "Everyone's placed"
@@ -356,7 +369,7 @@ export function TeamBuilderBoard({
                     key={p.id}
                     profile={p}
                     readOnly={readOnly}
-                    onSetCandidate={(role) => handleSetCandidate(p.id, role)}
+                    onSetCandidate={(role, active) => handleSetCandidate(p.id, role, active)}
                   />
                 ))}
               </DropZone>

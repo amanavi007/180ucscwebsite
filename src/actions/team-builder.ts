@@ -430,33 +430,36 @@ export async function applyPlan(planId: string): Promise<ActionResult> {
 // ── PM/SC candidate tagging (quarter-scoped, independent of any draft) ──
 
 /**
- * Team Builder-only tag: mark someone as a PM/SC candidate for this quarter to
- * help exec decide who to drag where. Doesn't touch memberships or grant any
- * permission -- purely advisory, and only ever read back by the Team Builder.
+ * Team Builder-only tag: mark someone as a PM and/or SC candidate for this
+ * quarter to help exec decide who to drag where -- a person can hold both
+ * tags at once. Doesn't touch memberships or grant any permission -- purely
+ * advisory, and only ever read back by the Team Builder.
  */
 export async function setLeadCandidate(
   userId: string,
   quarterId: string,
-  role: LeadCandidateRole | null,
+  role: LeadCandidateRole,
+  active: boolean,
 ): Promise<ActionResult> {
   const denied = await requireExec();
   if (denied.error) return { error: denied.error };
 
   const supabase = await createClient();
 
-  if (role === null) {
+  if (!active) {
     const { error: deleteError } = await supabase
       .from("lead_candidates")
       .delete()
       .eq("user_id", userId)
-      .eq("quarter_id", quarterId);
+      .eq("quarter_id", quarterId)
+      .eq("candidate_role", role);
     if (deleteError) return { error: deleteError.message };
   } else {
     const { error: upsertError } = await supabase
       .from("lead_candidates")
       .upsert(
         { user_id: userId, quarter_id: quarterId, candidate_role: role },
-        { onConflict: "quarter_id,user_id" },
+        { onConflict: "quarter_id,user_id,candidate_role" },
       );
     if (upsertError) return { error: upsertError.message };
   }

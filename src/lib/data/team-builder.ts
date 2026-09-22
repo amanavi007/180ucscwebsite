@@ -8,8 +8,8 @@ export interface BoardProfile {
   id: string;
   name: string;
   role: UserRole;
-  /** Team Builder-only tag: "being considered for PM/SC next" -- not a real assignment, not shown elsewhere. */
-  candidateRole?: LeadCandidateRole | null;
+  /** Team Builder-only tag: "being considered for PM/SC next" -- not a real assignment, not shown elsewhere. Can hold both roles at once. */
+  candidateRoles: LeadCandidateRole[];
 }
 
 export interface BoardTeam {
@@ -76,12 +76,15 @@ export async function getPlanBoard(planId: string, quarterId: string): Promise<T
   if (teamsError) throw teamsError;
   if (candidatesError) throw candidatesError;
 
-  const candidateByUserId = new Map<string, LeadCandidateRole>(
-    (candidates ?? []).map((c) => [c.user_id, c.candidate_role]),
-  );
-  const withCandidate = (p: BoardProfile): BoardProfile => ({
+  const candidateRolesByUserId = new Map<string, LeadCandidateRole[]>();
+  for (const c of candidates ?? []) {
+    const roles = candidateRolesByUserId.get(c.user_id) ?? [];
+    roles.push(c.candidate_role);
+    candidateRolesByUserId.set(c.user_id, roles);
+  }
+  const withCandidate = (p: Omit<BoardProfile, "candidateRoles">): BoardProfile => ({
     ...p,
-    candidateRole: candidateByUserId.get(p.id) ?? null,
+    candidateRoles: candidateRolesByUserId.get(p.id) ?? [],
   });
 
   const buckets = new Map<string, { pm: BoardProfile[]; sc: BoardProfile[]; members: BoardProfile[] }>();
@@ -101,7 +104,7 @@ export async function getPlanBoard(planId: string, quarterId: string): Promise<T
     for (const p of placements as unknown as {
       plan_team_id: string;
       team_role: MembershipTeamRole;
-      profile: BoardProfile | null;
+      profile: Omit<BoardProfile, "candidateRoles"> | null;
     }[]) {
       if (!p.profile || isExec(p.profile.role)) continue;
       const bucket = buckets.get(p.plan_team_id);
