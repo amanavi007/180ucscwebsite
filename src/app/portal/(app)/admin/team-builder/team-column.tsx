@@ -28,10 +28,13 @@ export function TeamColumn({
   team,
   readOnly,
   onSetCandidate,
+  onSave,
 }: {
   team: BoardTeam;
   readOnly: boolean;
   onSetCandidate: (userId: string, role: LeadCandidateRole | null) => void;
+  /** Wraps a mutation so the board's autosave indicator reflects it too. */
+  onSave: <T,>(fn: () => Promise<T>) => Promise<T>;
 }) {
   const [isPending, startTransition] = useTransition();
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -47,7 +50,7 @@ export function TeamColumn({
       return;
     }
     startTransition(async () => {
-      const result = await renamePlanTeam(team.id, name);
+      const result = await onSave(() => renamePlanTeam(team.id, name));
       if (result?.error) {
         toast.error(result.error);
         setName(team.clientName);
@@ -59,7 +62,7 @@ export function TeamColumn({
 
   function onDelete() {
     startTransition(async () => {
-      const result = await deletePlanTeam(team.id);
+      const result = await onSave(() => deletePlanTeam(team.id));
       if (result?.error) toast.error(result.error);
       else router.refresh();
       setDeleteOpen(false);
@@ -67,7 +70,7 @@ export function TeamColumn({
   }
 
   return (
-    <Card className="w-72 shrink-0">
+    <Card className="w-80 shrink-0">
       <CardHeader className="flex-row items-center justify-between gap-2 space-y-0 border-b py-3">
         {renaming ? (
           <Input
@@ -107,8 +110,8 @@ export function TeamColumn({
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div>
-          <p className="mb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+        <div className="mx-auto w-[65%]">
+          <p className="mb-1 text-center text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
             PM
           </p>
           <DropZone
@@ -126,8 +129,8 @@ export function TeamColumn({
           </DropZone>
         </div>
 
-        <div>
-          <p className="mb-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+        <div className="mx-auto w-[85%]">
+          <p className="mb-1 text-center text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
             SC
           </p>
           <DropZone
@@ -151,6 +154,7 @@ export function TeamColumn({
           </p>
           <DropZone
             id={`team:${team.id}:member`}
+            className="grid grid-cols-2"
             placeholder={team.members.length === 0 ? "Drop members here" : undefined}
           >
             {team.members.map((p) => (

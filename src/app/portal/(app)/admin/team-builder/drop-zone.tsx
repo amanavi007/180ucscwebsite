@@ -27,7 +27,7 @@ export function DropZone({
     >
       {children}
       {placeholder && (
-        <div className="flex h-9 items-center justify-center rounded-md border border-dashed text-xs text-muted-foreground">
+        <div className="col-span-full flex h-9 items-center justify-center rounded-md border border-dashed text-xs text-muted-foreground">
           {placeholder}
         </div>
       )}

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, CheckCircle2 } from "lucide-react";
+import { Plus, CheckCircle2, Loader2 } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -50,6 +50,7 @@ import {
 import { DropZone } from "./drop-zone";
 import { MemberChip } from "./member-chip";
 import { TeamColumn } from "./team-column";
+import { useAutosaveStatus } from "./use-autosave-status";
 import type { BoardProfile, BoardTeam, PlanSummary, TeamBuilderBoard as Board } from "@/lib/data/team-builder";
 import type { LeadCandidateRole } from "@/lib/supabase/database.types";
 
@@ -120,6 +121,25 @@ function insertInto(board: Board, profile: BoardProfile, target: DropTarget): Bo
   };
 }
 
+function AutosaveIndicator({ status }: { status: "idle" | "saving" | "saved" }) {
+  if (status === "idle") return <div />;
+  return (
+    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+      {status === "saving" ? (
+        <>
+          <Loader2 className="size-3.5 animate-spin" />
+          Saving...
+        </>
+      ) : (
+        <>
+          <CheckCircle2 className="size-3.5 text-primary" />
+          Saved
+        </>
+      )}
+    </div>
+  );
+}
+
 function setCandidateEverywhere(board: Board, userId: string, role: LeadCandidateRole | null): Board {
   const patch = (p: BoardProfile) => (p.id === userId ? { ...p, candidateRole: role } : p);
   return {
@@ -167,6 +187,7 @@ export function TeamBuilderBoard({
   const [isApplying, startApplying] = useTransition();
   const [isUnfinalizing, startUnfinalizing] = useTransition();
   const router = useRouter();
+  const autosave = useAutosaveStatus();
 
   const readOnly = plan.isFinalized;
 
@@ -198,10 +219,11 @@ export function TeamBuilderBoard({
     setBoard(insertInto(removeEverywhere(board, userId), profile, target));
 
     startTransition(async () => {
-      const result =
+      const result = await autosave.run(() =>
         target.type === "unassigned"
-          ? await unassignInPlan(userId, plan.id)
-          : await assignInPlan(userId, plan.id, target.planTeamId, target.role);
+          ? unassignInPlan(userId, plan.id)
+          : assignInPlan(userId, plan.id, target.planTeamId, target.role),
+      );
       if (result?.error) {
         toast.error(result.error);
         router.refresh();
@@ -212,7 +234,7 @@ export function TeamBuilderBoard({
   function handleSetCandidate(userId: string, role: LeadCandidateRole | null) {
     setBoard(setCandidateEverywhere(board, userId, role));
     startTransition(async () => {
-      const result = await setLeadCandidate(userId, quarterId, role);
+      const result = await autosave.run(() => setLeadCandidate(userId, quarterId, role));
       if (result?.error) {
         toast.error(result.error);
         router.refresh();
@@ -223,7 +245,7 @@ export function TeamBuilderBoard({
   function onCreateTeam() {
     if (!newTeamName.trim()) return;
     startCreating(async () => {
-      const result = await createPlanTeam(plan.id, newTeamName);
+      const result = await autosave.run(() => createPlanTeam(plan.id, newTeamName));
       if (result?.error) {
         toast.error(result.error);
         return;
@@ -292,7 +314,8 @@ export function TeamBuilderBoard({
           </div>
         </div>
       ) : (
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between gap-3">
+          <AutosaveIndicator status={autosave.status} />
           <Button onClick={onFinalize} disabled={isFinalizing} className="gap-1.5">
             <CheckCircle2 className="size-4" />
             Finalize
@@ -301,20 +324,25 @@ export function TeamBuilderBoard({
       )}
 
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="flex items-start gap-4">
-          <Card className="w-64 shrink-0">
+        <div className="space-y-4">
+          <Card>
             <CardHeader className="flex-row items-center justify-between gap-2 space-y-0 border-b py-3">
               <CardTitle className="text-base">Unassigned</CardTitle>
-              <Badge variant="secondary">{board.unassigned.length}</Badge>
+              <div className="flex items-center gap-2">
+                <div className="w-48">
+                  <ListSearch
+                    value={unassignedQuery}
+                    onChange={setUnassignedQuery}
+                    placeholder="Search..."
+                  />
+                </div>
+                <Badge variant="secondary">{board.unassigned.length}</Badge>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-2">
-              <ListSearch
-                value={unassignedQuery}
-                onChange={setUnassignedQuery}
-                placeholder="Search..."
-              />
+            <CardContent>
               <DropZone
                 id="unassigned"
+                className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))]"
                 placeholder={
                   board.unassigned.length === 0
                     ? "Everyone's placed"
@@ -335,13 +363,14 @@ export function TeamBuilderBoard({
             </CardContent>
           </Card>
 
-          <div className="flex flex-1 flex-wrap items-start gap-4">
+          <div className="flex flex-wrap items-start gap-4">
             {board.teams.map((team) => (
               <TeamColumn
                 key={team.id}
                 team={team}
                 readOnly={readOnly}
                 onSetCandidate={handleSetCandidate}
+                onSave={autosave.run}
               />
             ))}
 
