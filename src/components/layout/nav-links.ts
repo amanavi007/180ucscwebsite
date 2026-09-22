@@ -7,7 +7,6 @@ import {
   ClipboardCheck,
   BookOpen,
   ShieldCheck,
-  Building2,
   CalendarDays,
   CalendarRange,
   CalendarClock,
@@ -60,13 +59,6 @@ export const NAV_LINKS: NavLink[] = [
     keywords: "meeting days deadlines events schedule",
     group: "work",
     tourDescription: "Meeting days, project deadlines, and chapter events in one place.",
-  },
-  {
-    href: "/portal/clients",
-    label: "Clients",
-    icon: Building2,
-    group: "people",
-    tourDescription: "Every client 180 has worked with -- your current projects are highlighted.",
   },
   {
     href: "/portal/directory",

@@ -40,7 +40,7 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-const COLUMN_HEADERS = ["Task", "Priority", "Assignee", "Due", "Status", ""];
+const COLUMN_HEADERS = ["Task", "Assignee", "Due", "Status", ""];
 
 export function TaskList({
   projectId,
@@ -206,8 +206,8 @@ export function TaskList({
           className={cn(
             "hidden gap-6 px-3 text-xs font-medium text-muted-foreground sm:grid",
             selectMode
-              ? "grid-cols-[1.5rem_1fr_7rem_9rem_9rem_13rem_2rem]"
-              : "grid-cols-[1fr_7rem_9rem_9rem_13rem_2rem]",
+              ? "grid-cols-[1.5rem_1fr_9rem_9rem_16rem_2rem]"
+              : "grid-cols-[1fr_9rem_9rem_16rem_2rem]",
           )}
         >
           {selectMode && <span />}

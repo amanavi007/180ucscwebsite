@@ -150,7 +150,6 @@ export async function updateProject(
 
   revalidatePath("/portal/projects");
   revalidatePath(`/portal/projects/${id}`);
-  revalidatePath("/portal/clients");
   return {};
 }
 

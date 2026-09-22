@@ -69,14 +69,12 @@ export function TasksView({
     groups.get(key)!.tasks.push(task);
   }
   const groupList = [...groups.values()].sort((a, b) => a.name.localeCompare(b.name));
-  const columnHeaders = mine
-    ? ["Task", "Priority", "Due", "Status"]
-    : ["Task", "Priority", "Assignee", "Due", "Status"];
+  const columnHeaders = mine ? ["Task", "Due", "Status"] : ["Task", "Assignee", "Due", "Status"];
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        {canViewAll && (
+      {canViewAll && (
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex overflow-hidden rounded-md border">
             <Button
               variant={mine ? "default" : "ghost"}
@@ -95,66 +93,66 @@ export function TasksView({
               All tasks
             </Button>
           </div>
-        )}
 
-        <Select value={filters.project ?? ALL} onValueChange={(v) => setParam("project", v)}>
-          <SelectTrigger size="sm" className="w-44">
-            <SelectValue placeholder="All projects">
-              {(value: string) =>
-                value === ALL
-                  ? "All projects"
-                  : (projects.find((p) => p.id === value)?.client_name ?? "All projects")
-              }
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>All projects</SelectItem>
-            {projects.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.client_name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select value={filters.project ?? ALL} onValueChange={(v) => setParam("project", v)}>
+            <SelectTrigger size="sm" className="w-44">
+              <SelectValue placeholder="All projects">
+                {(value: string) =>
+                  value === ALL
+                    ? "All projects"
+                    : (projects.find((p) => p.id === value)?.client_name ?? "All projects")
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All projects</SelectItem>
+              {projects.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.client_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <Select value={filters.status ?? ALL} onValueChange={(v) => setParam("status", v)}>
-          <SelectTrigger size="sm" className="w-36">
-            <SelectValue placeholder="All statuses">
-              {(value: string) =>
-                value === ALL
-                  ? "All statuses"
-                  : TASK_STATUS_LABELS[value as keyof typeof TASK_STATUS_LABELS]
-              }
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>All statuses</SelectItem>
-            {Object.entries(TASK_STATUS_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select value={filters.status ?? ALL} onValueChange={(v) => setParam("status", v)}>
+            <SelectTrigger size="sm" className="w-36">
+              <SelectValue placeholder="All statuses">
+                {(value: string) =>
+                  value === ALL
+                    ? "All statuses"
+                    : TASK_STATUS_LABELS[value as keyof typeof TASK_STATUS_LABELS]
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All statuses</SelectItem>
+              {Object.entries(TASK_STATUS_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <Select value={filters.type ?? ALL} onValueChange={(v) => setParam("type", v)}>
-          <SelectTrigger size="sm" className="w-44">
-            <SelectValue placeholder="All types">
-              {(value: string) =>
-                value === ALL ? "All types" : taskTypeLabel(value as (typeof TASK_TYPES)[number])
-              }
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>All types</SelectItem>
-            {TASK_TYPES.map((t) => (
-              <SelectItem key={t} value={t}>
-                {taskTypeLabel(t)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+          <Select value={filters.type ?? ALL} onValueChange={(v) => setParam("type", v)}>
+            <SelectTrigger size="sm" className="w-44">
+              <SelectValue placeholder="All types">
+                {(value: string) =>
+                  value === ALL ? "All types" : taskTypeLabel(value as (typeof TASK_TYPES)[number])
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All types</SelectItem>
+              {TASK_TYPES.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {taskTypeLabel(t)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {groupList.length === 0 ? (
         <p className="rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">
@@ -176,7 +174,7 @@ export function TasksView({
                 <div
                   className={cn(
                     "hidden gap-6 px-4 py-2 text-xs font-medium text-muted-foreground sm:grid",
-                    mine ? "grid-cols-[1fr_7rem_9rem_13rem]" : "grid-cols-[1fr_7rem_9rem_9rem_13rem]",
+                    mine ? "grid-cols-[1fr_9rem_16rem]" : "grid-cols-[1fr_9rem_9rem_16rem]",
                   )}
                 >
                   {columnHeaders.map((h) => (

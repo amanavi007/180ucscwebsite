@@ -6,13 +6,13 @@ import type { UserRole } from "@/lib/supabase/database.types";
 
 export interface SearchResult {
   id: string;
-  type: "project" | "task" | "wiki" | "member" | "client";
+  type: "project" | "task" | "wiki" | "member";
   title: string;
   subtitle: string | null;
   href: string;
 }
 
-/** Cross-cutting search over projects/tasks/wiki/people/clients. RLS scopes every table already. */
+/** Cross-cutting search over projects/tasks/wiki/people. RLS scopes every table already. */
 export async function globalSearch(query: string): Promise<SearchResult[]> {
   const q = query.trim();
   if (q.length < 2) return [];
@@ -20,7 +20,7 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
   const supabase = await createClient();
   const like = `%${q}%`;
 
-  const [projects, tasks, wikiPages, members, clients] = await Promise.all([
+  const [projects, tasks, wikiPages, members] = await Promise.all([
     supabase
       .from("projects")
       .select("id, client_name, quarter:quarters(name)")
@@ -38,7 +38,6 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
       .ilike("name", like)
       .is("archived_at", null)
       .limit(5),
-    supabase.from("clients").select("id, name").ilike("name", like).limit(5),
   ]);
 
   const results: SearchResult[] = [];
@@ -94,16 +93,6 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
       title: m.name,
       subtitle: roleLabel(m.role),
       href: "/portal/directory",
-    });
-  }
-
-  for (const c of (clients.data ?? []) as unknown as { id: string; name: string }[]) {
-    results.push({
-      id: c.id,
-      type: "client",
-      title: c.name,
-      subtitle: "Client",
-      href: `/portal/clients/${c.id}`,
     });
   }
 

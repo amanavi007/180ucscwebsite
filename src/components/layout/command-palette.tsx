@@ -8,7 +8,6 @@ import {
   ListTodo,
   BookOpen,
   User,
-  Building2,
   type LucideIcon,
 } from "lucide-react";
 import { globalSearch, type SearchResult } from "@/actions/search";
@@ -22,16 +21,14 @@ const TYPE_ICON: Record<SearchResult["type"], LucideIcon> = {
   task: ListTodo,
   wiki: BookOpen,
   member: User,
-  client: Building2,
 };
 const TYPE_HEADING: Record<SearchResult["type"], string> = {
-  client: "Clients",
   project: "Projects",
   task: "Tasks",
   wiki: "Resources",
   member: "People",
 };
-const RESULT_ORDER: SearchResult["type"][] = ["client", "project", "task", "wiki", "member"];
+const RESULT_ORDER: SearchResult["type"][] = ["project", "task", "wiki", "member"];
 
 interface PaletteItem {
   key: string;
@@ -152,7 +149,6 @@ export function CommandPalette({
   }
   if (canSearch) {
     const byType: Record<SearchResult["type"], SearchResult[]> = {
-      client: [],
       project: [],
       task: [],
       wiki: [],

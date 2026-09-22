@@ -39,7 +39,7 @@ import {
 } from "@/lib/project-labels";
 import { parseLocalDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
-import type { TaskPriority, TaskStatus } from "@/lib/supabase/database.types";
+import type { TaskStatus } from "@/lib/supabase/database.types";
 import type { TaskWithAssignee } from "@/lib/data/types";
 
 const UNASSIGNED = "__unassigned__";
@@ -126,18 +126,18 @@ export function TaskRow({
   const gridColsClass = selectable
     ? showAssignee
       ? showDeleteColumn
-        ? "grid-cols-[1.5rem_1fr_7rem_9rem_9rem_13rem_2rem]"
-        : "grid-cols-[1.5rem_1fr_7rem_9rem_9rem_13rem]"
+        ? "grid-cols-[1.5rem_1fr_9rem_9rem_16rem_2rem]"
+        : "grid-cols-[1.5rem_1fr_9rem_9rem_16rem]"
       : showDeleteColumn
-        ? "grid-cols-[1.5rem_1fr_7rem_9rem_13rem_2rem]"
-        : "grid-cols-[1.5rem_1fr_7rem_9rem_13rem]"
+        ? "grid-cols-[1.5rem_1fr_9rem_16rem_2rem]"
+        : "grid-cols-[1.5rem_1fr_9rem_16rem]"
     : showAssignee
       ? showDeleteColumn
-        ? "grid-cols-[1fr_7rem_9rem_9rem_13rem_2rem]"
-        : "grid-cols-[1fr_7rem_9rem_9rem_13rem]"
+        ? "grid-cols-[1fr_9rem_9rem_16rem_2rem]"
+        : "grid-cols-[1fr_9rem_9rem_16rem]"
       : showDeleteColumn
-        ? "grid-cols-[1fr_7rem_9rem_13rem_2rem]"
-        : "grid-cols-[1fr_7rem_9rem_13rem]";
+        ? "grid-cols-[1fr_9rem_16rem_2rem]"
+        : "grid-cols-[1fr_9rem_16rem]";
 
   return (
     <div
@@ -167,29 +167,6 @@ export function TaskRow({
           <span className="ml-3 text-xs text-muted-foreground">{taskTypeLabel(task.task_type)}</span>
         )}
       </div>
-
-      {canEditFields ? (
-        <Select
-          value={task.priority}
-          onValueChange={(v) => v && apply({ priority: v as TaskPriority })}
-          disabled={isPending}
-        >
-          <SelectTrigger size="sm" className="w-full">
-            <SelectValue>{(value: TaskPriority) => TASK_PRIORITY_LABELS[value]}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(TASK_PRIORITY_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      ) : (
-        <Badge variant="secondary" className="w-fit">
-          {TASK_PRIORITY_LABELS[task.priority]}
-        </Badge>
-      )}
 
       {showAssignee &&
         (canReassign ? (
@@ -222,7 +199,7 @@ export function TaskRow({
           </span>
         ))}
 
-      {canEditFields ? (
+      {canManage ? (
         <Input
           type="date"
           value={task.due_date ?? ""}
