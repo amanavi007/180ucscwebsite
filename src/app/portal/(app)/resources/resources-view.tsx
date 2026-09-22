@@ -98,7 +98,12 @@ export function ResourcesView({
 
       <div className="grid gap-4 md:grid-cols-[220px_1fr]">
         <aside className="rounded-md border p-2 md:h-fit">
-          <PageTree pages={pages} selectedSlug={activeSlug} onSelect={selectPage} />
+          <PageTree
+            pages={pages}
+            selectedSlug={activeSlug}
+            onSelect={selectPage}
+            canEdit={canEdit}
+          />
         </aside>
 
         <div className="min-w-0 rounded-md border p-6">
