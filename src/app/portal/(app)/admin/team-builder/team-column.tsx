@@ -8,7 +8,6 @@ import { deletePlanTeam, renamePlanTeam } from "@/actions/team-builder";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -77,8 +76,8 @@ export function TeamColumn({
   }
 
   return (
-    <Card className="w-80 shrink-0">
-      <CardHeader className="flex-row items-center justify-between gap-2 space-y-0 border-b py-3">
+    <Card className="w-80 shrink-0 gap-4 py-5">
+      <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
         {renaming ? (
           <Input
             autoFocus
@@ -90,19 +89,19 @@ export function TeamColumn({
             className="h-7 text-sm"
           />
         ) : readOnly ? (
-          <span className="truncate text-sm font-medium">{team.clientName}</span>
+          <span className="truncate text-[15px] font-semibold">{team.clientName}</span>
         ) : (
           <button
             type="button"
             onClick={() => setRenaming(true)}
-            className="flex min-w-0 items-center gap-1.5 text-sm font-medium hover:underline"
+            className="flex min-w-0 items-center gap-1.5 text-[15px] font-semibold hover:underline"
           >
             <span className="truncate">{team.clientName}</span>
-            <Pencil className="size-3 shrink-0 text-muted-foreground" />
+            <Pencil className="size-3 shrink-0 text-muted-foreground/50" />
           </button>
         )}
-        <div className="flex shrink-0 items-center gap-1">
-          <Badge variant="secondary">{headcount}</Badge>
+        <div className="flex shrink-0 items-center gap-2.5">
+          <span className="text-xs text-muted-foreground">{headcount}</span>
           {!readOnly && (
             <Button
               variant="ghost"
@@ -110,18 +109,19 @@ export function TeamColumn({
               disabled={isPending}
               onClick={() => setDeleteOpen(true)}
               aria-label={`Delete ${team.clientName}`}
+              className="opacity-0 transition-opacity group-hover/card:opacity-100 focus-visible:opacity-100"
             >
               <Trash2 className="size-3.5" />
             </Button>
           )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="mx-auto w-[65%] rounded-lg bg-primary/5 p-2">
-          <p className="mb-1.5 flex items-center justify-center gap-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-            <span className="size-1.5 rounded-full bg-primary" />
-            PM
-          </p>
+      <CardContent className="space-y-4 border-t pt-4">
+        <div>
+          <div className="mb-2 flex items-center gap-1.5">
+            <span className="size-1.5 rounded-full bg-primary ring-4 ring-primary/15" />
+            <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">PM</span>
+          </div>
           <DropZone
             id={`team:${team.id}:pm`}
             placeholder={team.pm.length === 0 ? "Drop a PM here" : undefined}
@@ -130,27 +130,7 @@ export function TeamColumn({
               <MemberChip
                 key={p.id}
                 profile={p}
-                readOnly={readOnly}
-                highlighted={isMatch(p)}
-                onSetCandidate={(role, active) => onSetCandidate(p.id, role, active)}
-              />
-            ))}
-          </DropZone>
-        </div>
-
-        <div className="mx-auto w-[85%] rounded-lg bg-warm/5 p-2">
-          <p className="mb-1.5 flex items-center justify-center gap-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-            <span className="size-1.5 rounded-full bg-warm" />
-            SC
-          </p>
-          <DropZone
-            id={`team:${team.id}:sc`}
-            placeholder={team.sc.length === 0 ? "Drop an SC here" : undefined}
-          >
-            {team.sc.map((p) => (
-              <MemberChip
-                key={p.id}
-                profile={p}
+                variant="pm"
                 readOnly={readOnly}
                 highlighted={isMatch(p)}
                 onSetCandidate={(role, active) => onSetCandidate(p.id, role, active)}
@@ -160,7 +140,29 @@ export function TeamColumn({
         </div>
 
         <div>
-          <p className="mb-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+          <div className="mb-2 flex items-center gap-1.5">
+            <span className="size-1.5 rounded-full bg-warm ring-4 ring-warm/15" />
+            <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">SC</span>
+          </div>
+          <DropZone
+            id={`team:${team.id}:sc`}
+            placeholder={team.sc.length === 0 ? "Drop an SC here" : undefined}
+          >
+            {team.sc.map((p) => (
+              <MemberChip
+                key={p.id}
+                profile={p}
+                variant="sc"
+                readOnly={readOnly}
+                highlighted={isMatch(p)}
+                onSetCandidate={(role, active) => onSetCandidate(p.id, role, active)}
+              />
+            ))}
+          </DropZone>
+        </div>
+
+        <div>
+          <p className="mb-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
             Members
           </p>
           <DropZone

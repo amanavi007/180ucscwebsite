@@ -25,8 +25,6 @@ import {
 } from "@/actions/team-builder";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { ListSearch } from "@/components/list-search";
 import { useFilteredList } from "@/lib/use-filtered-list";
 import {
@@ -341,88 +339,94 @@ export function TeamBuilderBoard({
         </div>
       )}
 
+      <div className="w-full max-w-sm">
+        <ListSearch value={searchQuery} onChange={setSearchQuery} placeholder="Search everyone..." />
+      </div>
+
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="space-y-6">
-          <Card>
-            <CardHeader className="flex-row items-center justify-between gap-2 space-y-0 border-b py-3">
-              <CardTitle className="text-base">Unassigned</CardTitle>
-              <div className="flex items-center gap-2">
-                <div className="w-48">
-                  <ListSearch
-                    value={searchQuery}
-                    onChange={setSearchQuery}
-                    placeholder="Search everyone..."
-                  />
-                </div>
-                <Badge variant="secondary">{board.unassigned.length}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <DropZone
-                id="unassigned"
-                className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-2"
-                placeholder={
-                  board.unassigned.length === 0
-                    ? "Everyone's placed"
-                    : visibleUnassigned.length === 0
-                      ? "No matches"
-                      : undefined
-                }
-              >
-                {visibleUnassigned.map((p) => (
-                  <MemberChip
-                    key={p.id}
-                    profile={p}
-                    readOnly={readOnly}
-                    onSetCandidate={(role, active) => handleSetCandidate(p.id, role, active)}
-                  />
-                ))}
-              </DropZone>
-            </CardContent>
-          </Card>
-
-          <div className="flex flex-wrap items-start gap-4">
-            {board.teams.map((team) => (
-              <TeamColumn
-                key={team.id}
-                team={team}
-                readOnly={readOnly}
-                query={normalizedQuery}
-                onSetCandidate={handleSetCandidate}
-                onSave={autosave.run}
-              />
-            ))}
-
-            {!readOnly && (
-              <Dialog open={addOpen} onOpenChange={setAddOpen}>
-                <DialogTrigger
-                  render={
-                    <Button variant="outline" className="h-10 w-56 shrink-0 gap-1.5">
-                      <Plus className="size-4" />
-                      Add team
-                    </Button>
-                  }
+        <div className="flex items-start gap-7">
+          <div className="glass-panel w-64 shrink-0 self-start rounded-2xl p-4">
+            <div className="mb-2 flex items-baseline gap-1.5">
+              <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                Unassigned
+              </span>
+              <span className="text-xs text-muted-foreground/60">{board.unassigned.length}</span>
+            </div>
+            <div className="mb-1 border-t border-border/50" />
+            <DropZone
+              id="unassigned"
+              placeholder={
+                board.unassigned.length === 0
+                  ? "Everyone's placed"
+                  : visibleUnassigned.length === 0
+                    ? "No matches"
+                    : undefined
+              }
+            >
+              {visibleUnassigned.map((p) => (
+                <MemberChip
+                  key={p.id}
+                  profile={p}
+                  readOnly={readOnly}
+                  onSetCandidate={(role, active) => handleSetCandidate(p.id, role, active)}
                 />
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>New team</DialogTitle>
-                  </DialogHeader>
-                  <Input
-                    autoFocus
-                    placeholder="Client name"
-                    value={newTeamName}
-                    onChange={(e) => setNewTeamName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && onCreateTeam()}
-                    disabled={isCreating}
+              ))}
+            </DropZone>
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="mb-3 flex items-baseline gap-1.5">
+              <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                Teams
+              </span>
+              <span className="text-xs text-muted-foreground/60">{board.teams.length}</span>
+            </div>
+            <div className="flex flex-wrap items-start gap-5">
+              {board.teams.map((team) => (
+                <TeamColumn
+                  key={team.id}
+                  team={team}
+                  readOnly={readOnly}
+                  query={normalizedQuery}
+                  onSetCandidate={handleSetCandidate}
+                  onSave={autosave.run}
+                />
+              ))}
+
+              {!readOnly && (
+                <Dialog open={addOpen} onOpenChange={setAddOpen}>
+                  <DialogTrigger
+                    render={
+                      <button
+                        type="button"
+                        className="flex min-h-[220px] w-80 shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border text-sm font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
+                      >
+                        <Plus className="size-5" />
+                        Add team
+                      </button>
+                    }
                   />
-                  <DialogFooter>
-                    <Button onClick={onCreateTeam} disabled={isCreating || !newTeamName.trim()}>
-                      Create
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>New team</DialogTitle>
+                    </DialogHeader>
+                    <Input
+                      autoFocus
+                      placeholder="Client name"
+                      value={newTeamName}
+                      onChange={(e) => setNewTeamName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && onCreateTeam()}
+                      disabled={isCreating}
+                    />
+                    <DialogFooter>
+                      <Button onClick={onCreateTeam} disabled={isCreating || !newTeamName.trim()}>
+                        Create
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </div>
           </div>
         </div>
 

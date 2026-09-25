@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, Search } from "lucide-react";
+import { Menu, Pin, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import {
@@ -26,6 +26,59 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { logout } from "@/actions/auth";
 import { roleLabel } from "@/lib/auth/roles";
 import type { UserRole } from "@/lib/supabase/database.types";
+
+function SidebarBody({
+  collapsed,
+  isExec,
+  onToggleCollapsed,
+  onReplayTour,
+}: {
+  collapsed: boolean;
+  isExec: boolean;
+  onToggleCollapsed?: () => void;
+  onReplayTour: () => void;
+}) {
+  return (
+    <>
+      <div className={cn("flex items-center gap-2 px-4 py-4", collapsed && "justify-center px-0")}>
+        <Link
+          href="/"
+          prefetch={false}
+          aria-label="180 Degrees Consulting — view public site"
+          className="flex items-center gap-2 transition-opacity hover:opacity-75"
+        >
+          {collapsed ? (
+            <Image src="/logo-icon.png" alt="" width={987} height={1006} className="h-6 w-auto" />
+          ) : (
+            <>
+              <Image
+                src="/logo-banner-dark.svg"
+                alt="180 Degrees Consulting UC Santa Cruz"
+                width={1610}
+                height={538}
+                className="h-16 w-auto dark:hidden"
+              />
+              <Image
+                src="/logo-banner-light.svg"
+                alt="180 Degrees Consulting UC Santa Cruz"
+                width={1610}
+                height={538}
+                className="hidden h-16 w-auto dark:block"
+              />
+            </>
+          )}
+          <NavPendingWatcher />
+        </Link>
+      </div>
+      <SidebarNav
+        isExec={isExec}
+        collapsed={collapsed}
+        onToggleCollapsed={onToggleCollapsed}
+        onReplayTour={onReplayTour}
+      />
+    </>
+  );
+}
 
 function initials(name: string) {
   return name
@@ -52,15 +105,20 @@ export function AppShell({
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+  // Minimized by default -- keeps the page feeling lighter at rest. Hovering
+  // the minimized strip pops a full-width preview over the content (see
+  // `peek` below); explicitly expanding via the collapse toggle pins it open
+  // and is remembered as "0" in localStorage, overriding this default.
+  const [collapsed, setCollapsed] = useState(true);
+  const [peek, setPeek] = useState(false);
   const [tourRun, setTourRun] = useState(showOnboarding);
-  const collapsedBeforeTourRef = useRef(false);
+  const collapsedBeforeTourRef = useRef(true);
 
   useEffect(() => {
     if (showOnboarding) return;
-    if (localStorage.getItem("sidebar-collapsed") === "1") {
+    if (localStorage.getItem("sidebar-collapsed") === "0") {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing from localStorage, an external store, on mount
-      setCollapsed(true);
+      setCollapsed(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -71,6 +129,15 @@ export function AppShell({
       localStorage.setItem("sidebar-collapsed", next ? "1" : "0");
       return next;
     });
+  }
+
+  // The hover preview's own explicit action -- distinct from `toggleCollapsed`
+  // because the preview always LOOKS expanded, so a plain collapse/expand
+  // chevron there would show "collapse" while actually pinning it open.
+  function pinExpanded() {
+    setCollapsed(false);
+    localStorage.setItem("sidebar-collapsed", "0");
+    setPeek(false);
   }
 
   function startTour() {
@@ -100,53 +167,43 @@ export function AppShell({
   }, []);
 
   return (
-    <div className="flex min-h-svh md:gap-3 md:p-3">
+    <div className="flex h-svh md:gap-3 md:p-3">
       <aside
-        className={cn(
-          "glass-sidebar hidden shrink-0 overflow-hidden rounded-3xl md:flex md:flex-col",
-          collapsed ? "w-16" : "w-60",
-        )}
+        onMouseEnter={() => collapsed && setPeek(true)}
+        onMouseLeave={() => setPeek(false)}
+        className={cn("relative hidden min-h-0 shrink-0 md:block", collapsed ? "w-16" : "w-60")}
       >
-        <div className={cn("flex items-center gap-2 px-4 py-4", collapsed && "justify-center px-0")}>
-          <Link
-            href="/"
-            prefetch={false}
-            aria-label="180 Degrees Consulting — view public site"
-            className="flex items-center gap-2 transition-opacity hover:opacity-75"
-          >
-            {collapsed ? (
-              <Image src="/logo-icon.png" alt="" width={987} height={1006} className="h-6 w-auto" />
-            ) : (
-              <>
-                <Image
-                  src="/logo-banner-dark.svg"
-                  alt="180 Degrees Consulting UC Santa Cruz"
-                  width={1610}
-                  height={538}
-                  className="h-16 w-auto dark:hidden"
-                />
-                <Image
-                  src="/logo-banner-light.svg"
-                  alt="180 Degrees Consulting UC Santa Cruz"
-                  width={1610}
-                  height={538}
-                  className="hidden h-16 w-auto dark:block"
-                />
-              </>
-            )}
-            <NavPendingWatcher />
-          </Link>
+        {/* Resting strip -- always occupies the real layout width (16 or 60),
+            so nothing else on the page ever shifts. */}
+        <div className="glass-sidebar absolute inset-0 flex min-h-0 flex-col overflow-hidden rounded-3xl">
+          <SidebarBody
+            collapsed={collapsed}
+            isExec={isExec}
+            onToggleCollapsed={toggleCollapsed}
+            onReplayTour={startTour}
+          />
         </div>
-        <SidebarNav
-          isExec={isExec}
-          collapsed={collapsed}
-          onToggleCollapsed={toggleCollapsed}
-          onReplayTour={startTour}
-        />
+
+        {/* Hover preview -- floats over the page content at full width
+            without reflowing it; only exists while minimized and hovered. */}
+        {collapsed && peek && (
+          <div className="glass-sidebar animate-in fade-in-0 zoom-in-95 absolute top-0 left-0 z-30 flex h-full w-60 origin-top-left flex-col overflow-hidden rounded-3xl shadow-2xl duration-150">
+            <button
+              type="button"
+              onClick={pinExpanded}
+              title="Keep sidebar expanded"
+              aria-label="Keep sidebar expanded"
+              className="absolute top-4 right-3 flex size-6 items-center justify-center rounded-md text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            >
+              <Pin className="size-3.5" />
+            </button>
+            <SidebarBody collapsed={false} isExec={isExec} onReplayTour={startTour} />
+          </div>
+        )}
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="glass-overlay sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between px-4 md:mb-3 md:rounded-2xl">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <header className="glass-overlay z-10 flex h-14 shrink-0 items-center justify-between px-4 md:mb-3 md:rounded-2xl">
           <Button
             variant="ghost"
             size="icon"
@@ -223,7 +280,7 @@ export function AppShell({
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
       </div>
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
