@@ -49,10 +49,10 @@ function CandidateToggle({
       onPointerDown={(e) => e.stopPropagation()}
       onClick={onClick}
       className={cn(
-        "flex h-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold transition-all",
+        "flex h-5 shrink-0 items-center justify-center overflow-hidden rounded-full text-[10px] font-semibold transition-all",
         active
-          ? cn("border", activeClassName)
-          : "w-5 border border-transparent text-muted-foreground/0 opacity-0 group-hover:text-muted-foreground/60 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-muted hover:text-foreground",
+          ? cn("border px-1.5", activeClassName)
+          : "w-0 border border-transparent px-0 text-muted-foreground/60 opacity-0 group-hover:w-5 group-hover:px-1.5 group-hover:opacity-100 focus-visible:w-5 focus-visible:px-1.5 focus-visible:opacity-100 hover:bg-muted hover:text-foreground",
       )}
     >
       {label}
