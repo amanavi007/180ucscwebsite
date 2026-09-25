@@ -27,11 +27,14 @@ import type { LeadCandidateRole } from "@/lib/supabase/database.types";
 export function TeamColumn({
   team,
   readOnly,
+  /** Lowercased search text from the board's search bar; members matching it are highlighted in place instead of being filtered out, since a team roster shouldn't shrink while searching. */
+  query = "",
   onSetCandidate,
   onSave,
 }: {
   team: BoardTeam;
   readOnly: boolean;
+  query?: string;
   onSetCandidate: (userId: string, role: LeadCandidateRole, active: boolean) => void;
   /** Wraps a mutation so the board's autosave indicator reflects it too. */
   onSave: <T,>(fn: () => Promise<T>) => Promise<T>;
@@ -43,6 +46,10 @@ export function TeamColumn({
   const router = useRouter();
 
   const headcount = team.pm.length + team.sc.length + team.members.length;
+
+  function isMatch(p: { name: string }) {
+    return query.length > 0 && p.name.toLowerCase().includes(query);
+  }
 
   function onRename() {
     if (name.trim() === team.clientName) {
@@ -124,6 +131,7 @@ export function TeamColumn({
                 key={p.id}
                 profile={p}
                 readOnly={readOnly}
+                highlighted={isMatch(p)}
                 onSetCandidate={(role, active) => onSetCandidate(p.id, role, active)}
               />
             ))}
@@ -144,6 +152,7 @@ export function TeamColumn({
                 key={p.id}
                 profile={p}
                 readOnly={readOnly}
+                highlighted={isMatch(p)}
                 onSetCandidate={(role, active) => onSetCandidate(p.id, role, active)}
               />
             ))}
@@ -156,7 +165,6 @@ export function TeamColumn({
           </p>
           <DropZone
             id={`team:${team.id}:member`}
-            className="grid grid-cols-2 gap-2"
             placeholder={team.members.length === 0 ? "Drop members here" : undefined}
           >
             {team.members.map((p) => (
@@ -164,6 +172,7 @@ export function TeamColumn({
                 key={p.id}
                 profile={p}
                 readOnly={readOnly}
+                highlighted={isMatch(p)}
                 onSetCandidate={(role, active) => onSetCandidate(p.id, role, active)}
               />
             ))}

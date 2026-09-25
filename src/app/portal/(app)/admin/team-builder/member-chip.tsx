@@ -70,12 +70,15 @@ export function MemberChip({
   profile,
   dragging = false,
   readOnly = false,
+  highlighted = false,
   onSetCandidate,
 }: {
   profile: BoardProfile;
   dragging?: boolean;
   /** Finalized drafts are locked -- chips render but can't be dragged (candidate tags stay editable). */
   readOnly?: boolean;
+  /** Set when this person matches an active search but is shown in place (e.g. already on a team) rather than filtered into a result list. */
+  highlighted?: boolean;
   /** Team Builder-only PM/SC candidate tag; omit to hide the toggles (e.g. inside the DragOverlay). A person can hold both roles at once. */
   onSetCandidate?: (role: LeadCandidateRole, active: boolean) => void;
 }) {
@@ -94,16 +97,17 @@ export function MemberChip({
         "flex items-center gap-2 rounded-md border border-border/50 bg-card px-2 py-1.5 text-sm",
         readOnly ? "cursor-default" : "cursor-grab active:cursor-grabbing",
         (isDragging || dragging) && "opacity-50",
+        highlighted && "border-primary ring-2 ring-primary/50",
       )}
     >
-      <Avatar className="size-6">
+      <Avatar className="size-6 shrink-0">
         <AvatarFallback className={cn("text-[10px] font-medium", avatarTint(profile.id))}>
           {initials(profile.name)}
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
-        <p className="truncate leading-none font-medium">{profile.name}</p>
-        <p className="truncate text-[11px] leading-none text-muted-foreground">
+        <p className="leading-snug font-medium break-words">{profile.name}</p>
+        <p className="text-[11px] leading-snug break-words text-muted-foreground">
           {roleLabel(profile.role)}
         </p>
       </div>

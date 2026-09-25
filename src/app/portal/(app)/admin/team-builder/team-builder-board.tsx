@@ -204,8 +204,13 @@ export function TeamBuilderBoard({
 
   const readOnly = plan.isFinalized;
 
-  const { query: unassignedQuery, setQuery: setUnassignedQuery, filtered: visibleUnassigned } =
+  const { query: searchQuery, setQuery: setSearchQuery, filtered: visibleUnassigned } =
     useFilteredList(board.unassigned, ["name"]);
+  // Shared across the whole board: the Unassigned pool filters down to matches
+  // (as before), while team rosters stay intact and just highlight whoever
+  // matches in place, so searching for someone already on a team doesn't make
+  // it look like they've disappeared.
+  const normalizedQuery = searchQuery.trim().toLowerCase();
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
@@ -344,9 +349,9 @@ export function TeamBuilderBoard({
               <div className="flex items-center gap-2">
                 <div className="w-48">
                   <ListSearch
-                    value={unassignedQuery}
-                    onChange={setUnassignedQuery}
-                    placeholder="Search..."
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    placeholder="Search everyone..."
                   />
                 </div>
                 <Badge variant="secondary">{board.unassigned.length}</Badge>
@@ -382,6 +387,7 @@ export function TeamBuilderBoard({
                 key={team.id}
                 team={team}
                 readOnly={readOnly}
+                query={normalizedQuery}
                 onSetCandidate={handleSetCandidate}
                 onSave={autosave.run}
               />
