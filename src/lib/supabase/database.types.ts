@@ -550,12 +550,14 @@ export interface Database {
           id: string;
           plan_id: string;
           client_name: string;
+          logo_url: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
           plan_id: string;
           client_name: string;
+          logo_url?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["team_plan_teams"]["Insert"]>;

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, Pin, Search } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import {
@@ -30,12 +30,10 @@ import type { UserRole } from "@/lib/supabase/database.types";
 function SidebarBody({
   collapsed,
   isExec,
-  onToggleCollapsed,
   onReplayTour,
 }: {
   collapsed: boolean;
   isExec: boolean;
-  onToggleCollapsed?: () => void;
   onReplayTour: () => void;
 }) {
   return (
@@ -70,12 +68,7 @@ function SidebarBody({
           <NavPendingWatcher />
         </Link>
       </div>
-      <SidebarNav
-        isExec={isExec}
-        collapsed={collapsed}
-        onToggleCollapsed={onToggleCollapsed}
-        onReplayTour={onReplayTour}
-      />
+      <SidebarNav isExec={isExec} collapsed={collapsed} onReplayTour={onReplayTour} />
     </>
   );
 }
@@ -105,50 +98,20 @@ export function AppShell({
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
-  // Minimized by default -- keeps the page feeling lighter at rest. Hovering
-  // the minimized strip pops a full-width preview over the content (see
-  // `peek` below); explicitly expanding via the collapse toggle pins it open
-  // and is remembered as "0" in localStorage, overriding this default.
-  const [collapsed, setCollapsed] = useState(true);
-  const [peek, setPeek] = useState(false);
+  // The sidebar is always minimized at rest -- there's no pinned/expanded
+  // state anymore. Hovering it reveals a floating full-width preview over
+  // the page content; moving away snaps it back.
+  const [expanded, setExpanded] = useState(false);
   const [tourRun, setTourRun] = useState(showOnboarding);
-  const collapsedBeforeTourRef = useRef(true);
-
-  useEffect(() => {
-    if (showOnboarding) return;
-    if (localStorage.getItem("sidebar-collapsed") === "0") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing from localStorage, an external store, on mount
-      setCollapsed(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function toggleCollapsed() {
-    setCollapsed((prev) => {
-      const next = !prev;
-      localStorage.setItem("sidebar-collapsed", next ? "1" : "0");
-      return next;
-    });
-  }
-
-  // The hover preview's own explicit action -- distinct from `toggleCollapsed`
-  // because the preview always LOOKS expanded, so a plain collapse/expand
-  // chevron there would show "collapse" while actually pinning it open.
-  function pinExpanded() {
-    setCollapsed(false);
-    localStorage.setItem("sidebar-collapsed", "0");
-    setPeek(false);
-  }
 
   function startTour() {
-    collapsedBeforeTourRef.current = collapsed;
-    setCollapsed(false);
+    setExpanded(true);
     setTourRun(true);
   }
 
   function finishTour() {
     setTourRun(false);
-    setCollapsed(collapsedBeforeTourRef.current);
+    setExpanded(false);
   }
 
   const tourSteps: TourStep[] = NAV_LINKS.filter((l) => (!l.execOnly || isExec) && l.tourDescription).map(
@@ -169,37 +132,31 @@ export function AppShell({
   return (
     <div className="flex h-svh md:gap-3 md:p-3">
       <aside
-        onMouseEnter={() => collapsed && setPeek(true)}
-        onMouseLeave={() => setPeek(false)}
-        className={cn("relative hidden min-h-0 shrink-0 md:block", collapsed ? "w-16" : "w-60")}
+        onMouseEnter={() => setExpanded(true)}
+        onMouseLeave={() => setExpanded(false)}
+        className="relative hidden min-h-0 w-16 shrink-0 md:block"
       >
-        {/* Resting strip -- always occupies the real layout width (16 or 60),
-            so nothing else on the page ever shifts. */}
+        {/* Resting strip -- always occupies the real layout width, so
+            nothing else on the page ever shifts. */}
         <div className="glass-sidebar absolute inset-0 flex min-h-0 flex-col overflow-hidden rounded-3xl">
-          <SidebarBody
-            collapsed={collapsed}
-            isExec={isExec}
-            onToggleCollapsed={toggleCollapsed}
-            onReplayTour={startTour}
-          />
+          <SidebarBody collapsed isExec={isExec} onReplayTour={startTour} />
         </div>
 
         {/* Hover preview -- floats over the page content at full width
-            without reflowing it; only exists while minimized and hovered. */}
-        {collapsed && peek && (
-          <div className="glass-sidebar animate-in fade-in-0 zoom-in-95 absolute top-0 left-0 z-30 flex h-full w-60 origin-top-left flex-col overflow-hidden rounded-3xl shadow-2xl duration-150">
-            <button
-              type="button"
-              onClick={pinExpanded}
-              title="Keep sidebar expanded"
-              aria-label="Keep sidebar expanded"
-              className="absolute top-4 right-3 flex size-6 items-center justify-center rounded-md text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-            >
-              <Pin className="size-3.5" />
-            </button>
-            <SidebarBody collapsed={false} isExec={isExec} onReplayTour={startTour} />
-          </div>
-        )}
+            without reflowing it. Always mounted (never conditionally
+            rendered) so both the open and close transitions animate on the
+            same element instead of popping in/out abruptly. */}
+        <div
+          inert={!expanded}
+          className={cn(
+            "glass-sidebar absolute top-0 left-0 z-30 flex h-full w-60 flex-col overflow-hidden rounded-3xl shadow-2xl transition-[opacity,transform] duration-200 ease-out",
+            expanded
+              ? "translate-x-0 opacity-100"
+              : "pointer-events-none -translate-x-2 opacity-0",
+          )}
+        >
+          <SidebarBody collapsed={false} isExec={isExec} onReplayTour={startTour} />
+        </div>
       </aside>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">

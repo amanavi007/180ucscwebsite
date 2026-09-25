@@ -15,6 +15,7 @@ export interface BoardProfile {
 export interface BoardTeam {
   id: string;
   clientName: string;
+  logoUrl: string | null;
   pm: BoardProfile[];
   sc: BoardProfile[];
   members: BoardProfile[];
@@ -67,7 +68,7 @@ export async function getPlanBoard(planId: string, quarterId: string): Promise<T
   ] = await Promise.all([
     supabase
       .from("team_plan_teams")
-      .select("id, client_name")
+      .select("id, client_name, logo_url")
       .eq("plan_id", planId)
       .order("client_name", { ascending: true }),
     getAllProfiles(),
@@ -120,6 +121,7 @@ export async function getPlanBoard(planId: string, quarterId: string): Promise<T
   const teams: BoardTeam[] = (planTeams ?? []).map((t) => ({
     id: t.id,
     clientName: t.client_name,
+    logoUrl: t.logo_url,
     ...buckets.get(t.id)!,
   }));
 

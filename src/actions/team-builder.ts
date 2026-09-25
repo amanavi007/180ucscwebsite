@@ -71,7 +71,7 @@ export async function duplicatePlan(
 
   const [{ data: sourceTeams, error: teamsError }, { data: sourcePlacements, error: placementsError }] =
     await Promise.all([
-      supabase.from("team_plan_teams").select("id, client_name").eq("plan_id", planId),
+      supabase.from("team_plan_teams").select("id, client_name, logo_url").eq("plan_id", planId),
       supabase
         .from("team_plan_placements")
         .select("plan_team_id, user_id, team_role")
@@ -90,6 +90,7 @@ export async function duplicatePlan(
         id: teamIdMap.get(team.id)!,
         plan_id: newPlan.id,
         client_name: team.client_name,
+        logo_url: team.logo_url,
       })),
     );
     if (newTeamsError) return { error: newTeamsError.message };
@@ -179,6 +180,31 @@ export async function renamePlanTeam(planTeamId: string, clientName: string): Pr
   const { error } = await supabase
     .from("team_plan_teams")
     .update({ client_name: clientName.trim() })
+    .eq("id", planTeamId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/portal/admin/team-builder");
+  return {};
+}
+
+export async function setPlanTeamLogo(planTeamId: string, logoUrl: string): Promise<ActionResult> {
+  const denied = await requireExec();
+  if (denied.error) return { error: denied.error };
+
+  const trimmed = logoUrl.trim();
+  if (trimmed) {
+    try {
+      const parsed = new URL(trimmed);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error();
+    } catch {
+      return { error: "Enter a valid image URL (starting with http:// or https://)." };
+    }
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("team_plan_teams")
+    .update({ logo_url: trimmed || null })
     .eq("id", planTeamId);
   if (error) return { error: error.message };
 
