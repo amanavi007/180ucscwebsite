@@ -48,7 +48,6 @@ export function buildBookingConfirmationEmail(input: BookingConfirmationEmailInp
   // Applicant name and location are free text, so escape anything interpolated into HTML.
   const logoUrl = `${input.siteUrl}/email-logo.png`;
   const html = `
-    <img src="${escapeHtml(logoUrl)}" alt="180 Degrees Consulting UC Santa Cruz" width="240" style="display:block;width:240px;max-width:100%;height:auto;margin:0 0 20px;" />
     <p>Hi ${escapeHtml(input.applicantName)},</p>
     <p>Your coffee chat with 180DC UCSC is confirmed:</p>
     <ul>
@@ -63,6 +62,7 @@ export function buildBookingConfirmationEmail(input: BookingConfirmationEmailInp
     </p>
     <p>Need to cancel or pick a different time? <a href="${escapeHtml(manageUrl)}">Manage your booking</a>.</p>
     <p>See you soon!</p>
+    <img src="${escapeHtml(logoUrl)}" alt="180 Degrees Consulting UC Santa Cruz" width="240" style="display:block;width:240px;max-width:100%;height:auto;margin:24px 0 0;" />
   `.trim();
 
   const text = [
