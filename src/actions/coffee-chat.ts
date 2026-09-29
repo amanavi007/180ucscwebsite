@@ -28,6 +28,7 @@ async function requireExec() {
 
 function revalidateAdmin() {
   revalidatePath("/portal/admin/coffee-chats");
+  revalidatePath("/apply/coffee-chat");
 }
 
 /** Adds availability for several days and several time blocks in one go (one row per day and block). */
@@ -112,7 +113,7 @@ async function generateMissingSlots(execId: string): Promise<ActionResult & { cr
     location: defaultLocation,
     exec_id_1: g.execId1,
     exec_id_2: g.execId2,
-    published: false,
+    published: true,
   }));
 
   if (toInsert.length > 0) {
