@@ -1,13 +1,20 @@
 import type { Metadata } from "next";
-import { getAllAvailability } from "@/lib/data/coffee-chat";
+import { getAllAvailability, getAllBookings, getAllSlots } from "@/lib/data/coffee-chat";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AvailabilityView } from "./availability-view";
+import { BookingsView } from "./bookings-view";
+import { SlotsView } from "./slots-view";
 
 export const metadata: Metadata = { title: "Admin · Coffee Chats" };
 
 export default async function CoffeeChatsPage() {
-  const [availability, profile] = await Promise.all([getAllAvailability(), getCurrentProfile()]);
+  const [availability, slots, bookings, profile] = await Promise.all([
+    getAllAvailability(),
+    getAllSlots(),
+    getAllBookings(),
+    getCurrentProfile(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -27,8 +34,12 @@ export default async function CoffeeChatsPage() {
         <TabsContent value="availability">
           <AvailabilityView availability={availability} currentExecId={profile.id} />
         </TabsContent>
-        <TabsContent value="slots">{/* added in Task 7 */}</TabsContent>
-        <TabsContent value="bookings">{/* added in Task 8 */}</TabsContent>
+        <TabsContent value="slots">
+          <SlotsView slots={slots} currentExecId={profile.id} />
+        </TabsContent>
+        <TabsContent value="bookings">
+          <BookingsView bookings={bookings} />
+        </TabsContent>
       </Tabs>
     </div>
   );
