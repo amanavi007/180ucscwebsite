@@ -32,6 +32,58 @@ export function normalizeTime(time: string): string {
   return time.slice(0, 5);
 }
 
+export interface TimeBlockInput {
+  startTime: string;
+  endTime: string;
+}
+
+export interface AvailabilityRowInput {
+  date: string;
+  startTime: string;
+  endTime: string;
+}
+
+/**
+ * Turns one availability "entry" (several days x several time blocks) into
+ * one row per day and block, or an error message. Days are de-duplicated and
+ * sorted; blocks must be valid and must not overlap each other.
+ */
+export function expandAvailabilityEntry(
+  dates: string[],
+  blocks: TimeBlockInput[],
+): { rows: AvailabilityRowInput[] } | { error: string } {
+  const uniqueDates = [...new Set(dates)].sort();
+  if (uniqueDates.length === 0) return { error: "Pick at least one day." };
+  if (blocks.length === 0) return { error: "Add at least one time block." };
+
+  for (const block of blocks) {
+    if (!block.startTime || !block.endTime || timeToMinutes(block.endTime) <= timeToMinutes(block.startTime)) {
+      return { error: "Each block needs an end time after its start time." };
+    }
+  }
+
+  const sortedBlocks = [...blocks].sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+  for (let i = 1; i < sortedBlocks.length; i++) {
+    if (timeToMinutes(sortedBlocks[i].startTime) < timeToMinutes(sortedBlocks[i - 1].endTime)) {
+      return { error: "Your time blocks overlap. Adjust them so each is separate." };
+    }
+  }
+
+  return {
+    rows: uniqueDates.flatMap((date) =>
+      sortedBlocks.map((block) => ({ date, startTime: block.startTime, endTime: block.endTime })),
+    ),
+  };
+}
+
+/** "14:20" (or "14:20:00") -> "2:20 PM". Applicant-facing times are 12-hour. */
+export function formatTime12h(time: string): string {
+  const [h, m] = normalizeTime(time).split(":").map(Number);
+  const suffix = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${m.toString().padStart(2, "0")} ${suffix}`;
+}
+
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(":").map(Number);
   return h * 60 + m;

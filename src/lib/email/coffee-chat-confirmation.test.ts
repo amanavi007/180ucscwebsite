@@ -12,16 +12,30 @@ const input: BookingConfirmationEmailInput = {
 };
 
 describe("buildBookingConfirmationEmail", () => {
-  it("includes the date, time, location, manage link, calendar link, and ICS link", () => {
+  it("includes the date, 12-hour time, location, manage link, calendar link, and ICS link", () => {
     const email = buildBookingConfirmationEmail(input);
     expect(email.subject).toContain("Coffee Chat");
-    expect(email.html).toContain("2026-10-06");
-    expect(email.html).toContain("14:00");
+    expect(email.html).toContain("Tuesday, October 6, 2026");
+    expect(email.html).toContain("2:00 PM to 2:20 PM");
     expect(email.html).toContain("Baskin Engineering courtyard");
     expect(email.html).toContain("https://180dcucsc.org/apply/coffee-chat/manage/tok_abc123");
     expect(email.html).toContain("https://180dcucsc.org/api/coffee-chat/tok_abc123/calendar.ics");
     expect(email.html).toContain("calendar.google.com/calendar/render");
     expect(email.text).toContain("https://180dcucsc.org/apply/coffee-chat/manage/tok_abc123");
+    expect(email.text).toContain("2:00 PM to 2:20 PM");
+  });
+
+  it("leaves out the location line when the slot has no location", () => {
+    const email = buildBookingConfirmationEmail({ ...input, location: "" });
+    expect(email.html).not.toContain("Location");
+    expect(email.text).not.toContain("Location");
+  });
+
+  it("never uses em dashes, en dashes, or double hyphens in the copy", () => {
+    const email = buildBookingConfirmationEmail({ ...input, location: "" });
+    for (const copy of [email.subject, email.text, email.html.replace(/https?:\/\/\S+/g, "")]) {
+      expect(copy).not.toMatch(/—|–|--/);
+    }
   });
 
   it("HTML-escapes the applicant-supplied name so it can't inject markup into the email", () => {

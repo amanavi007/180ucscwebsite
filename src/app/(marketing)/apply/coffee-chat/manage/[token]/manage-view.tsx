@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { ArrowUpRight } from "lucide-react";
 import { cancelBookingByTokenAction } from "@/actions/coffee-chat-public";
 import type { ManagedBooking } from "@/lib/data/coffee-chat-public";
+import { formatTime12h } from "@/lib/coffee-chat";
+import { formatDateLong } from "@/lib/date";
 import { Button } from "@/components/ui/button";
 
 export function ManageView({ token, booking }: { token: string; booking: ManagedBooking | null }) {
@@ -60,10 +62,11 @@ export function ManageView({ token, booking }: { token: string; booking: Managed
 
   return (
     <div className="text-center">
-      <p className="text-lg font-semibold">
-        {booking.date} at {booking.startTime}–{booking.endTime}
+      <p className="text-lg font-semibold">{formatDateLong(booking.date)}</p>
+      <p className="mt-1 text-foreground/70">
+        {formatTime12h(booking.startTime)} to {formatTime12h(booking.endTime)}
       </p>
-      <p className="mt-1 text-foreground/70">{booking.location}</p>
+      {booking.location.trim() !== "" && <p className="mt-1 text-foreground/70">{booking.location}</p>}
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         <Button variant="outline" onClick={handleCancel} disabled={isPending}>
           Cancel booking

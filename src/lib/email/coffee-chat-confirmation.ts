@@ -1,4 +1,6 @@
 import { buildGoogleCalendarUrl } from "../calendar-invite";
+import { formatTime12h } from "../coffee-chat";
+import { formatDateLong } from "../date";
 
 export interface BookingConfirmationEmailInput {
   applicantName: string;
@@ -37,16 +39,20 @@ export function buildBookingConfirmationEmail(input: BookingConfirmationEmailInp
     manageToken: input.manageToken,
   });
 
-  const subject = "You're booked -- 180DC UCSC Coffee Chat";
+  const subject = "You're booked for your 180DC UCSC Coffee Chat";
+
+  const dateLabel = formatDateLong(input.date);
+  const timeLabel = `${formatTime12h(input.startTime)} to ${formatTime12h(input.endTime)}`;
+  const hasLocation = input.location.trim() !== "";
 
   // Applicant name and location are free text, so escape anything interpolated into HTML.
   const html = `
     <p>Hi ${escapeHtml(input.applicantName)},</p>
     <p>Your coffee chat with 180DC UCSC is confirmed:</p>
     <ul>
-      <li><strong>Date:</strong> ${escapeHtml(input.date)}</li>
-      <li><strong>Time:</strong> ${escapeHtml(input.startTime)}–${escapeHtml(input.endTime)}</li>
-      <li><strong>Location:</strong> ${escapeHtml(input.location)}</li>
+      <li><strong>Date:</strong> ${escapeHtml(dateLabel)}</li>
+      <li><strong>Time:</strong> ${escapeHtml(timeLabel)}</li>
+      ${hasLocation ? `<li><strong>Location:</strong> ${escapeHtml(input.location)}</li>` : ""}
     </ul>
     <p>
       Add it to your calendar:
@@ -60,9 +66,9 @@ export function buildBookingConfirmationEmail(input: BookingConfirmationEmailInp
   const text = [
     `Hi ${input.applicantName},`,
     `Your coffee chat with 180DC UCSC is confirmed:`,
-    `Date: ${input.date}`,
-    `Time: ${input.startTime}-${input.endTime}`,
-    `Location: ${input.location}`,
+    `Date: ${dateLabel}`,
+    `Time: ${timeLabel}`,
+    ...(hasLocation ? [`Location: ${input.location}`] : []),
     `Add to Google Calendar: ${googleUrl}`,
     `Add to Apple/Outlook: ${icsUrl}`,
     `Manage your booking (cancel or reschedule): ${manageUrl}`,

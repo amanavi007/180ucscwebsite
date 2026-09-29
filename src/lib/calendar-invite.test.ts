@@ -20,6 +20,18 @@ describe("buildGoogleCalendarUrl", () => {
   });
 });
 
+describe("calendar links for a slot without a location", () => {
+  const noLocation = { ...booking, location: "" };
+
+  it("omits the location from the Google Calendar link", () => {
+    expect(buildGoogleCalendarUrl(noLocation)).not.toContain("location=");
+  });
+
+  it("omits the LOCATION line from the ICS", () => {
+    expect(buildIcsContent(noLocation)).not.toContain("LOCATION");
+  });
+});
+
 describe("buildIcsContent", () => {
   it("produces a VCALENDAR block with the right UID, times, and CRLF line endings", () => {
     const ics = buildIcsContent(booking);

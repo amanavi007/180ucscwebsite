@@ -7,7 +7,10 @@ import { toast } from "sonner";
 import { ArrowUpRight, CheckCircle2 } from "lucide-react";
 import { createBookingAction } from "@/actions/coffee-chat-public";
 import type { PublicSlot } from "@/lib/data/coffee-chat-public";
+import { formatTime12h } from "@/lib/coffee-chat";
+import { formatDateLong, parseLocalDate, toDateString } from "@/lib/date";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Field, FieldGroup, FieldLabel, FieldError } from "@/components/ui/field";
 
@@ -45,10 +48,12 @@ export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; 
 
   const byDate = useMemo(() => groupByDate(slots), [slots]);
   const dates = useMemo(() => [...byDate.keys()].sort(), [byDate]);
+  const availableDates = useMemo(() => new Set(dates), [dates]);
+  const availableDayObjects = useMemo(() => dates.map(parseLocalDate), [dates]);
   const timesForSelectedDate = selectedDate ? (byDate.get(selectedDate) ?? []) : [];
 
   // Renders the widget once both the Turnstile script has loaded AND its
-  // container div exists (the div only mounts once step 3 appears) --
+  // container div exists (the div only mounts once the details step appears);
   // whichever of those two happens second is what triggers the render.
   useEffect(() => {
     if (!turnstileScriptReady || !turnstileContainerRef.current || !window.turnstile) return;
@@ -93,10 +98,11 @@ export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; 
         <CheckCircle2 className="mx-auto size-12 text-primary" />
         <h2 className="font-brand mt-4 text-2xl font-bold tracking-wide uppercase">You&apos;re all set!</h2>
         <p className="mt-2 text-foreground/70">
-          {confirmed.date} at {confirmed.startTime}–{confirmed.endTime}, {confirmed.location}
+          {formatDateLong(confirmed.date)} at {formatTime12h(confirmed.startTime)}
+          {confirmed.location.trim() !== "" ? `, ${confirmed.location}` : ""}
         </p>
         <p className="mt-4 text-sm text-muted-foreground">
-          We&apos;ve also emailed you a confirmation with calendar-add links and a way to cancel or reschedule.
+          We&apos;ve also emailed you a confirmation with calendar links and a way to cancel or reschedule.
         </p>
         <Button
           nativeButton={false}
@@ -114,7 +120,7 @@ export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; 
   if (slots.length === 0) {
     return (
       <p className="text-center text-foreground/70">
-        No coffee chat slots are open right now -- check back soon, or follow our socials for updates.
+        No coffee chat times are open right now. Check back soon, or follow our socials for updates.
       </p>
     );
   }
@@ -127,46 +133,51 @@ export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; 
         onReady={() => setTurnstileScriptReady(true)}
       />
 
-      <div>
-        <h2 className="font-semibold">1. Pick a date</h2>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {dates.map((date) => (
-            <button
-              key={date}
-              type="button"
-              onClick={() => {
-                setSelectedDate(date);
-                setSelectedSlotId(null);
-              }}
-              className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
-                selectedDate === date ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:bg-muted"
-              }`}
-            >
-              {date}
-            </button>
-          ))}
+      <div className="grid gap-8 md:grid-cols-[auto_1fr]">
+        <div>
+          <h2 className="font-semibold">1. Pick a date</h2>
+          <Calendar
+            mode="single"
+            selected={selectedDate ? parseLocalDate(selectedDate) : undefined}
+            onSelect={(day) => {
+              if (!day) return;
+              setSelectedDate(toDateString(day));
+              setSelectedSlotId(null);
+            }}
+            defaultMonth={availableDayObjects[0]}
+            disabled={(day) => !availableDates.has(toDateString(day))}
+            modifiers={{ available: availableDayObjects }}
+            modifiersClassNames={{ available: "font-bold text-primary" }}
+            showOutsideDays={false}
+            className="mt-2 rounded-2xl border border-border bg-background [--cell-size:--spacing(10)]"
+          />
         </div>
-      </div>
 
-      {selectedDate && (
         <div>
           <h2 className="font-semibold">2. Pick a time</h2>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {timesForSelectedDate.map((slot) => (
-              <button
-                key={slot.id}
-                type="button"
-                onClick={() => setSelectedSlotId(slot.id)}
-                className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
-                  selectedSlotId === slot.id ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:bg-muted"
-                }`}
-              >
-                {slot.startTime}–{slot.endTime} · {slot.location}
-              </button>
-            ))}
-          </div>
+          {!selectedDate ? (
+            <p className="mt-3 text-sm text-muted-foreground">Choose a highlighted date to see open times.</p>
+          ) : (
+            <div className="mt-3">
+              <p className="text-sm text-foreground/70">{formatDateLong(selectedDate)}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {timesForSelectedDate.map((slot) => (
+                  <button
+                    key={slot.id}
+                    type="button"
+                    onClick={() => setSelectedSlotId(slot.id)}
+                    className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                      selectedSlotId === slot.id ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:bg-muted"
+                    }`}
+                  >
+                    {formatTime12h(slot.startTime)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {selectedSlotId && (
         <div>

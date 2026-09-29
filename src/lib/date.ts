@@ -11,6 +11,23 @@ export function parseLocalDate(dateString: string): Date {
   return new Date(year, month - 1, day);
 }
 
+/** "2026-10-01" -> "Thursday, October 1, 2026" (date-only, so never shifts a day). */
+export function formatDateLong(dateString: string): string {
+  return parseLocalDate(dateString).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+/** A local calendar Date as "YYYY-MM-DD" (the inverse of parseLocalDate). */
+export function toDateString(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
 /**
  * A Date as "YYYY-MM-DD" in the org's own timezone (Santa Cruz). The server
  * (Vercel functions run in UTC) has no idea where the user physically is,

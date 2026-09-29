@@ -20,8 +20,8 @@ export function buildGoogleCalendarUrl(booking: CoffeeChatBookingForInvite): str
     text: "180DC UCSC Coffee Chat",
     dates: `${toUtcStamp(booking.date, booking.startTime)}/${toUtcStamp(booking.date, booking.endTime)}`,
     details: `Coffee chat with 180DC UCSC exec as part of recruitment.`,
-    location: booking.location,
   });
+  if (booking.location.trim() !== "") params.set("location", booking.location);
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
@@ -42,7 +42,7 @@ export function buildIcsContent(booking: CoffeeChatBookingForInvite): string {
     `DTSTART:${toUtcStamp(booking.date, booking.startTime)}`,
     `DTEND:${toUtcStamp(booking.date, booking.endTime)}`,
     "SUMMARY:180DC UCSC Coffee Chat",
-    `LOCATION:${booking.location}`,
+    ...(booking.location.trim() !== "" ? [`LOCATION:${booking.location}`] : []),
     "DESCRIPTION:Coffee chat with 180DC UCSC exec as part of recruitment.",
     "END:VEVENT",
     "END:VCALENDAR",

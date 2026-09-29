@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CHUNK_MINUTES,
+  expandAvailabilityEntry,
+  formatTime12h,
   generateSlots,
   isSlotBookable,
   isSwapEligible,
@@ -159,6 +161,73 @@ describe("isValidUcscEmail", () => {
 
   it("rejects a malformed address", () => {
     expect(isValidUcscEmail("not-an-email")).toBe(false);
+  });
+});
+
+describe("expandAvailabilityEntry", () => {
+  it("expands several days and several time blocks into one row per day and block", () => {
+    const result = expandAvailabilityEntry(
+      ["2026-10-06", "2026-10-07"],
+      [
+        { startTime: "10:00", endTime: "11:00" },
+        { startTime: "14:00", endTime: "15:30" },
+      ],
+    );
+    expect(result).toEqual({
+      rows: [
+        { date: "2026-10-06", startTime: "10:00", endTime: "11:00" },
+        { date: "2026-10-06", startTime: "14:00", endTime: "15:30" },
+        { date: "2026-10-07", startTime: "10:00", endTime: "11:00" },
+        { date: "2026-10-07", startTime: "14:00", endTime: "15:30" },
+      ],
+    });
+  });
+
+  it("ignores duplicate days and returns them sorted", () => {
+    const result = expandAvailabilityEntry(["2026-10-07", "2026-10-06", "2026-10-07"], [{ startTime: "10:00", endTime: "11:00" }]);
+    expect("rows" in result && result.rows.map((r) => r.date)).toEqual(["2026-10-06", "2026-10-07"]);
+  });
+
+  it("rejects an entry with no days", () => {
+    expect(expandAvailabilityEntry([], [{ startTime: "10:00", endTime: "11:00" }])).toEqual({ error: "Pick at least one day." });
+  });
+
+  it("rejects an entry with no time blocks", () => {
+    expect(expandAvailabilityEntry(["2026-10-06"], [])).toEqual({ error: "Add at least one time block." });
+  });
+
+  it("rejects a block that ends before it starts or is missing a time", () => {
+    expect(expandAvailabilityEntry(["2026-10-06"], [{ startTime: "11:00", endTime: "10:00" }])).toEqual({
+      error: "Each block needs an end time after its start time.",
+    });
+    expect(expandAvailabilityEntry(["2026-10-06"], [{ startTime: "", endTime: "10:00" }])).toEqual({
+      error: "Each block needs an end time after its start time.",
+    });
+  });
+
+  it("rejects blocks that overlap each other", () => {
+    expect(
+      expandAvailabilityEntry(
+        ["2026-10-06"],
+        [
+          { startTime: "10:00", endTime: "11:00" },
+          { startTime: "10:30", endTime: "12:00" },
+        ],
+      ),
+    ).toEqual({ error: "Your time blocks overlap. Adjust them so each is separate." });
+  });
+});
+
+describe("formatTime12h", () => {
+  it("formats afternoon, morning, noon and midnight times as 12-hour AM/PM", () => {
+    expect(formatTime12h("14:00")).toBe("2:00 PM");
+    expect(formatTime12h("09:05")).toBe("9:05 AM");
+    expect(formatTime12h("12:30")).toBe("12:30 PM");
+    expect(formatTime12h("00:00")).toBe("12:00 AM");
+  });
+
+  it("accepts Postgres HH:MM:SS values", () => {
+    expect(formatTime12h("14:20:00")).toBe("2:20 PM");
   });
 });
 

@@ -8,10 +8,12 @@ import { logAudit } from "@/lib/audit";
 import { getAllAvailability, getAllSlots, getExecOptionsForSlot } from "@/lib/data/coffee-chat";
 import {
   DEFAULT_CHUNK_MINUTES,
+  expandAvailabilityEntry,
   generateSlots,
   isSwapEligible,
   type AvailabilityBlock,
   type ExistingSlotAssignment,
+  type TimeBlockInput,
 } from "@/lib/coffee-chat";
 
 export interface ActionResult {
@@ -28,19 +30,30 @@ function revalidateAdmin() {
   revalidatePath("/portal/admin/coffee-chats");
 }
 
-export async function addAvailabilityBlockAction(date: string, startTime: string, endTime: string): Promise<ActionResult> {
+/** Adds availability for several days and several time blocks in one go (one row per day and block). */
+export async function addAvailabilityEntryAction(
+  dates: string[],
+  blocks: TimeBlockInput[],
+): Promise<ActionResult & { addedCount?: number }> {
   const { profile, error } = await requireExec();
   if (error || !profile) return { error };
-  if (startTime >= endTime) return { error: "End time must be after start time." };
+
+  const expanded = expandAvailabilityEntry(dates, blocks);
+  if ("error" in expanded) return { error: expanded.error };
 
   const supabase = await createClient();
-  const { error: insertError } = await supabase
-    .from("coffee_chat_availability")
-    .insert({ exec_id: profile.id, date, start_time: startTime, end_time: endTime });
+  const { error: insertError } = await supabase.from("coffee_chat_availability").insert(
+    expanded.rows.map((row) => ({
+      exec_id: profile.id,
+      date: row.date,
+      start_time: row.startTime,
+      end_time: row.endTime,
+    })),
+  );
   if (insertError) return { error: insertError.message };
 
   revalidateAdmin();
-  return {};
+  return { addedCount: expanded.rows.length };
 }
 
 export async function removeAvailabilityBlockAction(id: string): Promise<ActionResult> {
@@ -107,27 +120,6 @@ export async function generateSlotsAction(): Promise<ActionResult & { createdCou
   await logAudit(profile.id, "coffee_chat.slots_generated", undefined, `${toInsert.length} slot(s) created`);
   revalidateAdmin();
   return { createdCount: toInsert.length };
-}
-
-/** Saves the default meeting location and applies it to every slot that doesn't have one yet. */
-export async function setDefaultLocationAction(location: string): Promise<ActionResult> {
-  const { error } = await requireExec();
-  if (error) return { error };
-  const trimmed = location.trim();
-  if (!trimmed) return { error: "Enter a location." };
-
-  const supabase = await createClient();
-  const { error: settingError } = await supabase
-    .from("org_settings")
-    .upsert({ key: "coffee_chat_default_location", value: trimmed });
-  if (settingError) return { error: settingError.message };
-
-  const { error: slotsError } = await supabase.from("coffee_chat_slots").update({ location: trimmed }).eq("location", "");
-  if (slotsError) return { error: slotsError.message };
-
-  revalidateAdmin();
-  revalidatePath("/apply/coffee-chat");
-  return {};
 }
 
 export async function swapSlotExecAction(

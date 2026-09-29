@@ -18,7 +18,7 @@ export default async function CoffeeChatPage() {
         Book a coffee chat
       </h1>
       <p className="mt-6 max-w-2xl text-lg text-foreground/70 text-pretty">
-        A casual, in-person conversation with two of our exec members -- no prep needed, just show up and
+        A casual, in-person conversation with two of our exec members. No prep needed, just show up and
         chat. Pick a time below.
       </p>
 

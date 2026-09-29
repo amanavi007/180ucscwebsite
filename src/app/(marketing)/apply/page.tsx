@@ -19,7 +19,7 @@ const STEPS = [
   {
     icon: CalendarHeart,
     title: "Grab a coffee chat",
-    body: "A casual, in-person conversation with two of our exec members -- no prep needed, just show up and chat.",
+    body: "A casual, in-person conversation with two of our exec members. No prep needed, just show up and chat.",
   },
   {
     icon: MessageCircle,

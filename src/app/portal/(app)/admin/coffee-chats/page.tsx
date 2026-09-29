@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { getAllAvailability, getAllBookings, getAllSlots } from "@/lib/data/coffee-chat";
 import { getCurrentProfile } from "@/lib/data/profile";
-import { createClient } from "@/lib/supabase/server";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AvailabilityView } from "./availability-view";
 import { BookingsView } from "./bookings-view";
@@ -10,15 +9,12 @@ import { SlotsView } from "./slots-view";
 export const metadata: Metadata = { title: "Admin · Coffee Chats" };
 
 export default async function CoffeeChatsPage() {
-  const supabase = await createClient();
-  const [availability, slots, bookings, profile, { data: locationSetting }] = await Promise.all([
+  const [availability, slots, bookings, profile] = await Promise.all([
     getAllAvailability(),
     getAllSlots(),
     getAllBookings(),
     getCurrentProfile(),
-    supabase.from("org_settings").select("value").eq("key", "coffee_chat_default_location").maybeSingle(),
   ]);
-  const defaultLocation = locationSetting?.value ?? "";
 
   return (
     <div className="space-y-6">
@@ -39,7 +35,7 @@ export default async function CoffeeChatsPage() {
           <AvailabilityView availability={availability} currentExecId={profile.id} />
         </TabsContent>
         <TabsContent value="slots">
-          <SlotsView slots={slots} currentExecId={profile.id} defaultLocation={defaultLocation} />
+          <SlotsView slots={slots} currentExecId={profile.id} />
         </TabsContent>
         <TabsContent value="bookings">
           <BookingsView bookings={bookings} />
