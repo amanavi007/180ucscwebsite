@@ -9,6 +9,7 @@ import type { ManagedBooking } from "@/lib/data/coffee-chat-public";
 import { formatTime12h } from "@/lib/coffee-chat";
 import { formatDateLong } from "@/lib/date";
 import { Button } from "@/components/ui/button";
+import { AddToCalendarButtons } from "../../add-to-calendar";
 
 export function ManageView({ token, booking }: { token: string; booking: ManagedBooking | null }) {
   const [isPending, startTransition] = useTransition();
@@ -67,6 +68,16 @@ export function ManageView({ token, booking }: { token: string; booking: Managed
         {formatTime12h(booking.startTime)} to {formatTime12h(booking.endTime)}
       </p>
       {booking.location.trim() !== "" && <p className="mt-1 text-foreground/70">{booking.location}</p>}
+      <AddToCalendarButtons
+        booking={{
+          applicantName: booking.applicantName,
+          date: booking.date,
+          startTime: booking.startTime,
+          endTime: booking.endTime,
+          location: booking.location,
+          manageToken: token,
+        }}
+      />
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         <Button variant="outline" onClick={handleCancel} disabled={isPending}>
           Cancel booking

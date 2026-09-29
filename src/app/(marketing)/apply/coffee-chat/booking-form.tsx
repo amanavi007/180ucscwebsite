@@ -10,6 +10,7 @@ import { formatTime12h } from "@/lib/coffee-chat";
 import { formatDateLong, parseLocalDate, toDateString } from "@/lib/date";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { AddToCalendarButtons } from "./add-to-calendar";
 import { Input } from "@/components/ui/input";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import {
@@ -121,7 +122,17 @@ export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; 
           {formatDateLong(confirmed.date)} at {formatTime12h(confirmed.startTime)}
           {confirmed.location.trim() !== "" ? `, ${confirmed.location}` : ""}
         </p>
-        <p className="mt-4 text-sm text-muted-foreground">
+        <AddToCalendarButtons
+          booking={{
+            applicantName: name,
+            date: confirmed.date,
+            startTime: confirmed.startTime,
+            endTime: confirmed.endTime,
+            location: confirmed.location,
+            manageToken: confirmed.manageToken,
+          }}
+        />
+        <p className="mt-6 text-sm text-muted-foreground">
           We&apos;ve also emailed you a confirmation with calendar links and a way to cancel or reschedule.
         </p>
         <Button
