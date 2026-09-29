@@ -83,7 +83,7 @@ export function AvailabilityView({
   const mine = availability.filter((a) => a.execId === currentExecId);
 
   return (
-    <div className="mt-4 space-y-6">
+    <div className="mt-4 grid items-start gap-6 xl:grid-cols-[auto_minmax(0,1fr)]">
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Add the times you&apos;re free</CardTitle>
