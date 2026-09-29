@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { isExec } from "@/lib/auth/roles";
 import { logAudit } from "@/lib/audit";
+import { notifyExecsOfBooking } from "@/lib/email/notify-execs";
 import { getAllAvailability, getAllSlots, getExecOptionsForSlot } from "@/lib/data/coffee-chat";
 import {
   DEFAULT_CHUNK_MINUTES,
@@ -285,11 +286,14 @@ export async function cancelBookingAsAdminAction(bookingId: string): Promise<Act
   if (error || !profile) return { error };
 
   const supabase = await createClient();
-  const { error: updateError } = await supabase
+  const { data: cancelled, error: updateError } = await supabase
     .from("coffee_chat_bookings")
     .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
-    .eq("id", bookingId);
+    .eq("id", bookingId)
+    .eq("status", "confirmed")
+    .select("id");
   if (updateError) return { error: updateError.message };
+  if ((cancelled ?? []).length > 0) await notifyExecsOfBooking(bookingId, "cancelled");
 
   await logAudit(profile.id, "coffee_chat.booking_cancelled_by_admin", undefined, bookingId);
   revalidateAdmin();

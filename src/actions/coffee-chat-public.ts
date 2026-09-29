@@ -7,6 +7,7 @@ import { DEFAULT_MIN_LEAD_MINUTES, isSlotBookable, isValidUcscEmail, normalizeTi
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { buildBookingConfirmationEmail } from "@/lib/email/coffee-chat-confirmation";
 import { sendEmail } from "@/lib/email/send";
+import { notifyExecsOfBooking } from "@/lib/email/notify-execs";
 
 const UNIQUE_VIOLATION = "23505";
 
@@ -108,12 +109,16 @@ export async function createBookingAction(input: CreateBookingInput): Promise<Cr
   if (!bookable) return { error: "That slot was just taken. Please pick another." };
 
   const manageToken = randomUUID();
-  const { error: insertError } = await supabase.from("coffee_chat_bookings").insert({
-    slot_id: slot.id,
-    applicant_name: name,
-    applicant_email: email,
-    manage_token: manageToken,
-  });
+  const { data: inserted, error: insertError } = await supabase
+    .from("coffee_chat_bookings")
+    .insert({
+      slot_id: slot.id,
+      applicant_name: name,
+      applicant_email: email,
+      manage_token: manageToken,
+    })
+    .select("id")
+    .single();
 
   if (insertError) {
     if ((insertError as { code?: string }).code === UNIQUE_VIOLATION) {
@@ -131,6 +136,8 @@ export async function createBookingAction(input: CreateBookingInput): Promise<Cr
     location: slot.location,
     manageToken,
   });
+
+  await notifyExecsOfBooking(inserted.id, "booked");
 
   revalidatePath("/apply/coffee-chat");
   revalidatePath("/portal/admin/coffee-chats");
@@ -160,6 +167,8 @@ export async function cancelBookingByTokenAction(token: string): Promise<ActionR
     .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
     .eq("id", booking.id);
   if (updateError) return { error: updateError.message };
+
+  await notifyExecsOfBooking(booking.id, "cancelled");
 
   revalidatePath("/apply/coffee-chat");
   revalidatePath("/portal/admin/coffee-chats");

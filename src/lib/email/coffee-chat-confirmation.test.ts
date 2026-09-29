@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildBookingConfirmationEmail, type BookingConfirmationEmailInput } from "./coffee-chat-confirmation";
+import { buildBookingConfirmationEmail, buildExecBookingCancelledEmail, buildExecBookingNotificationEmail, type BookingConfirmationEmailInput } from "./coffee-chat-confirmation";
 
 const input: BookingConfirmationEmailInput = {
   applicantName: "Jamie Rivera",
@@ -54,5 +54,46 @@ describe("buildBookingConfirmationEmail", () => {
     });
     expect(email.html).not.toContain("<a href=\"https://evil.example\">");
     expect(email.html).toContain("&lt;a href=&quot;https://evil.example&quot;&gt;Click&lt;/a&gt;");
+  });
+});
+
+describe("buildExecBookingNotificationEmail", () => {
+  it("names the applicant, shows the slot details, and escapes free text", () => {
+    const email = buildExecBookingNotificationEmail({
+      execName: "Sam Exec",
+      applicantName: "<b>Jamie</b>",
+      applicantEmail: "jamie@ucsc.edu",
+      date: "2026-10-06",
+      startTime: "14:00",
+      endTime: "14:20",
+      location: "Baskin Engineering courtyard",
+      manageToken: "tok_abc123",
+      siteUrl: "https://180dcucsc.org",
+    });
+    expect(email.html).toContain("calendar.google.com/calendar/render");
+    expect(email.html).toContain("https://180dcucsc.org/api/coffee-chat/tok_abc123/calendar.ics");
+    expect(email.subject).toContain("<b>Jamie</b>");
+    expect(email.html).not.toContain("<b>Jamie</b>");
+    expect(email.html).toContain("jamie@ucsc.edu");
+    expect(email.html).toContain("2:00 PM to 2:20 PM");
+    expect(email.html).toContain("https://180dcucsc.org/portal/admin/coffee-chats");
+    expect(email.text).toContain("Tuesday, October 6, 2026");
+  });
+});
+
+describe("buildExecBookingCancelledEmail", () => {
+  it("says who cancelled and which slot", () => {
+    const email = buildExecBookingCancelledEmail({
+      execName: "Sam Exec",
+      applicantName: "Jamie",
+      applicantEmail: "jamie@ucsc.edu",
+      date: "2026-10-06",
+      startTime: "14:00",
+      endTime: "14:20",
+      location: "",
+      siteUrl: "https://180dcucsc.org",
+    });
+    expect(email.subject).toBe("Jamie cancelled their coffee chat");
+    expect(email.text).toContain("2:00 PM to 2:20 PM");
   });
 });
