@@ -37,6 +37,7 @@ export function BookingsView({ bookings }: { bookings: BookingRow[] }) {
           <TableHead>Email</TableHead>
           <TableHead>Date</TableHead>
           <TableHead>Time</TableHead>
+          <TableHead>Location</TableHead>
           <TableHead>With</TableHead>
           <TableHead>Status</TableHead>
           <TableHead className="w-24" />
@@ -49,6 +50,7 @@ export function BookingsView({ bookings }: { bookings: BookingRow[] }) {
             <TableCell>{b.applicantEmail}</TableCell>
             <TableCell>{b.date}</TableCell>
             <TableCell>{b.startTime}</TableCell>
+            <TableCell>{b.location || "—"}</TableCell>
             <TableCell>
               {b.exec1Name}
               {b.exec2Name ? ` & ${b.exec2Name}` : ""}
