@@ -3,9 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/data/profile";
-import { isExec } from "@/lib/auth/roles";
+import { isExec, roleLabel } from "@/lib/auth/roles";
 import { logAudit } from "@/lib/audit";
-import type { LeadCandidateRole, MembershipTeamRole } from "@/lib/supabase/database.types";
+import type { LeadCandidateRole, MembershipTeamRole, UserRole } from "@/lib/supabase/database.types";
 
 export interface ActionResult {
   error?: string;
@@ -438,12 +438,50 @@ export async function applyPlan(planId: string): Promise<ActionResult> {
     if (insertError) return { error: insertError.message };
   }
 
+  // Placing someone as PM/SC also sets their org-wide role to match. Members
+  // are left alone, and execs are never touched.
+  const orgRoleByTeamRole: Partial<Record<MembershipTeamRole, UserRole>> = {
+    pm: "project_manager",
+    sc: "senior_consultant",
+  };
+  const targetRoleByUser = new Map<string, UserRole>();
+  for (const [userId, want] of desired) {
+    const orgRole = orgRoleByTeamRole[want.teamRole];
+    if (orgRole) targetRoleByUser.set(userId, orgRole);
+  }
+
   const actor = await getCurrentProfile();
+
+  if (targetRoleByUser.size > 0) {
+    const { data: leadProfiles, error: leadProfilesError } = await supabase
+      .from("profiles")
+      .select("id, name, role")
+      .in("id", [...targetRoleByUser.keys()]);
+    if (leadProfilesError) return { error: leadProfilesError.message };
+
+    for (const profile of leadProfiles ?? []) {
+      const orgRole = targetRoleByUser.get(profile.id)!;
+      if (isExec(profile.role) || profile.role === orgRole) continue;
+      const { error: roleError } = await supabase
+        .from("profiles")
+        .update({ role: orgRole })
+        .eq("id", profile.id);
+      if (roleError) return { error: roleError.message };
+      await logAudit(
+        actor.id,
+        "member.role_changed",
+        profile.name,
+        `${roleLabel(profile.role)} -> ${roleLabel(orgRole)} (team builder)`,
+      );
+    }
+  }
+
   await logAudit(actor.id, "team_plan.applied", plan.name);
 
   revalidatePath("/portal/admin/team-builder");
   revalidatePath("/portal/projects");
   revalidatePath("/portal/directory");
+  revalidatePath("/portal/admin");
   revalidatePath("/portal");
   revalidatePath("/portal/attendance");
   for (const projectId of new Set(planTeamToProjectId.values())) {
