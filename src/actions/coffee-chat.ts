@@ -69,21 +69,35 @@ export async function generateSlotsAction(): Promise<ActionResult & { createdCou
     endTime: a.endTime,
   }));
 
-  const generated = generateSlots(availability, DEFAULT_CHUNK_MINUTES);
+  // Existing slots (booked or not, including manual swaps) are never touched;
+  // generation only adds slots for execs not already assigned at an
+  // overlapping time, so re-running it can't double-book anyone.
+  const existingAssignments: ExistingSlotAssignment[] = existingSlots.map((s) => ({
+    slotId: s.id,
+    date: s.date,
+    startTime: s.startTime,
+    endTime: s.endTime,
+    execId1: s.execId1,
+    execId2: s.execId2,
+  }));
+  const generated = generateSlots(availability, DEFAULT_CHUNK_MINUTES, existingAssignments);
 
-  // Never touch a slot that's already booked -- only fill in windows that
-  // don't already have an unbooked or booked slot recorded.
-  const existingKeys = new Set(existingSlots.map((s) => `${s.date}|${s.startTime}|${s.execId1}|${s.execId2 ?? ""}`));
-  const toInsert = generated
-    .filter((g) => !existingKeys.has(`${g.date}|${g.startTime}|${g.execId1}|${g.execId2 ?? ""}`))
-    .map((g) => ({
-      date: g.date,
-      start_time: g.startTime,
-      end_time: g.endTime,
-      exec_id_1: g.execId1,
-      exec_id_2: g.execId2,
-      published: false,
-    }));
+  const { data: locationSetting } = await supabase
+    .from("org_settings")
+    .select("value")
+    .eq("key", "coffee_chat_default_location")
+    .maybeSingle();
+  const defaultLocation = locationSetting?.value ?? "";
+
+  const toInsert = generated.map((g) => ({
+    date: g.date,
+    start_time: g.startTime,
+    end_time: g.endTime,
+    location: defaultLocation,
+    exec_id_1: g.execId1,
+    exec_id_2: g.execId2,
+    published: false,
+  }));
 
   if (toInsert.length > 0) {
     const { error: insertError } = await supabase.from("coffee_chat_slots").insert(toInsert);
@@ -93,6 +107,27 @@ export async function generateSlotsAction(): Promise<ActionResult & { createdCou
   await logAudit(profile.id, "coffee_chat.slots_generated", undefined, `${toInsert.length} slot(s) created`);
   revalidateAdmin();
   return { createdCount: toInsert.length };
+}
+
+/** Saves the default meeting location and applies it to every slot that doesn't have one yet. */
+export async function setDefaultLocationAction(location: string): Promise<ActionResult> {
+  const { error } = await requireExec();
+  if (error) return { error };
+  const trimmed = location.trim();
+  if (!trimmed) return { error: "Enter a location." };
+
+  const supabase = await createClient();
+  const { error: settingError } = await supabase
+    .from("org_settings")
+    .upsert({ key: "coffee_chat_default_location", value: trimmed });
+  if (settingError) return { error: settingError.message };
+
+  const { error: slotsError } = await supabase.from("coffee_chat_slots").update({ location: trimmed }).eq("location", "");
+  if (slotsError) return { error: slotsError.message };
+
+  revalidateAdmin();
+  revalidatePath("/apply/coffee-chat");
+  return {};
 }
 
 export async function swapSlotExecAction(
@@ -166,6 +201,15 @@ export async function deleteSlotAction(slotId: string): Promise<ActionResult> {
   if (error) return { error };
 
   const supabase = await createClient();
+  // The bookings FK cascades, so deleting a booked slot would silently wipe the applicant's booking.
+  const { data: activeBooking } = await supabase
+    .from("coffee_chat_bookings")
+    .select("id")
+    .eq("slot_id", slotId)
+    .eq("status", "confirmed")
+    .maybeSingle();
+  if (activeBooking) return { error: "That slot has a confirmed booking. Cancel the booking first." };
+
   const { error: deleteError } = await supabase.from("coffee_chat_slots").delete().eq("id", slotId);
   if (deleteError) return { error: deleteError.message };
 

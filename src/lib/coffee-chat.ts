@@ -27,6 +27,11 @@ export interface ExistingSlotAssignment {
   execId2: string | null;
 }
 
+/** Postgres `time` columns come back as "HH:MM:SS"; all logic here works on "HH:MM". */
+export function normalizeTime(time: string): string {
+  return time.slice(0, 5);
+}
+
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(":").map(Number);
   return h * 60 + m;
@@ -40,9 +45,13 @@ function minutesToTime(totalMinutes: number): string {
   return `${h}:${m}`;
 }
 
-/** Every fixed-length chunk that fits entirely inside [startTime, endTime). */
+/**
+ * Every fixed-length chunk that fits entirely inside [startTime, endTime),
+ * aligned to a shared grid (multiples of `chunkMinutes` from midnight) so
+ * two execs' blocks line up regardless of when each block starts.
+ */
 function chunkStartsFor(block: AvailabilityBlock, chunkMinutes: number): string[] {
-  const start = timeToMinutes(block.startTime);
+  const start = Math.ceil(timeToMinutes(block.startTime) / chunkMinutes) * chunkMinutes;
   const end = timeToMinutes(block.endTime);
   const starts: string[] = [];
   for (let t = start; t + chunkMinutes <= end; t += chunkMinutes) {
@@ -59,10 +68,15 @@ function chunkStartsFor(block: AvailabilityBlock, chunkMinutes: number): string[
  * within a window are sorted by id before pairing, so re-running with the
  * same input produces the same pairing.
  */
-export function generateSlots(availability: AvailabilityBlock[], chunkMinutes: number): GeneratedSlot[] {
+export function generateSlots(
+  availability: AvailabilityBlock[],
+  chunkMinutes: number,
+  existingSlots: ExistingSlotAssignment[] = [],
+): GeneratedSlot[] {
   const byWindow = new Map<string, Set<string>>();
 
-  for (const block of availability) {
+  for (const rawBlock of availability) {
+    const block = { ...rawBlock, startTime: normalizeTime(rawBlock.startTime), endTime: normalizeTime(rawBlock.endTime) };
     for (const chunkStart of chunkStartsFor(block, chunkMinutes)) {
       const key = `${block.date}|${chunkStart}`;
       if (!byWindow.has(key)) byWindow.set(key, new Set());
@@ -74,7 +88,14 @@ export function generateSlots(availability: AvailabilityBlock[], chunkMinutes: n
   for (const [key, execIds] of byWindow) {
     const [date, startTime] = key.split("|");
     const endTime = minutesToTime(timeToMinutes(startTime) + chunkMinutes);
-    const sorted = [...execIds].sort();
+    // An exec already on an existing slot that overlaps this window (whether
+    // from an earlier run or a manual swap) can't be put on another one.
+    const busy = new Set(
+      existingSlots
+        .filter((s) => s.date === date && overlaps(s.startTime, s.endTime, startTime, endTime))
+        .flatMap(assignedExecIds),
+    );
+    const sorted = [...execIds].filter((id) => !busy.has(id)).sort();
     for (let i = 0; i < sorted.length; i += 2) {
       slots.push({
         date,
@@ -109,6 +130,9 @@ export function isSwapEligible(
   candidateAvailability: AvailabilityBlock[],
   allSlots: ExistingSlotAssignment[],
 ): boolean {
+  // Already on this slot (either position): swapping would leave an "A,A" slot or be a no-op.
+  if (assignedExecIds(targetSlot).includes(candidateExecId)) return false;
+
   const isFreeThen = candidateAvailability.some(
     (block) =>
       block.execId === candidateExecId &&

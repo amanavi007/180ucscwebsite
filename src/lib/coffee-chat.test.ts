@@ -5,6 +5,7 @@ import {
   isSlotBookable,
   isSwapEligible,
   isValidUcscEmail,
+  normalizeTime,
   type AvailabilityBlock,
   type ExistingSlotAssignment,
 } from "./coffee-chat";
@@ -158,6 +159,86 @@ describe("isValidUcscEmail", () => {
 
   it("rejects a malformed address", () => {
     expect(isValidUcscEmail("not-an-email")).toBe(false);
+  });
+});
+
+describe("normalizeTime", () => {
+  it("trims Postgres time values (HH:MM:SS) to HH:MM and leaves HH:MM alone", () => {
+    expect(normalizeTime("14:00:00")).toBe("14:00");
+    expect(normalizeTime("14:00")).toBe("14:00");
+  });
+});
+
+describe("generateSlots against existing slots and off-grid blocks", () => {
+  const twoExecs: AvailabilityBlock[] = [
+    { execId: "a", date: "2026-10-06", startTime: "14:00", endTime: "15:00" },
+    { execId: "b", date: "2026-10-06", startTime: "14:00", endTime: "15:00" },
+  ];
+
+  it("creates nothing when re-run against slots it already made, even with HH:MM:SS times from the DB", () => {
+    const first = generateSlots(twoExecs, 20);
+    const existing: ExistingSlotAssignment[] = first.map((s, i) => ({
+      slotId: `s${i}`,
+      date: s.date,
+      startTime: `${s.startTime}:00`,
+      endTime: `${s.endTime}:00`,
+      execId1: s.execId1,
+      execId2: s.execId2,
+    }));
+    expect(generateSlots(twoExecs, 20, existing)).toEqual([]);
+  });
+
+  it("never re-assigns an exec who was swapped onto another slot at an overlapping time", () => {
+    // Slot 14:00 was (a,b) but a was swapped out for d; a must not get re-paired into a new 14:00 slot.
+    const existing: ExistingSlotAssignment[] = [
+      { slotId: "s1", date: "2026-10-06", startTime: "14:00", endTime: "14:20", execId1: "d", execId2: "b" },
+      { slotId: "s2", date: "2026-10-06", startTime: "14:20", endTime: "14:40", execId1: "a", execId2: "b" },
+      { slotId: "s3", date: "2026-10-06", startTime: "14:40", endTime: "15:00", execId1: "a", execId2: "b" },
+    ];
+    const created = generateSlots(twoExecs, 20, existing);
+    const at1400 = created.filter((s) => s.startTime === "14:00");
+    expect(at1400).toEqual([{ date: "2026-10-06", startTime: "14:00", endTime: "14:20", execId1: "a", execId2: null }]);
+  });
+
+  it("aligns chunks to a shared grid so off-grid blocks still pair and don't overlap", () => {
+    const availability: AvailabilityBlock[] = [
+      { execId: "a", date: "2026-10-06", startTime: "14:00", endTime: "15:00" },
+      { execId: "b", date: "2026-10-06", startTime: "14:10", endTime: "15:00" },
+    ];
+    const slots = generateSlots(availability, 20);
+    expect(slots.map((s) => `${s.startTime}|${s.execId1}|${s.execId2}`).sort()).toEqual([
+      "14:00|a|null",
+      "14:20|a|b",
+      "14:40|a|b",
+    ]);
+  });
+
+  it("does not create overlapping slots for one exec from overlapping availability blocks", () => {
+    const availability: AvailabilityBlock[] = [
+      { execId: "a", date: "2026-10-06", startTime: "14:00", endTime: "15:00" },
+      { execId: "a", date: "2026-10-06", startTime: "14:10", endTime: "14:50" },
+    ];
+    const starts = generateSlots(availability, 20).map((s) => s.startTime).sort();
+    expect(starts).toEqual(["14:00", "14:20", "14:40"]);
+  });
+});
+
+describe("isSwapEligible on the target slot itself", () => {
+  const target: ExistingSlotAssignment = {
+    slotId: "slot-1",
+    date: "2026-10-06",
+    startTime: "14:00",
+    endTime: "14:20",
+    execId1: "a",
+    execId2: "b",
+  };
+  const availability: AvailabilityBlock[] = [
+    { execId: "a", date: "2026-10-06", startTime: "13:00", endTime: "15:00" },
+    { execId: "b", date: "2026-10-06", startTime: "13:00", endTime: "15:00" },
+  ];
+
+  it("rejects putting the exec already in the other position onto this slot (no A,A slot)", () => {
+    expect(isSwapEligible(target, "a", availability, [target])).toBe(false);
   });
 });
 

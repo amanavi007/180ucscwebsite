@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { DEFAULT_MIN_LEAD_MINUTES, isSlotBookable, isValidUcscEmail } from "@/lib/coffee-chat";
+import { DEFAULT_MIN_LEAD_MINUTES, isSlotBookable, isValidUcscEmail, normalizeTime } from "@/lib/coffee-chat";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { buildBookingConfirmationEmail } from "@/lib/email/coffee-chat-confirmation";
 import { sendEmail } from "@/lib/email/resend";
@@ -85,6 +85,8 @@ export async function createBookingAction(input: CreateBookingInput): Promise<Cr
     .eq("id", input.slotId)
     .single();
   if (slotError || !slot) return { error: "That slot no longer exists. Please pick another." };
+  const startTime = normalizeTime(slot.start_time);
+  const endTime = normalizeTime(slot.end_time);
 
   const { data: activeBookingsForSlot } = await supabase
     .from("coffee_chat_bookings")
@@ -123,8 +125,8 @@ export async function createBookingAction(input: CreateBookingInput): Promise<Cr
     email,
     name,
     date: slot.date,
-    startTime: slot.start_time,
-    endTime: slot.end_time,
+    startTime,
+    endTime,
     location: slot.location,
     manageToken,
   });
@@ -133,7 +135,7 @@ export async function createBookingAction(input: CreateBookingInput): Promise<Cr
   revalidatePath("/portal/admin/coffee-chats");
 
   return {
-    booking: { manageToken, date: slot.date, startTime: slot.start_time, endTime: slot.end_time, location: slot.location },
+    booking: { manageToken, date: slot.date, startTime, endTime, location: slot.location },
   };
 }
 

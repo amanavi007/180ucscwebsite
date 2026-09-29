@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Script from "next/script";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ArrowUpRight, CheckCircle2 } from "lucide-react";
 import { createBookingAction } from "@/actions/coffee-chat-public";
@@ -14,6 +15,7 @@ declare global {
   interface Window {
     turnstile?: {
       render: (container: string | HTMLElement, options: { sitekey: string; callback: (token: string) => void }) => string;
+      reset: (widgetId?: string) => void;
     };
   }
 }
@@ -38,6 +40,8 @@ export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; 
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState<{ date: string; startTime: string; endTime: string; location: string; manageToken: string } | null>(null);
   const turnstileContainerRef = useRef<HTMLDivElement | null>(null);
+  const turnstileWidgetIdRef = useRef<string | null>(null);
+  const router = useRouter();
 
   const byDate = useMemo(() => groupByDate(slots), [slots]);
   const dates = useMemo(() => [...byDate.keys()].sort(), [byDate]);
@@ -49,7 +53,10 @@ export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; 
   useEffect(() => {
     if (!turnstileScriptReady || !turnstileContainerRef.current || !window.turnstile) return;
     if (turnstileContainerRef.current.childElementCount > 0) return;
-    window.turnstile.render(turnstileContainerRef.current, { sitekey: turnstileSiteKey, callback: setTurnstileToken });
+    turnstileWidgetIdRef.current = window.turnstile.render(turnstileContainerRef.current, {
+      sitekey: turnstileSiteKey,
+      callback: setTurnstileToken,
+    });
   }, [turnstileScriptReady, selectedSlotId, turnstileSiteKey]);
 
   function handleSubmit() {
@@ -67,6 +74,13 @@ export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; 
       const result = await createBookingAction({ slotId: selectedSlotId, name, email, turnstileToken });
       if (result.error) {
         toast.error(result.error);
+        // Turnstile tokens are single-use and the server has spent this one:
+        // get a fresh challenge so retrying (e.g. a different slot) works,
+        // and refresh so a slot someone else just took drops off the list.
+        setTurnstileToken("");
+        window.turnstile?.reset(turnstileWidgetIdRef.current ?? undefined);
+        setSelectedSlotId(null);
+        router.refresh();
         return;
       }
       if (result.booking) setConfirmed(result.booking);

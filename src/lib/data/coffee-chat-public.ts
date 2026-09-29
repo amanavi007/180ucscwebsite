@@ -1,6 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { DEFAULT_MIN_LEAD_MINUTES, isSlotBookable } from "@/lib/coffee-chat";
+import { DEFAULT_MIN_LEAD_MINUTES, isSlotBookable, normalizeTime } from "@/lib/coffee-chat";
 
 export interface PublicSlot {
   id: string;
@@ -43,7 +43,13 @@ export async function getOpenSlots(): Promise<PublicSlot[]> {
         DEFAULT_MIN_LEAD_MINUTES,
       ),
     )
-    .map((s) => ({ id: s.id, date: s.date, startTime: s.start_time, endTime: s.end_time, location: s.location }));
+    .map((s) => ({
+      id: s.id,
+      date: s.date,
+      startTime: normalizeTime(s.start_time),
+      endTime: normalizeTime(s.end_time),
+      location: s.location,
+    }));
 }
 
 export interface ManagedBooking {
@@ -78,8 +84,8 @@ export async function getBookingByToken(token: string): Promise<ManagedBooking |
     applicantName: booking.applicant_name,
     applicantEmail: booking.applicant_email,
     date: slot.date,
-    startTime: slot.start_time,
-    endTime: slot.end_time,
+    startTime: normalizeTime(slot.start_time),
+    endTime: normalizeTime(slot.end_time),
     location: slot.location,
   };
 }

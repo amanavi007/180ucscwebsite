@@ -88,7 +88,7 @@ export async function getMyNotifications(
           .select(
             "id, applicant_name, status, created_at, cancelled_at, slot:coffee_chat_slots!inner(id, exec_id_1, exec_id_2)",
           )
-          .or(`exec_id_1.eq.${userId},exec_id_2.eq.${userId}`, { referencedTable: "coffee_chat_slots" })
+          .or(`exec_id_1.eq.${userId},exec_id_2.eq.${userId}`, { referencedTable: "slot" })
           .order("created_at", { ascending: false })
           .limit(15)
       : Promise.resolve({ data: null }),

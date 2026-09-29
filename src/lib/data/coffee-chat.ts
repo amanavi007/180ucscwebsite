@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeTime } from "@/lib/coffee-chat";
 
 export interface AvailabilityRow {
   id: string;
@@ -31,8 +32,8 @@ export async function getAllAvailability(): Promise<AvailabilityRow[]> {
     execId: row.exec_id,
     execName: row.exec?.name ?? "Unknown",
     date: row.date,
-    startTime: row.start_time,
-    endTime: row.end_time,
+    startTime: normalizeTime(row.start_time),
+    endTime: normalizeTime(row.end_time),
   }));
 }
 
@@ -94,8 +95,8 @@ export async function getAllSlots(): Promise<SlotRow[]> {
   return slotRows.map((s) => ({
     id: s.id,
     date: s.date,
-    startTime: s.start_time,
-    endTime: s.end_time,
+    startTime: normalizeTime(s.start_time),
+    endTime: normalizeTime(s.end_time),
     location: s.location,
     published: s.published,
     execId1: s.exec_id_1,
@@ -152,7 +153,7 @@ export async function getAllBookings(): Promise<BookingRow[]> {
       applicantEmail: b.applicant_email,
       status: b.status as "confirmed" | "cancelled",
       date: slot?.date ?? "",
-      startTime: slot?.start_time ?? "",
+      startTime: slot ? normalizeTime(slot.start_time) : "",
       location: slot?.location ?? "",
       exec1Name: slot ? (namesByExecId.get(slot.exec_id_1) ?? "Unknown") : "Unknown",
       exec2Name: slot?.exec_id_2 ? (namesByExecId.get(slot.exec_id_2) ?? "Unknown") : null,

@@ -9,8 +9,10 @@ import {
   generateSlotsAction,
   getExecOptionsForSlotAction,
   publishSlotAction,
+  setDefaultLocationAction,
   swapSlotExecAction,
 } from "@/actions/coffee-chat";
+import { Input } from "@/components/ui/input";
 import type { SlotRow } from "@/lib/data/coffee-chat";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -63,10 +65,31 @@ function SwapControl({ slot, position, router }: { slot: SlotRow; position: "exe
   );
 }
 
-export function SlotsView({ slots, currentExecId }: { slots: SlotRow[]; currentExecId: string }) {
+export function SlotsView({
+  slots,
+  currentExecId,
+  defaultLocation,
+}: {
+  slots: SlotRow[];
+  currentExecId: string;
+  defaultLocation: string;
+}) {
   const [isPending, startTransition] = useTransition();
   const [mineOnly, setMineOnly] = useState(false);
+  const [location, setLocation] = useState(defaultLocation);
   const router = useRouter();
+
+  function handleSaveLocation() {
+    startTransition(async () => {
+      const result = await setDefaultLocationAction(location);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Location saved and applied to slots without one.");
+      router.refresh();
+    });
+  }
 
   function handleGenerate() {
     startTransition(async () => {
@@ -100,6 +123,23 @@ export function SlotsView({ slots, currentExecId }: { slots: SlotRow[]; currentE
 
   return (
     <div className="mt-4 space-y-4">
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="w-72">
+          <label htmlFor="cc-location" className="text-sm text-muted-foreground">
+            Meeting location (shown to applicants)
+          </label>
+          <Input
+            id="cc-location"
+            value={location}
+            placeholder="e.g. Baskin Engineering courtyard"
+            onChange={(e) => setLocation(e.target.value)}
+          />
+        </div>
+        <Button variant="outline" onClick={handleSaveLocation} disabled={isPending}>
+          Save location
+        </Button>
+      </div>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Checkbox id="mine-only" checked={mineOnly} onCheckedChange={(c) => setMineOnly(c === true)} />
