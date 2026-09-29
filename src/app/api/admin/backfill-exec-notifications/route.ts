@@ -31,9 +31,11 @@ export async function GET(request: Request) {
 
   // ?to=<email> re-sends to just that exec (e.g. one whose email didn't arrive).
   const onlyTo = new URL(request.url).searchParams.get("to") ?? undefined;
+  // ?deliver=<email> sends the (filtered) email to a different inbox than the profile's.
+  const deliverTo = new URL(request.url).searchParams.get("deliver") ?? undefined;
   const report: string[] = [];
   for (const b of bookings) {
-    const r = await notifyExecsOfBooking(b.id, "booked", onlyTo);
+    const r = await notifyExecsOfBooking(b.id, "booked", onlyTo, deliverTo);
     report.push(`${b.applicant_name}: sent to [${r.sentTo.join(", ")}]${r.errors.length ? ` ERRORS: ${r.errors.join(" | ")}` : ""}`);
   }
   return new Response(`Processed ${bookings.length} booking(s).\n${report.join("\n")}`);

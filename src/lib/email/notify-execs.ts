@@ -12,6 +12,7 @@ export async function notifyExecsOfBooking(
   bookingId: string,
   kind: "booked" | "cancelled",
   onlyTo?: string,
+  deliverTo?: string,
 ): Promise<{ sentTo: string[]; errors: string[] }> {
   const result = { sentTo: [] as string[], errors: [] as string[] };
   try {
@@ -56,8 +57,8 @@ export async function notifyExecsOfBooking(
             ? buildExecBookingNotificationEmail({ ...base, manageToken: booking.manage_token })
             : buildExecBookingCancelledEmail(base);
         try {
-          await sendEmail({ to: exec.email, subject: content.subject, html: content.html, text: content.text });
-          result.sentTo.push(exec.email);
+          await sendEmail({ to: deliverTo ?? exec.email, subject: content.subject, html: content.html, text: content.text });
+          result.sentTo.push(deliverTo ?? exec.email);
         } catch (emailError) {
           console.error(`coffee chat exec ${kind} email failed:`, emailError);
           result.errors.push(`${exec.email}: ${emailError instanceof Error ? emailError.message : String(emailError)}`);
