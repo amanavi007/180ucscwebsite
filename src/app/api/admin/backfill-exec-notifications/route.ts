@@ -1,0 +1,34 @@
+// TEMPORARY one-time backfill: emails execs about coffee chats that were booked
+// before exec notifications existed. Delete this route after running it.
+import { getCurrentProfile } from "@/lib/data/profile";
+import { isExec } from "@/lib/auth/roles";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyExecsOfBooking } from "@/lib/email/notify-execs";
+
+export async function GET(request: Request) {
+  const profile = await getCurrentProfile();
+  if (!isExec(profile.role)) return new Response("Only exec can do that.", { status: 403 });
+
+  const supabase = createAdminClient();
+  const today = new Date().toISOString().slice(0, 10);
+  const { data, error } = await supabase
+    .from("coffee_chat_bookings")
+    .select("id, applicant_name, slot:coffee_chat_slots!inner(date, start_time)")
+    .eq("status", "confirmed")
+    .gte("slot.date", today);
+  if (error) return new Response(error.message, { status: 500 });
+
+  const bookings = data ?? [];
+  const lines = bookings.map((b) => {
+    const slot = b.slot as unknown as { date: string; start_time: string };
+    return `${b.applicant_name} ${slot.date} ${slot.start_time}`;
+  });
+
+  // Without ?confirm=1 this is a dry run, so a stray reload can't send email.
+  if (new URL(request.url).searchParams.get("confirm") !== "1") {
+    return new Response(`Dry run: ${bookings.length} booking(s). Add ?confirm=1 to send.\n${lines.join("\n")}`);
+  }
+
+  for (const b of bookings) await notifyExecsOfBooking(b.id, "booked");
+  return new Response(`Sent exec notifications for ${bookings.length} booking(s).\n${lines.join("\n")}`);
+}
