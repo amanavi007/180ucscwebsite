@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ArrowUpRight, ChevronDown, FileText, MessageCircle, PartyPopper } from "lucide-react";
+import { ArrowUpRight, CalendarHeart, ChevronDown, FileText, MessageCircle, PartyPopper } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionPanel } from "@/components/ui/accordion";
 import { PhotoPlaceholder } from "@/components/marketing/photo-placeholder";
@@ -15,6 +15,11 @@ const STEPS = [
     icon: FileText,
     title: "Submit your application",
     body: "A short application covering your background and why you're interested in social-impact consulting. Open to every major, every year.",
+  },
+  {
+    icon: CalendarHeart,
+    title: "Grab a coffee chat",
+    body: "A casual, in-person conversation with two of our exec members -- no prep needed, just show up and chat.",
   },
   {
     icon: MessageCircle,
@@ -62,13 +67,17 @@ export default function ApplyPage() {
               who joins is here for the same reason: to build real skills while
               helping an organization that needs it.
             </p>
-            <div className="mt-8">
+            <div className="mt-8 flex flex-wrap gap-3">
               <Button nativeButton={false}
                 size="lg"
                 render={<a href={APPLY_FORM_URL} target="_blank" rel="noopener noreferrer" />}
                 className="gap-1.5 rounded-full"
               >
                 Start Your Application
+                <ArrowUpRight className="size-4" />
+              </Button>
+              <Button nativeButton={false} size="lg" variant="outline" render={<a href="/apply/coffee-chat" />} className="gap-1.5 rounded-full">
+                Book a Coffee Chat
                 <ArrowUpRight className="size-4" />
               </Button>
             </div>
