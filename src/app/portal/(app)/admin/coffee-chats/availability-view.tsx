@@ -79,6 +79,12 @@ export function AvailabilityView({
         toast.error(result.error);
         return;
       }
+      toast.success(`Removed. ${result.removedSlotCount ?? 0} slot(s) deleted.`);
+      if (result.keptBookedCount) {
+        toast.warning(
+          `${result.keptBookedCount} slot(s) with a confirmed booking were kept. Cancel those bookings first to remove them.`,
+        );
+      }
       router.refresh();
     });
   }

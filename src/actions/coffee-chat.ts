@@ -11,6 +11,7 @@ import {
   expandAvailabilityEntry,
   generateSlots,
   isSwapEligible,
+  overlaps,
   type AvailabilityBlock,
   type ExistingSlotAssignment,
   type TimeBlockInput,
@@ -60,18 +61,58 @@ export async function addAvailabilityEntryAction(
   return { addedCount: expanded.rows.length, createdCount: generated.createdCount, generateError: generated.error };
 }
 
-export async function removeAvailabilityBlockAction(id: string): Promise<ActionResult> {
+export async function removeAvailabilityBlockAction(
+  id: string,
+): Promise<ActionResult & { removedSlotCount?: number; keptBookedCount?: number }> {
   const { profile, error } = await requireExec();
   if (error || !profile) return { error };
 
   const supabase = await createClient();
+  const { data: block } = await supabase
+    .from("coffee_chat_availability")
+    .select("exec_id, date, start_time, end_time")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error: deleteError } = await supabase.from("coffee_chat_availability").delete().eq("id", id);
   if (deleteError) return { error: deleteError.message };
 
+  // Slots that relied on the removed time go too, unless an applicant has already booked them.
+  let removedSlotCount = 0;
+  let keptBookedCount = 0;
+  if (block) {
+    const { data: candidates } = await supabase
+      .from("coffee_chat_slots")
+      .select("id, start_time, end_time")
+      .eq("date", block.date)
+      .or(`exec_id_1.eq.${block.exec_id},exec_id_2.eq.${block.exec_id}`);
+    const affected = (candidates ?? []).filter((s) =>
+      overlaps(s.start_time, s.end_time, block.start_time, block.end_time),
+    );
+
+    if (affected.length > 0) {
+      const { data: bookings } = await supabase
+        .from("coffee_chat_bookings")
+        .select("slot_id")
+        .eq("status", "confirmed")
+        .in("slot_id", affected.map((s) => s.id));
+      const bookedIds = new Set((bookings ?? []).map((b) => b.slot_id));
+      const deletableIds = affected.filter((s) => !bookedIds.has(s.id)).map((s) => s.id);
+      keptBookedCount = affected.length - deletableIds.length;
+
+      if (deletableIds.length > 0) {
+        const { error: slotDeleteError } = await supabase.from("coffee_chat_slots").delete().in("id", deletableIds);
+        if (slotDeleteError) return { error: slotDeleteError.message };
+        removedSlotCount = deletableIds.length;
+      }
+    }
+  }
+
+  // The other exec from a removed slot may now pair with someone else who is free.
   await generateMissingSlots(profile.id);
 
   revalidateAdmin();
-  return {};
+  return { removedSlotCount, keptBookedCount };
 }
 
 /** Fills in slots for any availability not yet covered; safe to re-run since existing slots are never touched. */

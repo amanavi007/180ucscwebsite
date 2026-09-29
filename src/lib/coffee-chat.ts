@@ -234,7 +234,7 @@ export function generateSlots(
   }
 }
 
-function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
+export function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
   return timeToMinutes(aStart) < timeToMinutes(bEnd) && timeToMinutes(bStart) < timeToMinutes(aEnd);
 }
 
