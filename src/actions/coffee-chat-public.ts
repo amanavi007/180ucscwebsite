@@ -7,7 +7,6 @@ import { DEFAULT_MIN_LEAD_MINUTES, isSlotBookable, isValidUcscEmail } from "@/li
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { buildBookingConfirmationEmail } from "@/lib/email/coffee-chat-confirmation";
 import { sendEmail } from "@/lib/email/resend";
-import { getBookingByToken } from "@/lib/data/coffee-chat-public";
 
 const UNIQUE_VIOLATION = "23505";
 
@@ -64,7 +63,7 @@ export async function createBookingAction(input: CreateBookingInput): Promise<Cr
 
   const { data: existing } = await supabase
     .from("coffee_chat_bookings")
-    .select("manage_token")
+    .select("id")
     .eq("applicant_email", email)
     .eq("status", "confirmed")
     .maybeSingle();
@@ -72,22 +71,11 @@ export async function createBookingAction(input: CreateBookingInput): Promise<Cr
     // Never hand the manage token (or booking details) back to the caller:
     // this action is anonymous and the only "proof" is typing an email
     // address, so returning it would let anyone view or cancel someone
-    // else's booking. Re-send the confirmation to the address on file instead.
-    const existingBooking = await getBookingByToken(existing.manage_token);
-    if (existingBooking) {
-      await sendConfirmationEmail({
-        email,
-        name: existingBooking.applicantName,
-        date: existingBooking.date,
-        startTime: existingBooking.startTime,
-        endTime: existingBooking.endTime,
-        location: existingBooking.location,
-        manageToken: existing.manage_token,
-      });
-    }
+    // else's booking. Point them at the confirmation email instead (no
+    // re-send -- it would cost an email credit per attempt).
     return {
       error:
-        "You already have a coffee chat booked with that email. We've re-sent your confirmation email -- use its link to cancel or reschedule.",
+        "You already have a coffee chat booked with that email. Check your confirmation email for the link to cancel or reschedule.",
     };
   }
 
