@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowUpRight, Check, CheckCircle2, MapPin } from "lucide-react";
 import { createBookingAction } from "@/actions/coffee-chat-public";
 import type { PublicSlot } from "@/lib/data/coffee-chat-public";
-import { formatTime12h } from "@/lib/coffee-chat";
+import { formatTime12h, locationGroupsForSlot } from "@/lib/coffee-chat";
 import { formatDateLong, parseLocalDate, toDateString } from "@/lib/date";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -62,6 +62,7 @@ export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; 
   const [chosenSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [chosenLocation, setLocation] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileScriptReady, setTurnstileScriptReady] = useState(false);
   // Shown in a dialog the applicant must dismiss; the form and their inputs stay as they are.
@@ -77,6 +78,11 @@ export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; 
   const selectedSlotId = chosenSlotId && slots.some((s) => s.id === chosenSlotId) ? chosenSlotId : null;
 
   const selectedSlot = selectedSlotId ? (slots.find((s) => s.id === selectedSlotId) ?? null) : null;
+
+  // Only cafes that are open for the chosen slot; a previously picked place
+  // that isn't open for a newly chosen time is treated as unselected.
+  const locationGroups = useMemo(() => (selectedSlot ? locationGroupsForSlot(selectedSlot) : []), [selectedSlot]);
+  const location = locationGroups.some((g) => g.locations.some((l) => l.name === chosenLocation)) ? chosenLocation : "";
 
   const byDate = useMemo(() => groupByDate(slots), [slots]);
   const dates = useMemo(() => [...byDate.keys()].sort(), [byDate]);
@@ -102,6 +108,11 @@ export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; 
       setErrorMessage("Pick a time first.");
       return;
     }
+    if (!location) {
+      setRefreshOnDismiss(false);
+      setErrorMessage("Pick where you'd like to meet.");
+      return;
+    }
     if (!turnstileToken) {
       setRefreshOnDismiss(false);
       setErrorMessage("Please complete the verification check.");
@@ -109,7 +120,7 @@ export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; 
     }
 
     startTransition(async () => {
-      const result = await createBookingAction({ slotId: selectedSlotId, name, email, turnstileToken });
+      const result = await createBookingAction({ slotId: selectedSlotId, name, email, location, turnstileToken });
       if (result.error) {
         // Turnstile tokens are single-use and the server has spent this one:
         // get a fresh challenge so they can just fix the problem and resubmit.
@@ -249,7 +260,7 @@ export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; 
                 <p className="font-semibold">
                   {formatDateLong(selectedSlot.date)}, {formatTime12h(selectedSlot.startTime)} to {formatTime12h(selectedSlot.endTime)}
                 </p>
-                {selectedSlot.location.trim() !== "" && <p className="text-foreground/70">{selectedSlot.location}</p>}
+                {location !== "" && <p className="text-foreground/70">{location}</p>}
               </div>
             </div>
           )}
@@ -268,6 +279,30 @@ export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; 
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
               />
+            </Field>
+            <Field>
+              <FieldLabel>Where would you like to meet?</FieldLabel>
+              <div className="space-y-3">
+                {locationGroups.map((group) => (
+                  <div key={group.label}>
+                    <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{group.label}</p>
+                    <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
+                      {group.locations.map((option) => (
+                        <button
+                          key={option.name}
+                          type="button"
+                          onClick={() => setLocation(option.name)}
+                          className={`rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                            location === option.name ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:bg-muted"
+                          }`}
+                        >
+                          {option.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </Field>
             <div ref={turnstileContainerRef} />
             <Button onClick={handleSubmit} disabled={isPending} size="lg" className="w-full">

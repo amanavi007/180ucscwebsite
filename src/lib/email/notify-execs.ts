@@ -21,7 +21,7 @@ export async function notifyExecsOfBooking(
     const { data: booking, error } = await supabase
       .from("coffee_chat_bookings")
       .select(
-        "applicant_name, applicant_email, manage_token, slot:coffee_chat_slots!inner(date, start_time, end_time, location, exec_id_1, exec_id_2)",
+        "applicant_name, applicant_email, manage_token, location, slot:coffee_chat_slots!inner(date, start_time, end_time, location, exec_id_1, exec_id_2)",
       )
       .eq("id", bookingId)
       .single();
@@ -53,7 +53,7 @@ export async function notifyExecsOfBooking(
           date: slot.date,
           startTime: normalizeTime(slot.start_time),
           endTime: normalizeTime(slot.end_time),
-          location: slot.location,
+          location: booking.location || slot.location,
           siteUrl: process.env.NEXT_PUBLIC_SITE_URL!,
         };
         const content =

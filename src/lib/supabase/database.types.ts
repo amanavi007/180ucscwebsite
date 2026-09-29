@@ -639,6 +639,7 @@ export interface Database {
           applicant_email: string;
           status: string;
           manage_token: string;
+          location: string;
           created_at: string;
           cancelled_at: string | null;
         };
@@ -649,6 +650,7 @@ export interface Database {
           applicant_email: string;
           status?: string;
           manage_token: string;
+          location?: string;
           created_at?: string;
           cancelled_at?: string | null;
         };

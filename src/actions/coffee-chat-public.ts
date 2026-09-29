@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { DEFAULT_MIN_LEAD_MINUTES, isSlotBookable, isValidUcscEmail, normalizeTime } from "@/lib/coffee-chat";
+import { DEFAULT_MIN_LEAD_MINUTES, locationGroupsForSlot, isSlotBookable, isValidUcscEmail, normalizeTime } from "@/lib/coffee-chat";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { buildBookingConfirmationEmail } from "@/lib/email/coffee-chat-confirmation";
 import { sendEmail } from "@/lib/email/send";
@@ -15,6 +15,7 @@ export interface CreateBookingInput {
   slotId: string;
   name: string;
   email: string;
+  location: string;
   turnstileToken: string;
 }
 
@@ -89,6 +90,11 @@ export async function createBookingAction(input: CreateBookingInput): Promise<Cr
   const startTime = normalizeTime(slot.start_time);
   const endTime = normalizeTime(slot.end_time);
 
+  const locationOffered = locationGroupsForSlot({ date: slot.date, startTime, endTime }).some((g) =>
+    g.locations.some((l) => l.name === input.location),
+  );
+  if (!locationOffered) return { error: "That place isn't open at that time. Please pick another location." };
+
   const { data: activeBookingsForSlot } = await supabase
     .from("coffee_chat_bookings")
     .select("id")
@@ -116,6 +122,7 @@ export async function createBookingAction(input: CreateBookingInput): Promise<Cr
       applicant_name: name,
       applicant_email: email,
       manage_token: manageToken,
+      location: input.location,
     })
     .select("id")
     .single();
@@ -133,7 +140,7 @@ export async function createBookingAction(input: CreateBookingInput): Promise<Cr
     date: slot.date,
     startTime,
     endTime,
-    location: slot.location,
+    location: input.location,
     manageToken,
   });
 
@@ -143,7 +150,7 @@ export async function createBookingAction(input: CreateBookingInput): Promise<Cr
   revalidatePath("/portal/admin/coffee-chats");
 
   return {
-    booking: { manageToken, date: slot.date, startTime, endTime, location: slot.location },
+    booking: { manageToken, date: slot.date, startTime, endTime, location: input.location },
   };
 }
 

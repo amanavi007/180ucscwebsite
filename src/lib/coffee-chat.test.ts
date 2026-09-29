@@ -5,6 +5,7 @@ import {
   formatTime12h,
   generateSlots,
   isSlotBookable,
+  locationGroupsForSlot,
   isSwapEligible,
   isValidUcscEmail,
   normalizeTime,
@@ -390,5 +391,36 @@ describe("isSwapEligible on the target slot itself", () => {
 describe("DEFAULT_CHUNK_MINUTES", () => {
   it("defaults to 20", () => {
     expect(DEFAULT_CHUNK_MINUTES).toBe(20);
+  });
+});
+
+describe("locationGroupsForSlot", () => {
+  const names = (slot: { date: string; startTime: string; endTime: string }) =>
+    locationGroupsForSlot(slot).flatMap((g) => g.locations.map((l) => l.name));
+
+  it("offers every place for a weekday midday slot", () => {
+    const all = names({ date: "2026-10-06", startTime: "12:00", endTime: "12:20" }); // Tuesday
+    expect(all).toContain("Oakes Cafe");
+    expect(all).toContain("Cafe Iveta (Westside)");
+    expect(all).toContain("McHenry Library");
+  });
+
+  it("drops cafes that have closed by a late-afternoon slot but keeps libraries", () => {
+    const late = names({ date: "2026-10-06", startTime: "16:40", endTime: "17:00" });
+    expect(late).not.toContain("Cafe Iveta (Westside)");
+    expect(late).not.toContain("University Center Cafe");
+    expect(late).toContain("Verve Coffee Roasters (Westside)");
+    expect(late).toContain("McHenry Library");
+  });
+
+  it("drops weekday-only cafes on a Saturday", () => {
+    const saturday = names({ date: "2026-10-10", startTime: "12:00", endTime: "12:20" });
+    expect(saturday).not.toContain("Oakes Cafe");
+    expect(saturday).not.toContain("University Center Cafe");
+    expect(saturday).toContain("Cat & Cloud Coffee (Westside)");
+  });
+
+  it("requires the whole slot to end before closing", () => {
+    expect(names({ date: "2026-10-06", startTime: "14:50", endTime: "15:10" })).not.toContain("Cafe Iveta (Westside)");
   });
 });

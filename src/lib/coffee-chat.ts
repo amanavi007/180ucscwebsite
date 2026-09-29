@@ -3,6 +3,77 @@ import { zonedDateTimeToUtc } from "./date";
 export const DEFAULT_CHUNK_MINUTES = 20;
 export const DEFAULT_MIN_LEAD_MINUTES = 120;
 
+/** Open/close as "HH:MM", or null when closed that day. Only cafes get hours; libraries and buildings are always offered. */
+type WeekHours = ("closed" | { open: string; close: string })[]; // index 0 = Sunday
+
+function everyDay(open: string, close: string): WeekHours {
+  return Array.from({ length: 7 }, () => ({ open, close }));
+}
+
+function weekdays(hours: Record<number, { open: string; close: string }>): WeekHours {
+  return Array.from({ length: 7 }, (_, day) => hours[day] ?? "closed");
+}
+
+export interface CoffeeChatLocation {
+  name: string;
+  hours?: WeekHours;
+}
+
+// Hours checked Sept 2026 from each place's own site / UCSC dining. Where
+// sources disagreed the narrower window is used. Re-check each quarter.
+export const COFFEE_CHAT_LOCATION_GROUPS: { label: string; locations: CoffeeChatLocation[] }[] = [
+  {
+    label: "On campus",
+    locations: [
+      { name: "SNE (Science & Engineering Library)" },
+      { name: "Baskin Engineering" },
+      { name: "McHenry Library" },
+      { name: "Oakes Cafe", hours: weekdays({ 1: { open: "10:00", close: "20:00" }, 2: { open: "10:00", close: "20:00" }, 3: { open: "10:00", close: "20:00" }, 4: { open: "10:00", close: "20:00" }, 5: { open: "10:00", close: "20:00" } }) },
+      { name: "University Center Cafe", hours: weekdays({ 1: { open: "08:00", close: "16:00" }, 2: { open: "08:00", close: "16:00" }, 3: { open: "08:00", close: "16:00" }, 4: { open: "08:00", close: "16:00" }, 5: { open: "08:00", close: "14:00" } }) },
+    ],
+  },
+  {
+    label: "Off campus, near campus (Westside)",
+    locations: [
+      { name: "Cafe Iveta (Westside)", hours: everyDay("08:00", "15:00") },
+      { name: "Verve Coffee Roasters (Westside)", hours: everyDay("07:00", "18:00") },
+      { name: "Cat & Cloud Coffee (Westside)", hours: everyDay("06:30", "15:00") },
+    ],
+  },
+  {
+    label: "Downtown Santa Cruz",
+    locations: [
+      { name: "The 11th Hour Coffee", hours: everyDay("07:00", "18:30") },
+      { name: "Verve Coffee Roasters (Pacific Ave)", hours: everyDay("07:00", "18:00") },
+    ],
+  },
+];
+
+export const COFFEE_CHAT_LOCATIONS = COFFEE_CHAT_LOCATION_GROUPS.flatMap((g) => g.locations);
+
+/** True if the location has no listed hours, or the whole slot fits inside that day's hours. */
+export function isLocationOpenForSlot(
+  location: CoffeeChatLocation,
+  slot: { date: string; startTime: string; endTime: string },
+): boolean {
+  if (!location.hours) return true;
+  const [y, m, d] = slot.date.split("-").map(Number);
+  const day = location.hours[new Date(y, m - 1, d).getDay()];
+  if (day === "closed") return false;
+  return (
+    timeToMinutes(normalizeTime(slot.startTime)) >= timeToMinutes(day.open) &&
+    timeToMinutes(normalizeTime(slot.endTime)) <= timeToMinutes(day.close)
+  );
+}
+
+/** The location groups an applicant can choose from for this slot; empty groups are dropped. */
+export function locationGroupsForSlot(slot: { date: string; startTime: string; endTime: string }) {
+  return COFFEE_CHAT_LOCATION_GROUPS.map((group) => ({
+    label: group.label,
+    locations: group.locations.filter((l) => isLocationOpenForSlot(l, slot)),
+  })).filter((group) => group.locations.length > 0);
+}
+
 export interface AvailabilityBlock {
   execId: string;
   date: string; // "YYYY-MM-DD"

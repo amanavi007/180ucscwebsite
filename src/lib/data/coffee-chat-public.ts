@@ -72,7 +72,7 @@ export async function getBookingByToken(token: string): Promise<ManagedBooking |
   const supabase = createAdminClient();
   const { data: booking, error } = await supabase
     .from("coffee_chat_bookings")
-    .select("status, applicant_name, applicant_email, slot_id")
+    .select("status, applicant_name, applicant_email, slot_id, location")
     .eq("manage_token", token)
     .maybeSingle();
   if (error) throw error;
@@ -92,6 +92,6 @@ export async function getBookingByToken(token: string): Promise<ManagedBooking |
     date: slot.date,
     startTime: normalizeTime(slot.start_time),
     endTime: normalizeTime(slot.end_time),
-    location: slot.location,
+    location: booking.location || slot.location,
   };
 }

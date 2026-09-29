@@ -127,7 +127,7 @@ export async function getAllBookings(): Promise<BookingRow[]> {
   const supabase = await createClient();
   const { data: bookings, error } = await supabase
     .from("coffee_chat_bookings")
-    .select("id, slot_id, applicant_name, applicant_email, status, created_at, cancelled_at")
+    .select("id, slot_id, applicant_name, applicant_email, status, location, created_at, cancelled_at")
     .order("created_at", { ascending: false });
   if (error) throw error;
   const bookingRows = bookings ?? [];
@@ -154,7 +154,7 @@ export async function getAllBookings(): Promise<BookingRow[]> {
       status: b.status as "confirmed" | "cancelled",
       date: slot?.date ?? "",
       startTime: slot ? normalizeTime(slot.start_time) : "",
-      location: slot?.location ?? "",
+      location: b.location || (slot?.location ?? ""),
       exec1Name: slot ? (namesByExecId.get(slot.exec_id_1) ?? "Unknown") : "Unknown",
       exec2Name: slot?.exec_id_2 ? (namesByExecId.get(slot.exec_id_2) ?? "Unknown") : null,
       createdAt: b.created_at,
