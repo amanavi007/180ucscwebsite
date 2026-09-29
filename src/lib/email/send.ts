@@ -24,7 +24,7 @@ async function sendViaGmail(params: EmailParams): Promise<void> {
     });
   }
   await gmailTransport.sendMail({
-    from: `"180DC UCSC" <${process.env.GMAIL_USER!}>`,
+    from: `"180 Degrees Consulting UCSC Bookings" <${process.env.GMAIL_USER!}>`,
     to: params.to,
     subject: params.subject,
     html: params.html,
