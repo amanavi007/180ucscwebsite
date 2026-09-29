@@ -25,6 +25,13 @@ describe("buildBookingConfirmationEmail", () => {
     expect(email.text).toContain("2:00 PM to 2:20 PM");
   });
 
+  it("starts with the 180DC logo, loaded from the site's own address, with alt text", () => {
+    const email = buildBookingConfirmationEmail(input);
+    expect(email.html.trimStart().startsWith("<img")).toBe(true);
+    expect(email.html).toContain('src="https://180dcucsc.org/email-logo.png"');
+    expect(email.html).toContain('alt="180 Degrees Consulting UC Santa Cruz"');
+  });
+
   it("leaves out the location line when the slot has no location", () => {
     const email = buildBookingConfirmationEmail({ ...input, location: "" });
     expect(email.html).not.toContain("Location");
