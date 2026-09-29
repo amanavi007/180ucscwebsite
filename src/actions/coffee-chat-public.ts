@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { DEFAULT_MIN_LEAD_MINUTES, isSlotBookable, isValidUcscEmail, normalizeTime } from "@/lib/coffee-chat";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { buildBookingConfirmationEmail } from "@/lib/email/coffee-chat-confirmation";
-import { sendEmail } from "@/lib/email/resend";
+import { sendEmail } from "@/lib/email/send";
 
 const UNIQUE_VIOLATION = "23505";
 
