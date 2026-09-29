@@ -115,7 +115,7 @@ export function SlotsView({ slots, currentExecId }: { slots: SlotRow[]; currentE
       </div>
 
       {visible.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No slots yet. Add availability, then generate.</p>
+        <p className="text-sm text-muted-foreground">No slots yet. Slots are created automatically when execs add availability.</p>
       ) : (
         <Table>
           <TableHeader>

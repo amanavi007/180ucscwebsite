@@ -34,7 +34,7 @@ function revalidateAdmin() {
 export async function addAvailabilityEntryAction(
   dates: string[],
   blocks: TimeBlockInput[],
-): Promise<ActionResult & { addedCount?: number }> {
+): Promise<ActionResult & { addedCount?: number; createdCount?: number; generateError?: string }> {
   const { profile, error } = await requireExec();
   if (error || !profile) return { error };
 
@@ -52,26 +52,29 @@ export async function addAvailabilityEntryAction(
   );
   if (insertError) return { error: insertError.message };
 
+  // Slots are regenerated automatically; a failure here shouldn't hide that the availability was saved.
+  const generated = await generateMissingSlots(profile.id);
+
   revalidateAdmin();
-  return { addedCount: expanded.rows.length };
+  return { addedCount: expanded.rows.length, createdCount: generated.createdCount, generateError: generated.error };
 }
 
 export async function removeAvailabilityBlockAction(id: string): Promise<ActionResult> {
-  const { error } = await requireExec();
-  if (error) return { error };
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error };
 
   const supabase = await createClient();
   const { error: deleteError } = await supabase.from("coffee_chat_availability").delete().eq("id", id);
   if (deleteError) return { error: deleteError.message };
 
+  await generateMissingSlots(profile.id);
+
   revalidateAdmin();
   return {};
 }
 
-export async function generateSlotsAction(): Promise<ActionResult & { createdCount?: number }> {
-  const { profile, error } = await requireExec();
-  if (error || !profile) return { error };
-
+/** Fills in slots for any availability not yet covered; safe to re-run since existing slots are never touched. */
+async function generateMissingSlots(execId: string): Promise<ActionResult & { createdCount?: number }> {
   const supabase = await createClient();
   const [availabilityRows, existingSlots] = await Promise.all([getAllAvailability(), getAllSlots()]);
 
@@ -117,9 +120,17 @@ export async function generateSlotsAction(): Promise<ActionResult & { createdCou
     if (insertError) return { error: insertError.message };
   }
 
-  await logAudit(profile.id, "coffee_chat.slots_generated", undefined, `${toInsert.length} slot(s) created`);
-  revalidateAdmin();
+  await logAudit(execId, "coffee_chat.slots_generated", undefined, `${toInsert.length} slot(s) created`);
   return { createdCount: toInsert.length };
+}
+
+export async function generateSlotsAction(): Promise<ActionResult & { createdCount?: number }> {
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error };
+
+  const result = await generateMissingSlots(profile.id);
+  if (!result.error) revalidateAdmin();
+  return result;
 }
 
 export async function swapSlotExecAction(

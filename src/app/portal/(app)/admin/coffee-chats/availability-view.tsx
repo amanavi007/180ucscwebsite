@@ -61,7 +61,10 @@ export function AvailabilityView({
         toast.error(result.error);
         return;
       }
-      toast.success(`Added ${result.addedCount ?? 0} availability block(s).`);
+      toast.success(
+        `Added ${result.addedCount ?? 0} availability block(s). ${result.createdCount ?? 0} new slot(s) generated.`,
+      );
+      if (result.generateError) toast.error(`Couldn't generate slots: ${result.generateError}`);
       setDays([]);
       setBlocks([{ id: nextBlockId, startTime: "", endTime: "" }]);
       setNextBlockId((n) => n + 1);
