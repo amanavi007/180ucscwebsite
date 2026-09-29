@@ -1,7 +1,10 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeTime } from "@/lib/coffee-chat";
-import { buildExecBookingCancelledEmail, buildExecBookingNotificationEmail } from "./coffee-chat-confirmation";
+import {
+  buildExecBookingCancelledEmail,
+  buildExecBookingNotificationEmail,
+} from "./coffee-chat-confirmation";
 import { sendEmail } from "./send";
 
 /**
@@ -11,8 +14,6 @@ import { sendEmail } from "./send";
 export async function notifyExecsOfBooking(
   bookingId: string,
   kind: "booked" | "cancelled",
-  onlyTo?: string,
-  deliverTo?: string,
 ): Promise<{ sentTo: string[]; errors: string[] }> {
   const result = { sentTo: [] as string[], errors: [] as string[] };
   try {
@@ -34,14 +35,17 @@ export async function notifyExecsOfBooking(
       exec_id_1: string;
       exec_id_2: string | null;
     };
-    const execIds = [slot.exec_id_1, slot.exec_id_2].filter((id): id is string => id !== null);
-    const { data: execs, error: execError } = await supabase.from("profiles").select("name, email").in("id", execIds);
+    const execIds = [slot.exec_id_1, slot.exec_id_2].filter(
+      (id): id is string => id !== null,
+    );
+    const { data: execs, error: execError } = await supabase
+      .from("profiles")
+      .select("name, email")
+      .in("id", execIds);
     if (execError) throw execError;
 
     await Promise.all(
-      (execs ?? [])
-        .filter((exec) => !onlyTo || exec.email.toLowerCase() === onlyTo.toLowerCase())
-        .map(async (exec) => {
+      (execs ?? []).map(async (exec) => {
         const base = {
           execName: exec.name,
           applicantName: booking.applicant_name,
@@ -54,20 +58,32 @@ export async function notifyExecsOfBooking(
         };
         const content =
           kind === "booked"
-            ? buildExecBookingNotificationEmail({ ...base, manageToken: booking.manage_token })
+            ? buildExecBookingNotificationEmail({
+                ...base,
+                manageToken: booking.manage_token,
+              })
             : buildExecBookingCancelledEmail(base);
         try {
-          await sendEmail({ to: deliverTo ?? exec.email, subject: content.subject, html: content.html, text: content.text });
-          result.sentTo.push(deliverTo ?? exec.email);
+          await sendEmail({
+            to: exec.email,
+            subject: content.subject,
+            html: content.html,
+            text: content.text,
+          });
+          result.sentTo.push(exec.email);
         } catch (emailError) {
           console.error(`coffee chat exec ${kind} email failed:`, emailError);
-          result.errors.push(`${exec.email}: ${emailError instanceof Error ? emailError.message : String(emailError)}`);
+          result.errors.push(
+            `${exec.email}: ${emailError instanceof Error ? emailError.message : String(emailError)}`,
+          );
         }
       }),
     );
   } catch (err) {
     console.error(`coffee chat exec ${kind} notification failed:`, err);
-    result.errors.push(err instanceof Error ? err.message : JSON.stringify(err));
+    result.errors.push(
+      err instanceof Error ? err.message : JSON.stringify(err),
+    );
   }
   return result;
 }
