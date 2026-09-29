@@ -37,7 +37,7 @@ describe("generateSlots", () => {
     expect(pairedExecs).toEqual(["a", "b", "c", "d"]);
   });
 
-  it("leaves an odd exec out unpaired (execId2 null) instead of dropping them", () => {
+  it("sits one exec out when an odd number are free, instead of creating an unbookable solo slot", () => {
     const availability: AvailabilityBlock[] = ["a", "b", "c"].map((execId) => ({
       execId,
       date: "2026-10-06",
@@ -45,8 +45,8 @@ describe("generateSlots", () => {
       endTime: "14:20",
     }));
     const slots = generateSlots(availability, 20);
-    expect(slots).toHaveLength(2);
-    expect(slots.some((s) => s.execId2 === null)).toBe(true);
+    expect(slots).toHaveLength(1);
+    expect(slots[0].execId2).not.toBeNull();
   });
 
   it("splits a 40-minute block into two 20-minute chunks", () => {
@@ -63,9 +63,74 @@ describe("generateSlots", () => {
       { execId: "a", date: "2026-10-06", startTime: "14:00", endTime: "14:20" },
       { execId: "b", date: "2026-10-06", startTime: "15:00", endTime: "15:20" },
     ];
+    expect(generateSlots(availability, 20)).toEqual([]);
+  });
+});
+
+describe("generateSlots balancing", () => {
+  const D = "2026-10-06";
+  const free = (execIds: string[], startTime: string, endTime: string): AvailabilityBlock[] =>
+    execIds.map((execId) => ({ execId, date: D, startTime, endTime }));
+
+  function loads(slots: { execId1: string; execId2: string | null }[]) {
+    const counts = new Map<string, number>();
+    for (const s of slots) for (const id of [s.execId1, s.execId2]) if (id) counts.set(id, (counts.get(id) ?? 0) + 1);
+    return counts;
+  }
+
+  it("spreads chats evenly: with three execs free for three windows, everyone gets two", () => {
+    const slots = generateSlots(free(["a", "b", "c"], "14:00", "15:00"), 20);
+    expect(slots).toHaveLength(3);
+    expect([...loads(slots).values()]).toEqual([2, 2, 2]);
+  });
+
+  it("does not repeat a pair across windows when other pairings are possible", () => {
+    const slots = generateSlots(free(["a", "b", "c", "d"], "14:00", "15:00"), 20);
+    const pairs = slots.map((s) => [s.execId1, s.execId2].sort().join("+"));
+    expect(slots).toHaveLength(6); // 2 parallel slots x 3 windows
+    // Each of the 3 windows uses a different way of splitting four execs into two pairs.
+    const byWindow = new Map<string, string[]>();
+    slots.forEach((s, i) => byWindow.set(s.startTime, [...(byWindow.get(s.startTime) ?? []), pairs[i]]));
+    const windowSignatures = [...byWindow.values()].map((p) => p.sort().join("|"));
+    expect(new Set(windowSignatures).size).toBe(3);
+  });
+
+  it("prefers execs who have had fewer chats so far, using existing slots as history", () => {
+    // a and b already have three chats each; c and d have none. Only three execs free now (a, c, d): a should sit out.
+    const existing: ExistingSlotAssignment[] = [1, 2, 3].map((n) => ({
+      slotId: `h${n}`,
+      date: "2026-10-05",
+      startTime: `1${n}:00`,
+      endTime: `1${n}:20`,
+      execId1: "a",
+      execId2: "b",
+    }));
+    const slots = generateSlots(free(["a", "c", "d"], "14:00", "14:20"), 20, existing);
+    expect(slots).toHaveLength(1);
+    expect([slots[0].execId1, slots[0].execId2].sort()).toEqual(["c", "d"]);
+  });
+
+  it("looks at the whole window, so it doesn't box itself into a forced repeat", () => {
+    // Window 1 pairs a+b. In window 2 (a, b, c, d free) taking c+d first would force a+b together again.
+    const availability: AvailabilityBlock[] = [
+      ...free(["a", "b"], "14:00", "14:20"),
+      ...free(["a", "b", "c", "d"], "14:20", "14:40"),
+    ];
     const slots = generateSlots(availability, 20);
-    expect(slots).toHaveLength(2);
-    expect(slots.every((s) => s.execId2 === null)).toBe(true);
+    const window2 = slots.filter((s) => s.startTime === "14:20").map((s) => [s.execId1, s.execId2].sort().join("+"));
+    expect(window2).toHaveLength(2);
+    expect(window2).not.toContain("a+b");
+  });
+
+  it("avoids re-pairing two execs who already met, when it can", () => {
+    const existing: ExistingSlotAssignment[] = [
+      { slotId: "h1", date: "2026-10-05", startTime: "10:00", endTime: "10:20", execId1: "a", execId2: "b" },
+      { slotId: "h2", date: "2026-10-05", startTime: "11:00", endTime: "11:20", execId1: "c", execId2: "d" },
+    ];
+    const slots = generateSlots(free(["a", "b", "c", "d"], "14:00", "14:20"), 20, existing);
+    const pairs = slots.map((s) => [s.execId1, s.execId2].sort().join("+")).sort();
+    expect(pairs).not.toContain("a+b");
+    expect(pairs).not.toContain("c+d");
   });
 });
 
@@ -275,8 +340,8 @@ describe("generateSlots against existing slots and off-grid blocks", () => {
       { slotId: "s3", date: "2026-10-06", startTime: "14:40", endTime: "15:00", execId1: "a", execId2: "b" },
     ];
     const created = generateSlots(twoExecs, 20, existing);
-    const at1400 = created.filter((s) => s.startTime === "14:00");
-    expect(at1400).toEqual([{ date: "2026-10-06", startTime: "14:00", endTime: "14:20", execId1: "a", execId2: null }]);
+    // a is free at 14:00 but alone (b is busy on the swapped slot), so no slot is created for that window.
+    expect(created.filter((s) => s.startTime === "14:00")).toEqual([]);
   });
 
   it("aligns chunks to a shared grid so off-grid blocks still pair and don't overlap", () => {
@@ -285,8 +350,8 @@ describe("generateSlots against existing slots and off-grid blocks", () => {
       { execId: "b", date: "2026-10-06", startTime: "14:10", endTime: "15:00" },
     ];
     const slots = generateSlots(availability, 20);
+    // b starts at 14:10, so the first window with both free is 14:20.
     expect(slots.map((s) => `${s.startTime}|${s.execId1}|${s.execId2}`).sort()).toEqual([
-      "14:00|a|null",
       "14:20|a|b",
       "14:40|a|b",
     ]);
@@ -296,9 +361,10 @@ describe("generateSlots against existing slots and off-grid blocks", () => {
     const availability: AvailabilityBlock[] = [
       { execId: "a", date: "2026-10-06", startTime: "14:00", endTime: "15:00" },
       { execId: "a", date: "2026-10-06", startTime: "14:10", endTime: "14:50" },
+      { execId: "b", date: "2026-10-06", startTime: "14:00", endTime: "15:00" },
     ];
-    const starts = generateSlots(availability, 20).map((s) => s.startTime).sort();
-    expect(starts).toEqual(["14:00", "14:20", "14:40"]);
+    const slots = generateSlots(availability, 20);
+    expect(slots.map((s) => s.startTime).sort()).toEqual(["14:00", "14:20", "14:40"]);
   });
 });
 

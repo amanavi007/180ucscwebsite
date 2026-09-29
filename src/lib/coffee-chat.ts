@@ -113,12 +113,15 @@ function chunkStartsFor(block: AvailabilityBlock, chunkMinutes: number): string[
 }
 
 /**
- * Chunks every exec's availability into fixed-length windows, then greedily
- * pairs whoever's free in each window two at a time -- 4 execs free at the
- * same time produces 2 parallel slots, an odd exec out gets a slot with
- * `execId2: null` for the admin to fill by hand. Deterministic: execs
- * within a window are sorted by id before pairing, so re-running with the
- * same input produces the same pairing.
+ * Chunks every exec's availability into fixed-length windows (on a shared
+ * grid), then builds two-exec slots for each window in time order. 4 execs
+ * free at once produce 2 parallel slots. Choices are balanced using the
+ * history so far (existing slots plus what this run has already made):
+ * the least-used exec is placed first, paired with the partner they have
+ * met least, and with an odd number free the busiest exec sits that window
+ * out. Every slot has two execs, so nothing generated is ever unbookable.
+ * Deterministic: ties are broken by id, so the same input gives the same
+ * result.
  */
 export function generateSlots(
   availability: AvailabilityBlock[],
@@ -137,7 +140,20 @@ export function generateSlots(
   }
 
   const slots: GeneratedSlot[] = [];
-  for (const [key, execIds] of byWindow) {
+  // Running history used to balance choices: how many chats each exec is
+  // already on, and how many times each pair has already been put together.
+  const load = new Map<string, number>();
+  const pairCount = new Map<string, number>();
+  const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+  const loadOf = (id: string) => load.get(id) ?? 0;
+  const pairsOf = (a: string, b: string) => pairCount.get(pairKey(a, b)) ?? 0;
+  for (const s of existingSlots) {
+    for (const id of assignedExecIds(s)) load.set(id, loadOf(id) + 1);
+    if (s.execId2) pairCount.set(pairKey(s.execId1, s.execId2), pairsOf(s.execId1, s.execId2) + 1);
+  }
+
+  // Chronological order, so earlier windows shape the balance of later ones.
+  for (const [key, execIds] of [...byWindow].sort(([a], [b]) => a.localeCompare(b))) {
     const [date, startTime] = key.split("|");
     const endTime = minutesToTime(timeToMinutes(startTime) + chunkMinutes);
     // An exec already on an existing slot that overlaps this window (whether
@@ -147,19 +163,75 @@ export function generateSlots(
         .filter((s) => s.date === date && overlaps(s.startTime, s.endTime, startTime, endTime))
         .flatMap(assignedExecIds),
     );
-    const sorted = [...execIds].filter((id) => !busy.has(id)).sort();
-    for (let i = 0; i < sorted.length; i += 2) {
-      slots.push({
-        date,
-        startTime,
-        endTime,
-        execId1: sorted[i],
-        execId2: sorted[i + 1] ?? null,
-      });
+    let pool = [...execIds].filter((id) => !busy.has(id)).sort();
+
+    // Every slot needs two execs (applicants are promised two), so with an
+    // odd number free the busiest exec sits this window out.
+    if (pool.length % 2 === 1) {
+      const sitOut = pool.reduce((busiest, id) => (loadOf(id) >= loadOf(busiest) ? id : busiest));
+      pool = pool.filter((id) => id !== sitOut);
+    }
+
+    pool.sort((x, y) => loadOf(x) - loadOf(y) || x.localeCompare(y));
+    for (const [first, second] of bestMatching(pool)) {
+      const [execId1, execId2] = first < second ? [first, second] : [second, first];
+      slots.push({ date, startTime, endTime, execId1, execId2 });
+      load.set(first, loadOf(first) + 1);
+      load.set(second, loadOf(second) + 1);
+      pairCount.set(pairKey(first, second), pairsOf(first, second) + 1);
     }
   }
 
   return slots;
+
+  /**
+   * Splits an even-sized pool into pairs, picking the split with the fewest
+   * repeat pairings overall (repeats are squared, so one pair meeting three
+   * times costs more than three pairs meeting twice). Looking at the whole
+   * window matters: taking the best partner for one exec at a time can
+   * strand the last two execs into a repeat. Exhaustive up to 10 execs
+   * (at most 945 splits), greedy beyond that.
+   */
+  function bestMatching(pool: string[]): [string, string][] {
+    const partnerOrder = (first: string, others: string[]) =>
+      others
+        .map((_, i) => i)
+        .sort(
+          (i, j) =>
+            pairsOf(first, others[i]) - pairsOf(first, others[j]) ||
+            loadOf(others[i]) - loadOf(others[j]) ||
+            others[i].localeCompare(others[j]),
+        );
+
+    if (pool.length > 10) {
+      const rest = [...pool];
+      const pairs: [string, string][] = [];
+      while (rest.length >= 2) {
+        const first = rest.shift()!;
+        const [best] = partnerOrder(first, rest);
+        pairs.push([first, rest.splice(best, 1)[0]]);
+      }
+      return pairs;
+    }
+
+    let best: [string, string][] = [];
+    let bestCost = Infinity;
+    const search = (rest: string[], chosen: [string, string][], cost: number) => {
+      if (cost >= bestCost) return;
+      if (rest.length === 0) {
+        best = chosen;
+        bestCost = cost;
+        return;
+      }
+      const [first, ...others] = rest;
+      for (const i of partnerOrder(first, others)) {
+        const remaining = others.filter((_, index) => index !== i);
+        search(remaining, [...chosen, [first, others[i]]], cost + pairsOf(first, others[i]) ** 2);
+      }
+    };
+    search(pool, [], 0);
+    return best;
+  }
 }
 
 function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
