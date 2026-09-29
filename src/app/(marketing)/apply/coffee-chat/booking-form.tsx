@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Script from "next/script";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { ArrowUpRight, CheckCircle2 } from "lucide-react";
 import { createBookingAction } from "@/actions/coffee-chat-public";
 import type { PublicSlot } from "@/lib/data/coffee-chat-public";
@@ -12,7 +11,16 @@ import { formatDateLong, parseLocalDate, toDateString } from "@/lib/date";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
-import { Field, FieldGroup, FieldLabel, FieldError } from "@/components/ui/field";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 declare global {
   interface Window {
@@ -35,16 +43,22 @@ function groupByDate(slots: PublicSlot[]): Map<string, PublicSlot[]> {
 export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; turnstileSiteKey: string }) {
   const [isPending, startTransition] = useTransition();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [chosenSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileScriptReady, setTurnstileScriptReady] = useState(false);
-  const [fieldError, setFieldError] = useState<string | null>(null);
+  // Shown in a dialog the applicant must dismiss; the form and their inputs stay as they are.
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [refreshOnDismiss, setRefreshOnDismiss] = useState(false);
   const [confirmed, setConfirmed] = useState<{ date: string; startTime: string; endTime: string; location: string; manageToken: string } | null>(null);
   const turnstileContainerRef = useRef<HTMLDivElement | null>(null);
   const turnstileWidgetIdRef = useRef<string | null>(null);
   const router = useRouter();
+
+  // If the slot list refreshes and the chosen time is gone (someone else took
+  // it), treat it as unselected instead of keeping a stale choice.
+  const selectedSlotId = chosenSlotId && slots.some((s) => s.id === chosenSlotId) ? chosenSlotId : null;
 
   const byDate = useMemo(() => groupByDate(slots), [slots]);
   const dates = useMemo(() => [...byDate.keys()].sort(), [byDate]);
@@ -65,31 +79,37 @@ export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; 
   }, [turnstileScriptReady, selectedSlotId, turnstileSiteKey]);
 
   function handleSubmit() {
-    setFieldError(null);
     if (!selectedSlotId) {
-      setFieldError("Pick a time first.");
+      setRefreshOnDismiss(false);
+      setErrorMessage("Pick a time first.");
       return;
     }
     if (!turnstileToken) {
-      setFieldError("Please complete the verification check.");
+      setRefreshOnDismiss(false);
+      setErrorMessage("Please complete the verification check.");
       return;
     }
 
     startTransition(async () => {
       const result = await createBookingAction({ slotId: selectedSlotId, name, email, turnstileToken });
       if (result.error) {
-        toast.error(result.error);
         // Turnstile tokens are single-use and the server has spent this one:
-        // get a fresh challenge so retrying (e.g. a different slot) works,
-        // and refresh so a slot someone else just took drops off the list.
+        // get a fresh challenge so they can just fix the problem and resubmit.
         setTurnstileToken("");
         window.turnstile?.reset(turnstileWidgetIdRef.current ?? undefined);
-        setSelectedSlotId(null);
-        router.refresh();
+        setRefreshOnDismiss(true);
+        setErrorMessage(result.error);
         return;
       }
       if (result.booking) setConfirmed(result.booking);
     });
+  }
+
+  function handleErrorDismissed() {
+    setErrorMessage(null);
+    // Re-fetch the slot list in place (no page reload) so a slot someone else
+    // just took disappears; name, email and selections are kept.
+    if (refreshOnDismiss) router.refresh();
   }
 
   if (confirmed) {
@@ -127,6 +147,18 @@ export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; 
 
   return (
     <div className="space-y-8">
+      <AlertDialog open={errorMessage !== null} onOpenChange={(open) => !open && handleErrorDismissed()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>We couldn&apos;t book that</AlertDialogTitle>
+            <AlertDialogDescription>{errorMessage}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={handleErrorDismissed}>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Script
         src="https://challenges.cloudflare.com/turnstile/v0/api.js"
         strategy="lazyOnload"
@@ -199,7 +231,6 @@ export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; 
               />
             </Field>
             <div ref={turnstileContainerRef} />
-            <FieldError errors={fieldError ? [{ message: fieldError }] : []} />
             <Button onClick={handleSubmit} disabled={isPending} size="lg" className="w-full">
               {isPending ? "Booking..." : "Book this time"}
             </Button>
