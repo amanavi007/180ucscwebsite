@@ -112,17 +112,27 @@ describe("isSlotBookable", () => {
   it("is bookable when published, unbooked, and past the minimum lead time", () => {
     expect(
       isSlotBookable(
-        { date: "2026-10-06", startTime: "14:00", published: true, hasConfirmedBooking: false },
+        { date: "2026-10-06", startTime: "14:00", published: true, hasConfirmedBooking: false, hasTwoExecs: true },
         now,
         120,
       ),
     ).toBe(true);
   });
 
+  it("is not bookable while the slot only has one exec (applicants are promised two)", () => {
+    expect(
+      isSlotBookable(
+        { date: "2026-10-06", startTime: "14:00", published: true, hasConfirmedBooking: false, hasTwoExecs: false },
+        now,
+        120,
+      ),
+    ).toBe(false);
+  });
+
   it("is not bookable when unpublished", () => {
     expect(
       isSlotBookable(
-        { date: "2026-10-06", startTime: "14:00", published: false, hasConfirmedBooking: false },
+        { date: "2026-10-06", startTime: "14:00", published: false, hasConfirmedBooking: false, hasTwoExecs: true },
         now,
         120,
       ),
@@ -132,7 +142,7 @@ describe("isSlotBookable", () => {
   it("is not bookable once it has a confirmed booking", () => {
     expect(
       isSlotBookable(
-        { date: "2026-10-06", startTime: "14:00", published: true, hasConfirmedBooking: true },
+        { date: "2026-10-06", startTime: "14:00", published: true, hasConfirmedBooking: true, hasTwoExecs: true },
         now,
         120,
       ),
@@ -142,7 +152,7 @@ describe("isSlotBookable", () => {
   it("is not bookable within the minimum lead time", () => {
     expect(
       isSlotBookable(
-        { date: "2026-10-06", startTime: "11:30", published: true, hasConfirmedBooking: false },
+        { date: "2026-10-06", startTime: "11:30", published: true, hasConfirmedBooking: false, hasTwoExecs: true },
         now,
         120,
       ),

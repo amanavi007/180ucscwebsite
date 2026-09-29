@@ -209,11 +209,13 @@ export interface SlotBookabilityInput {
   startTime: string;
   published: boolean;
   hasConfirmedBooking: boolean;
+  /** Applicants are promised two execs, so a slot with an empty second seat is never bookable. */
+  hasTwoExecs: boolean;
 }
 
 /** Whether a slot should appear on the public booking page right now. */
 export function isSlotBookable(slot: SlotBookabilityInput, now: Date, minLeadMinutes: number): boolean {
-  if (!slot.published || slot.hasConfirmedBooking) return false;
+  if (!slot.published || slot.hasConfirmedBooking || !slot.hasTwoExecs) return false;
   const slotStart = zonedDateTimeToUtc(slot.date, slot.startTime);
   return slotStart.getTime() - now.getTime() >= minLeadMinutes * 60_000;
 }

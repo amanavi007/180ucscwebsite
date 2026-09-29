@@ -81,7 +81,7 @@ export async function createBookingAction(input: CreateBookingInput): Promise<Cr
 
   const { data: slot, error: slotError } = await supabase
     .from("coffee_chat_slots")
-    .select("id, date, start_time, end_time, location, published")
+    .select("id, date, start_time, end_time, location, published, exec_id_2")
     .eq("id", input.slotId)
     .single();
   if (slotError || !slot) return { error: "That slot no longer exists. Please pick another." };
@@ -100,6 +100,7 @@ export async function createBookingAction(input: CreateBookingInput): Promise<Cr
       startTime: slot.start_time,
       published: slot.published,
       hasConfirmedBooking: (activeBookingsForSlot ?? []).length > 0,
+      hasTwoExecs: slot.exec_id_2 !== null,
     },
     new Date(),
     DEFAULT_MIN_LEAD_MINUTES,

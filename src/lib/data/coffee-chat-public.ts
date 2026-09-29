@@ -15,7 +15,7 @@ export async function getOpenSlots(): Promise<PublicSlot[]> {
   const supabase = createAdminClient();
   const { data: slots, error } = await supabase
     .from("coffee_chat_slots")
-    .select("id, date, start_time, end_time, location, published")
+    .select("id, date, start_time, end_time, location, published, exec_id_2")
     .eq("published", true)
     .order("date", { ascending: true })
     .order("start_time", { ascending: true });
@@ -38,7 +38,13 @@ export async function getOpenSlots(): Promise<PublicSlot[]> {
   return slotRows
     .filter((s) =>
       isSlotBookable(
-        { date: s.date, startTime: s.start_time, published: s.published, hasConfirmedBooking: bookedSlotIds.has(s.id) },
+        {
+          date: s.date,
+          startTime: s.start_time,
+          published: s.published,
+          hasConfirmedBooking: bookedSlotIds.has(s.id),
+          hasTwoExecs: s.exec_id_2 !== null,
+        },
         now,
         DEFAULT_MIN_LEAD_MINUTES,
       ),
