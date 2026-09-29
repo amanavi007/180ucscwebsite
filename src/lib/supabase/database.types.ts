@@ -583,6 +583,78 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["team_plan_placements"]["Insert"]>;
         Relationships: [];
       };
+      coffee_chat_availability: {
+        Row: {
+          id: string;
+          exec_id: string;
+          date: string;
+          start_time: string;
+          end_time: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          exec_id: string;
+          date: string;
+          start_time: string;
+          end_time: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["coffee_chat_availability"]["Insert"]>;
+        Relationships: [];
+      };
+      coffee_chat_slots: {
+        Row: {
+          id: string;
+          date: string;
+          start_time: string;
+          end_time: string;
+          location: string;
+          exec_id_1: string;
+          exec_id_2: string | null;
+          published: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          date: string;
+          start_time: string;
+          end_time: string;
+          location?: string;
+          exec_id_1: string;
+          exec_id_2?: string | null;
+          published?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["coffee_chat_slots"]["Insert"]>;
+        Relationships: [];
+      };
+      coffee_chat_bookings: {
+        Row: {
+          id: string;
+          slot_id: string;
+          applicant_name: string;
+          applicant_email: string;
+          status: string;
+          manage_token: string;
+          created_at: string;
+          cancelled_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          slot_id: string;
+          applicant_name: string;
+          applicant_email: string;
+          status?: string;
+          manage_token: string;
+          created_at?: string;
+          cancelled_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["coffee_chat_bookings"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: {
       directory_view: {
