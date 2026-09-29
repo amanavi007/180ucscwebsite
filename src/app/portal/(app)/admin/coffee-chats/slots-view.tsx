@@ -8,6 +8,7 @@ import {
   deleteSlotAction,
   generateSlotsAction,
   getExecOptionsForSlotAction,
+  publishAllSlotsAction,
   publishSlotAction,
   swapSlotExecAction,
 } from "@/actions/coffee-chat";
@@ -81,6 +82,18 @@ export function SlotsView({ slots, currentExecId }: { slots: SlotRow[]; currentE
     });
   }
 
+  function handlePublishAll() {
+    startTransition(async () => {
+      const result = await publishAllSlotsAction();
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(`Published ${result.publishedCount ?? 0} slot(s).`);
+      router.refresh();
+    });
+  }
+
   function handlePublishToggle(slotId: string, published: boolean) {
     startTransition(async () => {
       const result = await publishSlotAction(slotId, published);
@@ -108,10 +121,15 @@ export function SlotsView({ slots, currentExecId }: { slots: SlotRow[]; currentE
             My slots only
           </label>
         </div>
-        <Button onClick={handleGenerate} disabled={isPending} className="gap-1.5">
-          <RefreshCw className="size-4" />
-          Generate slots
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handlePublishAll} disabled={isPending}>
+            Publish all
+          </Button>
+          <Button onClick={handleGenerate} disabled={isPending} className="gap-1.5">
+            <RefreshCw className="size-4" />
+            Generate slots
+          </Button>
+        </div>
       </div>
 
       {visible.length === 0 ? (

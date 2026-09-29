@@ -200,6 +200,23 @@ export async function publishSlotAction(slotId: string, published: boolean): Pro
   return {};
 }
 
+/** Publishes every unpublished slot in one go. */
+export async function publishAllSlotsAction(): Promise<ActionResult & { publishedCount?: number }> {
+  const { error } = await requireExec();
+  if (error) return { error };
+
+  const supabase = await createClient();
+  const { data, error: updateError } = await supabase
+    .from("coffee_chat_slots")
+    .update({ published: true })
+    .eq("published", false)
+    .select("id");
+  if (updateError) return { error: updateError.message };
+
+  revalidateAdmin();
+  return { publishedCount: data?.length ?? 0 };
+}
+
 export async function deleteSlotAction(slotId: string): Promise<ActionResult> {
   const { error } = await requireExec();
   if (error) return { error };
