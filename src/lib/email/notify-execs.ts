@@ -11,6 +11,7 @@ import { sendEmail } from "./send";
 export async function notifyExecsOfBooking(
   bookingId: string,
   kind: "booked" | "cancelled",
+  onlyTo?: string,
 ): Promise<{ sentTo: string[]; errors: string[] }> {
   const result = { sentTo: [] as string[], errors: [] as string[] };
   try {
@@ -37,7 +38,9 @@ export async function notifyExecsOfBooking(
     if (execError) throw execError;
 
     await Promise.all(
-      (execs ?? []).map(async (exec) => {
+      (execs ?? [])
+        .filter((exec) => !onlyTo || exec.email.toLowerCase() === onlyTo.toLowerCase())
+        .map(async (exec) => {
         const base = {
           execName: exec.name,
           applicantName: booking.applicant_name,

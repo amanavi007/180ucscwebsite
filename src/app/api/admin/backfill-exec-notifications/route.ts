@@ -29,9 +29,11 @@ export async function GET(request: Request) {
     return new Response(`Dry run: ${bookings.length} booking(s). Add ?confirm=1 to send.\n${lines.join("\n")}`);
   }
 
+  // ?to=<email> re-sends to just that exec (e.g. one whose email didn't arrive).
+  const onlyTo = new URL(request.url).searchParams.get("to") ?? undefined;
   const report: string[] = [];
   for (const b of bookings) {
-    const r = await notifyExecsOfBooking(b.id, "booked");
+    const r = await notifyExecsOfBooking(b.id, "booked", onlyTo);
     report.push(`${b.applicant_name}: sent to [${r.sentTo.join(", ")}]${r.errors.length ? ` ERRORS: ${r.errors.join(" | ")}` : ""}`);
   }
   return new Response(`Processed ${bookings.length} booking(s).\n${report.join("\n")}`);

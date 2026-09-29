@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Script from "next/script";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, CheckCircle2 } from "lucide-react";
+import { ArrowUpRight, Check, CheckCircle2, MapPin } from "lucide-react";
 import { createBookingAction } from "@/actions/coffee-chat-public";
 import type { PublicSlot } from "@/lib/data/coffee-chat-public";
 import { formatTime12h } from "@/lib/coffee-chat";
@@ -41,6 +41,21 @@ function groupByDate(slots: PublicSlot[]): Map<string, PublicSlot[]> {
   return map;
 }
 
+function StepHeader({ step, title, done }: { step: number; title: string; done?: boolean }) {
+  return (
+    <h2 className="flex items-center gap-2.5 font-semibold">
+      <span
+        className={`flex size-6 items-center justify-center rounded-full text-xs font-bold ${
+          done ? "bg-primary text-primary-foreground" : "border border-primary/40 text-primary"
+        }`}
+      >
+        {done ? <Check className="size-3.5" /> : step}
+      </span>
+      {title}
+    </h2>
+  );
+}
+
 export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; turnstileSiteKey: string }) {
   const [isPending, startTransition] = useTransition();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -60,6 +75,8 @@ export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; 
   // If the slot list refreshes and the chosen time is gone (someone else took
   // it), treat it as unselected instead of keeping a stale choice.
   const selectedSlotId = chosenSlotId && slots.some((s) => s.id === chosenSlotId) ? chosenSlotId : null;
+
+  const selectedSlot = selectedSlotId ? (slots.find((s) => s.id === selectedSlotId) ?? null) : null;
 
   const byDate = useMemo(() => groupByDate(slots), [slots]);
   const dates = useMemo(() => [...byDate.keys()].sort(), [byDate]);
@@ -178,7 +195,7 @@ export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; 
 
       <div className="grid gap-8 md:grid-cols-[auto_1fr]">
         <div>
-          <h2 className="font-semibold">1. Pick a date</h2>
+          <StepHeader step={1} title="Pick a date" done={!!selectedDate} />
           <Calendar
             mode="single"
             selected={selectedDate ? parseLocalDate(selectedDate) : undefined}
@@ -197,19 +214,19 @@ export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; 
         </div>
 
         <div>
-          <h2 className="font-semibold">2. Pick a time</h2>
+          <StepHeader step={2} title="Pick a time" done={!!selectedSlotId} />
           {!selectedDate ? (
-            <p className="mt-3 text-sm text-muted-foreground">Choose a highlighted date to see open times.</p>
+            <p className="mt-3 text-sm text-muted-foreground">Pick a bold date first.</p>
           ) : (
             <div className="mt-3">
               <p className="text-sm text-foreground/70">{formatDateLong(selectedDate)}</p>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {timesForSelectedDate.map((slot) => (
                   <button
                     key={slot.id}
                     type="button"
                     onClick={() => setSelectedSlotId(slot.id)}
-                    className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                    className={`rounded-xl border px-3 py-2.5 text-sm font-medium tabular-nums transition-colors ${
                       selectedSlotId === slot.id ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:bg-muted"
                     }`}
                   >
@@ -224,8 +241,19 @@ export function BookingForm({ slots, turnstileSiteKey }: { slots: PublicSlot[]; 
 
       {selectedSlotId && (
         <div>
-          <h2 className="font-semibold">3. Your details</h2>
-          <FieldGroup className="mt-3 space-y-4">
+          <StepHeader step={3} title="Your details" />
+          {selectedSlot && (
+            <div className="mt-3 flex items-start gap-3 rounded-2xl border border-primary/30 bg-background p-4">
+              <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
+              <div className="text-sm">
+                <p className="font-semibold">
+                  {formatDateLong(selectedSlot.date)}, {formatTime12h(selectedSlot.startTime)} to {formatTime12h(selectedSlot.endTime)}
+                </p>
+                {selectedSlot.location.trim() !== "" && <p className="text-foreground/70">{selectedSlot.location}</p>}
+              </div>
+            </div>
+          )}
+          <FieldGroup className="mt-4 space-y-4">
             <Field>
               <FieldLabel htmlFor="name">Name</FieldLabel>
               <Input id="name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
