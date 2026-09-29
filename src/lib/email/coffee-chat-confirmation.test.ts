@@ -71,7 +71,8 @@ describe("buildExecBookingNotificationEmail", () => {
       siteUrl: "https://180dcucsc.org",
     });
     expect(email.html).toContain("calendar.google.com/calendar/render");
-    expect(email.html).toContain("https://180dcucsc.org/api/coffee-chat/tok_abc123/calendar.ics");
+    expect(email.html).toContain("https://180dcucsc.org/api/coffee-chat/tok_abc123/calendar.ics?for=exec");
+    expect(email.html).toContain("Coffee+chat+with");
     expect(email.subject).toContain("<b>Jamie</b>");
     expect(email.html).not.toContain("<b>Jamie</b>");
     expect(email.html).toContain("jamie@ucsc.edu");

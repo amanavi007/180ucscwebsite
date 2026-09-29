@@ -7,6 +7,21 @@ export interface CoffeeChatBookingForInvite {
   endTime: string; // "HH:MM"
   location: string;
   manageToken: string;
+  /** Exec copies name the applicant; the applicant's own copy stays generic. */
+  audience?: "applicant" | "exec";
+}
+
+function eventText(booking: CoffeeChatBookingForInvite): { title: string; description: string } {
+  if (booking.audience === "exec") {
+    return {
+      title: `Coffee chat with ${booking.applicantName}`,
+      description: `180DC UCSC recruitment coffee chat with ${booking.applicantName}.`,
+    };
+  }
+  return {
+    title: "180DC UCSC Coffee Chat",
+    description: "Coffee chat with 180DC UCSC exec as part of recruitment.",
+  };
 }
 
 function toUtcStamp(date: string, time: string): string {
@@ -15,11 +30,12 @@ function toUtcStamp(date: string, time: string): string {
 }
 
 export function buildGoogleCalendarUrl(booking: CoffeeChatBookingForInvite): string {
+  const { title, description } = eventText(booking);
   const params = new URLSearchParams({
     action: "TEMPLATE",
-    text: "180DC UCSC Coffee Chat",
+    text: title,
     dates: `${toUtcStamp(booking.date, booking.startTime)}/${toUtcStamp(booking.date, booking.endTime)}`,
-    details: `Coffee chat with 180DC UCSC exec as part of recruitment.`,
+    details: description,
   });
   if (booking.location.trim() !== "") params.set("location", booking.location);
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
@@ -32,18 +48,20 @@ function icsLines(lines: string[]): string {
 
 export function buildIcsContent(booking: CoffeeChatBookingForInvite): string {
   const dtstamp = toUtcStamp(booking.date, booking.startTime);
+  const { title, description } = eventText(booking);
+  const uidSuffix = booking.audience === "exec" ? "-exec" : "";
   return icsLines([
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
     "PRODID:-//180DC UCSC//Coffee Chat//EN",
     "BEGIN:VEVENT",
-    `UID:${booking.manageToken}@180dcucsc.org`,
+    `UID:${booking.manageToken}${uidSuffix}@180dcucsc.org`,
     `DTSTAMP:${dtstamp}`,
     `DTSTART:${toUtcStamp(booking.date, booking.startTime)}`,
     `DTEND:${toUtcStamp(booking.date, booking.endTime)}`,
-    "SUMMARY:180DC UCSC Coffee Chat",
+    `SUMMARY:${title}`,
     ...(booking.location.trim() !== "" ? [`LOCATION:${booking.location}`] : []),
-    "DESCRIPTION:Coffee chat with 180DC UCSC exec as part of recruitment.",
+    `DESCRIPTION:${description}`,
     "END:VEVENT",
     "END:VCALENDAR",
     "",

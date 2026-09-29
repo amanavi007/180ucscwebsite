@@ -44,3 +44,12 @@ describe("buildIcsContent", () => {
     expect(ics.split("\n")[0].endsWith("\r")).toBe(true);
   });
 });
+
+describe("exec audience", () => {
+  it("names the applicant for execs only", () => {
+    expect(buildIcsContent({ ...booking, audience: "exec" })).toContain(`SUMMARY:Coffee chat with ${booking.applicantName}`);
+    expect(buildIcsContent(booking)).toContain("SUMMARY:180DC UCSC Coffee Chat");
+    expect(buildIcsContent(booking)).not.toContain(booking.applicantName);
+    expect(buildGoogleCalendarUrl(booking)).not.toContain("Jamie");
+  });
+});

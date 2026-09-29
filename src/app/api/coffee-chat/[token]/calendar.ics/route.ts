@@ -1,7 +1,7 @@
 import { getBookingByToken } from "@/lib/data/coffee-chat-public";
 import { buildIcsContent } from "@/lib/calendar-invite";
 
-export async function GET(_request: Request, { params }: { params: Promise<{ token: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const booking = await getBookingByToken(token);
 
@@ -9,6 +9,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
     return new Response("Booking not found.", { status: 404 });
   }
 
+  const audience = new URL(request.url).searchParams.get("for") === "exec" ? "exec" : "applicant";
   const ics = buildIcsContent({
     applicantName: booking.applicantName,
     date: booking.date,
@@ -16,6 +17,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
     endTime: booking.endTime,
     location: booking.location,
     manageToken: token,
+    audience,
   });
 
   return new Response(ics, {

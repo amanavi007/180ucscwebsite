@@ -97,7 +97,7 @@ export function buildExecBookingNotificationEmail(input: ExecBookingNotification
   const timeLabel = `${formatTime12h(input.startTime)} to ${formatTime12h(input.endTime)}`;
   const hasLocation = input.location.trim() !== "";
   const portalUrl = `${input.siteUrl}/portal/admin/coffee-chats`;
-  const icsUrl = `${input.siteUrl}/api/coffee-chat/${input.manageToken}/calendar.ics`;
+  const icsUrl = `${input.siteUrl}/api/coffee-chat/${input.manageToken}/calendar.ics?for=exec`;
   const googleUrl = buildGoogleCalendarUrl({
     applicantName: input.applicantName,
     date: input.date,
@@ -105,6 +105,7 @@ export function buildExecBookingNotificationEmail(input: ExecBookingNotification
     endTime: input.endTime,
     location: input.location,
     manageToken: input.manageToken,
+    audience: "exec",
   });
 
   const html = `
