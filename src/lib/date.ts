@@ -32,9 +32,9 @@ export function getOrgTodayDateString(): string {
 }
 
 /** Minutes to add to a UTC instant to get org-local wall-clock time, for the given instant (DST-aware). */
-function getOrgOffsetMinutes(instant: Date): number {
+function getOrgOffsetMinutes(instant: Date, timeZone: string): number {
   const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: ORG_TIME_ZONE,
+    timeZone,
     hourCycle: "h23",
     year: "numeric",
     month: "2-digit",
@@ -75,6 +75,6 @@ export function zonedDateTimeToUtc(dateStr: string, timeStr: string, timeZone: s
   const [year, month, day] = dateStr.split("-").map(Number);
   const [hour, minute] = timeStr.split(":").map(Number);
   const guessUtcMs = Date.UTC(year, month - 1, day, hour, minute);
-  const offsetMinutes = getOrgOffsetMinutes(new Date(guessUtcMs));
+  const offsetMinutes = getOrgOffsetMinutes(new Date(guessUtcMs), timeZone);
   return new Date(guessUtcMs - offsetMinutes * 60_000);
 }

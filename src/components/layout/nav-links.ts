@@ -16,6 +16,7 @@ import {
   History,
   Link2,
   BarChart3,
+  CalendarHeart,
 } from "lucide-react";
 
 export interface NavLink {
@@ -26,7 +27,7 @@ export interface NavLink {
   /** Extra terms this page should also match on in search, beyond its label. */
   keywords?: string;
   /** Sidebar grouping only -- unset means "ungrouped" (rendered on its own). */
-  group?: "work" | "people" | "reference" | "admin-people" | "admin-quarter-setup" | "admin-system";
+  group?: "work" | "people" | "reference" | "admin-people" | "admin-quarter-setup" | "admin-system" | "admin-recruitment";
   /** One-sentence explanation shown for this page in the first-time sidebar tour. */
   tourDescription?: string;
 }
@@ -140,6 +141,14 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     execOnly: true,
     keywords: "library booking floor plan",
     group: "admin-quarter-setup",
+  },
+  {
+    href: "/portal/admin/coffee-chats",
+    label: "Coffee Chats",
+    icon: CalendarHeart,
+    execOnly: true,
+    keywords: "recruitment applicants scheduling booking availability",
+    group: "admin-recruitment",
   },
   { href: "/portal/admin/settings", label: "Settings", icon: SlidersHorizontal, execOnly: true, group: "admin-system" },
   {

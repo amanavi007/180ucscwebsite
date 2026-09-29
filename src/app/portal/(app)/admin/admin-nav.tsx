@@ -8,6 +8,7 @@ import { ADMIN_NAV_LINKS, type NavLink } from "@/components/layout/nav-links";
 const GROUP_LABEL: Record<string, string> = {
   "admin-people": "People",
   "admin-quarter-setup": "Quarter setup",
+  "admin-recruitment": "Recruitment",
   "admin-system": "System",
 };
 
