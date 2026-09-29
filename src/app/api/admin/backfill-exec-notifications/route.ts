@@ -29,6 +29,10 @@ export async function GET(request: Request) {
     return new Response(`Dry run: ${bookings.length} booking(s). Add ?confirm=1 to send.\n${lines.join("\n")}`);
   }
 
-  for (const b of bookings) await notifyExecsOfBooking(b.id, "booked");
-  return new Response(`Sent exec notifications for ${bookings.length} booking(s).\n${lines.join("\n")}`);
+  const report: string[] = [];
+  for (const b of bookings) {
+    const r = await notifyExecsOfBooking(b.id, "booked");
+    report.push(`${b.applicant_name}: sent to [${r.sentTo.join(", ")}]${r.errors.length ? ` ERRORS: ${r.errors.join(" | ")}` : ""}`);
+  }
+  return new Response(`Processed ${bookings.length} booking(s).\n${report.join("\n")}`);
 }

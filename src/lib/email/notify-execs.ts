@@ -8,7 +8,11 @@ import { sendEmail } from "./send";
  * Emails the execs on a booking's slot. Best effort: the booking change has
  * already happened, so failures are logged rather than surfaced.
  */
-export async function notifyExecsOfBooking(bookingId: string, kind: "booked" | "cancelled"): Promise<void> {
+export async function notifyExecsOfBooking(
+  bookingId: string,
+  kind: "booked" | "cancelled",
+): Promise<{ sentTo: string[]; errors: string[] }> {
+  const result = { sentTo: [] as string[], errors: [] as string[] };
   try {
     const supabase = createAdminClient();
     const { data: booking, error } = await supabase
@@ -50,12 +54,16 @@ export async function notifyExecsOfBooking(bookingId: string, kind: "booked" | "
             : buildExecBookingCancelledEmail(base);
         try {
           await sendEmail({ to: exec.email, subject: content.subject, html: content.html, text: content.text });
+          result.sentTo.push(exec.email);
         } catch (emailError) {
           console.error(`coffee chat exec ${kind} email failed:`, emailError);
+          result.errors.push(`${exec.email}: ${emailError instanceof Error ? emailError.message : String(emailError)}`);
         }
       }),
     );
   } catch (err) {
     console.error(`coffee chat exec ${kind} notification failed:`, err);
+    result.errors.push(err instanceof Error ? err.message : JSON.stringify(err));
   }
+  return result;
 }
