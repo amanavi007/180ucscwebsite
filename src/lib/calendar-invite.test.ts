@@ -1,0 +1,34 @@
+import { describe, expect, it } from "vitest";
+import { buildGoogleCalendarUrl, buildIcsContent, type CoffeeChatBookingForInvite } from "./calendar-invite";
+
+const booking: CoffeeChatBookingForInvite = {
+  applicantName: "Jamie Rivera",
+  date: "2026-10-06",
+  startTime: "14:00",
+  endTime: "14:20",
+  location: "Baskin Engineering courtyard",
+  manageToken: "tok_abc123",
+};
+
+describe("buildGoogleCalendarUrl", () => {
+  it("encodes the UTC start/end as a Google Calendar template link", () => {
+    const url = buildGoogleCalendarUrl(booking);
+    expect(url).toContain("https://calendar.google.com/calendar/render?action=TEMPLATE");
+    expect(url).toContain("dates=20261006T210000Z%2F20261006T212000Z");
+    expect(url).toContain("text=180DC+UCSC+Coffee+Chat");
+    expect(url).toContain("location=Baskin+Engineering+courtyard");
+  });
+});
+
+describe("buildIcsContent", () => {
+  it("produces a VCALENDAR block with the right UID, times, and CRLF line endings", () => {
+    const ics = buildIcsContent(booking);
+    expect(ics).toContain("BEGIN:VCALENDAR");
+    expect(ics).toContain("UID:tok_abc123@180dcucsc.org");
+    expect(ics).toContain("DTSTART:20261006T210000Z");
+    expect(ics).toContain("DTEND:20261006T212000Z");
+    expect(ics).toContain("SUMMARY:180DC UCSC Coffee Chat");
+    expect(ics).toContain("LOCATION:Baskin Engineering courtyard");
+    expect(ics.split("\n")[0].endsWith("\r")).toBe(true);
+  });
+});
