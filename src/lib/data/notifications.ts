@@ -67,7 +67,7 @@ export async function getMyNotifications(
     lastReadAt = new Date().toISOString();
   }
 
-  const [, { data: bookings }] = await Promise.all([
+  const [, { data: bookings }, { data: coffeeChatBookings }] = await Promise.all([
     needsReadMarker
       ? supabase.from("notification_reads").insert({ user_id: userId, last_read_at: lastReadAt })
       : Promise.resolve(null),
@@ -79,6 +79,18 @@ export async function getMyNotifications(
           .gte("date", new Date().toISOString().slice(0, 10))
           .order("updated_at", { ascending: false })
           .limit(10)
+      : Promise.resolve({ data: null }),
+    // Inner-joined + filtered to slots this exec is on *in the query*, so the
+    // limit applies to their own bookings rather than everyone's.
+    isExecUser
+      ? supabase
+          .from("coffee_chat_bookings")
+          .select(
+            "id, applicant_name, status, created_at, cancelled_at, slot:coffee_chat_slots!inner(id, exec_id_1, exec_id_2)",
+          )
+          .or(`exec_id_1.eq.${userId},exec_id_2.eq.${userId}`, { referencedTable: "coffee_chat_slots" })
+          .order("created_at", { ascending: false })
+          .limit(15)
       : Promise.resolve({ data: null }),
   ]);
 
@@ -130,6 +142,37 @@ export async function getMyNotifications(
       href: "/portal",
       occurredAt: b.updated_at,
     });
+  }
+
+  interface CoffeeChatBookingNotificationRow {
+    id: string;
+    applicant_name: string;
+    status: string;
+    created_at: string;
+    cancelled_at: string | null;
+    slot: { id: string; exec_id_1: string; exec_id_2: string | null } | null;
+  }
+
+  const myCoffeeChatBookings = ((coffeeChatBookings ?? []) as unknown as CoffeeChatBookingNotificationRow[]).filter(
+    (b) => b.slot && (b.slot.exec_id_1 === userId || b.slot.exec_id_2 === userId),
+  );
+
+  for (const b of myCoffeeChatBookings) {
+    if (b.status === "confirmed") {
+      items.push({
+        id: `coffee-chat-booked-${b.id}`,
+        message: `${b.applicant_name} booked a coffee chat with you.`,
+        href: "/portal/admin/coffee-chats",
+        occurredAt: b.created_at,
+      });
+    } else if (b.status === "cancelled" && b.cancelled_at) {
+      items.push({
+        id: `coffee-chat-cancelled-${b.id}`,
+        message: `${b.applicant_name} cancelled their coffee chat with you.`,
+        href: "/portal/admin/coffee-chats",
+        occurredAt: b.cancelled_at,
+      });
+    }
   }
 
   items.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
