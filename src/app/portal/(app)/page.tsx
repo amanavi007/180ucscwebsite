@@ -247,8 +247,10 @@ export default async function DashboardPage() {
                 render={<Link href={`/portal/attendance?team=${n.projectId}`} />}
               >
                 <AlertTriangle />
-                {n.clientName} hasn&apos;t logged today&apos;s attendance yet -- it&apos;s a meeting
-                day. Log it now.
+                <span>
+                  {n.clientName} hasn&apos;t logged today&apos;s attendance yet -- it&apos;s a
+                  meeting day. Log it now.
+                </span>
               </Alert>
             ))}
           </div>
