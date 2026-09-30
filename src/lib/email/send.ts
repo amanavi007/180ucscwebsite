@@ -1,6 +1,6 @@
 import "server-only";
 import nodemailer, { type Transporter } from "nodemailer";
-import { chooseEmailProvider } from "./provider";
+import { emailProviderOrder, type EmailProvider } from "./provider";
 import { sendEmail as sendViaResend } from "./resend";
 
 interface EmailParams {
@@ -32,7 +32,22 @@ async function sendViaGmail(params: EmailParams): Promise<void> {
   });
 }
 
+const senders: Record<EmailProvider, (params: EmailParams) => Promise<void>> = {
+  resend: sendViaResend,
+  gmail: sendViaGmail,
+};
+
+// Tries each configured provider in order (Gmail first if set up, then Resend)
+// and only throws once all of them have failed.
 export async function sendEmail(params: EmailParams): Promise<void> {
-  if (chooseEmailProvider(process.env) === "gmail") return sendViaGmail(params);
-  return sendViaResend(params);
+  const errors: unknown[] = [];
+  for (const provider of emailProviderOrder(process.env)) {
+    try {
+      return await senders[provider](params);
+    } catch (err) {
+      console.error(`email via ${provider} failed:`, err);
+      errors.push(err);
+    }
+  }
+  throw errors[0] instanceof Error ? errors[0] : new Error("Failed to send email");
 }
