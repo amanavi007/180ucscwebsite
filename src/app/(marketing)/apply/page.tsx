@@ -94,9 +94,9 @@ export default function ApplyPage() {
         <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
           How recruitment works
         </h2>
-        <div className="mt-10 grid gap-10 sm:grid-cols-3 sm:divide-x sm:divide-foreground/10">
+        <div className="mt-10 grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:divide-x lg:divide-foreground/10">
           {STEPS.map((step, i) => (
-            <div key={step.title} className="sm:px-8 sm:first:pl-0">
+            <div key={step.title} className="lg:px-6 lg:first:pl-0 lg:last:pr-0">
               <div className="flex items-center gap-3">
                 <span className="font-brand flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
                   0{i + 1}
