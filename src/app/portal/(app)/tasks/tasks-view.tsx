@@ -95,7 +95,7 @@ export function TasksView({
           </div>
 
           <Select value={filters.project ?? ALL} onValueChange={(v) => setParam("project", v)}>
-            <SelectTrigger size="sm" className="w-44">
+            <SelectTrigger size="sm" className="w-full sm:w-44">
               <SelectValue placeholder="All projects">
                 {(value: string) =>
                   value === ALL
@@ -115,7 +115,7 @@ export function TasksView({
           </Select>
 
           <Select value={filters.status ?? ALL} onValueChange={(v) => setParam("status", v)}>
-            <SelectTrigger size="sm" className="w-36">
+            <SelectTrigger size="sm" className="w-full sm:w-36">
               <SelectValue placeholder="All statuses">
                 {(value: string) =>
                   value === ALL
@@ -135,7 +135,7 @@ export function TasksView({
           </Select>
 
           <Select value={filters.type ?? ALL} onValueChange={(v) => setParam("type", v)}>
-            <SelectTrigger size="sm" className="w-44">
+            <SelectTrigger size="sm" className="w-full sm:w-44">
               <SelectValue placeholder="All types">
                 {(value: string) =>
                   value === ALL ? "All types" : taskTypeLabel(value as (typeof TASK_TYPES)[number])
@@ -173,8 +173,8 @@ export function TasksView({
               <CardContent className="p-0">
                 <div
                   className={cn(
-                    "hidden gap-6 px-4 py-2 text-xs font-medium text-muted-foreground sm:grid",
-                    mine ? "grid-cols-[1fr_9rem_16rem]" : "grid-cols-[1fr_9rem_9rem_16rem]",
+                    "hidden gap-6 px-4 py-2 text-xs font-medium text-muted-foreground md:grid",
+                    mine ? "md:grid-cols-[1fr_9rem_16rem]" : "md:grid-cols-[1fr_9rem_9rem_16rem]",
                   )}
                 >
                   {columnHeaders.map((h) => (

@@ -110,7 +110,7 @@ export function TeamRoster({
         {canEdit && addable.length > 0 && (
           <div className="flex items-center gap-2">
             <Select value={addValue} onValueChange={onAdd}>
-              <SelectTrigger size="sm" className="w-56">
+              <SelectTrigger size="sm" className="w-full sm:w-56">
                 <UserPlus className="size-3.5" />
                 <SelectValue placeholder="Add a member">
                   {(value: string) => addable.find((p) => p.id === value)?.name ?? "Add a member"}

@@ -130,7 +130,7 @@ export function AppShell({
   }, []);
 
   return (
-    <div className="flex h-svh md:gap-3 md:p-3">
+    <div className="flex h-dvh md:gap-3 md:p-3">
       <aside
         onMouseEnter={() => setExpanded(true)}
         onMouseLeave={() => setExpanded(false)}
@@ -237,7 +237,7 @@ export function AppShell({
           </div>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4 md:p-6">{children}</main>
       </div>
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>

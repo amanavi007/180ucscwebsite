@@ -38,7 +38,7 @@ export function AdminNav() {
           <span className="px-1 text-xs font-medium text-muted-foreground">
             {GROUP_LABEL[group.key] ?? ""}
           </span>
-          <div className="inline-flex w-fit items-center gap-[3px] rounded-lg bg-muted p-[3px]">
+          <div className="inline-flex w-fit max-w-full items-center gap-[3px] overflow-x-auto rounded-lg bg-muted p-[3px]">
             {group.items.map((item) => {
               const active = pathname === item.href;
               return (
@@ -46,7 +46,7 @@ export function AdminNav() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "rounded-md px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors",
+                    "rounded-md px-3 py-1 pointer-coarse:py-2 text-sm font-medium whitespace-nowrap transition-colors",
                     active
                       ? "bg-background text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground",

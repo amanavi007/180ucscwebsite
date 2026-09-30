@@ -124,7 +124,7 @@ export function PlanSelect({
     <div className="flex items-center gap-1.5">
       {plans.length > 0 && selectedPlan && (
         <Select value={selectedPlan.id} onValueChange={(v) => v && goToPlan(v)}>
-          <SelectTrigger size="sm" className="w-56">
+          <SelectTrigger size="sm" className="w-full sm:w-56">
             <SelectValue>
               {(value: string) => {
                 const p = plans.find((pp) => pp.id === value);

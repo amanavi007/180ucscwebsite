@@ -97,7 +97,7 @@ export function DirectoryView({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <Select value={roleFilter} onValueChange={(v) => v && setRoleFilter(v)}>
-          <SelectTrigger size="sm" className="w-48">
+          <SelectTrigger size="sm" className="w-full sm:w-48">
             <SelectValue placeholder="All roles">
               {(value: string) => (value === ALL ? "All roles" : roleLabel(value as never))}
             </SelectValue>
@@ -113,7 +113,7 @@ export function DirectoryView({
         </Select>
 
         <Select value={teamFilter} onValueChange={(v) => v && setTeamFilter(v)}>
-          <SelectTrigger size="sm" className="w-48">
+          <SelectTrigger size="sm" className="w-full sm:w-48">
             <SelectValue placeholder="All teams">
               {(value: string) => {
                 if (value === ALL) return "All teams";

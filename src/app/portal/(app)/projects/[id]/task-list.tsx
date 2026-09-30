@@ -167,7 +167,7 @@ export function TaskList({
               {selectedCount} task{selectedCount === 1 ? "" : "s"} selected
             </span>
             <Select value={reassignValue} onValueChange={onBulkReassign} disabled={isPending}>
-              <SelectTrigger size="sm" className="w-48">
+              <SelectTrigger size="sm" className="w-full sm:w-48">
                 <SelectValue placeholder="Reassign to...">
                   {(value: string) => rosterProfiles.find((p) => p.id === value)?.name ?? "Reassign to..."}
                 </SelectValue>
@@ -204,10 +204,10 @@ export function TaskList({
 
         <div
           className={cn(
-            "hidden gap-6 px-3 text-xs font-medium text-muted-foreground sm:grid",
+            "hidden gap-6 px-3 text-xs font-medium text-muted-foreground md:grid",
             selectMode
-              ? "grid-cols-[1.5rem_1fr_9rem_9rem_16rem_2rem]"
-              : "grid-cols-[1fr_9rem_9rem_16rem_2rem]",
+              ? "md:grid-cols-[1.5rem_1fr_9rem_9rem_16rem_2rem]"
+              : "md:grid-cols-[1fr_9rem_9rem_16rem_2rem]",
           )}
         >
           {selectMode && <span />}

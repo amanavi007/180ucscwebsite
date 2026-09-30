@@ -275,7 +275,7 @@ export function ProjectHeader({
             onValueChange={onHealthChange}
             disabled={isPending}
           >
-            <SelectTrigger size="sm" className="w-40">
+            <SelectTrigger size="sm" className="w-full sm:w-40">
               <SelectValue>
                 {(value: string) =>
                   value === "auto"

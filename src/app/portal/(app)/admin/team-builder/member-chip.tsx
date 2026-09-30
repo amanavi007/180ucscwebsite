@@ -52,7 +52,7 @@ function CandidateToggle({
         "flex h-5 shrink-0 items-center justify-center overflow-hidden rounded-full text-[10px] font-semibold transition-all",
         active
           ? cn("border px-1.5", activeClassName)
-          : "w-0 border border-transparent px-0 text-muted-foreground/60 opacity-0 group-hover:w-5 group-hover:px-1.5 group-hover:opacity-100 focus-visible:w-5 focus-visible:px-1.5 focus-visible:opacity-100 hover:bg-muted hover:text-foreground",
+          : "w-0 border border-transparent px-0 text-muted-foreground/60 opacity-0 pointer-coarse:w-6 pointer-coarse:px-1.5 pointer-coarse:opacity-100 group-hover:w-5 group-hover:px-1.5 group-hover:opacity-100 focus-visible:w-5 focus-visible:px-1.5 focus-visible:opacity-100 hover:bg-muted hover:text-foreground",
       )}
     >
       {label}

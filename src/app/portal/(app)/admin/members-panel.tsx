@@ -310,7 +310,7 @@ export function MembersPanel({
               className="w-64"
             />
             <Select value={roleFilter} onValueChange={(v) => v && setRoleFilter(v as UserRole | "all")}>
-              <SelectTrigger size="sm" className="w-48">
+              <SelectTrigger size="sm" className="w-full sm:w-48">
                 <SelectValue>
                   {(value: UserRole | "all") => (value === "all" ? "All roles" : roleLabel(value))}
                 </SelectValue>
@@ -404,7 +404,7 @@ function MemberRow({ member, defaultPassword }: { member: Member; defaultPasswor
       <TableCell className="text-muted-foreground">{member.email}</TableCell>
       <TableCell>
         <Select value={member.role} onValueChange={onRoleSelect} disabled={isPending}>
-          <SelectTrigger size="sm" className="w-56">
+          <SelectTrigger size="sm" className="w-full sm:w-56">
             <SelectValue>{(value: UserRole) => roleLabel(value)}</SelectValue>
           </SelectTrigger>
           <SelectContent>

@@ -7,7 +7,8 @@ import { Plus, CheckCircle2, Loader2 } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -210,7 +211,11 @@ export function TeamBuilderBoard({
   // it look like they've disappeared.
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    // Long-press to drag on touch so a normal swipe still scrolls the page.
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+  );
 
   function handleDragStart(event: DragStartEvent) {
     if (readOnly) return;
@@ -344,8 +349,8 @@ export function TeamBuilderBoard({
       </div>
 
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="flex items-start gap-7">
-          <div className="glass-panel w-64 shrink-0 self-start rounded-2xl p-4">
+        <div className="flex flex-col items-stretch gap-5 md:flex-row md:items-start md:gap-7">
+          <div className="glass-panel w-full shrink-0 md:w-64 self-start rounded-2xl p-4">
             <div className="mb-2 flex items-baseline gap-1.5">
               <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                 Unassigned
@@ -399,7 +404,7 @@ export function TeamBuilderBoard({
                     render={
                       <button
                         type="button"
-                        className="flex min-h-[220px] w-80 shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border text-sm font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
+                        className="flex min-h-[220px] w-full shrink-0 sm:w-80 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border text-sm font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
                       >
                         <Plus className="size-5" />
                         Add team

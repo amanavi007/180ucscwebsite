@@ -7,7 +7,8 @@ import Link from "next/link";
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useDraggable,
   useDroppable,
   useSensor,
@@ -114,7 +115,7 @@ function BoardColumn({
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
   return (
-    <div key={status} className="w-72 shrink-0">
+    <div key={status} className="w-[85%] shrink-0 snap-start sm:w-72">
       <div className="mb-2 flex items-center gap-2 px-1">
         <h3 className="text-sm font-medium">{statusLabel(status)}</h3>
         <span className="text-xs text-muted-foreground">{projects.length}</span>
@@ -154,7 +155,10 @@ export function ProjectBoard({
   const [activeProject, setActiveProject] = useState<ProjectWithRelations | null>(null);
   const router = useRouter();
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+  );
 
   function handleDragStart(event: DragStartEvent) {
     const project = projects.find((p) => p.id === String(event.active.id)) ?? null;
@@ -189,7 +193,7 @@ export function ProjectBoard({
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 sm:snap-none">
         {PROJECT_STATUSES.map((status) => (
           <BoardColumn
             key={status}

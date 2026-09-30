@@ -127,7 +127,7 @@ export function QuickEntryForm({
             type="date"
             value={date}
             onChange={(e) => onDateChange(e.target.value)}
-            className="w-44"
+            className="w-full sm:w-44"
           />
           {readOnly && <Badge variant="outline">Read-only -- past date</Badge>}
         </div>

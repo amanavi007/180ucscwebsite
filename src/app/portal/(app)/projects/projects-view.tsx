@@ -66,7 +66,7 @@ export function ProjectsView({
             value={selectedQuarterId ?? undefined}
             onValueChange={(value) => value && navigate({ quarter: value })}
           >
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-full sm:w-48">
               <SelectValue placeholder="Select a quarter">
                 {(value: string) => {
                   const q = quarters.find((q) => q.id === value);
@@ -88,7 +88,7 @@ export function ProjectsView({
             value={query}
             onChange={setQuery}
             placeholder="Search client or PM..."
-            className="w-64"
+            className="w-full sm:w-64"
           />
         </div>
 

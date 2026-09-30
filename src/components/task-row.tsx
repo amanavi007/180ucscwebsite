@@ -126,28 +126,31 @@ export function TaskRow({
   const gridColsClass = selectable
     ? showAssignee
       ? showDeleteColumn
-        ? "grid-cols-[1.5rem_1fr_9rem_9rem_16rem_2rem]"
-        : "grid-cols-[1.5rem_1fr_9rem_9rem_16rem]"
+        ? "md:grid-cols-[1.5rem_1fr_9rem_9rem_16rem_2rem]"
+        : "md:grid-cols-[1.5rem_1fr_9rem_9rem_16rem]"
       : showDeleteColumn
-        ? "grid-cols-[1.5rem_1fr_9rem_16rem_2rem]"
-        : "grid-cols-[1.5rem_1fr_9rem_16rem]"
+        ? "md:grid-cols-[1.5rem_1fr_9rem_16rem_2rem]"
+        : "md:grid-cols-[1.5rem_1fr_9rem_16rem]"
     : showAssignee
       ? showDeleteColumn
-        ? "grid-cols-[1fr_9rem_9rem_16rem_2rem]"
-        : "grid-cols-[1fr_9rem_9rem_16rem]"
+        ? "md:grid-cols-[1fr_9rem_9rem_16rem_2rem]"
+        : "md:grid-cols-[1fr_9rem_9rem_16rem]"
       : showDeleteColumn
-        ? "grid-cols-[1fr_9rem_16rem_2rem]"
-        : "grid-cols-[1fr_9rem_16rem]";
+        ? "md:grid-cols-[1fr_9rem_16rem_2rem]"
+        : "md:grid-cols-[1fr_9rem_16rem]";
 
   return (
     <div
       className={cn(
-        "grid items-center gap-6 border-b px-3 py-2.5 last:border-b-0",
+        "relative grid items-center gap-2 border-b px-3 py-2.5 last:border-b-0 md:gap-6",
+        selectable && "pl-10 md:pl-3",
+        showDeleteColumn && "pr-10 md:pr-3",
         gridColsClass,
       )}
     >
       {selectable && (
         <Checkbox
+          className="absolute top-3.5 left-3 md:static"
           checked={selected}
           onCheckedChange={(checked) => onSelectChange?.(checked === true)}
           aria-label={`Select ${task.task_name}`}
@@ -256,6 +259,7 @@ export function TaskRow({
             <Button
               variant="ghost"
               size="icon-sm"
+              className="absolute top-1.5 right-1.5 md:static"
               disabled={isPending}
               onClick={() => setDeleteOpen(true)}
               aria-label={`Delete ${task.task_name}`}
@@ -278,7 +282,7 @@ export function TaskRow({
             </AlertDialog>
           </>
         ) : (
-          <span />
+          <span className="hidden md:block" />
         ))}
     </div>
   );

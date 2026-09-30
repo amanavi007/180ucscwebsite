@@ -43,7 +43,7 @@ export function AttendanceView({
                 value={selectedProjectId ?? undefined}
                 onValueChange={(v) => v && router.push(`/portal/attendance?team=${v}`)}
               >
-                <SelectTrigger className="w-56">
+                <SelectTrigger className="w-full sm:w-56">
                   <SelectValue placeholder="Select a team">
                     {(value: string) => projects.find((p) => p.id === value)?.client_name}
                   </SelectValue>

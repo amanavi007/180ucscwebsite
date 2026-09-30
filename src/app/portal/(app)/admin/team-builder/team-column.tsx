@@ -123,7 +123,7 @@ export function TeamColumn({
   }
 
   return (
-    <Card className="w-80 shrink-0 gap-4 py-5">
+    <Card className="w-full shrink-0 gap-4 py-5 sm:w-80">
       <CardHeader className="flex-row items-center gap-2.5 space-y-0">
         <button
           type="button"

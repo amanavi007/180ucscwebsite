@@ -195,7 +195,7 @@ export function CalendarView({
           >
             <ChevronRight className="size-4" />
           </Button>
-          <h2 className="ml-2 min-w-40 text-lg font-semibold">
+          <h2 className="ml-2 min-w-32 text-base font-semibold sm:min-w-40 sm:text-lg">
             {viewMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
           </h2>
           <Button
@@ -210,8 +210,8 @@ export function CalendarView({
           </Button>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             {(Object.keys(TYPE_LABEL) as CalendarEvent["type"][]).map((type) => (
               <span key={type} className="flex items-center gap-1.5">
                 <span className={cn("size-2 rounded-full", TYPE_STYLE[type].dot)} />
@@ -237,8 +237,9 @@ export function CalendarView({
       <div className="overflow-hidden rounded-lg border">
         <div className="grid grid-cols-7 border-b bg-muted/40">
           {WEEKDAYS.map((w) => (
-            <div key={w} className="px-2 py-1.5 text-center text-xs font-medium text-muted-foreground">
-              {w}
+            <div key={w} className="px-0.5 py-1.5 text-center text-[11px] font-medium text-muted-foreground sm:px-2 sm:text-xs">
+              <span className="sm:hidden">{w.slice(0, 1)}</span>
+              <span className="hidden sm:inline">{w}</span>
             </div>
           ))}
         </div>
@@ -263,7 +264,7 @@ export function CalendarView({
                       <button
                         type="button"
                         className={cn(
-                          "flex min-h-24 flex-col gap-1 border-b border-r p-1.5 text-left align-top last:border-r-0 hover:bg-muted/40 [&:nth-child(7n)]:border-r-0",
+                          "flex min-h-16 flex-col items-center gap-1 border-b border-r p-1 sm:min-h-24 sm:items-stretch sm:p-1.5 text-left align-top last:border-r-0 hover:bg-muted/40 [&:nth-child(7n)]:border-r-0",
                           !inMonth && "bg-muted/20 text-muted-foreground",
                         )}
                       />
@@ -277,7 +278,12 @@ export function CalendarView({
                     >
                       {d.getDate()}
                     </span>
-                    <div className="flex flex-col gap-0.5">
+                    <div className="flex flex-wrap justify-center gap-0.5 sm:hidden">
+                      {dayEvents.slice(0, 4).map((e) => (
+                        <span key={e.id} className={cn("size-1.5 rounded-full", TYPE_STYLE[e.type].dot)} />
+                      ))}
+                    </div>
+                    <div className="hidden flex-col gap-0.5 sm:flex">
                       {visible.map((e) => (
                         <span
                           key={e.id}
@@ -294,7 +300,7 @@ export function CalendarView({
                       )}
                     </div>
                   </PopoverTrigger>
-                  <PopoverContent align="start" className="w-80">
+                  <PopoverContent align="center" className="w-[min(20rem,calc(100vw-2rem))]">
                     <div className="flex items-center justify-between">
                       <p className="font-medium">
                         {d.toLocaleDateString("en-US", {
@@ -380,7 +386,7 @@ export function CalendarView({
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="size-6"
+                                    className="size-8 sm:size-6"
                                     onClick={() => openEditDialog(e)}
                                     aria-label="Edit"
                                   >
@@ -389,7 +395,7 @@ export function CalendarView({
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="size-6 text-destructive hover:text-destructive"
+                                    className="size-8 text-destructive hover:text-destructive sm:size-6"
                                     onClick={() => {
                                       setOpenDay(null);
                                       setDeleteTarget({
