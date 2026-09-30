@@ -4,8 +4,7 @@ import { calendarFeedPath } from "@/lib/calendar-feed";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AvailabilityView } from "./availability-view";
-import { BookingsView } from "./bookings-view";
-import { SlotsView } from "./slots-view";
+import { ScheduleView } from "./schedule-view";
 
 export const metadata: Metadata = { title: "Admin · Coffee Chats" };
 
@@ -22,24 +21,21 @@ export default async function CoffeeChatsPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Coffee Chats</h1>
         <p className="text-sm text-muted-foreground">
-          Set your availability, generate bookable slots, and see who&apos;s booked what.
+          Set your availability, then manage the coffee chat schedule: who&apos;s on each slot and who&apos;s booked it.
         </p>
       </div>
 
       <Tabs defaultValue="availability">
         <TabsList>
           <TabsTrigger value="availability">Availability</TabsTrigger>
-          <TabsTrigger value="slots">Slots</TabsTrigger>
-          <TabsTrigger value="bookings">Bookings</TabsTrigger>
+          <TabsTrigger value="schedule">Schedule</TabsTrigger>
         </TabsList>
         <TabsContent value="availability">
           <AvailabilityView availability={availability} currentExecId={profile.id} />
         </TabsContent>
-        <TabsContent value="slots">
-          <SlotsView slots={slots} currentExecId={profile.id} />
-        </TabsContent>
-        <TabsContent value="bookings">
-          <BookingsView
+        <TabsContent value="schedule">
+          <ScheduleView
+            slots={slots}
             bookings={bookings}
             currentExecId={profile.id}
             feedUrl={`${process.env.NEXT_PUBLIC_SITE_URL}${calendarFeedPath(profile.id)}`}
