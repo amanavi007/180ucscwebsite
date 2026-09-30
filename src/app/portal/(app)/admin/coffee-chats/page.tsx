@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getAllAvailability, getAllBookings, getAllSlots } from "@/lib/data/coffee-chat";
+import { calendarFeedPath } from "@/lib/calendar-feed";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AvailabilityView } from "./availability-view";
@@ -38,7 +39,11 @@ export default async function CoffeeChatsPage() {
           <SlotsView slots={slots} currentExecId={profile.id} />
         </TabsContent>
         <TabsContent value="bookings">
-          <BookingsView bookings={bookings} />
+          <BookingsView
+            bookings={bookings}
+            currentExecId={profile.id}
+            feedUrl={`${process.env.NEXT_PUBLIC_SITE_URL}${calendarFeedPath(profile.id)}`}
+          />
         </TabsContent>
       </Tabs>
     </div>

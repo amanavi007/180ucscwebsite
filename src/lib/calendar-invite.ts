@@ -11,7 +11,10 @@ export interface CoffeeChatBookingForInvite {
   audience?: "applicant" | "exec";
 }
 
-function eventText(booking: CoffeeChatBookingForInvite): { title: string; description: string } {
+function eventText(booking: CoffeeChatBookingForInvite): {
+  title: string;
+  description: string;
+} {
   if (booking.audience === "exec") {
     return {
       title: `Coffee chat with ${booking.applicantName}`,
@@ -63,6 +66,35 @@ export function buildIcsContent(booking: CoffeeChatBookingForInvite): string {
     ...(booking.location.trim() !== "" ? [`LOCATION:${booking.location}`] : []),
     `DESCRIPTION:${description}`,
     "END:VEVENT",
+    "END:VCALENDAR",
+    "",
+  ]);
+}
+
+/** One calendar file holding many exec-facing events, so they can be imported in a single step. */
+export function buildIcsCalendar(bookings: (CoffeeChatBookingForInvite & { id: string })[]): string {
+  const events = bookings.flatMap((b) => {
+    const { title, description } = eventText({ ...b, audience: "exec" });
+    return [
+      "BEGIN:VEVENT",
+      `UID:${b.id}-exec@180dcucsc.org`,
+      `DTSTAMP:${toUtcStamp(b.date, b.startTime)}`,
+      `DTSTART:${toUtcStamp(b.date, b.startTime)}`,
+      `DTEND:${toUtcStamp(b.date, b.endTime)}`,
+      `SUMMARY:${title}`,
+      ...(b.location.trim() !== "" ? [`LOCATION:${b.location}`] : []),
+      `DESCRIPTION:${description}`,
+      "END:VEVENT",
+    ];
+  });
+  return icsLines([
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//180DC UCSC//Coffee Chat//EN",
+    "X-WR-CALNAME:180DC Coffee Chats",
+    "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
+    "X-PUBLISHED-TTL:PT1H",
+    ...events,
     "END:VCALENDAR",
     "",
   ]);

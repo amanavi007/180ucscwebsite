@@ -20,14 +20,16 @@ export async function getAllAvailability(): Promise<AvailabilityRow[]> {
     .order("start_time", { ascending: true });
   if (error) throw error;
 
-  return ((data ?? []) as unknown as {
-    id: string;
-    exec_id: string;
-    date: string;
-    start_time: string;
-    end_time: string;
-    exec: { name: string } | null;
-  }[]).map((row) => ({
+  return (
+    (data ?? []) as unknown as {
+      id: string;
+      exec_id: string;
+      date: string;
+      start_time: string;
+      end_time: string;
+      exec: { name: string } | null;
+    }[]
+  ).map((row) => ({
     id: row.id,
     execId: row.exec_id,
     execName: row.exec?.name ?? "Unknown",
@@ -116,7 +118,10 @@ export interface BookingRow {
   status: "confirmed" | "cancelled";
   date: string;
   startTime: string;
+  endTime: string;
   location: string;
+  exec1Id: string | null;
+  exec2Id: string | null;
   exec1Name: string;
   exec2Name: string | null;
   createdAt: string;
@@ -136,12 +141,14 @@ export async function getAllBookings(): Promise<BookingRow[]> {
   const slotIds = [...new Set(bookingRows.map((b) => b.slot_id))];
   const { data: slots, error: slotsError } = await supabase
     .from("coffee_chat_slots")
-    .select("id, date, start_time, location, exec_id_1, exec_id_2")
+    .select("id, date, start_time, end_time, location, exec_id_1, exec_id_2")
     .in("id", slotIds);
   if (slotsError) throw slotsError;
   const slotsById = new Map((slots ?? []).map((s) => [s.id, s]));
 
-  const execIds = [...new Set((slots ?? []).flatMap((s) => [s.exec_id_1, s.exec_id_2]).filter((id): id is string => !!id))];
+  const execIds = [
+    ...new Set((slots ?? []).flatMap((s) => [s.exec_id_1, s.exec_id_2]).filter((id): id is string => !!id)),
+  ];
   const namesByExecId = await lookupProfileNames(supabase, execIds);
 
   return bookingRows.map((b) => {
@@ -154,7 +161,10 @@ export async function getAllBookings(): Promise<BookingRow[]> {
       status: b.status as "confirmed" | "cancelled",
       date: slot?.date ?? "",
       startTime: slot ? normalizeTime(slot.start_time) : "",
+      endTime: slot ? normalizeTime(slot.end_time) : "",
       location: b.location || (slot?.location ?? ""),
+      exec1Id: slot?.exec_id_1 ?? null,
+      exec2Id: slot?.exec_id_2 ?? null,
       exec1Name: slot ? (namesByExecId.get(slot.exec_id_1) ?? "Unknown") : "Unknown",
       exec2Name: slot?.exec_id_2 ? (namesByExecId.get(slot.exec_id_2) ?? "Unknown") : null,
       createdAt: b.created_at,
@@ -180,7 +190,10 @@ export async function getExecOptionsForSlot(date: string, startTime: string, end
   if (error) throw error;
 
   const seen = new Map<string, string>();
-  for (const row of (data ?? []) as unknown as { exec_id: string; exec: { id: string; name: string } | null }[]) {
+  for (const row of (data ?? []) as unknown as {
+    exec_id: string;
+    exec: { id: string; name: string } | null;
+  }[]) {
     if (row.exec) seen.set(row.exec.id, row.exec.name);
   }
   return [...seen.entries()].map(([id, name]) => ({ id, name }));
