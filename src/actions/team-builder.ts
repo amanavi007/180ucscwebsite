@@ -11,6 +11,11 @@ export interface ActionResult {
   error?: string;
 }
 
+interface ApplyPlanResult {
+  project_ids: string[];
+  role_changes: { name: string; from: UserRole; to: UserRole }[];
+}
+
 async function requireExec() {
   const profile = await getCurrentProfile();
   if (!isExec(profile.role)) {
@@ -335,148 +340,27 @@ export async function applyPlan(planId: string): Promise<ActionResult> {
 
   const supabase = await createClient();
 
-  const { data: plan, error: planError } = await supabase
-    .from("team_plans")
-    .select("id, name, quarter_id, is_finalized")
-    .eq("id", planId)
-    .single();
-  if (planError) return { error: planError.message };
-  if (!plan.is_finalized) return { error: "Finalize this draft first." };
+  // The whole reconcile runs as one Postgres transaction (see
+  // supabase/migrations/*_apply_team_plan_rpc.sql): it all lands or none of
+  // it does, and concurrent applies for a quarter are serialized.
+  const { data, error } = await supabase.rpc("apply_team_plan", { p_plan_id: planId });
+  if (error) return { error: error.message };
 
-  const [
-    { data: planTeams, error: teamsError },
-    { data: placements, error: placementsError },
-    { data: realProjects, error: realProjectsError },
-  ] = await Promise.all([
-    supabase.from("team_plan_teams").select("id, client_name").eq("plan_id", planId),
-    supabase.from("team_plan_placements").select("plan_team_id, user_id, team_role").eq("plan_id", planId),
-    supabase.from("projects").select("id, client_name").eq("quarter_id", plan.quarter_id),
-  ]);
-  if (teamsError) return { error: teamsError.message };
-  if (placementsError) return { error: placementsError.message };
-  if (realProjectsError) return { error: realProjectsError.message };
-
-  const realProjectIdByName = new Map(
-    (realProjects ?? []).map((p) => [p.client_name.trim().toLowerCase(), p.id]),
-  );
-
-  const nameByMissingKey = new Map<string, string>();
-  for (const team of planTeams ?? []) {
-    const key = team.client_name.trim().toLowerCase();
-    if (!realProjectIdByName.has(key) && !nameByMissingKey.has(key)) {
-      nameByMissingKey.set(key, team.client_name);
-    }
-  }
-
-  if (nameByMissingKey.size > 0) {
-    const { data: created, error: createError } = await supabase
-      .from("projects")
-      .insert(
-        [...nameByMissingKey.values()].map((clientName) => ({
-          client_name: clientName,
-          quarter_id: plan.quarter_id,
-        })),
-      )
-      .select("id, client_name");
-    if (createError) return { error: createError.message };
-    for (const p of created) {
-      realProjectIdByName.set(p.client_name.trim().toLowerCase(), p.id);
-    }
-  }
-
-  const planTeamToProjectId = new Map<string, string>();
-  for (const team of planTeams ?? []) {
-    const key = team.client_name.trim().toLowerCase();
-    planTeamToProjectId.set(team.id, realProjectIdByName.get(key)!);
-  }
-
-  const desired = new Map<string, { projectId: string; teamRole: MembershipTeamRole }>();
-  for (const placement of placements ?? []) {
-    const projectId = planTeamToProjectId.get(placement.plan_team_id);
-    if (!projectId) continue;
-    desired.set(placement.user_id, { projectId, teamRole: placement.team_role });
-  }
-
-  const { data: realMemberships, error: realMembershipsError } = await supabase
-    .from("memberships")
-    .select("id, project_id, user_id, team_role, project:projects!inner(quarter_id)")
-    .eq("project.quarter_id", plan.quarter_id);
-  if (realMembershipsError) return { error: realMembershipsError.message };
-
-  const toDelete: string[] = [];
-  const alreadyCorrect = new Set<string>();
-
-  for (const m of realMemberships as unknown as {
-    id: string;
-    project_id: string;
-    user_id: string;
-    team_role: MembershipTeamRole;
-  }[]) {
-    const want = desired.get(m.user_id);
-    if (!want || want.projectId !== m.project_id || want.teamRole !== m.team_role) {
-      toDelete.push(m.id);
-    } else {
-      alreadyCorrect.add(m.user_id);
-    }
-  }
-
-  if (toDelete.length > 0) {
-    const { error: deleteError } = await supabase.from("memberships").delete().in("id", toDelete);
-    if (deleteError) return { error: deleteError.message };
-  }
-
-  const toInsert = [...desired.entries()]
-    .filter(([userId]) => !alreadyCorrect.has(userId))
-    .map(([userId, want]) => ({
-      project_id: want.projectId,
-      user_id: userId,
-      team_role: want.teamRole,
-    }));
-
-  if (toInsert.length > 0) {
-    const { error: insertError } = await supabase.from("memberships").insert(toInsert);
-    if (insertError) return { error: insertError.message };
-  }
-
-  // Placing someone as PM/SC also sets their org-wide role to match. Members
-  // are left alone, and execs are never touched.
-  const orgRoleByTeamRole: Partial<Record<MembershipTeamRole, UserRole>> = {
-    pm: "project_manager",
-    sc: "senior_consultant",
-  };
-  const targetRoleByUser = new Map<string, UserRole>();
-  for (const [userId, want] of desired) {
-    const orgRole = orgRoleByTeamRole[want.teamRole];
-    if (orgRole) targetRoleByUser.set(userId, orgRole);
-  }
+  const result = data as unknown as ApplyPlanResult;
 
   const actor = await getCurrentProfile();
 
-  if (targetRoleByUser.size > 0) {
-    const { data: leadProfiles, error: leadProfilesError } = await supabase
-      .from("profiles")
-      .select("id, name, role")
-      .in("id", [...targetRoleByUser.keys()]);
-    if (leadProfilesError) return { error: leadProfilesError.message };
-
-    for (const profile of leadProfiles ?? []) {
-      const orgRole = targetRoleByUser.get(profile.id)!;
-      if (isExec(profile.role) || profile.role === orgRole) continue;
-      const { error: roleError } = await supabase
-        .from("profiles")
-        .update({ role: orgRole })
-        .eq("id", profile.id);
-      if (roleError) return { error: roleError.message };
-      await logAudit(
-        actor.id,
-        "member.role_changed",
-        profile.name,
-        `${roleLabel(profile.role)} -> ${roleLabel(orgRole)} (team builder)`,
-      );
-    }
+  for (const change of result.role_changes) {
+    await logAudit(
+      actor.id,
+      "member.role_changed",
+      change.name,
+      `${roleLabel(change.from)} -> ${roleLabel(change.to)} (team builder)`,
+    );
   }
 
-  await logAudit(actor.id, "team_plan.applied", plan.name);
+  const { data: plan } = await supabase.from("team_plans").select("name").eq("id", planId).single();
+  await logAudit(actor.id, "team_plan.applied", plan?.name ?? null);
 
   revalidatePath("/portal/admin/team-builder");
   revalidatePath("/portal/projects");
@@ -484,7 +368,7 @@ export async function applyPlan(planId: string): Promise<ActionResult> {
   revalidatePath("/portal/admin");
   revalidatePath("/portal");
   revalidatePath("/portal/attendance");
-  for (const projectId of new Set(planTeamToProjectId.values())) {
+  for (const projectId of result.project_ids) {
     revalidatePath(`/portal/projects/${projectId}`);
   }
 

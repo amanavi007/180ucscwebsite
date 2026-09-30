@@ -689,6 +689,10 @@ export interface Database {
       };
     };
     Functions: {
+      apply_team_plan: {
+        Args: { p_plan_id: string };
+        Returns: unknown;
+      };
       member_has_history: {
         Args: { target: string };
         Returns: boolean;
