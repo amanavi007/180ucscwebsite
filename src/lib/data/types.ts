@@ -12,6 +12,8 @@ export interface ProjectWithRelations extends Project {
   senior_consultant: NamedProfile;
   /** user_ids with a 'pm'/'sc' membership on this project -- covers additional, non-primary leads too. */
   lead_ids?: string[];
+  /** Primary PM plus any additional 'pm' memberships, primary first. */
+  project_managers?: { id: string; name: string }[];
 }
 
 export interface ProjectWithQuarter extends ProjectWithRelations {
