@@ -47,6 +47,9 @@ function ProjectCard({
   canEdit: boolean;
   dragging?: boolean;
 }) {
+  const pmNames = (
+    project.project_managers ?? (project.project_manager ? [project.project_manager] : [])
+  ).map((pm) => pm.name);
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: project.id,
     data: project,
@@ -75,8 +78,10 @@ function ProjectCard({
       </CardHeader>
       <CardContent className="space-y-2 px-3">
         <HealthBadge health={project.health} />
-        {project.project_manager && (
-          <p className="text-xs text-muted-foreground">PM: {project.project_manager.name}</p>
+        {pmNames.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {pmNames.length > 1 ? "PMs" : "PM"}: {pmNames.join(", ")}
+          </p>
         )}
         {project.deadline && (
           <p className="text-xs text-muted-foreground">

@@ -48,7 +48,7 @@ async function withLeadIds<T extends ProjectWithRelations>(
 
   const { data: leads, error } = await supabase
     .from("memberships")
-    .select("project_id, user_id")
+    .select("project_id, user_id, team_role, profile:profiles(name)")
     .in(
       "project_id",
       projects.map((p) => p.id),
@@ -57,16 +57,33 @@ async function withLeadIds<T extends ProjectWithRelations>(
   if (error) throw error;
 
   const leadsByProject = new Map<string, string[]>();
-  for (const lead of leads ?? []) {
+  const pmsByProject = new Map<string, { id: string; name: string }[]>();
+  for (const lead of (leads ?? []) as unknown as {
+    project_id: string;
+    user_id: string;
+    team_role: MembershipTeamRole;
+    profile: { name: string } | null;
+  }[]) {
     const list = leadsByProject.get(lead.project_id) ?? [];
     list.push(lead.user_id);
     leadsByProject.set(lead.project_id, list);
+    if (lead.team_role === "pm" && lead.profile) {
+      const pms = pmsByProject.get(lead.project_id) ?? [];
+      pms.push({ id: lead.user_id, name: lead.profile.name });
+      pmsByProject.set(lead.project_id, pms);
+    }
   }
 
-  return projects.map((project) => ({
-    ...project,
-    lead_ids: leadsByProject.get(project.id) ?? [],
-  }));
+  return projects.map((project) => {
+    // Primary PM first, then any additional 'pm' memberships (deduped).
+    const primary = project.project_manager;
+    const extra = (pmsByProject.get(project.id) ?? []).filter((pm) => pm.id !== primary?.id);
+    return {
+      ...project,
+      lead_ids: leadsByProject.get(project.id) ?? [],
+      project_managers: primary ? [primary, ...extra] : extra,
+    };
+  });
 }
 
 export async function getProjects(quarterId?: string): Promise<ProjectWithRelations[]> {
@@ -92,8 +109,12 @@ export async function getProjects(quarterId?: string): Promise<ProjectWithRelati
     withComputedHealth(supabase, base),
     withLeadIds(supabase, base),
   ]);
-  const leadIdsByProject = new Map(withLeads.map((p) => [p.id, p.lead_ids]));
-  return withHealth.map((p) => ({ ...p, lead_ids: leadIdsByProject.get(p.id) ?? [] }));
+  const leadsById = new Map(withLeads.map((p) => [p.id, p]));
+  return withHealth.map((p) => ({
+    ...p,
+    lead_ids: leadsById.get(p.id)?.lead_ids ?? [],
+    project_managers: leadsById.get(p.id)?.project_managers ?? [],
+  }));
 }
 
 // Wrapped in cache() so generateMetadata and the page body -- both of which
