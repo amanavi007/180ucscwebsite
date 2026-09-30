@@ -208,15 +208,20 @@ export async function swapSlotExecAction(
     execId1: s.execId1,
     execId2: s.execId2,
   }));
-  const availability: AvailabilityBlock[] = availabilityRows.map((a) => ({
-    execId: a.execId,
-    date: a.date,
-    startTime: a.startTime,
-    endTime: a.endTime,
-  }));
+  // Any exec may be assigned manually, so availability isn't required; we still refuse an exec who is
+  // already on this slot or on an overlapping one.
+  const availability: AvailabilityBlock[] = [
+    ...availabilityRows.map((a) => ({
+      execId: a.execId,
+      date: a.date,
+      startTime: a.startTime,
+      endTime: a.endTime,
+    })),
+    { execId: newExecId, date: target.date, startTime: target.startTime, endTime: target.endTime },
+  ];
 
   if (!isSwapEligible(target, newExecId, availability, allAssignments)) {
-    return { error: "That exec isn't free at this time, or is already assigned to an overlapping slot." };
+    return { error: "That exec is already on this slot or is assigned to an overlapping slot." };
   }
 
   const { error: updateError } = await supabase
@@ -304,7 +309,7 @@ export async function cancelBookingAsAdminAction(bookingId: string): Promise<Act
 /** Exec-only lookup of swap candidates for a given slot window, called from the client. */
 export async function getExecOptionsForSlotAction(date: string, startTime: string, endTime: string) {
   const { error } = await requireExec();
-  if (error) return { error, options: [] as { id: string; name: string }[] };
+  if (error) return { error, options: null };
   const options = await getExecOptionsForSlot(date, startTime, endTime);
   return { error: undefined, options };
 }

@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeTime } from "@/lib/coffee-chat";
+import { EXEC_ROLES } from "@/lib/auth/roles";
 
 export interface AvailabilityRow {
   id: string;
@@ -178,23 +179,32 @@ export interface ExecOption {
   name: string;
 }
 
-/** Execs eligible to be swapped onto a slot at this date/time: free then, per their own availability rows. */
-export async function getExecOptionsForSlot(date: string, startTime: string, endTime: string): Promise<ExecOption[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("coffee_chat_availability")
-    .select("exec_id, exec:profiles(id, name)")
-    .eq("date", date)
-    .lte("start_time", startTime)
-    .gte("end_time", endTime);
-  if (error) throw error;
+export interface ExecOptions {
+  /** Execs whose availability covers the slot. */
+  available: ExecOption[];
+  /** Every other exec, for manually taking a slot they didn't mark themselves free for. */
+  others: ExecOption[];
+}
 
-  const seen = new Map<string, string>();
-  for (const row of (data ?? []) as unknown as {
-    exec_id: string;
-    exec: { id: string; name: string } | null;
-  }[]) {
-    if (row.exec) seen.set(row.exec.id, row.exec.name);
-  }
-  return [...seen.entries()].map(([id, name]) => ({ id, name }));
+/** Swap candidates for a slot: execs free at that date/time first, then all remaining execs. */
+export async function getExecOptionsForSlot(date: string, startTime: string, endTime: string): Promise<ExecOptions> {
+  const supabase = await createClient();
+  const [{ data, error }, { data: execs, error: execsError }] = await Promise.all([
+    supabase
+      .from("coffee_chat_availability")
+      .select("exec_id")
+      .eq("date", date)
+      .lte("start_time", startTime)
+      .gte("end_time", endTime),
+    supabase.from("profiles").select("id, name").in("role", EXEC_ROLES).order("name"),
+  ]);
+  if (error) throw error;
+  if (execsError) throw execsError;
+
+  const freeIds = new Set((data ?? []).map((row) => row.exec_id));
+  const all = (execs ?? []).map((e) => ({ id: e.id, name: e.name }));
+  return {
+    available: all.filter((e) => freeIds.has(e.id)),
+    others: all.filter((e) => !freeIds.has(e.id)),
+  };
 }

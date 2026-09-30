@@ -14,15 +14,22 @@ import {
 } from "@/actions/coffee-chat";
 import { formatTime12h } from "@/lib/coffee-chat";
 import { formatDateLong, getOrgTodayDateString } from "@/lib/date";
-import type { SlotRow } from "@/lib/data/coffee-chat";
+import type { ExecOptions, SlotRow } from "@/lib/data/coffee-chat";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel, SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 function SwapControl({ slot, position, router }: { slot: SlotRow; position: "exec_id_1" | "exec_id_2"; router: ReturnType<typeof useRouter> }) {
   const [isPending, startTransition] = useTransition();
-  const [options, setOptions] = useState<{ id: string; name: string }[] | null>(null);
+  const [options, setOptions] = useState<ExecOptions | null>(null);
 
   async function loadOptions() {
     if (options) return;
@@ -55,11 +62,26 @@ function SwapControl({ slot, position, router }: { slot: SlotRow; position: "exe
         <SelectValue placeholder={currentName ?? "Unassigned"}>{currentName ?? "Unassigned"}</SelectValue>
       </SelectTrigger>
       <SelectContent>
-        {(options ?? []).map((o) => (
-          <SelectItem key={o.id} value={o.id}>
-            {o.name}
-          </SelectItem>
-        ))}
+        {options && options.available.length > 0 && (
+          <SelectGroup>
+            <SelectLabel>People who are available</SelectLabel>
+            {options.available.map((o) => (
+              <SelectItem key={o.id} value={o.id}>
+                {o.name}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        )}
+        {options && options.others.length > 0 && (
+          <SelectGroup>
+            <SelectLabel>All execs</SelectLabel>
+            {options.others.map((o) => (
+              <SelectItem key={o.id} value={o.id}>
+                {o.name}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        )}
       </SelectContent>
     </Select>
   );
