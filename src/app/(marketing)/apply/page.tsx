@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Apply Now" };
 
 // TODO: point this at the real recruitment application (Google Form, Airtable,
 // etc.) before launch. This is a placeholder.
-const APPLY_FORM_URL = "https://forms.gle/replace-with-real-application-link";
+const APPLY_FORM_URL = "https://forms.gle/9pmXAsHmCFmNXKTE8";
 
 const STEPS = [
   {
