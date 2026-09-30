@@ -153,6 +153,30 @@ export async function updateProject(
   return {};
 }
 
+/** Exec-only. Tasks, memberships, bookings and events cascade with the project. */
+export async function deleteProject(id: string): Promise<ActionResult> {
+  const denied = await requireExec();
+  if (denied.error) return { error: denied.error };
+
+  const supabase = await createClient();
+  const { data: project } = await supabase
+    .from("projects")
+    .select("client_name")
+    .eq("id", id)
+    .single();
+
+  const { error } = await supabase.from("projects").delete().eq("id", id);
+  if (error) return { error: error.message };
+
+  await logAudit(denied.profile.id, "project.deleted", project?.client_name);
+
+  revalidatePath("/portal/projects");
+  revalidatePath("/portal");
+  revalidatePath("/portal/directory");
+  revalidatePath("/portal/attendance");
+  return {};
+}
+
 export async function updateProjectStatus(
   id: string,
   status: ProjectStatus,

@@ -62,6 +62,7 @@ export default async function ProjectDetailPage({
         project={project}
         computedHealth={computedHealth}
         canEdit={canEdit}
+        canDelete={isExec(profile.role)}
         members={allProfiles}
       />
 

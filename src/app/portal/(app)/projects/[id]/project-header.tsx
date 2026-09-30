@@ -6,9 +6,9 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { ExternalLink, Pencil } from "lucide-react";
+import { ExternalLink, Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
-import { updateProject, setHealthOverride } from "@/actions/projects";
+import { updateProject, setHealthOverride, deleteProject } from "@/actions/projects";
 import { ProjectStatusSelect } from "../project-status-select";
 import { HealthBadge } from "@/components/health-badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -52,14 +62,17 @@ export function ProjectHeader({
   project,
   computedHealth,
   canEdit,
+  canDelete,
   members,
 }: {
   project: ProjectWithQuarter;
   computedHealth: ProjectHealth;
   canEdit: boolean;
+  canDelete: boolean;
   members: { id: string; name: string }[];
 }) {
   const [open, setOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -104,6 +117,18 @@ export function ProjectHeader({
     });
   }
 
+  function onDelete() {
+    startTransition(async () => {
+      const result = await deleteProject(project.id);
+      if (result?.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Project deleted.");
+      router.push("/portal/projects");
+    });
+  }
+
   function memberLabel(id: string) {
     return id === NONE ? "Unassigned" : (members.find((m) => m.id === id)?.name ?? "Unassigned");
   }
@@ -130,6 +155,13 @@ export function ProjectHeader({
           </p>
         </div>
 
+        <div className="flex items-center gap-2">
+        {canDelete && (
+          <Button variant="outline" size="sm" onClick={() => setDeleteOpen(true)}>
+            <Trash2 />
+            Delete
+          </Button>
+        )}
         {canEdit && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger
@@ -229,6 +261,7 @@ export function ProjectHeader({
             </DialogContent>
           </Dialog>
         )}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -274,6 +307,24 @@ export function ProjectHeader({
         )}
 
       </div>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {project.client_name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the project along with its tasks, team roster, room bookings
+              and events. This can&apos;t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={isPending} onClick={onDelete}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
         <span>PM: {project.project_manager?.name ?? "Unassigned"}</span>
