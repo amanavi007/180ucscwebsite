@@ -9,6 +9,8 @@ export interface CoffeeChatBookingForInvite {
   manageToken: string;
   /** Exec copies name the applicant; the applicant's own copy stays generic. */
   audience?: "applicant" | "exec";
+  /** The other exec on the chat, shown on exec copies so they know who to coordinate with. */
+  otherExecName?: string | null;
 }
 
 function eventText(booking: CoffeeChatBookingForInvite): {
@@ -18,7 +20,9 @@ function eventText(booking: CoffeeChatBookingForInvite): {
   if (booking.audience === "exec") {
     return {
       title: `Coffee chat with ${booking.applicantName}`,
-      description: `180DC UCSC recruitment coffee chat with ${booking.applicantName}.`,
+      description:
+        `180DC UCSC recruitment coffee chat with ${booking.applicantName}.` +
+        (booking.otherExecName ? ` Other exec attending: ${booking.otherExecName}.` : ""),
     };
   }
   return {

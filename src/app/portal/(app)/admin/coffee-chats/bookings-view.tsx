@@ -59,7 +59,18 @@ export function BookingsView({
       toast.error("No confirmed bookings to export.");
       return;
     }
-    const ics = buildIcsCalendar(confirmed.map((b) => ({ ...b, manageToken: b.id })));
+    const ics = buildIcsCalendar(
+      confirmed.map((b) => ({
+        ...b,
+        manageToken: b.id,
+        otherExecName:
+          b.exec1Id === currentExecId
+            ? b.exec2Name
+            : b.exec2Id === currentExecId
+              ? b.exec1Name
+              : [b.exec1Name, b.exec2Name].filter(Boolean).join(" & "),
+      })),
+    );
     const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;

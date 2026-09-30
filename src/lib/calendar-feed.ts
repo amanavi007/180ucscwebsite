@@ -24,11 +24,23 @@ export async function buildExecFeed(execId: string): Promise<string> {
   const supabase = createAdminClient();
   const { data: slots, error } = await supabase
     .from("coffee_chat_slots")
-    .select("id, date, start_time, end_time, location")
+    .select("id, date, start_time, end_time, location, exec_id_1, exec_id_2")
     .or(`exec_id_1.eq.${execId},exec_id_2.eq.${execId}`);
   if (error) throw error;
   const slotsById = new Map((slots ?? []).map((s) => [s.id, s]));
   if (slotsById.size === 0) return buildIcsCalendar([]);
+
+  const otherExecIds = [
+    ...new Set(
+      (slots ?? []).map((s) => (s.exec_id_1 === execId ? s.exec_id_2 : s.exec_id_1)).filter((id): id is string => !!id),
+    ),
+  ];
+  const { data: profiles, error: profilesError } =
+    otherExecIds.length > 0
+      ? await supabase.from("profiles").select("id, name").in("id", otherExecIds)
+      : { data: [], error: null };
+  if (profilesError) throw profilesError;
+  const namesById = new Map((profiles ?? []).map((p) => [p.id, p.name]));
 
   const { data: bookings, error: bookingsError } = await supabase
     .from("coffee_chat_bookings")
@@ -50,6 +62,7 @@ export async function buildExecFeed(execId: string): Promise<string> {
           endTime: normalizeTime(slot.end_time),
           location: b.location || slot.location,
           manageToken: b.id,
+          otherExecName: namesById.get(slot.exec_id_1 === execId ? (slot.exec_id_2 ?? "") : slot.exec_id_1) ?? null,
         },
       ];
     }),
