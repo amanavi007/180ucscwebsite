@@ -3,7 +3,17 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowDownUp, CalendarPlus, Eye, EyeOff, MoreHorizontal, RefreshCw, Trash2, XCircle } from "lucide-react";
+import {
+  ArrowDownUp,
+  CalendarPlus,
+  CircleHelp,
+  Eye,
+  EyeOff,
+  MoreHorizontal,
+  RefreshCw,
+  Trash2,
+  XCircle,
+} from "lucide-react";
 import {
   cancelBookingAsAdminAction,
   deleteSlotAction,
@@ -13,25 +23,17 @@ import {
   publishSlotAction,
   swapSlotExecAction,
 } from "@/actions/coffee-chat";
-import { buildIcsCalendar } from "@/lib/calendar-invite";
 import { formatTime12h } from "@/lib/coffee-chat";
 import { formatDateLong, getOrgTodayDateString } from "@/lib/date";
 import type { BookingRow, ExecOptions, SlotRow } from "@/lib/data/coffee-chat";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -150,8 +152,8 @@ function CalendarHelp({ open, onOpenChange }: { open: boolean; onOpenChange: (op
         <DialogHeader>
           <DialogTitle>Add your coffee chats to your calendar</DialogTitle>
           <DialogDescription>
-            Choose <strong>Actions → Copy calendar link</strong>, then follow the steps for your calendar. You only do
-            this once: new bookings appear automatically and cancelled ones disappear. The link is personal to you, so
+            Click <strong>Copy my calendar link</strong>, then follow the steps for your calendar. You only do this
+            once: new bookings appear automatically and cancelled ones disappear. The link is personal to you, so
             don&apos;t share it.
           </DialogDescription>
         </DialogHeader>
@@ -261,7 +263,7 @@ export function ScheduleView({
   async function handleCopyFeed() {
     try {
       await navigator.clipboard.writeText(feedUrl);
-      toast.success("Calendar link copied. Open \"How to add\" for the next step.");
+      toast.success('Link copied. Click "How to add" to finish setting it up.');
     } catch {
       toast.error("Couldn't copy the link.");
     }
@@ -305,32 +307,6 @@ export function ScheduleView({
     [bookings, mineOnly, currentExecId],
   );
 
-  function handleDownloadIcs() {
-    const visibleBookings = days.flatMap(([, list]) => list).flatMap((s) => confirmedBySlotId.get(s.id) ?? []);
-    if (visibleBookings.length === 0) {
-      toast.error("No booked chats in the current view to export.");
-      return;
-    }
-    const ics = buildIcsCalendar(
-      visibleBookings.map((b) => ({
-        ...b,
-        manageToken: b.id,
-        otherExecName:
-          b.exec1Id === currentExecId
-            ? b.exec2Name
-            : b.exec2Id === currentExecId
-              ? b.exec1Name
-              : [b.exec1Name, b.exec2Name].filter(Boolean).join(" & "),
-      })),
-    );
-    const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "coffee-chats.ics";
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   return (
     <div className="mt-4 space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -342,29 +318,32 @@ export function ScheduleView({
           </span>{" "}
           not published
         </p>
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="outline" disabled={isPending} />}>
-            Actions
-            <MoreHorizontal className="size-4" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem onClick={handleGenerate}>
-              <RefreshCw className="size-4" />
-              Generate slots
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handlePublishAll} disabled={stats.hidden === 0}>
-              <Eye className="size-4" />
-              Publish all hidden
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleCopyFeed}>
-              <CalendarPlus className="size-4" />
-              Copy calendar link
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleDownloadIcs}>Download .ics of this view</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setHelpOpen(true)}>How to add to my calendar</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" className="gap-1.5" onClick={handleCopyFeed}>
+            <CalendarPlus className="size-4" />
+            Copy my calendar link
+          </Button>
+          <Button variant="ghost" className="gap-1.5" onClick={() => setHelpOpen(true)}>
+            <CircleHelp className="size-4" />
+            How to add
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="outline" disabled={isPending} />}>
+              Actions
+              <MoreHorizontal className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={handleGenerate}>
+                <RefreshCw className="size-4" />
+                Generate slots
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handlePublishAll} disabled={stats.hidden === 0}>
+                <Eye className="size-4" />
+                Publish all hidden
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -446,7 +425,9 @@ export function ScheduleView({
                       <div className="col-span-2 flex justify-end sm:col-span-1 sm:col-start-4">
                         <DropdownMenu>
                           <DropdownMenuTrigger
-                            render={<Button variant="ghost" size="icon-sm" aria-label="Slot actions" disabled={isPending} />}
+                            render={
+                              <Button variant="ghost" size="icon-sm" aria-label="Slot actions" disabled={isPending} />
+                            }
                           >
                             <MoreHorizontal className="size-4" />
                           </DropdownMenuTrigger>
@@ -461,7 +442,10 @@ export function ScheduleView({
                                 Cancel booking
                               </DropdownMenuItem>
                             ) : (
-                              <DropdownMenuItem variant="destructive" onClick={() => run(() => deleteSlotAction(slot.id))}>
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => run(() => deleteSlotAction(slot.id))}
+                              >
                                 <Trash2 className="size-4" />
                                 Delete slot
                               </DropdownMenuItem>
