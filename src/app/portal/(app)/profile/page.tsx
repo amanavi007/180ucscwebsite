@@ -42,6 +42,7 @@ export default async function MyPublicProfilePage() {
             targetId={profile.id}
             mode={isExec(profile.role) ? "exec" : "member"}
             initial={formInitialValues(row, profile.linkedin_url)}
+            approvedPhotoPath={row?.photo_path ?? null}
           />
           {listed && (
             <div className="border-t pt-4">

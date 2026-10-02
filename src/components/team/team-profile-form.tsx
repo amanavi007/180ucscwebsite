@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { removeMyListing, saveTeamProfile } from "@/actions/team-profiles";
+import { recropApprovedPhoto, removeMyListing, saveTeamProfile } from "@/actions/team-profiles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,11 +22,14 @@ export function TeamProfileForm({
   targetId,
   mode,
   initial,
+  approvedPhotoPath = null,
   onSaved,
 }: {
   targetId: string;
   mode: "member" | "exec";
   initial: TeamProfileFormValues;
+  /** The member's live, exec-approved photo (null if they have none yet). */
+  approvedPhotoPath?: string | null;
   onSaved?: () => void;
 }) {
   const router = useRouter();
@@ -63,6 +66,12 @@ export function TeamProfileForm({
             value={values.photoPath}
             onChange={(photoPath) => setValues((v) => ({ ...v, photoPath }))}
             disabled={isPending}
+            approvedPath={approvedPhotoPath}
+            onRecropApproved={async (area) => {
+              const result = await recropApprovedPhoto(targetId, area);
+              if (result.path) router.refresh();
+              return result;
+            }}
           />
         </Field>
         <FieldGroup>

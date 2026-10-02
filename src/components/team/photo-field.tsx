@@ -22,11 +22,16 @@ export function PhotoField({
   value,
   onChange,
   disabled,
+  approvedPath = null,
+  onRecropApproved,
 }: {
   ownerId: string;
   value: string | null;
   onChange: (path: string) => void;
   disabled?: boolean;
+  /** The photo an exec already approved. Re-cropping exactly this one goes through `onRecropApproved` (no review). */
+  approvedPath?: string | null;
+  onRecropApproved?: (area: Area) => Promise<{ path?: string; error?: string }>;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [src, setSrc] = useState<string | null>(null);
@@ -34,11 +39,14 @@ export function PhotoField({
   const [zoom, setZoom] = useState(1);
   const [area, setArea] = useState<Area | null>(null);
   const [busy, setBusy] = useState<"reading" | "uploading" | null>(null);
+  const [recropping, setRecropping] = useState(false);
+  const instantEdit = !!onRecropApproved && !!value && value === approvedPath;
 
   function closeCropper() {
     if (src) URL.revokeObjectURL(src);
     setSrc(null);
     setArea(null);
+    setRecropping(false);
   }
 
   /** Validates the blob decodes, then opens the cropper on it. */
@@ -61,6 +69,7 @@ export function PhotoField({
       return;
     }
     setBusy("reading");
+    setRecropping(false);
     try {
       let blob: Blob = file;
       if (isHeic(file)) {
@@ -83,6 +92,7 @@ export function PhotoField({
       const res = await fetch(teamPhotoUrl(process.env.NEXT_PUBLIC_SUPABASE_URL!, value));
       if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
       await openCropper(await res.blob());
+      setRecropping(instantEdit);
     } catch {
       toast.error("Couldn't load your photo. Try uploading it again.");
     } finally {
@@ -94,6 +104,14 @@ export function PhotoField({
     if (!src || !area) return;
     setBusy("uploading");
     try {
+      if (recropping && onRecropApproved) {
+        const result = await onRecropApproved(area);
+        if (result.error || !result.path) throw new Error(result.error ?? "recrop failed");
+        onChange(result.path);
+        toast.success("Photo updated.");
+        closeCropper();
+        return;
+      }
       const blob = await cropToJpeg(src, area);
       const path = `${ownerId}/${crypto.randomUUID()}.jpg`;
       const { error } = await createClient()
@@ -102,8 +120,8 @@ export function PhotoField({
       if (error) throw error;
       onChange(path);
       closeCropper();
-    } catch {
-      toast.error("Upload failed. Please try again.");
+    } catch (err) {
+      toast.error(recropping && err instanceof Error && err.message !== "recrop failed" ? err.message : "Upload failed. Please try again.");
     } finally {
       setBusy(null);
     }
@@ -133,7 +151,8 @@ export function PhotoField({
           )}
         </div>
         <p className="text-xs text-muted-foreground">
-          JPG, PNG, WebP or HEIC. You can zoom and crop next. &quot;Edit photo&quot; re-crops the one you saved.
+          JPG, PNG, WebP or HEIC. You can zoom and crop next.
+          {instantEdit && " Re-cropping your approved photo with Edit photo goes live right away."}
         </p>
         <input
           ref={inputRef}

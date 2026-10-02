@@ -208,6 +208,7 @@ export function TeamPagePanel({ rows }: { rows: TeamPageAdminRow[] }) {
               targetId={editing.id}
               mode="exec"
               initial={formInitialValues(editing.row, editing.profileLinkedin)}
+              approvedPhotoPath={editing.row?.photo_path ?? null}
               onSaved={() => setEditingId(null)}
             />
           )}
