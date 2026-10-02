@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { getQuarters, getActiveQuarter } from "@/lib/data/quarters";
+import { getQuarters } from "@/lib/data/quarters";
 import { getConsultantStatsRollup } from "@/lib/data/consultant-stats";
 import { getAttendanceAlertThreshold } from "@/lib/data/org-settings";
-import { QuarterSelect } from "@/components/quarter-select";
+import { defaultQuarterId, resolveQuarterId } from "@/lib/admin-nav";
 import { ConsultantStatsView } from "./consultant-stats-view";
 
 export const metadata: Metadata = { title: "Consultant Stats" };
@@ -12,13 +12,10 @@ export default async function ConsultantStatsPage({
 }: {
   searchParams: Promise<{ quarter?: string }>;
 }) {
-  const [{ quarter }, quarters, activeQuarter] = await Promise.all([
-    searchParams,
-    getQuarters(),
-    getActiveQuarter(),
-  ]);
+  const [{ quarter }, quarters] = await Promise.all([searchParams, getQuarters()]);
 
-  const selectedQuarterId = quarter || activeQuarter?.id;
+  // Same fallback the breadcrumb picker uses, so a stale or garbage ?quarter= shows the active quarter.
+  const selectedQuarterId = resolveQuarterId(quarter, quarters, defaultQuarterId(quarters));
 
   const [rows, attendanceThreshold] = await Promise.all([
     selectedQuarterId ? getConsultantStatsRollup(selectedQuarterId) : Promise.resolve([]),
@@ -27,20 +24,11 @@ export default async function ConsultantStatsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Consultant Stats</h1>
-          <p className="text-sm text-muted-foreground">
-            Attendance and task completion, rolled up per consultant.
-          </p>
-        </div>
-        {quarters.length > 0 && (
-          <QuarterSelect
-            quarters={quarters}
-            selectedId={selectedQuarterId ?? ""}
-            basePath="/portal/admin/stats"
-          />
-        )}
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Consultant Stats</h1>
+        <p className="text-sm text-muted-foreground">
+          Attendance and task completion, rolled up per consultant.
+        </p>
       </div>
 
       <ConsultantStatsView rows={rows} attendanceThreshold={attendanceThreshold} />

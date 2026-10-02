@@ -14,7 +14,6 @@ import {
 } from "@/lib/data/attendance";
 import { getAttendanceAlertThreshold } from "@/lib/data/org-settings";
 import { getMeetingDatesForQuarter } from "@/lib/data/meeting-dates";
-import { getRoomBookingForProject, getRoomBookingsForDate } from "@/lib/data/room-bookings";
 import { getExecTodos } from "@/lib/data/exec-todos";
 import { isExec, roleLabel } from "@/lib/auth/roles";
 import { getOrgTodayDateString, formatOrgDate, parseLocalDate } from "@/lib/date";
@@ -31,7 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { HealthBadge } from "@/components/health-badge";
 import { RosterAvatars } from "@/components/roster-avatars";
 import { ExecTodoList } from "./exec-todo-list";
-import { AlertTriangle, MapPin } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { TASK_PRIORITY_LABELS } from "@/lib/project-labels";
 import { cn } from "@/lib/utils";
 import type { TaskWithProject } from "@/lib/data/types";
@@ -100,11 +99,9 @@ export default async function DashboardPage() {
     .sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"));
   const myTasks = openTasks.slice(0, 8);
 
-  // Roster, attendance nudge, and room-for-next-meeting are all independent per-project
-  // lookups -- run all three batches concurrently rather than one after another.
-  const nextMeetingDate = meetingDates.find((d) => d >= today) ?? null;
-
-  const [rosterEntries, nudgeChecks, roomChecks] = await Promise.all([
+  // Roster and attendance nudge are independent per-project lookups -- run both batches
+  // concurrently rather than one after another.
+  const [rosterEntries, nudgeChecks] = await Promise.all([
     Promise.all(
       myProjects.map(async (project) => [project.id, await getProjectMembers(project.id)] as const),
     ),
@@ -118,21 +115,6 @@ export default async function DashboardPage() {
           }),
         )
       : Promise.resolve([]),
-    nextMeetingDate
-      ? Promise.all(
-          myProjects.map(async (project) => {
-            const room = await getRoomBookingForProject(project.id, nextMeetingDate);
-            return room
-              ? {
-                  projectId: project.id,
-                  clientName: project.client_name,
-                  room,
-                  isToday: nextMeetingDate === today,
-                }
-              : null;
-          }),
-        )
-      : Promise.resolve([]),
   ]);
 
   const roster = new Map(rosterEntries);
@@ -142,31 +124,22 @@ export default async function DashboardPage() {
     (c): c is { projectId: string; clientName: string } => !!c,
   );
 
-  // Where each of my teams is meeting next (today if it's a meeting day, otherwise
-  // the closest upcoming one) -- so a room booked ahead of time is visible right away,
-  // not just on the day of.
-  const nextRooms = roomChecks.filter(
-    (r): r is { projectId: string; clientName: string; room: string; isToday: boolean } => !!r,
-  );
-
   let summary: {
     atRiskProjects: { id: string; clientName: string }[];
     belowThresholdMembers: { userId: string; name: string; rate: number }[];
     missingAttendanceTeams: { projectId: string; clientName: string }[];
-    unbookedRoomTeams: { projectId: string; clientName: string }[];
   } | null = null;
   let execTodos: Awaited<ReturnType<typeof getExecTodos>> = [];
   let execMembers: { id: string; name: string }[] = [];
 
   if (exec) {
     // All independent of each other -- fire concurrently rather than one round trip at a time.
-    const [allProjects, directoryRows, todosResult, teamStatusResult, bookingsResult] =
+    const [allProjects, directoryRows, todosResult, teamStatusResult] =
       await Promise.all([
         getProjects(activeQuarter.id),
         getDirectory(activeQuarter.id),
         getExecTodos(),
         todayIsMeetingDay ? getTeamAttendanceStatus(activeQuarter.id, today) : Promise.resolve(null),
-        nextMeetingDate ? getRoomBookingsForDate(activeQuarter.id, nextMeetingDate) : Promise.resolve(null),
       ]);
     execTodos = todosResult;
 
@@ -189,15 +162,10 @@ export default async function DashboardPage() {
       .filter((t) => !t.loggedToday)
       .map((t) => ({ projectId: t.projectId, clientName: t.clientName }));
 
-    const unbookedRoomTeams = (bookingsResult ?? [])
-      .filter((b) => !b.roomName)
-      .map((b) => ({ projectId: b.projectId, clientName: b.clientName }));
-
     summary = {
       atRiskProjects,
       belowThresholdMembers,
       missingAttendanceTeams,
-      unbookedRoomTeams,
     };
   }
 
@@ -225,19 +193,7 @@ export default async function DashboardPage() {
           </p>
         </div>
 
-        {nextRooms.length > 0 && (
-          <div className="space-y-2">
-            {nextRooms.map((r) => (
-              <Alert key={r.projectId} tone="primary">
-                <MapPin />
-                {r.clientName} meets in <span className="font-medium">{r.room}</span>{" "}
-                {r.isToday
-                  ? "today."
-                  : `next time (${nextMeetingDate ? format(parseLocalDate(nextMeetingDate), "EEE, MMM d") : ""}).`}
-              </Alert>
-            ))}
-          </div>
-        )}
+
 
         {pendingAttendanceNudges.length > 0 && (
           <div className="space-y-2">
@@ -373,8 +329,7 @@ export default async function DashboardPage() {
           <Section title="Needs attention" description="Org-wide items worth a look right now.">
             {summary.atRiskProjects.length === 0 &&
             summary.belowThresholdMembers.length === 0 &&
-            summary.missingAttendanceTeams.length === 0 &&
-            summary.unbookedRoomTeams.length === 0 ? (
+            summary.missingAttendanceTeams.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 Nothing needs attention right now -- everything&apos;s on track.
               </p>
@@ -405,17 +360,6 @@ export default async function DashboardPage() {
                     key: t.projectId,
                     label: t.clientName,
                     href: `/portal/attendance?team=${t.projectId}`,
-                  }))}
-                />
-                <AttentionRow
-                  icon={MapPin}
-                  label={`${summary.unbookedRoomTeams.length} need a room for ${
-                    nextMeetingDate ? format(parseLocalDate(nextMeetingDate), "EEE, MMM d") : "the next meeting"
-                  }`}
-                  items={summary.unbookedRoomTeams.map((t) => ({
-                    key: t.projectId,
-                    label: t.clientName,
-                    href: "/portal/admin/rooms",
                   }))}
                 />
               </div>

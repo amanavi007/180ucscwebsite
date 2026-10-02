@@ -10,7 +10,6 @@ import {
   CalendarDays,
   CalendarRange,
   CalendarClock,
-  DoorOpen,
   SlidersHorizontal,
   Users2,
   History,
@@ -27,6 +26,8 @@ export interface NavLink {
   execOnly?: boolean;
   /** Extra terms this page should also match on in search, beyond its label. */
   keywords?: string;
+  /** Admin pages whose data depends on `?quarter=`; the breadcrumb bar shows the quarter picker for these. */
+  quarterScoped?: boolean;
   /** Sidebar grouping only -- unset means "ungrouped" (rendered on its own). */
   group?: "work" | "people" | "reference" | "admin-people" | "admin-quarter-setup" | "admin-system" | "admin-recruitment";
   /** One-sentence explanation shown for this page in the first-time sidebar tour. */
@@ -96,14 +97,14 @@ export const NAV_LINKS: NavLink[] = [
     label: "Admin",
     icon: ShieldCheck,
     execOnly: true,
-    tourDescription: "Manage members, quarters, rooms, and team assignments.",
+    tourDescription: "Manage members, quarters, meeting days, and team assignments.",
   },
 ];
 
 /** Admin sub-pages -- shared between the Admin tab bar and the command palette. */
 export const ADMIN_NAV_LINKS: NavLink[] = [
   {
-    href: "/portal/admin",
+    href: "/portal/admin/members",
     label: "Members",
     icon: Users,
     execOnly: true,
@@ -116,6 +117,7 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     icon: Users2,
     execOnly: true,
     keywords: "drag drop roster draft plan pm sc",
+    quarterScoped: true,
     group: "admin-people",
   },
   {
@@ -124,6 +126,7 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     icon: BarChart3,
     execOnly: true,
     keywords: "attendance tasks deadlines rollup rankings",
+    quarterScoped: true,
     group: "admin-people",
   },
   {
@@ -141,14 +144,7 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     icon: CalendarClock,
     execOnly: true,
     keywords: "calendar schedule",
-    group: "admin-quarter-setup",
-  },
-  {
-    href: "/portal/admin/rooms",
-    label: "Rooms",
-    icon: DoorOpen,
-    execOnly: true,
-    keywords: "library booking floor plan",
+    quarterScoped: true,
     group: "admin-quarter-setup",
   },
   {
