@@ -250,6 +250,12 @@
     @apply bg-sidebar/40 ring-1 ring-foreground/15 backdrop-blur-3xl backdrop-saturate-200;
     box-shadow: var(--glass-sidebar-shadow);
   }
+  /* The hover preview floats over arbitrary page content (and the resting
+     strip's icons), so it needs to be near-opaque or text behind it bleeds
+     through and the nav becomes hard to read. */
+  .glass-sidebar-floating {
+    @apply bg-sidebar/95;
+  }
   /* Marked placeholder for real photography -- swap for an <Image> once real
      member/client photos exist; the dashed border keeps it unmistakably a
      stand-in rather than finished art. */

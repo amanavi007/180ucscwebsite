@@ -149,7 +149,7 @@ export function AppShell({
         <div
           inert={!expanded}
           className={cn(
-            "glass-sidebar absolute top-0 left-0 z-30 flex h-full w-60 flex-col overflow-hidden rounded-3xl shadow-2xl transition-[opacity,transform] duration-200 ease-out",
+            "glass-sidebar glass-sidebar-floating absolute top-0 left-0 z-30 flex h-full w-60 flex-col overflow-hidden rounded-3xl shadow-2xl transition-[opacity,transform] duration-200 ease-out",
             expanded
               ? "translate-x-0 opacity-100"
               : "pointer-events-none -translate-x-2 opacity-0",
