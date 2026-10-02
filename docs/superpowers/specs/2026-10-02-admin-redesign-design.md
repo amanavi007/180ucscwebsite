@@ -5,7 +5,7 @@ Status: Draft, awaiting review
 
 ## Problem
 
-The exec-only Admin area has 9 pages and feels cluttered and confusing to navigate:
+The exec-only Admin area has 10 pages (including Team Page, added with the profile editor) and feels cluttered and confusing to navigate:
 
 - Three stacked navigation layers: the main sidebar, Admin's four labeled pill-tab groups (People, Quarter setup, Recruitment, System), and in-page tabs (Coffee Chats).
 - `/portal/admin` lands directly on Members, which shows bulk-add, the member table and the archived-members table all at once. Every row carries a role dropdown plus reset-password and archive actions.
@@ -21,7 +21,7 @@ The exec-only Admin area has 9 pages and feels cluttered and confusing to naviga
 ## Non-goals
 
 - No quarter-phase tracker (decided: skip; the app has no notion of a current phase).
-- No merging of pages; the 9 pages and their internals (Team Builder, Coffee Chats, Quarters, Rooms, Meeting Days, Stats, Settings, Activity) are unchanged apart from the navigation chrome.
+- No merging of pages; the 10 pages and their internals (Team Builder, Team Page, Coffee Chats, Quarters, Rooms, Meeting Days, Stats, Settings, Activity) are unchanged apart from the navigation chrome.
 - No data-model or schema changes.
 - No attendance column on the Members table (Consultant Stats already shows it).
 
@@ -33,6 +33,7 @@ The exec-only Admin area has 9 pages and feels cluttered and confusing to naviga
 - A redirect/compat step keeps old `/portal/admin` bookmarks useful: they land on the hub, which links to Members.
 - `ADMIN_NAV_LINKS` (`src/components/layout/nav-links.ts`) keeps its structure and `group` field. The Members entry's `href` changes to `/portal/admin/members`. The command palette consumes this list unchanged.
 - `admin-nav.tsx` (four pill-tab groups) is replaced by an `AdminBreadcrumb` component: `Admin › <Area> › <Page>` plus sibling tabs for the other pages in the same area. Area label and siblings are derived from the `group` field. The area label map moves to one shared place so the hub and breadcrumb agree.
+- The People area now has four pages: Members, Team Builder, Consultant Stats, Team Page. The Team Page tab keeps its pending-submission count badge (today rendered by `AdminNav` from `pendingTeamCount`, fetched in `admin/layout.tsx` via `getPendingTeamSubmissionCount`). The layout keeps fetching the count and passes it to `AdminBreadcrumb`; the hub's People card shows the same badge next to its Team Page link.
 - Single-page areas (Recruitment) show the breadcrumb with no sibling tabs.
 - `admin/layout.tsx` keeps the exec gate (`isExec`) and drops the static "Admin" title block. The hub renders its own header; inner pages render the breadcrumb.
 
@@ -47,6 +48,7 @@ Header: title, a visible "Jump to or search" field that opens the existing comma
 | N consultants below attendance threshold | `getConsultantStatsRollup` + `getAttendanceAlertThreshold` | Consultant Stats |
 | Team draft exists and is not finalized | `team-builder.ts` | Team Builder |
 | Open coffee-chat slots this week with no bookings | `getAllSlots` + `getAllBookings` | Coffee Chats |
+| N team-page submissions pending review | `getPendingTeamSubmissionCount` | Team Page |
 
 The computation lives in one function (`getAdminAttentionItems`) returning typed items, so it can be unit tested without rendering.
 
@@ -59,8 +61,8 @@ The computation lives in one function (`getAdminAttentionItems`) returning typed
 - Header actions: "Bulk add" (opens a dialog containing the existing textarea, preview table and create flow) and "+ Add member".
 - Active / Archived tabs. The archived restore and permanent-delete table moves into the Archived tab; counts shown on the tabs.
 - Role filter becomes chips (All, Consultants, PMs, Execs) next to the search box, replacing the role-filter dropdown.
-- Role is displayed as text. The role change, reset password, archive and permanent delete actions move into a per-row ⋯ menu. Existing confirmation dialogs are kept as is; permanent delete is last and styled destructive.
-- `members-panel.tsx` (733 lines) is split along these seams: bulk-add dialog, active members table, archived members table, row actions menu. Behavior and server actions are unchanged.
+- Role is displayed as text. The role-change action joins the existing per-row ⋯ menu (which already holds Edit email, Reset password and Archive). Permanent delete stays on archived rows, last in the menu and styled destructive. Existing confirmation dialogs, including `EditEmailDialog`, are kept as is.
+- `members-panel.tsx` (about 815 lines after the profile editor's Edit email addition) is split along these seams: bulk-add dialog, active members table, archived members table, row actions menu, edit-email dialog. Behavior and server actions are unchanged.
 
 ### 4. Global quarter picker
 
@@ -71,18 +73,18 @@ The computation lives in one function (`getAdminAttentionItems`) returning typed
 ## Components and files
 
 - New: `admin/page.tsx` (hub), `admin/members/page.tsx`, `AdminBreadcrumb`, `getAdminAttentionItems`, hub tile components.
-- Changed: `admin/layout.tsx`, `nav-links.ts` (Members href), Members panel split into focused files, quarter-scoped admin pages (picker removal).
+- Changed: `admin/layout.tsx` (keeps the pending team-page count fetch), `nav-links.ts` (Members href), Members panel split into focused files, quarter-scoped admin pages (picker removal).
 - Removed: `admin/admin-nav.tsx`.
 
 ## Error handling
 
-- Each needs-attention source is fetched independently; if one fails, the others still render and the failed one is omitted rather than breaking the hub.
+- Each needs-attention source (attendance, draft, coffee-chat slots, team-page submissions) is fetched independently; if one fails, the others still render and the failed one is omitted rather than breaking the hub.
 - Unknown `?action=` values are ignored.
 
 ## Testing
 
-- Unit tests for `getAdminAttentionItems`: each condition on and off, all-clear, and one source failing.
-- Manual walkthrough: hub renders for an exec and redirects non-execs; every breadcrumb and tab link; `/portal/admin` bookmark behavior; each quick action opens the right dialog; Members flows (bulk add, add, role change, reset password, archive, restore, delete); quarter selection persists across Stats, Team Builder and Meeting Days; mobile width.
+- Unit tests for `getAdminAttentionItems`: each of the four conditions on and off, all-clear, and one source failing.
+- Manual walkthrough: hub renders for an exec and redirects non-execs; every breadcrumb and tab link; `/portal/admin` bookmark behavior; each quick action opens the right dialog; the Team Page pending badge appears on the breadcrumb tab and hub card; Members flows (bulk add, add, role change, reset password, archive, restore, delete); quarter selection persists across Stats, Team Builder and Meeting Days; mobile width.
 - Run lint and the production build.
 
 ## Risks and open questions
