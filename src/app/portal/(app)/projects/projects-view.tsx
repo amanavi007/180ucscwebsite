@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { ListSearch } from "@/components/list-search";
 import { useFilteredList } from "@/lib/use-filtered-list";
+import { pmNames } from "@/lib/project-leads";
 import { ProjectBoard } from "./project-board";
 import { ProjectTable } from "./project-table";
 import { NewProjectDialog } from "./new-project-dialog";
@@ -54,7 +55,7 @@ export function ProjectsView({
 
   const { query, setQuery, filtered } = useFilteredList<ProjectWithRelations>(projects, [
     "client_name",
-    (p) => p.project_manager?.name,
+    (p) => pmNames(p).join(" "),
     (p) => p.senior_consultant?.name,
   ]);
 

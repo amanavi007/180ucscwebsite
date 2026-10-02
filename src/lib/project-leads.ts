@@ -21,3 +21,12 @@ export function planLeadChange(
   if (current === requested) return null;
   return { demote: current, promote: requested };
 }
+
+/** Names of every PM on a project, primary first. Falls back to the primary alone when the full list wasn't loaded. */
+export function pmNames(project: {
+  project_managers?: { name: string }[];
+  project_manager?: { name: string } | null;
+}): string[] {
+  const list = project.project_managers ?? (project.project_manager ? [project.project_manager] : []);
+  return list.map((pm) => pm.name);
+}
