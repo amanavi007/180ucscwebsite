@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import { getQuarters } from "@/lib/data/quarters";
 import { getAdminAttentionItems } from "@/lib/data/admin-attention";
+import { getPendingTeamSubmissionCount } from "@/lib/data/team-page";
 import { resolveQuarterId } from "@/lib/admin-nav";
 import { HubHeader } from "./hub/hub-header";
 import { AttentionList } from "./hub/attention-list";
+import { QuickActions } from "./hub/quick-actions";
+import { AreaCards } from "./hub/area-cards";
 
 export const metadata: Metadata = { title: "Admin" };
 
@@ -18,7 +21,10 @@ export default async function AdminHubPage({
   const selectedId = resolveQuarterId(quarter, quarters, fallback);
   const selected = quarters.find((q) => q.id === selectedId) ?? null;
 
-  const items = await getAdminAttentionItems(selectedId);
+  const [items, pendingTeamCount] = await Promise.all([
+    getAdminAttentionItems(selectedId),
+    getPendingTeamSubmissionCount().catch(() => 0),
+  ]);
 
   return (
     <div className="space-y-8">
@@ -28,6 +34,8 @@ export default async function AdminHubPage({
         subtitle={selected ? selected.name : "No quarter yet. Create one in Quarters."}
       />
       <AttentionList items={items} />
+      <QuickActions quarterId={selectedId} />
+      <AreaCards quarterId={selectedId} pendingTeamCount={pendingTeamCount} />
     </div>
   );
 }

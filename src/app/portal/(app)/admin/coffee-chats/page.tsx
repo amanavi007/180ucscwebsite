@@ -8,7 +8,12 @@ import { ScheduleView } from "./schedule-view";
 
 export const metadata: Metadata = { title: "Admin · Coffee Chats" };
 
-export default async function CoffeeChatsPage() {
+export default async function CoffeeChatsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const { tab } = await searchParams;
   const [availability, slots, bookings, profile] = await Promise.all([
     getAllAvailability(),
     getAllSlots(),
@@ -25,7 +30,7 @@ export default async function CoffeeChatsPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="availability">
+      <Tabs defaultValue={tab === "schedule" ? "schedule" : "availability"}>
         <TabsList>
           <TabsTrigger value="availability">Availability</TabsTrigger>
           <TabsTrigger value="schedule">Schedule</TabsTrigger>

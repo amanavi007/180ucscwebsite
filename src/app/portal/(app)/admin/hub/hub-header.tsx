@@ -1,5 +1,6 @@
 import { QuarterSelect } from "@/components/quarter-select";
 import { ADMIN_HUB_HREF } from "@/lib/admin-nav";
+import { HubSearchButton } from "./hub-search-button";
 
 export function HubHeader({
   quarters,
@@ -17,6 +18,7 @@ export function HubHeader({
         <p className="text-sm text-muted-foreground">{subtitle}</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
+        <HubSearchButton />
         {quarters.length > 0 && (
           <QuarterSelect quarters={quarters} selectedId={selectedId ?? ""} basePath={ADMIN_HUB_HREF} />
         )}

@@ -125,8 +125,15 @@ export function AppShell({
         setCommandOpen((o) => !o);
       }
     }
+    function onOpenRequest() {
+      setCommandOpen(true);
+    }
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("open-command-palette", onOpenRequest);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("open-command-palette", onOpenRequest);
+    };
   }, []);
 
   return (
