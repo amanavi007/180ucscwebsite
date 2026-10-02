@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { ADMIN_NAV_LINKS, type NavLink } from "@/components/layout/nav-links";
 
 const GROUP_LABEL: Record<string, string> = {
@@ -27,7 +28,7 @@ function groupLinks(links: NavLink[]): { key: string; items: NavLink[] }[] {
   return groups;
 }
 
-export function AdminNav() {
+export function AdminNav({ pendingTeamCount = 0 }: { pendingTeamCount?: number }) {
   const pathname = usePathname();
   const groups = groupLinks(ADMIN_NAV_LINKS);
 
@@ -53,6 +54,9 @@ export function AdminNav() {
                   )}
                 >
                   {item.label}
+                  {item.href === "/portal/admin/team-page" && pendingTeamCount > 0 && (
+                    <Badge className="ml-1.5 h-4 min-w-4 px-1 text-[10px]">{pendingTeamCount}</Badge>
+                  )}
                 </Link>
               );
             })}

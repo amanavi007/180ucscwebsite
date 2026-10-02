@@ -563,6 +563,38 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["team_plan_teams"]["Insert"]>;
         Relationships: [];
       };
+      team_profiles: {
+        Row: {
+          profile_id: string;
+          bio: string | null;
+          linkedin_url: string | null;
+          major: string | null;
+          photo_path: string | null;
+          listed: boolean;
+          pending_bio: string | null;
+          pending_linkedin_url: string | null;
+          pending_major: string | null;
+          pending_photo_path: string | null;
+          pending_submitted_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          profile_id: string;
+          bio?: string | null;
+          linkedin_url?: string | null;
+          major?: string | null;
+          photo_path?: string | null;
+          listed?: boolean;
+          pending_bio?: string | null;
+          pending_linkedin_url?: string | null;
+          pending_major?: string | null;
+          pending_photo_path?: string | null;
+          pending_submitted_at?: string | null;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["team_profiles"]["Insert"]>;
+        Relationships: [];
+      };
       team_plan_placements: {
         Row: {
           id: string;
