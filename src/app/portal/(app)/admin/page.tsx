@@ -1,17 +1,33 @@
 import type { Metadata } from "next";
-import { getAllProfiles, getArchivedProfiles } from "@/lib/data/members";
-import { getDefaultBulkPassword } from "@/lib/data/org-settings";
-import { MembersPanel } from "./members-panel";
+import { getQuarters } from "@/lib/data/quarters";
+import { getAdminAttentionItems } from "@/lib/data/admin-attention";
+import { resolveQuarterId } from "@/lib/admin-nav";
+import { HubHeader } from "./hub/hub-header";
+import { AttentionList } from "./hub/attention-list";
 
-export const metadata: Metadata = { title: "Admin · Members" };
+export const metadata: Metadata = { title: "Admin" };
 
-export default async function AdminMembersPage() {
-  const [members, archivedMembers, defaultPassword] = await Promise.all([
-    getAllProfiles(),
-    getArchivedProfiles(),
-    getDefaultBulkPassword(),
-  ]);
+export default async function AdminHubPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ quarter?: string }>;
+}) {
+  const { quarter } = await searchParams;
+  const quarters = await getQuarters();
+  const fallback = (quarters.find((q) => q.is_active) ?? quarters[0])?.id ?? null;
+  const selectedId = resolveQuarterId(quarter, quarters, fallback);
+  const selected = quarters.find((q) => q.id === selectedId) ?? null;
+
+  const items = await getAdminAttentionItems(selectedId);
+
   return (
-    <MembersPanel members={members} archivedMembers={archivedMembers} defaultPassword={defaultPassword} />
+    <div className="space-y-8">
+      <HubHeader
+        quarters={quarters.map((q) => ({ id: q.id, name: q.name, is_active: q.is_active }))}
+        selectedId={selectedId}
+        subtitle={selected ? selected.name : "No quarter yet. Create one in Quarters."}
+      />
+      <AttentionList items={items} />
+    </div>
   );
 }
