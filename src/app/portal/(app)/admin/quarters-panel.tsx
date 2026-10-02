@@ -215,7 +215,7 @@ function QuarterRow({ quarter: q, projectCount }: { quarter: Quarter; projectCou
   const [confirmText, setConfirmText] = useState("");
 
   // Deleting a quarter with projects now cascades to those projects (and
-  // everything under them -- tasks, attendance, room bookings), so require
+  // everything under them -- tasks, attendance), so require
   // typing the name back before the button is even clickable. An empty
   // quarter has nothing to lose beyond itself, so it keeps the plain confirm.
   const requiresTypedConfirm = projectCount > 0;
@@ -336,7 +336,7 @@ function QuarterRow({ quarter: q, projectCount }: { quarter: Quarter; projectCou
               <AlertDialogTitle>Delete {q.name}?</AlertDialogTitle>
               <AlertDialogDescription>
                 {requiresTypedConfirm
-                  ? `This permanently deletes ${q.name} and its ${projectCount} project${projectCount === 1 ? "" : "s"} -- along with every task, attendance record, and room booking tied to ${projectCount === 1 ? "it" : "them"}. This can't be undone.`
+                  ? `This permanently deletes ${q.name} and its ${projectCount} project${projectCount === 1 ? "" : "s"} -- along with every task and attendance record tied to ${projectCount === 1 ? "it" : "them"}. This can't be undone.`
                   : "This can't be undone."}
               </AlertDialogDescription>
             </AlertDialogHeader>

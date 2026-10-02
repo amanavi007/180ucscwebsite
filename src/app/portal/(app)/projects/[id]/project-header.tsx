@@ -313,7 +313,7 @@ export function ProjectHeader({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {project.client_name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently removes the project along with its tasks, team roster, room bookings
+              This permanently removes the project along with its tasks, team roster
               and events. This can&apos;t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

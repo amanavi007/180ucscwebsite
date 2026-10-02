@@ -10,7 +10,6 @@ import {
   CalendarDays,
   CalendarRange,
   CalendarClock,
-  DoorOpen,
   SlidersHorizontal,
   Users2,
   History,
@@ -98,7 +97,7 @@ export const NAV_LINKS: NavLink[] = [
     label: "Admin",
     icon: ShieldCheck,
     execOnly: true,
-    tourDescription: "Manage members, quarters, rooms, and team assignments.",
+    tourDescription: "Manage members, quarters, meeting days, and team assignments.",
   },
 ];
 
@@ -145,15 +144,6 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     icon: CalendarClock,
     execOnly: true,
     keywords: "calendar schedule",
-    quarterScoped: true,
-    group: "admin-quarter-setup",
-  },
-  {
-    href: "/portal/admin/rooms",
-    label: "Rooms",
-    icon: DoorOpen,
-    execOnly: true,
-    keywords: "library booking floor plan",
     quarterScoped: true,
     group: "admin-quarter-setup",
   },

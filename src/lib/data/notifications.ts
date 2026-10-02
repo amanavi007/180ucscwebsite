@@ -15,7 +15,7 @@ export interface NotificationFeed {
 
 /**
  * Computed from existing tables (tasks, exec_todos, memberships,
- * room_bookings) -- no event log to write to on every mutation. "Unread"
+ * coffee_chat_bookings) -- no event log to write to on every mutation. "Unread"
  * is just "newer than the last time this person opened the bell," tracked
  * in notification_reads. A first-ever open marks the current moment as
  * read so a newly shipped feature doesn't dump old history as unread.
@@ -27,9 +27,8 @@ export async function getMyNotifications(
   const supabase = await createClient();
 
   // The four selects below are all independent of each other -- fire them
-  // concurrently instead of one round trip at a time. Room bookings is the
-  // one exception (it needs the project ids from memberships), so it's
-  // kicked off in a second wave once memberships resolves.
+  // concurrently instead of one round trip at a time. The read marker and
+  // coffee-chat bookings are kicked off in a second wave once those resolve.
   const [{ data: readRow }, { data: tasks }, { data: todos }, { data: memberships }] = await Promise.all([
     supabase.from("notification_reads").select("last_read_at").eq("user_id", userId).maybeSingle(),
     supabase
@@ -59,7 +58,6 @@ export async function getMyNotifications(
     created_at: string;
     project: { client_name: string } | null;
   }[];
-  const myProjectIds = membershipRows.map((m) => m.project_id);
 
   let lastReadAt = readRow?.last_read_at;
   const needsReadMarker = !lastReadAt;
@@ -67,19 +65,10 @@ export async function getMyNotifications(
     lastReadAt = new Date().toISOString();
   }
 
-  const [, { data: bookings }, { data: coffeeChatBookings }] = await Promise.all([
+  const [, { data: coffeeChatBookings }] = await Promise.all([
     needsReadMarker
       ? supabase.from("notification_reads").insert({ user_id: userId, last_read_at: lastReadAt })
       : Promise.resolve(null),
-    myProjectIds.length > 0
-      ? supabase
-          .from("room_bookings")
-          .select("project_id, room_name, date, updated_at, project:projects(client_name)")
-          .in("project_id", myProjectIds)
-          .gte("date", new Date().toISOString().slice(0, 10))
-          .order("updated_at", { ascending: false })
-          .limit(10)
-      : Promise.resolve({ data: null }),
     // Inner-joined + filtered to slots this exec is on *in the query*, so the
     // limit applies to their own bookings rather than everyone's.
     isExecUser
@@ -126,21 +115,6 @@ export async function getMyNotifications(
       message: `You were added to ${m.project?.client_name ?? "a team"}.`,
       href: `/portal/projects/${m.project_id}`,
       occurredAt: m.created_at,
-    });
-  }
-
-  for (const b of (bookings ?? []) as unknown as {
-    project_id: string;
-    room_name: string;
-    date: string;
-    updated_at: string;
-    project: { client_name: string } | null;
-  }[]) {
-    items.push({
-      id: `room-${b.project_id}-${b.date}`,
-      message: `${b.project?.client_name ?? "Your team"} is in ${b.room_name} on ${b.date}.`,
-      href: "/portal",
-      occurredAt: b.updated_at,
     });
   }
 
