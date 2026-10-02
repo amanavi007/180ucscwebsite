@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionPanel } from "@/components/ui/accordion";
 import { LogoMarquee } from "@/components/marketing/logo-marquee";
+import { CLIENTS } from "@/lib/clients";
 import { ProjectSteps } from "@/components/marketing/project-steps";
 
 export const metadata: Metadata = { title: "Our Services" };
@@ -50,60 +51,6 @@ const SERVICES = [
     title: "Impact Measurement",
     body: "Frameworks for tracking and communicating the outcomes your organization is already creating.",
   },
-];
-
-const CLIENTS = [
-  { name: "American SPCC", src: "/clients/american-spcc.png" },
-  { name: "Acterra", src: "/clients/acterra.png" },
-  { name: "Animal Rescue Foundation", src: "/clients/animal-rescue-foundation.png" },
-  { name: "Association for Women in Science (AWIS)", src: "/clients/awis.png" },
-  { name: "Bay Area Legal Aid", src: "/clients/bay-area-legal-aid.png" },
-  { name: "Call of the Sea", src: "/clients/call-of-the-sea.png" },
-  { name: "Cat Chillin' Zone", src: "/clients/cat-chillin-zone.png" },
-  { name: "Chuck Jones Center for Creativity", src: "/clients/chuck-jones-center.png" },
-  { name: "digitalLIFT (formerly Community Tech Network)", src: "/clients/community-tech-network.png" },
-  { name: "Compass Family Services", src: "/clients/compass-family-services.png" },
-  { name: "Ditto", src: "/clients/ditto.png" },
-  { name: "Encompass Community Services", src: "/clients/encompass.png" },
-  { name: "Family Giving Tree", src: "/clients/family-giving-tree.png" },
-  { name: "Food for the Poor", src: "/clients/food-for-the-poor.png" },
-  { name: "Grad Achiever", src: "/clients/grad-achiever.png" },
-  { name: "Global Brigades", src: "/clients/global-brigades.png" },
-  { name: "Golden Oldies Cat Rescue", src: "/clients/golden-oldies.png" },
-  { name: "Gratitude Network", src: "/clients/gratitude-network.png" },
-  { name: "Habitat for Humanity", src: "/clients/habitat-for-humanity.png" },
-  { name: "Habitat for Humanity East Bay/Silicon Valley", src: "/clients/habitat-eb-sv.png" },
-  { name: "Habitat for Humanity Monterey Bay", src: "/clients/habitat-monterey-bay.png" },
-  { name: "Illuminaid", src: "/clients/illuminaid.png" },
-  { name: "KSQD", src: "/clients/ksqd.png" },
-  { name: "Midpen Media Center", src: "/clients/midpen-media-center.png" },
-  { name: "Napa Humane", src: "/clients/napa-humane.png" },
-  { name: "Nexus Youth & Family Services", src: "/clients/nexus.png" },
-  { name: "O'Neill Sea Odyssey", src: "/clients/oneill-sea-odyssey.png" },
-  { name: "Open Mind School", src: "/clients/open-mind-school.png" },
-  { name: "Peninsula Family Service", src: "/clients/peninsula-family-services.png" },
-  { name: "Puente de la Costa Sur", src: "/clients/puente-de-la-costa-sur.png" },
-  { name: "Rebuilding Together Silicon Valley", src: "/clients/rebuilding-together-sv.png" },
-  { name: "Roots & Routes", src: "/clients/roots-and-routes.png" },
-  { name: "Sankara Eye Foundation", src: "/clients/sankara-eye-foundation.png" },
-  { name: "Santa Cruz County Animal Shelter", src: "/clients/sccas.png" },
-  { name: "Santa Cruz SPCA", src: "/clients/santa-cruz-spca.png" },
-  { name: "Save Our Youth", src: "/clients/save-our-youth.png" },
-  { name: "Save The Frogs", src: "/clients/save-the-frogs.png" },
-  { name: "Sea Otter Savvy", src: "/clients/sea-otter-savvy.png" },
-  { name: "Showers for Flowers", src: "/clients/showers-for-flowers.png" },
-  { name: "Single Mom Strong", src: "/clients/single-mom-strong.png" },
-  { name: "SPARC Inc.", src: "/clients/sparc.png" },
-  { name: "Spirit In Action", src: "/clients/spirit-in-action.png" },
-  { name: "Starfall Education Foundation", src: "/clients/starfall-education-foundation.png" },
-  { name: "STEM Alliance", src: "/clients/stem-alliance.png" },
-  { name: "Striving For All", src: "/clients/striving.png" },
-  { name: "Sunday Friends Foundation", src: "/clients/sunday-friends.png" },
-  { name: "The Hero Foundation", src: "/clients/the-hero-foundation.png" },
-  { name: "United Way 211 Santa Cruz County", src: "/clients/united-way-211.png" },
-  { name: "Unity Care", src: "/clients/unity-care.png" },
-  { name: "Walnut Avenue Family & Women's Center", src: "/clients/walnut-ave.png" },
-  { name: "YES! World", src: "/clients/yes-world.png" },
 ];
 
 // Contiguous chunks (not an interleaved i % 3 split) so that related/adjacent

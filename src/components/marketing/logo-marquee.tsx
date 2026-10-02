@@ -17,10 +17,12 @@ export function LogoMarquee({
   logos,
   duration = 110,
   reverse = false,
+  grayscale = false,
 }: {
   logos: Logo[];
   duration?: number;
   reverse?: boolean;
+  grayscale?: boolean;
 }) {
   const track = Array.from({ length: REPEAT }, () => logos).flat();
 
@@ -51,7 +53,10 @@ export function LogoMarquee({
               width={220}
               height={90}
               loading="eager"
-              className="h-full w-auto max-w-[9rem] object-contain sm:max-w-[13rem]"
+              className={cn(
+                "h-full w-auto max-w-[9rem] object-contain sm:max-w-[13rem]",
+                grayscale && "opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0",
+              )}
             />
           </div>
         ))}

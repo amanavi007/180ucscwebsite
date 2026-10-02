@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 
 type Stat = { value: string; lines: [string, string] };
 
@@ -73,19 +74,25 @@ export function StatsBand({ stats }: { stats: Stat[] }) {
   }, []);
 
   return (
-    <div ref={ref} className="bg-primary rounded-[2.5rem] px-8 py-14 sm:px-14 sm:py-16">
-      <div className="grid grid-cols-2 gap-y-10 sm:grid-cols-4 sm:divide-x sm:divide-primary-foreground/20">
-        {stats.map((stat) => {
+    <div ref={ref} className="overflow-hidden rounded-[1.75rem] border border-foreground/15 bg-background">
+      <div className="grid grid-cols-2 sm:grid-cols-4">
+        {stats.map((stat, i) => {
           const { numeric, suffix } = parseStat(stat.value);
           return (
-            <div key={stat.value} className="text-center sm:px-6">
-              <p className="font-brand text-5xl font-bold tabular-nums text-primary-foreground sm:text-6xl">
+            <div
+              key={stat.value}
+              className={cn(
+                "border-foreground/15 px-6 py-8 sm:py-10",
+                i % 2 === 0 && "border-r",
+                i < 2 && "border-b sm:border-b-0",
+                "sm:border-r sm:last:border-r-0",
+              )}
+            >
+              <p className="font-brand text-5xl font-bold tabular-nums text-primary sm:text-6xl">
                 <AnimatedNumber target={numeric} suffix={suffix} active={active} />
               </p>
-              <p className="mt-2 text-sm font-medium tracking-wide text-primary-foreground uppercase">
-                {stat.lines[0]}
-                <br />
-                {stat.lines[1]}
+              <p className="mt-2 text-sm text-muted-foreground">
+                {stat.lines[0]} {stat.lines[1]}
               </p>
             </div>
           );

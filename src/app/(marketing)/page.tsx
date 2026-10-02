@@ -5,6 +5,8 @@ import { ArrowRight, Compass, HeartHandshake, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PhotoPlaceholder } from "@/components/marketing/photo-placeholder";
 import { StatsBand } from "@/components/marketing/stats-band";
+import { LogoMarquee } from "@/components/marketing/logo-marquee";
+import { CLIENTS } from "@/lib/clients";
 
 export const metadata: Metadata = { title: "Home" };
 
@@ -14,6 +16,9 @@ const STATS: { value: string; lines: [string, string] }[] = [
   { value: "20+", lines: ["Years of pro-bono", "consulting"] },
   { value: "10,000+", lines: ["Student consultants", "globally"] },
 ];
+
+// Every other client keeps the single row varied without loading the whole list.
+const MARQUEE_CLIENTS = CLIENTS.filter((_, i) => i % 2 === 0);
 
 const PILLARS = [
   {
@@ -75,6 +80,9 @@ export default function HomePage() {
 
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <StatsBand stats={STATS} />
+        <div className="mt-10">
+          <LogoMarquee logos={MARQUEE_CLIENTS} duration={160} grayscale />
+        </div>
       </section>
 
       <section className="w-full bg-mint py-24">
