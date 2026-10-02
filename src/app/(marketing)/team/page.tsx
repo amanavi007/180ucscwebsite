@@ -39,26 +39,43 @@ function MemberCard({
   linkedin?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-primary/15 bg-primary/5 p-6 text-center">
-      <PhotoPlaceholder label={`Photo: ${name}`} shape="circle" iconOnly className="mx-auto size-24" />
-      <h3 className="mt-4 font-semibold">{name}</h3>
-      <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
-      {linkedin ? (
-        <a
-          href={linkedin}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
-        >
-          <LinkedinIcon className="size-3.5" />
-          LinkedIn
-        </a>
-      ) : (
-        <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground/50">
-          <LinkedinIcon className="size-3.5" />
-          LinkedIn
-        </p>
-      )}
+    <div className="group">
+      <div className="relative overflow-hidden rounded-[1.25rem] transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-xl group-hover:shadow-primary/25 group-focus-within:-translate-y-1">
+        <PhotoPlaceholder label={`Photo: ${name}`} iconOnly className="aspect-[4/5] w-full rounded-none" />
+        {linkedin && (
+          <div className="absolute inset-0 flex items-end bg-gradient-to-t from-primary/90 via-primary/30 to-transparent p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100">
+            <a
+              href={linkedin}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`${name} on LinkedIn`}
+              className="inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold text-[#0a66c2] shadow-sm"
+            >
+              <LinkedinIcon className="size-3.5" />
+              View LinkedIn
+            </a>
+          </div>
+        )}
+      </div>
+      <div className="mt-3 flex items-start justify-between gap-3 px-0.5">
+        <div>
+          <h3 className="leading-tight font-semibold">{name}</h3>
+          <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>
+        </div>
+        {linkedin ? (
+          <a
+            href={linkedin}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`${name} on LinkedIn`}
+            className="mt-0.5 shrink-0 text-[#0a66c2] transition-colors hover:text-[#074a8c]"
+          >
+            <LinkedinIcon className="size-5" />
+          </a>
+        ) : (
+          <LinkedinIcon className="mt-0.5 size-5 shrink-0 text-muted-foreground/30" />
+        )}
+      </div>
     </div>
   );
 }
@@ -101,7 +118,7 @@ export default function TeamPage() {
         <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
           Executive Board
         </h2>
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
           {EXEC_BOARD.map((member) => (
             <MemberCard key={member.name} name={member.name} subtitle={member.role} linkedin={member.linkedin} />
           ))}
@@ -113,7 +130,7 @@ export default function TeamPage() {
           Project Managers
         </h2>
         {PROJECT_MANAGERS.length > 0 ? (
-          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-8 grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
             {PROJECT_MANAGERS.map((member) => (
               <MemberCard key={member.name} name={member.name} subtitle={member.major} linkedin={member.linkedin} />
             ))}
@@ -130,7 +147,7 @@ export default function TeamPage() {
           Consultants
         </h2>
         {CONSULTANTS.length > 0 ? (
-          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-8 grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
             {CONSULTANTS.map((member) => (
               <MemberCard key={member.name} name={member.name} subtitle={member.major} linkedin={member.linkedin} />
             ))}

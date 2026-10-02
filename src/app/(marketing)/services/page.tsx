@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionPanel } from "@/components/ui/accordion";
 import { LogoMarquee } from "@/components/marketing/logo-marquee";
+import { ProjectSteps } from "@/components/marketing/project-steps";
 
 export const metadata: Metadata = { title: "Our Services" };
 
@@ -194,6 +195,18 @@ export default function ServicesPage() {
             </div>
           ))}
         </Accordion>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
+        <div className="mint-panel rounded-[2.5rem] p-8 sm:p-12">
+          <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
+            How a project works
+          </h2>
+          <p className="mt-3 max-w-xl text-foreground/70 text-pretty">
+            One quarter, one dedicated student team, and a deliverable you can actually use.
+          </p>
+          <ProjectSteps />
+        </div>
       </section>
 
       <section className="w-full bg-mint py-16 sm:py-20">

@@ -39,7 +39,6 @@ export function MarketingNav({ user }: { user: { name: string } | null }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [hovered, setHovered] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -48,18 +47,16 @@ export function MarketingNav({ user }: { user: { name: string } | null }) {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const folded = scrolled && !hovered;
-
   return (
-    <header
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      className={cn(
-        "bg-mint sticky top-0 z-40 w-full border-b border-primary/15 shadow-sm transition-[height] duration-500 ease-in-out",
-        folded ? "h-14" : "h-20",
-      )}
-    >
-      <div className="mx-auto grid h-full max-w-6xl grid-cols-[auto_1fr_auto] items-center gap-6 px-4 sm:px-6">
+    <header className="pointer-events-none sticky top-0 z-40 w-full px-3 pt-3 sm:px-4">
+      <div
+        className={cn(
+          "pointer-events-auto mx-auto flex w-full items-center gap-4 rounded-full border border-primary/15 bg-white/85 pr-2 pl-5 backdrop-blur-md transition-all duration-300 ease-in-out",
+          scrolled
+            ? "h-12 max-w-4xl shadow-lg shadow-black/10"
+            : "h-16 max-w-5xl shadow-md shadow-black/5",
+        )}
+      >
         <Link href="/" className="flex shrink-0 items-center" aria-label="180 Degrees Consulting at UC Santa Cruz">
           <Image
             src="/logo-banner-tricolor.svg"
@@ -67,38 +64,32 @@ export function MarketingNav({ user }: { user: { name: string } | null }) {
             width={1610}
             height={538}
             priority
-            className={cn("w-auto transition-all duration-500 ease-in-out", folded ? "h-8" : "h-14")}
+            className={cn("w-auto transition-all duration-300 ease-in-out", scrolled ? "h-7" : "h-10")}
           />
         </Link>
 
-        <nav
-          className={cn(
-            "hidden items-center justify-center gap-2 transition-all duration-500 ease-in-out lg:flex",
-            folded ? "pointer-events-none scale-95 opacity-0" : "scale-100 opacity-100",
-          )}
-        >
-          {LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={cn(
-                "rounded-full px-5 py-2 text-sm font-bold tracking-wide uppercase transition-colors",
-                pathname === link.href
-                  ? "bg-primary/15 text-primary"
-                  : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground",
-              )}
-            >
-              {link.label}
-            </Link>
-          ))}
+        <nav className="hidden flex-1 items-center justify-center gap-1 lg:flex">
+          {LINKS.map((link) => {
+            const active = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "relative rounded-full px-4 py-1.5 text-sm font-bold tracking-wide uppercase transition-colors",
+                  active
+                    ? "text-primary after:absolute after:bottom-0 after:left-1/2 after:h-[3px] after:w-5 after:-translate-x-1/2 after:rounded-full after:bg-warm"
+                    : "text-foreground/70 hover:bg-primary/10 hover:text-foreground",
+                )}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
         </nav>
 
-        <div
-          className={cn(
-            "hidden items-center justify-end transition-all duration-500 ease-in-out lg:flex",
-            folded ? "pointer-events-none scale-95 opacity-0" : "scale-100 opacity-100",
-          )}
-        >
+        <div className="ml-auto hidden items-center justify-end gap-2 lg:ml-0 lg:flex">
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -124,15 +115,21 @@ export function MarketingNav({ user }: { user: { name: string } | null }) {
             <Link
               href="/login"
               prefetch={false}
-              className="rounded-full border border-primary/25 px-5 py-2 text-sm font-bold tracking-wide text-foreground/70 uppercase transition-colors hover:bg-foreground/5 hover:text-foreground"
+              className="rounded-full px-4 py-1.5 text-sm font-bold tracking-wide text-foreground/70 uppercase transition-colors hover:bg-primary/10 hover:text-foreground"
             >
               Log in
               <NavPendingWatcher />
             </Link>
           )}
+          <Link
+            href="/apply"
+            className="rounded-full bg-warm px-5 py-2 text-sm font-bold tracking-wide text-warm-foreground uppercase transition-[filter] hover:brightness-110"
+          >
+            Apply
+          </Link>
         </div>
 
-        <div className="col-start-3 flex items-center justify-end lg:hidden">
+        <div className="ml-auto flex items-center justify-end lg:hidden">
           <Button
             variant="ghost"
             size="icon"
@@ -167,6 +164,13 @@ export function MarketingNav({ user }: { user: { name: string } | null }) {
             ))}
           </nav>
           <div className="mt-2 flex flex-col gap-2 px-3">
+            <Link
+              href="/apply"
+              onClick={() => setMobileOpen(false)}
+              className="rounded-full bg-warm px-3 py-2.5 text-center text-sm font-bold tracking-wide text-warm-foreground uppercase"
+            >
+              Apply
+            </Link>
             {user ? (
               <>
                 <div className="flex items-center gap-2 px-3 py-1.5">
