@@ -28,13 +28,13 @@ export function ProjectSteps() {
             aria-expanded={isOpen}
             onClick={() => setOpen(isOpen ? null : i)}
             className={cn(
-              "group relative mt-6 rounded-2xl border bg-background px-4 pt-9 pb-4 text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary hover:shadow-lg hover:shadow-primary/20 focus-visible:-translate-y-1 focus-visible:border-primary focus-visible:outline-none",
+              "group relative mt-6 rounded-2xl border bg-background px-4 pt-9 pb-4 text-left shadow-sm transition-all duration-300 [@media(hover:hover)]:hover:-translate-y-1 [@media(hover:hover)]:hover:border-primary [@media(hover:hover)]:hover:shadow-lg [@media(hover:hover)]:hover:shadow-primary/20 focus-visible:-translate-y-1 focus-visible:border-primary focus-visible:outline-none",
               isOpen ? "-translate-y-1 border-primary shadow-lg shadow-primary/20" : "border-transparent",
             )}
           >
             <span
               className={cn(
-                "font-brand absolute -top-6 left-4 grid size-12 place-items-center rounded-full border-4 border-mint text-2xl font-bold text-primary-foreground transition-transform duration-300 group-hover:scale-105 group-focus-visible:scale-105",
+                "font-brand absolute -top-6 left-4 grid size-12 place-items-center rounded-full border-4 border-mint text-2xl font-bold text-primary-foreground transition-transform duration-300 [@media(hover:hover)]:group-hover:scale-105 group-focus-visible:scale-105",
                 i === STEPS.length - 1 ? "bg-warm" : "bg-primary",
               )}
             >
@@ -45,7 +45,7 @@ export function ProjectSteps() {
               <span
                 aria-hidden
                 className={cn(
-                  "text-xl font-normal text-primary transition-transform duration-300 group-hover:rotate-45 group-focus-visible:rotate-45",
+                  "text-xl font-normal text-primary transition-transform duration-300 [@media(hover:hover)]:group-hover:rotate-45 group-focus-visible:rotate-45",
                   isOpen && "rotate-45",
                 )}
               >
@@ -54,7 +54,7 @@ export function ProjectSteps() {
             </span>
             <span
               className={cn(
-                "grid transition-[grid-template-rows] duration-300 ease-out group-hover:grid-rows-[1fr] group-focus-visible:grid-rows-[1fr]",
+                "grid transition-[grid-template-rows] duration-300 ease-out [@media(hover:hover)]:group-hover:grid-rows-[1fr] group-focus-visible:grid-rows-[1fr]",
                 isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
               )}
             >

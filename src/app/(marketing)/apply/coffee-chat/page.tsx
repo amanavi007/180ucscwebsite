@@ -12,7 +12,7 @@ export default async function CoffeeChatPage() {
   const slots = await getOpenSlots();
 
   return (
-    <div className="mx-auto max-w-3xl px-4 pt-14 pb-24 sm:px-6">
+    <div className="mx-auto max-w-3xl px-4 pt-28 pb-24 sm:px-6">
       <p className="text-sm font-bold tracking-wide text-primary uppercase">Recruitment</p>
       <h1 className="font-brand mt-3 text-4xl leading-[1.05] font-bold tracking-tight text-balance sm:text-5xl">
         Book a coffee chat

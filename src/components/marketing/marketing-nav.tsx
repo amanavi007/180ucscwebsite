@@ -48,13 +48,13 @@ export function MarketingNav({ user }: { user: { name: string } | null }) {
   }, []);
 
   return (
-    <header className="pointer-events-none sticky top-0 z-40 w-full px-3 pt-3 sm:px-4">
+    <header className="pointer-events-none sticky top-0 z-40 h-0 w-full px-3 sm:px-4">
       <div
         className={cn(
-          "pointer-events-auto mx-auto flex w-full items-center gap-4 rounded-full border border-primary/15 bg-white/85 pr-2 pl-5 backdrop-blur-md transition-all duration-300 ease-in-out",
+          "pointer-events-auto relative top-3 mx-auto flex w-full items-center gap-2 xl:gap-4 rounded-full border border-primary/15 bg-white/85 pr-2 pl-5 backdrop-blur-md transition-all duration-300 ease-in-out",
           scrolled
-            ? "h-12 max-w-4xl shadow-lg shadow-black/10"
-            : "h-16 max-w-5xl shadow-md shadow-black/5",
+            ? "h-12 max-w-5xl shadow-lg shadow-black/10"
+            : "h-16 max-w-6xl shadow-md shadow-black/5",
         )}
       >
         <Link href="/" className="flex shrink-0 items-center" aria-label="180 Degrees Consulting at UC Santa Cruz">
@@ -77,7 +77,7 @@ export function MarketingNav({ user }: { user: { name: string } | null }) {
                 href={link.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative rounded-full px-4 py-1.5 text-sm font-bold tracking-wide uppercase transition-colors",
+                  "relative rounded-full px-3 py-1.5 text-sm font-bold tracking-wide uppercase transition-colors xl:px-4",
                   active
                     ? "text-primary after:absolute after:bottom-0 after:left-1/2 after:h-[3px] after:w-5 after:-translate-x-1/2 after:rounded-full after:bg-warm"
                     : "text-foreground/70 hover:bg-primary/10 hover:text-foreground",
@@ -100,7 +100,7 @@ export function MarketingNav({ user }: { user: { name: string } | null }) {
                         {initials(user.name)}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-sm font-bold text-foreground/80">{user.name}</span>
+                    <span className="hidden text-sm font-bold text-foreground/80 xl:inline">{user.name}</span>
                   </Button>
                 }
               />
@@ -115,7 +115,7 @@ export function MarketingNav({ user }: { user: { name: string } | null }) {
             <Link
               href="/login"
               prefetch={false}
-              className="rounded-full px-4 py-1.5 text-sm font-bold tracking-wide text-foreground/70 uppercase transition-colors hover:bg-primary/10 hover:text-foreground"
+              className="rounded-full px-3 py-1.5 text-sm font-bold tracking-wide text-foreground/70 uppercase transition-colors hover:bg-primary/10 hover:text-foreground xl:px-4"
             >
               Log in
               <NavPendingWatcher />

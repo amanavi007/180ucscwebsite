@@ -174,10 +174,22 @@ export function AppShell({
             href="/"
             prefetch={false}
             aria-label="180 Degrees Consulting — view public site"
-            className="font-brand flex items-center gap-1.5 text-sm font-bold text-muted-foreground md:hidden"
+            className="flex items-center md:hidden"
           >
-            <Image src="/logo-icon.png" alt="" width={987} height={1006} className="h-4 w-auto" />
-            180 @ UCSC
+            <Image
+              src="/logo-banner-dark.svg"
+              alt="180 Degrees Consulting UC Santa Cruz"
+              width={1610}
+              height={538}
+              className="h-9 w-auto dark:hidden"
+            />
+            <Image
+              src="/logo-banner-light.svg"
+              alt="180 Degrees Consulting UC Santa Cruz"
+              width={1610}
+              height={538}
+              className="hidden h-9 w-auto dark:block"
+            />
             <NavPendingWatcher />
           </Link>
 
@@ -242,9 +254,21 @@ export function AppShell({
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-64 p-0">
-          <SheetTitle className="font-brand flex items-center gap-2 px-4 py-4 text-lg font-bold tracking-tight text-primary">
-            <Image src="/logo-icon.png" alt="" width={987} height={1006} className="h-6 w-auto" />
-            180 @ UCSC
+          <SheetTitle className="px-4 py-4">
+            <Image
+              src="/logo-banner-dark.svg"
+              alt="180 Degrees Consulting UC Santa Cruz"
+              width={1610}
+              height={538}
+              className="h-14 w-auto dark:hidden"
+            />
+            <Image
+              src="/logo-banner-light.svg"
+              alt="180 Degrees Consulting UC Santa Cruz"
+              width={1610}
+              height={538}
+              className="hidden h-14 w-auto dark:block"
+            />
           </SheetTitle>
           <SidebarNav isExec={isExec} onNavigate={() => setMobileOpen(false)} />
         </SheetContent>

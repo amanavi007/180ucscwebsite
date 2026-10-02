@@ -9,7 +9,7 @@ export default async function ManageBookingPage({ params }: { params: Promise<{ 
   const booking = await getBookingByToken(token);
 
   return (
-    <div className="mx-auto max-w-xl px-4 pt-14 pb-24 sm:px-6">
+    <div className="mx-auto max-w-xl px-4 pt-28 pb-24 sm:px-6">
       <h1 className="font-brand text-3xl font-bold tracking-tight text-balance sm:text-4xl">
         Manage your coffee chat
       </h1>

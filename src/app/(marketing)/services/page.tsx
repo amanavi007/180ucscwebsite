@@ -144,7 +144,7 @@ function TestimonialSpotlight({ testimonial }: { testimonial: { quote: string; n
 export default function ServicesPage() {
   return (
     <div>
-      <section className="mx-auto max-w-6xl px-4 pt-14 pb-16 sm:px-6">
+      <section className="mx-auto max-w-6xl px-4 pt-28 pb-16 sm:px-6">
         <div className="mint-panel rounded-[2.5rem] p-8 sm:p-12">
           <p className="text-sm font-bold tracking-wide text-primary uppercase">Our Services</p>
           <h1 className="font-brand mt-3 max-w-2xl text-4xl leading-[1.05] font-bold tracking-tight text-balance sm:text-5xl">

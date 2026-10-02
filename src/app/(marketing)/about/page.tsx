@@ -50,7 +50,7 @@ const VALUES = [
 export default function AboutPage() {
   return (
     <div>
-      <section className="mx-auto max-w-6xl px-4 pt-14 pb-16 sm:px-6">
+      <section className="mx-auto max-w-6xl px-4 pt-28 pb-16 sm:px-6">
         <div className="mint-panel grid gap-10 rounded-[2.5rem] p-8 sm:p-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-16">
           <div>
             <p className="text-sm font-bold tracking-wide text-primary uppercase">About Us</p>
