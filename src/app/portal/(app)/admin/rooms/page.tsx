@@ -6,7 +6,6 @@ import { getRoomHotspots } from "@/lib/data/room-hotspots";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { isExec } from "@/lib/auth/roles";
 import { getOrgTodayDateString } from "@/lib/date";
-import { QuarterSelect } from "@/components/quarter-select";
 import { DateSelect } from "./date-select";
 import { RoomMap } from "./room-map";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,11 +46,6 @@ export default async function RoomsPage({
   if (meetingDates.length === 0) {
     return (
       <div className="space-y-4">
-        <QuarterSelect
-          quarters={quarters}
-          selectedId={selectedQuarter.id}
-          basePath="/admin/rooms"
-        />
         <p className="text-sm text-muted-foreground">
           No meeting days set up for this quarter yet -- add some in the Meeting Days tab first.
         </p>
@@ -69,12 +63,9 @@ export default async function RoomsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          Which room each team is in for a meeting day -- visible to everyone.
-        </p>
-        <QuarterSelect quarters={quarters} selectedId={selectedQuarter.id} basePath="/admin/rooms" />
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Which room each team is in for a meeting day -- visible to everyone.
+      </p>
       <DateSelect
         quarterId={selectedQuarter.id}
         dates={meetingDates}
