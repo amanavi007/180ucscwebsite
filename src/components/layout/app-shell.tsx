@@ -241,6 +241,9 @@ export function AppShell({
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem render={<Link href="/portal/profile" />}>
+                  My profile
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => logout()}>
                   Sign out
                 </DropdownMenuItem>

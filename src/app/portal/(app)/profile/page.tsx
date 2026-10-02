@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RemoveListingButton, TeamProfileForm } from "@/components/team/team-profile-form";
 
-export const metadata: Metadata = { title: "My Public Profile" };
+export const metadata: Metadata = { title: "My Profile" };
 
 export default async function MyPublicProfilePage() {
   const profile = await getCurrentProfile();
@@ -18,7 +18,7 @@ export default async function MyPublicProfilePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">My Public Profile</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">My Profile</h1>
         <p className="text-sm text-muted-foreground">
           What appears on the public Our Team page. Your name and title come from your account:{" "}
           <span className="font-medium text-foreground">{profile.name}</span>, {roleLabel(profile.role)}.
