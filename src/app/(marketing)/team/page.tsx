@@ -17,11 +17,13 @@ function Roster({
   members,
   emptyLabel,
   cols,
+  cardClassName,
 }: {
   section: TeamSection;
   members: PublicTeamMember[];
   emptyLabel: string;
   cols: string;
+  cardClassName?: string;
 }) {
   if (members.length === 0) {
     return (
@@ -40,6 +42,7 @@ function Roster({
           bio={m.bio}
           linkedin={m.linkedinUrl}
           photoUrl={m.photoUrl}
+          className={cardClassName}
         />
       ))}
     </div>
@@ -81,7 +84,7 @@ export default async function TeamPage() {
         <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
           Executive Board
         </h2>
-        <Roster section="exec" members={groups.exec} emptyLabel="Executive board" cols="lg:grid-cols-3" />
+        <Roster section="exec" members={groups.exec} emptyLabel="Executive board" cols="lg:grid-cols-3" cardClassName="lg:max-w-[19rem]" />
       </section>
 
       <section className="mx-auto max-w-6xl px-6 py-16">

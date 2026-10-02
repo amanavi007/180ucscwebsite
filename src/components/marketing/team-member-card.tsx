@@ -18,17 +18,19 @@ export function TeamMemberCard({
   bio,
   linkedin,
   photoUrl,
+  className,
 }: {
   name: string;
   subtitle: string;
   bio: string | null;
   linkedin: string;
   photoUrl: string;
+  className?: string;
 }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="group">
+    <div className={cn("group", className)}>
       <div
         onClick={() => setOpen((o) => !o)}
         className={cn(
