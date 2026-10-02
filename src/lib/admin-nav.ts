@@ -38,6 +38,11 @@ export function withQuarterParam(href: string, quarterId: string | null | undefi
   return `${href}${href.includes("?") ? "&" : "?"}quarter=${encodeURIComponent(quarterId)}`;
 }
 
+/** The quarter every admin page defaults to: the active one, else the first. Null when there are none. */
+export function defaultQuarterId(quarters: { id: string; is_active: boolean }[]): string | null {
+  return (quarters.find((q) => q.is_active) ?? quarters[0])?.id ?? null;
+}
+
 export function resolveQuarterId(
   param: string | null | undefined,
   quarters: { id: string }[],

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getQuarters } from "@/lib/data/quarters";
 import { getAdminAttentionItems } from "@/lib/data/admin-attention";
 import { getPendingTeamSubmissionCount } from "@/lib/data/team-page";
-import { resolveQuarterId } from "@/lib/admin-nav";
+import { defaultQuarterId, resolveQuarterId } from "@/lib/admin-nav";
 import { HubHeader } from "./hub/hub-header";
 import { AttentionList } from "./hub/attention-list";
 import { QuickActions } from "./hub/quick-actions";
@@ -17,8 +17,7 @@ export default async function AdminHubPage({
 }) {
   const { quarter } = await searchParams;
   const quarters = await getQuarters();
-  const fallback = (quarters.find((q) => q.is_active) ?? quarters[0])?.id ?? null;
-  const selectedId = resolveQuarterId(quarter, quarters, fallback);
+  const selectedId = resolveQuarterId(quarter, quarters, defaultQuarterId(quarters));
   const selected = quarters.find((q) => q.id === selectedId) ?? null;
 
   const [items, pendingTeamCount] = await Promise.all([

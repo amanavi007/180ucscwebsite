@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ADMIN_AREA_LABELS,
+  defaultQuarterId,
   getAdminLocation,
   parseMembersAction,
   resolveQuarterId,
@@ -79,5 +80,17 @@ describe("parseMembersAction", () => {
     expect(parseMembersAction(["bulk-add"])).toBeNull();
     expect(parseMembersAction(undefined)).toBeNull();
     expect(parseMembersAction(null)).toBeNull();
+  });
+});
+
+describe("defaultQuarterId", () => {
+  it("prefers the active quarter", () => {
+    expect(defaultQuarterId([{ id: "a", is_active: false }, { id: "b", is_active: true }])).toBe("b");
+  });
+  it("falls back to the first quarter when none is active", () => {
+    expect(defaultQuarterId([{ id: "a", is_active: false }, { id: "b", is_active: false }])).toBe("a");
+  });
+  it("returns null when there are no quarters", () => {
+    expect(defaultQuarterId([])).toBeNull();
   });
 });

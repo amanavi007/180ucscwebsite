@@ -21,18 +21,18 @@ export function AdminBreadcrumb({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const location = getAdminLocation(pathname, ADMIN_NAV_LINKS);
+  const quarterParam = searchParams.get("quarter");
 
   // The hub (and unknown paths) render their own header.
   if (!location) return null;
 
-  const quarterParam = searchParams.get("quarter");
   const selectedQuarterId = resolveQuarterId(quarterParam, quarters, defaultQuarterId);
   const showPicker = !!location.page.quarterScoped && quarters.length > 0;
 
   return (
     <div className="space-y-3">
       <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm text-muted-foreground">
-        <Link href={ADMIN_HUB_HREF} className="hover:text-foreground">
+        <Link href={withQuarterParam(ADMIN_HUB_HREF, quarterParam)} className="hover:text-foreground">
           Admin
         </Link>
         <ChevronRight className="size-3.5" />
