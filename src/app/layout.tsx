@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Big_Shoulders } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { NavLoadingProvider, InitialLoadCurtain } from "@/components/nav-loading";
 import "./globals.css";
 
@@ -62,6 +63,7 @@ export default function RootLayout({
           <InitialLoadCurtain />
           <Toaster />
         </ThemeProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
