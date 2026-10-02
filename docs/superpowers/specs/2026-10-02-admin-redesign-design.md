@@ -30,7 +30,7 @@ The exec-only Admin area has 10 pages (including Team Page, added with the profi
 ### 1. Routes and navigation
 
 - `/portal/admin` becomes the new hub. Members moves to `/portal/admin/members`.
-- A redirect/compat step keeps old `/portal/admin` bookmarks useful: they land on the hub, which links to Members.
+- The hub takes over the old `/portal/admin` URL, so existing bookmarks land on the hub, which links to Members. No redirect is needed.
 - `ADMIN_NAV_LINKS` (`src/components/layout/nav-links.ts`) keeps its structure and `group` field. The Members entry's `href` changes to `/portal/admin/members`. The command palette consumes this list unchanged.
 - `admin-nav.tsx` (four pill-tab groups) is replaced by an `AdminBreadcrumb` component: `Admin › <Area> › <Page>` plus sibling tabs for the other pages in the same area. Area label and siblings are derived from the `group` field. The area label map moves to one shared place so the hub and breadcrumb agree.
 - The People area now has four pages: Members, Team Builder, Consultant Stats, Team Page. The Team Page tab keeps its pending-submission count badge (today rendered by `AdminNav` from `pendingTeamCount`, fetched in `admin/layout.tsx` via `getPendingTeamSubmissionCount`). The layout keeps fetching the count and passes it to `AdminBreadcrumb`; the hub's People card shows the same badge next to its Team Page link.
@@ -52,13 +52,13 @@ Header: title, a visible "Jump to or search" field that opens the existing comma
 
 The computation lives in one function (`getAdminAttentionItems`) returning typed items, so it can be unit tested without rendering.
 
-**Quick actions.** Four tiles: Add members, Reset a password, Add meeting day, Add coffee-chat slots. Each deep-links to its page with `?action=<name>`; the target page reads the param on mount to open the relevant dialog or focus the relevant field. Reset a password goes to Members with the search field focused.
+**Quick actions.** Four tiles: Add members, Reset a password, Add meeting day, Add coffee-chat slots. Add members goes to `/portal/admin/members?action=bulk-add` and opens the bulk-add dialog. Reset a password goes to `/portal/admin/members?action=find` and focuses the search field. Add meeting day links to Meeting Days; Add coffee-chat slots links to Coffee Chats with the Schedule tab open (`?tab=schedule`). Unknown `?action=` values are ignored.
 
 **Browse by area.** Four cards (People, Quarter setup, Recruitment, System), each listing its pages as direct links, generated from `ADMIN_NAV_LINKS`.
 
 ### 3. Members page (`/portal/admin/members`)
 
-- Header actions: "Bulk add" (opens a dialog containing the existing textarea, preview table and create flow) and "+ Add member".
+- Header action: "Bulk add" (opens a dialog containing the existing textarea, preview table and create flow). There is no single-member add today, so no "+ Add member" button in v1.
 - Active / Archived tabs. The archived restore and permanent-delete table moves into the Archived tab; counts shown on the tabs.
 - Role filter becomes chips (All, Consultants, PMs, Execs) next to the search box, replacing the role-filter dropdown.
 - Role is displayed as text. The role-change action joins the existing per-row ⋯ menu (which already holds Edit email, Reset password and Archive). Permanent delete stays on archived rows, last in the menu and styled destructive. Existing confirmation dialogs, including `EditEmailDialog`, are kept as is.
@@ -66,8 +66,8 @@ The computation lives in one function (`getAdminAttentionItems`) returning typed
 
 ### 4. Global quarter picker
 
-- One quarter picker, using the existing `QuarterSelect` component and a `?quarter=` param. It appears in the hub header and on the breadcrumb bar of quarter-scoped pages (Consultant Stats, Team Builder, Meeting Days).
-- Those three pages currently each render their own picker. They keep reading `?quarter=`; their per-page pickers are removed, and the breadcrumb and tab links carry the `?quarter=` param so the selection persists across them.
+- One quarter picker, using the existing `QuarterSelect` component and a `?quarter=` param. It appears in the hub header and on the breadcrumb bar of quarter-scoped pages (Consultant Stats, Team Builder, Meeting Days, Rooms).
+- Those four pages currently each render their own picker. Team Builder, Meeting Days and Rooms pass `basePath="/admin/..."` (missing the `/portal` prefix, so changing quarter there goes to a nonexistent URL); removing the per-page pickers fixes this. They keep reading `?quarter=`; their per-page pickers are removed, and the breadcrumb and tab links carry the `?quarter=` param so the selection persists across them.
 - Pages that are not quarter-scoped (Members, Rooms, Settings, Activity, Coffee Chats) do not show the picker on the breadcrumb bar.
 
 ## Components and files
@@ -90,5 +90,4 @@ The computation lives in one function (`getAdminAttentionItems`) returning typed
 ## Risks and open questions
 
 - **URL change:** Members moves from `/portal/admin` to `/portal/admin/members`. Any external links to the old URL land on the hub.
-- **Single-add dialog:** "+ Add member" assumes a single-member add flow. Today only bulk add exists, so v1 either reuses the bulk dialog with one row, or the button is omitted. Decision for the implementation plan.
 - **Attention thresholds:** "this week" for unbooked slots and the exact draft-status check depend on fields in `coffee-chat.ts` and `team-builder.ts`; the plan must confirm them before building.
