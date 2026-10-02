@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { isExec } from "@/lib/auth/roles";
+import { getPendingTeamSubmissionCount } from "@/lib/data/team-page";
 import { AdminNav } from "./admin-nav";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -8,6 +9,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!isExec(profile.role)) {
     redirect("/portal");
   }
+  const pendingTeamCount = await getPendingTeamSubmissionCount();
 
   return (
     <div className="space-y-6">
@@ -17,7 +19,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           Manage quarters, member accounts, team rosters, and org-wide settings.
         </p>
       </div>
-      <AdminNav />
+      <AdminNav pendingTeamCount={pendingTeamCount} />
       {children}
     </div>
   );

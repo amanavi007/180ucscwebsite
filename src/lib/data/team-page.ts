@@ -87,12 +87,16 @@ export async function getTeamPageAdminRows(): Promise<TeamPageAdminRow[]> {
   }));
 }
 
+/** Nav badge count. Fails soft (0): it renders in the shared Admin layout and must never break every Admin page. */
 export async function getPendingTeamSubmissionCount(): Promise<number> {
   const supabase = await createClient();
   const { count, error } = await supabase
     .from("team_profiles")
     .select("profile_id", { count: "exact", head: true })
     .not("pending_submitted_at", "is", null);
-  if (error) throw error;
+  if (error) {
+    console.error("getPendingTeamSubmissionCount failed:", error.message);
+    return 0;
+  }
   return count ?? 0;
 }
