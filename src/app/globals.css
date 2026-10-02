@@ -10,7 +10,10 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
-  --font-brand: var(--font-quicksand);
+  --font-brand: var(--font-big-shoulders);
+  --color-warm: var(--warm);
+  --color-warm-foreground: var(--warm-foreground);
+  --color-mint: var(--mint);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -28,6 +31,7 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-warning: var(--warning);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -65,9 +69,22 @@
   --accent: #eef4e4;
   --accent-foreground: #3d621f;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
+  --warning: #b45309;
+  --warm: #c2571f;
+  --warm-foreground: #fff8f3;
+  --mint: #e3efd7;
+  --border: oklch(0.87 0 0);
+  --input: oklch(0.87 0 0);
   --ring: #588a2c;
+  --glass-panel-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.07), inset 0 1px 0 0 rgba(255, 255, 255, 0.7),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+  --glass-overlay-shadow:
+    0 20px 45px rgba(0, 0, 0, 0.12), inset 0 1px 0 0 rgba(255, 255, 255, 0.8),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+  --glass-sidebar-shadow:
+    0 20px 45px -15px rgba(0, 0, 0, 0.18), inset 0 1px 0 0 rgba(255, 255, 255, 0.8),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.05);
   --chart-1: #588a2c;
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -87,7 +104,7 @@
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
+  --card: oklch(0.175 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
@@ -100,9 +117,21 @@
   --accent: #253a17;
   --accent-foreground: #aad980;
   --destructive: oklch(0.704 0.191 22.216);
+  --warning: #fbbf24;
+  --warm: #ff9a66;
+  --warm-foreground: #341206;
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: #86c24a;
+  --glass-panel-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.28), inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --glass-overlay-shadow:
+    0 24px 50px rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --glass-sidebar-shadow:
+    0 25px 60px -15px rgba(0, 0, 0, 0.55), inset 0 1px 0 0 rgba(255, 255, 255, 0.16),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
   --chart-1: #86c24a;
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -118,14 +147,223 @@
   --sidebar-ring: #86c24a;
 }
 
+/* Soft on-brand green ambient wash behind the marketing site so the light
+   background doesn't read as flat white -- echoes the portal's ambient glow
+   but tuned much lighter and green-only, matching 180DC's own site. */
+.marketing-light {
+  position: relative;
+  isolation: isolate;
+}
+.marketing-light::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(42rem 34rem at 8% 0%, color-mix(in oklch, var(--primary) 20%, transparent), transparent 62%),
+    radial-gradient(38rem 32rem at 100% 0%, color-mix(in oklch, var(--primary) 14%, transparent), transparent 60%),
+    radial-gradient(44rem 38rem at 50% 100%, color-mix(in oklch, var(--primary) 16%, transparent), transparent 65%);
+}
+
+/* Public marketing site is light-mode only, regardless of the app-wide theme
+   toggle (which stays dark-by-default for the ops portal). Only needs to
+   exist under .dark since :root is already light. */
+.dark .marketing-light {
+  color-scheme: light;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: #588a2c;
+  --primary-foreground: #ffffff;
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: #eef4e4;
+  --accent-foreground: #3d621f;
+  --destructive: oklch(0.577 0.245 27.325);
+  --warning: #b45309;
+  --warm: #c2571f;
+  --warm-foreground: #fff8f3;
+  --mint: #e3efd7;
+  --border: oklch(0.87 0 0);
+  --input: oklch(0.87 0 0);
+  --ring: #588a2c;
+  --glass-panel-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.07), inset 0 1px 0 0 rgba(255, 255, 255, 0.7),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+  --glass-overlay-shadow:
+    0 20px 45px rgba(0, 0, 0, 0.12), inset 0 1px 0 0 rgba(255, 255, 255, 0.8),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+  --glass-sidebar-shadow:
+    0 20px 45px -15px rgba(0, 0, 0, 0.18), inset 0 1px 0 0 rgba(255, 255, 255, 0.8),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply relative bg-background text-foreground;
+    isolation: isolate;
+  }
+  /* Vivid, fixed ambient light the glass panels refract -- two hues, close and
+     large enough to stay clearly visible through blurred translucent surfaces. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(50rem 36rem at 8% -6%, color-mix(in oklch, var(--primary) 45%, transparent), transparent 65%),
+      radial-gradient(42rem 36rem at 104% 4%, color-mix(in oklch, oklch(0.65 0.16 230) 30%, transparent), transparent 62%),
+      radial-gradient(46rem 40rem at 45% 112%, color-mix(in oklch, var(--primary) 30%, transparent), transparent 65%),
+      radial-gradient(26rem 26rem at 75% 45%, color-mix(in oklch, oklch(0.7 0.14 200) 20%, transparent), transparent 60%);
   }
   html {
     @apply font-sans;
+  }
+}
+
+@layer components {
+  /* Inline/resting glass surfaces -- cards, sections. Enough fill + a clearly
+     visible ring that the panel still reads as a distinct surface, not just
+     background, while the blur keeps it glass rather than flat. */
+  .glass-panel {
+    @apply bg-card/65 ring-1 ring-foreground/20 backdrop-blur-2xl backdrop-saturate-150;
+    box-shadow: var(--glass-panel-shadow);
+  }
+  /* Elevated glass surfaces -- popovers, menus, dialogs, sheets. */
+  .glass-overlay {
+    @apply bg-popover/50 ring-1 ring-foreground/14 backdrop-blur-3xl backdrop-saturate-150;
+    box-shadow: var(--glass-overlay-shadow);
+  }
+  /* Floating iOS-style sidebar panel -- heavier blur/saturation and a bright
+     top specular edge so it reads as a distinct pane of glass over the page. */
+  .glass-sidebar {
+    @apply bg-sidebar/40 ring-1 ring-foreground/15 backdrop-blur-3xl backdrop-saturate-200;
+    box-shadow: var(--glass-sidebar-shadow);
+  }
+  /* The hover preview floats over arbitrary page content (and the resting
+     strip's icons), so it needs to be near-opaque or text behind it bleeds
+     through and the nav becomes hard to read. */
+  .glass-sidebar-floating {
+    @apply bg-sidebar/95;
+  }
+  /* Marked placeholder for real photography -- swap for an <Image> once real
+     member/client photos exist; the dashed border keeps it unmistakably a
+     stand-in rather than finished art. */
+  .photo-placeholder {
+    @apply relative flex items-center justify-center overflow-hidden border-2 border-dashed border-primary/40 bg-background text-primary;
+  }
+  /* Pale mint rounded panel -- the signature 180DC-brand card treatment used
+     for hero/intro sections across the marketing site. */
+  .mint-panel {
+    @apply bg-mint;
+  }
+  /* Big Shoulders ships as one variable family spanning "Text" through
+     "Display" cuts via the opsz axis; without pinning it, headings render at
+     the default (small, text-oriented) optical size instead of the tall,
+     condensed "Display" look the brand font is chosen for. */
+  .font-brand {
+    font-variation-settings: "opsz" 72;
+    letter-spacing: -0.01em;
+  }
+  /* Continuously scrolling logo strip -- the track renders its children
+     several times (see LogoMarquee's REPEAT) and slides by exactly one
+     copy-width (--marquee-distance) so the loop is seamless. If the track
+     only had two copies, a row whose content is narrower than the viewport
+     would show a blank gap right before it loops -- more copies means
+     always more than a full viewport of content queued up behind the
+     visible one. Per-row duration is set inline by LogoMarquee; this is
+     just the fallback. Sits still for reduced motion, where the wrapper
+     becomes horizontally scrollable instead. */
+  .animate-marquee {
+    animation: marquee 110s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-marquee {
+      animation: none;
+    }
+  }
+  /* Loading curtain: the globe rolls in from off-screen once and parks at
+     center (rotation genuinely tied to horizontal motion -- correct here,
+     since it's depicting something rolling along the ground rather than
+     turning in 3D). The roll (1.1s) + wordmark fade (ending at 1.2s) is the
+     curtain's full "finished" duration -- kept in lockstep with
+     CURTAIN_ANIMATION_MS in nav-loading.tsx, which now always holds the
+     curtain up for the whole animation rather than hiding early. */
+  .loading-curtain-ball {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation: curtain-roll-in 1.1s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  }
+  .loading-curtain-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in oklch, var(--primary) 35%, transparent) 0%, transparent 70%);
+    opacity: 0;
+    animation: curtain-settle-glow 1.8s ease-in-out 1.1s infinite;
+  }
+  .loading-curtain-wordmark {
+    opacity: 0;
+    animation: curtain-fade-in 0.25s ease-out 0.95s forwards;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .loading-curtain-ball {
+      animation: none;
+    }
+    .loading-curtain-glow {
+      animation: none;
+    }
+    .loading-curtain-wordmark {
+      animation: none;
+      opacity: 1;
+    }
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(var(--marquee-distance, -50%));
+  }
+}
+
+@keyframes curtain-roll-in {
+  0% {
+    transform: translate(calc(-50vw - 50%), -50%) rotate(0deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(1080deg);
+  }
+}
+
+@keyframes curtain-settle-glow {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes curtain-fade-in {
+  to {
+    opacity: 1;
   }
 }

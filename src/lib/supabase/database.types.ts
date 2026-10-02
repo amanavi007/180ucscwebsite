@@ -38,6 +38,10 @@ export type MeetingNoteType = "client_call" | "officer_meeting" | "team_checkin"
 
 export type AttendanceMark = "excused" | "unexcused" | "tardy";
 
+export type MembershipTeamRole = "pm" | "sc" | "member";
+
+export type LeadCandidateRole = "pm" | "sc";
+
 export type WikiSection = "consultant" | "pm";
 
 export interface Database {
@@ -70,6 +74,12 @@ export interface Database {
           email: string;
           role: UserRole;
           must_reset_password: boolean;
+          onboarding_completed_at: string | null;
+          archived_at: string | null;
+          departure_reason: "graduated" | "left" | null;
+          current_title: string | null;
+          current_company: string | null;
+          linkedin_url: string | null;
           created_at: string;
         };
         Insert: {
@@ -78,6 +88,12 @@ export interface Database {
           email: string;
           role?: UserRole;
           must_reset_password?: boolean;
+          onboarding_completed_at?: string | null;
+          archived_at?: string | null;
+          departure_reason?: "graduated" | "left" | null;
+          current_title?: string | null;
+          current_company?: string | null;
+          linkedin_url?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
@@ -88,6 +104,7 @@ export interface Database {
           id: string;
           quarter_id: string;
           client_name: string;
+          client_id: string | null;
           status: ProjectStatus;
           project_manager_id: string | null;
           senior_consultant_id: string | null;
@@ -104,6 +121,7 @@ export interface Database {
           id?: string;
           quarter_id: string;
           client_name: string;
+          client_id?: string | null;
           status?: ProjectStatus;
           project_manager_id?: string | null;
           senior_consultant_id?: string | null;
@@ -119,17 +137,43 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["projects"]["Insert"]>;
         Relationships: [];
       };
+      clients: {
+        Row: {
+          id: string;
+          name: string;
+          contact_name: string | null;
+          contact_email: string | null;
+          notes: string | null;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          contact_name?: string | null;
+          contact_email?: string | null;
+          notes?: string | null;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["clients"]["Insert"]>;
+        Relationships: [];
+      };
       memberships: {
         Row: {
           id: string;
           project_id: string;
           user_id: string;
+          team_role: MembershipTeamRole;
           created_at: string;
         };
         Insert: {
           id?: string;
           project_id: string;
           user_id: string;
+          team_role?: MembershipTeamRole;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["memberships"]["Insert"]>;
@@ -233,6 +277,7 @@ export interface Database {
           title: string;
           slug: string;
           body: string;
+          order_index: number;
           created_by: string | null;
           updated_by: string | null;
           created_at: string;
@@ -245,6 +290,7 @@ export interface Database {
           title: string;
           slug: string;
           body?: string;
+          order_index?: number;
           created_by?: string | null;
           updated_by?: string | null;
           created_at?: string;
@@ -259,6 +305,390 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["org_settings"]["Insert"]>;
         Relationships: [];
       };
+      quick_links: {
+        Row: {
+          id: string;
+          title: string;
+          url: string;
+          description: string | null;
+          category: string | null;
+          sort_order: number;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          url: string;
+          description?: string | null;
+          category?: string | null;
+          sort_order?: number;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["quick_links"]["Insert"]>;
+        Relationships: [];
+      };
+      room_hotspots: {
+        Row: {
+          id: string;
+          name: string;
+          top: number;
+          left: number;
+          width: number;
+          height: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          top: number;
+          left: number;
+          width: number;
+          height: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["room_hotspots"]["Insert"]>;
+        Relationships: [];
+      };
+      lead_candidates: {
+        Row: {
+          id: string;
+          quarter_id: string;
+          user_id: string;
+          candidate_role: LeadCandidateRole;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          quarter_id: string;
+          user_id: string;
+          candidate_role: LeadCandidateRole;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["lead_candidates"]["Insert"]>;
+        Relationships: [];
+      };
+      audit_log: {
+        Row: {
+          id: string;
+          actor_id: string | null;
+          action: string;
+          target_label: string | null;
+          detail: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          actor_id?: string | null;
+          action: string;
+          target_label?: string | null;
+          detail?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["audit_log"]["Insert"]>;
+        Relationships: [];
+      };
+      meeting_dates: {
+        Row: {
+          id: string;
+          quarter_id: string;
+          date: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          quarter_id: string;
+          date: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["meeting_dates"]["Insert"]>;
+        Relationships: [];
+      };
+      org_events: {
+        Row: {
+          id: string;
+          title: string;
+          date: string;
+          time: string | null;
+          location: string | null;
+          description: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          date: string;
+          time?: string | null;
+          location?: string | null;
+          description?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["org_events"]["Insert"]>;
+        Relationships: [];
+      };
+      project_events: {
+        Row: {
+          id: string;
+          project_id: string;
+          consultant_id: string | null;
+          title: string;
+          date: string;
+          time: string | null;
+          location: string | null;
+          description: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          consultant_id?: string | null;
+          title: string;
+          date: string;
+          time?: string | null;
+          location?: string | null;
+          description?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["project_events"]["Insert"]>;
+        Relationships: [];
+      };
+      notification_reads: {
+        Row: {
+          user_id: string;
+          last_read_at: string;
+        };
+        Insert: {
+          user_id: string;
+          last_read_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["notification_reads"]["Insert"]>;
+        Relationships: [];
+      };
+      exec_todos: {
+        Row: {
+          id: string;
+          title: string;
+          due_date: string | null;
+          assigned_to: string[];
+          status: "open" | "done";
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          due_date?: string | null;
+          assigned_to?: string[];
+          status?: "open" | "done";
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["exec_todos"]["Insert"]>;
+        Relationships: [];
+      };
+      room_bookings: {
+        Row: {
+          id: string;
+          project_id: string;
+          date: string;
+          room_name: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          date: string;
+          room_name: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["room_bookings"]["Insert"]>;
+        Relationships: [];
+      };
+      team_plans: {
+        Row: {
+          id: string;
+          quarter_id: string;
+          name: string;
+          is_finalized: boolean;
+          finalized_at: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          quarter_id: string;
+          name: string;
+          is_finalized?: boolean;
+          finalized_at?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["team_plans"]["Insert"]>;
+        Relationships: [];
+      };
+      team_plan_teams: {
+        Row: {
+          id: string;
+          plan_id: string;
+          client_name: string;
+          logo_url: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          plan_id: string;
+          client_name: string;
+          logo_url?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["team_plan_teams"]["Insert"]>;
+        Relationships: [];
+      };
+      team_profiles: {
+        Row: {
+          profile_id: string;
+          bio: string | null;
+          linkedin_url: string | null;
+          major: string | null;
+          photo_path: string | null;
+          listed: boolean;
+          pending_bio: string | null;
+          pending_linkedin_url: string | null;
+          pending_major: string | null;
+          pending_photo_path: string | null;
+          pending_submitted_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          profile_id: string;
+          bio?: string | null;
+          linkedin_url?: string | null;
+          major?: string | null;
+          photo_path?: string | null;
+          listed?: boolean;
+          pending_bio?: string | null;
+          pending_linkedin_url?: string | null;
+          pending_major?: string | null;
+          pending_photo_path?: string | null;
+          pending_submitted_at?: string | null;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["team_profiles"]["Insert"]>;
+        Relationships: [];
+      };
+      team_plan_placements: {
+        Row: {
+          id: string;
+          plan_id: string;
+          plan_team_id: string;
+          user_id: string;
+          team_role: MembershipTeamRole;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          plan_id: string;
+          plan_team_id: string;
+          user_id: string;
+          team_role?: MembershipTeamRole;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["team_plan_placements"]["Insert"]>;
+        Relationships: [];
+      };
+      coffee_chat_availability: {
+        Row: {
+          id: string;
+          exec_id: string;
+          date: string;
+          start_time: string;
+          end_time: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          exec_id: string;
+          date: string;
+          start_time: string;
+          end_time: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["coffee_chat_availability"]["Insert"]>;
+        Relationships: [];
+      };
+      coffee_chat_slots: {
+        Row: {
+          id: string;
+          date: string;
+          start_time: string;
+          end_time: string;
+          location: string;
+          exec_id_1: string;
+          exec_id_2: string | null;
+          published: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          date: string;
+          start_time: string;
+          end_time: string;
+          location?: string;
+          exec_id_1: string;
+          exec_id_2?: string | null;
+          published?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["coffee_chat_slots"]["Insert"]>;
+        Relationships: [];
+      };
+      coffee_chat_bookings: {
+        Row: {
+          id: string;
+          slot_id: string;
+          applicant_name: string;
+          applicant_email: string;
+          status: string;
+          manage_token: string;
+          location: string;
+          created_at: string;
+          cancelled_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          slot_id: string;
+          applicant_name: string;
+          applicant_email: string;
+          status?: string;
+          manage_token: string;
+          location?: string;
+          created_at?: string;
+          cancelled_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["coffee_chat_bookings"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: {
       directory_view: {
@@ -269,10 +699,36 @@ export interface Database {
           project_id: string | null;
           client_name: string | null;
           quarter_id: string | null;
+          email: string;
+        };
+        Relationships: [];
+      };
+      alumni_view: {
+        Row: {
+          user_id: string;
+          name: string;
+          role: UserRole;
+          email: string;
+          archived_at: string;
+          current_title: string | null;
+          current_company: string | null;
+          linkedin_url: string | null;
+          project_id: string | null;
+          client_name: string | null;
+          quarter_name: string | null;
         };
         Relationships: [];
       };
     };
-    Functions: Record<string, never>;
+    Functions: {
+      apply_team_plan: {
+        Args: { p_plan_id: string };
+        Returns: unknown;
+      };
+      member_has_history: {
+        Args: { target: string };
+        Returns: boolean;
+      };
+    };
   };
 }

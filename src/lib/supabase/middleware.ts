@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "./database.types";
 
-const PUBLIC_PATHS = ["/login"];
+const PORTAL_PREFIX = "/portal";
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -26,38 +26,35 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims() verifies the JWT locally against a cached JWKS (this project uses
+  // asymmetric signing keys) instead of round-tripping to the Auth server on every
+  // request like getUser() does -- ~300ms vs ~2ms once the JWKS is cached.
+  const { data } = await supabase.auth.getClaims();
+  const userId = data?.claims.sub;
 
   const path = request.nextUrl.pathname;
-  const isPublicPath = PUBLIC_PATHS.includes(path);
+  const isPortalPath = path === PORTAL_PREFIX || path.startsWith(`${PORTAL_PREFIX}/`);
+  const isLoginPath = path === "/login";
 
-  if (!user && !isPublicPath) {
+  // Only /portal (the member operations tool) requires auth -- everything
+  // else (marketing site, login) is public by default.
+  if (!userId && isPortalPath) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  if (user && isPublicPath) {
+  if (userId && isLoginPath) {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    url.pathname = PORTAL_PREFIX;
     return NextResponse.redirect(url);
   }
 
-  if (user && path !== "/force-password-reset") {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("must_reset_password")
-      .eq("id", user.id)
-      .single();
-
-    if (profile?.must_reset_password) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/force-password-reset";
-      return NextResponse.redirect(url);
-    }
-  }
+  // The must_reset_password gate lives in `(app)/layout.tsx` instead of here:
+  // proxy is meant for fast, JWT-only checks (Next.js docs: "not intended for
+  // slow data fetching"), and the layout already loads the full profile row
+  // via `getCurrentProfile()`, so checking it there is free -- doing it here
+  // too would add a second DB round trip to every single portal navigation.
 
   return response;
 }

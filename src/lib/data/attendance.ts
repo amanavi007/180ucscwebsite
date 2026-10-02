@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { computeAttendanceRate, type AttendanceRateResult } from "@/lib/attendance";
+import { getMeetingDatesForQuarter } from "@/lib/data/meeting-dates";
 import type { AttendanceMark } from "@/lib/supabase/database.types";
 
 /** Distinct session dates logged org-wide for a quarter -- the shared rate denominator. */
@@ -99,19 +100,27 @@ export async function getQuarterAttendanceRates(
   quarterId: string,
   rows: { user_id: string; project_id: string | null }[],
 ): Promise<Record<string, AttendanceRateResult>> {
-  const totalSessionDates = await getQuarterSessionDates(quarterId);
-  const teamDatesCache = new Map<string, string[]>();
-  const rates: Record<string, AttendanceRateResult> = {};
+  const uniqueProjectIds = [
+    ...new Set(rows.map((r) => r.project_id).filter((id): id is string => !!id)),
+  ];
 
+  // Every member's session dates + marks are independent lookups -- fire them all
+  // concurrently instead of one round trip per row (this was previously an N+1).
+  const [totalSessionDates, teamDatesEntries, marksEntries] = await Promise.all([
+    getQuarterSessionDates(quarterId),
+    Promise.all(uniqueProjectIds.map(async (id) => [id, await getProjectSessionDates(id)] as const)),
+    Promise.all(
+      rows.map(async (r) => [r.user_id, await getUserMarksInQuarter(r.user_id, quarterId)] as const),
+    ),
+  ]);
+
+  const teamDatesByProject = new Map(teamDatesEntries);
+  const marksByUser = new Map(marksEntries);
+
+  const rates: Record<string, AttendanceRateResult> = {};
   for (const row of rows) {
-    let teamSessionDates: string[] = [];
-    if (row.project_id) {
-      if (!teamDatesCache.has(row.project_id)) {
-        teamDatesCache.set(row.project_id, await getProjectSessionDates(row.project_id));
-      }
-      teamSessionDates = teamDatesCache.get(row.project_id)!;
-    }
-    const marks = await getUserMarksInQuarter(row.user_id, quarterId);
+    const teamSessionDates = row.project_id ? (teamDatesByProject.get(row.project_id) ?? []) : [];
+    const marks = marksByUser.get(row.user_id) ?? [];
     rates[row.user_id] = computeAttendanceRate({ totalSessionDates, teamSessionDates, marks });
   }
 
@@ -119,6 +128,7 @@ export async function getQuarterAttendanceRates(
 }
 
 export interface MyAttendanceSummary extends AttendanceRateResult {
+  projectId: string | null;
   projectName: string | null;
   marks: { date: string; mark: AttendanceMark }[];
 }
@@ -150,7 +160,7 @@ export async function getMyAttendanceSummary(
 
   const result = computeAttendanceRate({ totalSessionDates, teamSessionDates, marks });
 
-  return { ...result, projectName: myProject?.client_name ?? null, marks };
+  return { ...result, projectId: myProject?.id ?? null, projectName: myProject?.client_name ?? null, marks };
 }
 
 /** This member's excused/unexcused/tardy marks across all their sessions in a quarter. */
@@ -169,4 +179,60 @@ export async function getUserMarksInQuarter(
   return (
     data as unknown as { mark: AttendanceMark; session: { date: string } }[]
   ).map((m) => ({ date: m.session.date, mark: m.mark }));
+}
+
+export interface TeamAttendanceStatus {
+  projectId: string;
+  clientName: string;
+  loggedToday: boolean;
+  /** This quarter's meeting days so far (up to and including today) that this team never logged. */
+  missingDates: string[];
+}
+
+/**
+ * Per-team check-in status for this quarter's configured meeting days
+ * (Admin > Meeting Days) that have happened so far -- exec-facing oversight
+ * so a team forgetting attendance doesn't go unnoticed.
+ */
+export async function getTeamAttendanceStatus(
+  quarterId: string,
+  today: string,
+): Promise<TeamAttendanceStatus[]> {
+  const supabase = await createClient();
+  const { data: projects, error } = await supabase
+    .from("projects")
+    .select("id, client_name")
+    .eq("quarter_id", quarterId)
+    .order("client_name", { ascending: true });
+  if (error) throw error;
+  if (!projects || projects.length === 0) return [];
+
+  const allMeetingDates = await getMeetingDatesForQuarter(quarterId);
+  const expectedDates = allMeetingDates.filter((d) => d <= today);
+
+  const { data: sessions, error: sessionsError } = await supabase
+    .from("attendance_sessions")
+    .select("project_id, date")
+    .in(
+      "project_id",
+      projects.map((p) => p.id),
+    );
+  if (sessionsError) throw sessionsError;
+
+  const datesByProject = new Map<string, Set<string>>();
+  for (const s of sessions ?? []) {
+    const set = datesByProject.get(s.project_id) ?? new Set<string>();
+    set.add(s.date);
+    datesByProject.set(s.project_id, set);
+  }
+
+  return projects.map((p) => {
+    const logged = datesByProject.get(p.id) ?? new Set<string>();
+    return {
+      projectId: p.id,
+      clientName: p.client_name,
+      loggedToday: logged.has(today),
+      missingDates: expectedDates.filter((d) => !logged.has(d)),
+    };
+  });
 }

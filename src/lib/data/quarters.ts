@@ -1,5 +1,8 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/supabase/database.types";
+
+type Quarter = Database["public"]["Tables"]["quarters"]["Row"];
 
 export async function getQuarters() {
   const supabase = await createClient();
@@ -12,7 +15,36 @@ export async function getQuarters() {
   return data;
 }
 
-export async function getActiveQuarter() {
+/**
+ * Project count per quarter -- only the admin Quarters panel needs this (to warn
+ * before a cascading delete), so it's kept out of getQuarters() to avoid an extra
+ * table scan for the other pages that just need quarter rows.
+ */
+export async function getQuarterProjectCounts(): Promise<Record<string, number>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("projects").select("quarter_id");
+  if (error) throw error;
+
+  const counts: Record<string, number> = {};
+  for (const row of data) {
+    counts[row.quarter_id] = (counts[row.quarter_id] ?? 0) + 1;
+  }
+  return counts;
+}
+
+// The active quarter changes at most a handful of times a term, and its RLS
+// policy (`to authenticated using (true)`) makes it identical for every
+// signed-in user -- there's no per-user variation to lose by sharing one
+// cached value across requests. This turns a ~300ms round trip that ran on
+// nearly every portal page load into a cache hit for most of them.
+const ACTIVE_QUARTER_TTL_MS = 30_000;
+let activeQuarterCache: { value: Quarter | null; expiresAt: number } | null = null;
+
+export async function getActiveQuarter(): Promise<Quarter | null> {
+  if (activeQuarterCache && Date.now() < activeQuarterCache.expiresAt) {
+    return activeQuarterCache.value;
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("quarters")
@@ -21,5 +53,12 @@ export async function getActiveQuarter() {
     .maybeSingle();
 
   if (error) throw error;
+
+  activeQuarterCache = { value: data, expiresAt: Date.now() + ACTIVE_QUARTER_TTL_MS };
   return data;
+}
+
+/** Call after any mutation that could change which quarter is active. */
+export function invalidateActiveQuarterCache() {
+  activeQuarterCache = null;
 }

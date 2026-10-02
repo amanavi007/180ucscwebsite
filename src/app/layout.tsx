@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Quicksand } from "next/font/google";
+import { Geist, Geist_Mono, Big_Shoulders } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { NavLoadingProvider, InitialLoadCurtain } from "@/components/nav-loading";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,18 +16,34 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const quicksand = Quicksand({
-  variable: "--font-quicksand",
+const bigShoulders = Big_Shoulders({
+  variable: "--font-big-shoulders",
   subsets: ["latin"],
-  weight: ["600", "700"],
+  axes: ["opsz"],
 });
 
+const SITE_TITLE = "180 Degrees Consulting at UC Santa Cruz";
+const SITE_DESCRIPTION =
+  "180 Degrees Consulting at UC Santa Cruz is a student-run pro-bono consultancy connecting nonprofits and social enterprises with strategy, research, and growth support.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://180ucsc.vercel.app"),
   title: {
-    default: "UCSC 180",
-    template: "%s · UCSC 180",
+    default: SITE_TITLE,
+    template: "%s · 180 Degrees Consulting at UCSC",
   },
-  description: "180 Degrees Consulting UCSC chapter operations portal",
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: SITE_TITLE }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: ["/og-image.png"],
+  },
 };
 
 export default function RootLayout({
@@ -37,12 +54,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${quicksand.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${bigShoulders.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <ThemeProvider>
-          {children}
+          <NavLoadingProvider>{children}</NavLoadingProvider>
+          <InitialLoadCurtain />
           <Toaster />
         </ThemeProvider>
         <SpeedInsights />

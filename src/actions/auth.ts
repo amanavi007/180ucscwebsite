@@ -17,7 +17,7 @@ export async function login(email: string, password: string): Promise<ActionResu
     return { error: "Incorrect email or password." };
   }
 
-  redirect("/");
+  redirect("/portal");
 }
 
 export async function logout(): Promise<void> {
@@ -51,6 +51,6 @@ export async function changePassword(newPassword: string): Promise<ActionResult>
     return { error: profileError.message };
   }
 
-  revalidatePath("/", "layout");
-  redirect("/");
+  revalidatePath("/portal", "layout");
+  redirect("/portal");
 }

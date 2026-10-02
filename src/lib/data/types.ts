@@ -1,4 +1,4 @@
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database, MembershipTeamRole } from "@/lib/supabase/database.types";
 
 type Project = Database["public"]["Tables"]["projects"]["Row"];
 type Task = Database["public"]["Tables"]["tasks"]["Row"];
@@ -10,6 +10,10 @@ export type NamedProfile = Pick<Profile, "id" | "name"> | null;
 export interface ProjectWithRelations extends Project {
   project_manager: NamedProfile;
   senior_consultant: NamedProfile;
+  /** user_ids with a 'pm'/'sc' membership on this project -- covers additional, non-primary leads too. */
+  lead_ids?: string[];
+  /** Primary PM plus any additional 'pm' memberships, primary first. */
+  project_managers?: { id: string; name: string }[];
 }
 
 export interface ProjectWithQuarter extends ProjectWithRelations {
@@ -27,6 +31,7 @@ export interface TaskWithProject extends TaskWithAssignee {
 export interface MembershipWithProfile {
   id: string;
   user_id: string;
+  team_role: MembershipTeamRole;
   profile: Pick<Profile, "id" | "name" | "role" | "email"> | null;
 }
 

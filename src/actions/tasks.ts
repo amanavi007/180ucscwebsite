@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { isExec } from "@/lib/auth/roles";
+import { isProjectLead } from "@/lib/auth/project-access";
 import { statusForStageStep } from "@/lib/project-labels";
 import type {
   Database,
@@ -19,19 +20,7 @@ export interface ActionResult {
   error?: string;
 }
 
-async function canLeadProject(projectId: string, profileId: string, execRole: boolean) {
-  if (execRole) return true;
-  const supabase = await createClient();
-  const { data: project } = await supabase
-    .from("projects")
-    .select("project_manager_id, senior_consultant_id")
-    .eq("id", projectId)
-    .single();
-  return (
-    !!project &&
-    (project.project_manager_id === profileId || project.senior_consultant_id === profileId)
-  );
-}
+const canLeadProject = isProjectLead;
 
 export async function createTask(input: {
   projectId: string;
@@ -63,8 +52,8 @@ export async function createTask(input: {
 
   if (error) return { error: error.message };
 
-  revalidatePath(`/projects/${input.projectId}`);
-  revalidatePath("/tasks");
+  revalidatePath(`/portal/projects/${input.projectId}`);
+  revalidatePath("/portal/tasks");
   return {};
 }
 
@@ -91,8 +80,8 @@ export async function updateTask(
   const { error } = await supabase.from("tasks").update(patch).eq("id", taskId);
   if (error) return { error: error.message };
 
-  revalidatePath(`/projects/${projectId}`);
-  revalidatePath("/tasks");
+  revalidatePath(`/portal/projects/${projectId}`);
+  revalidatePath("/portal/tasks");
   return {};
 }
 
@@ -129,8 +118,8 @@ export async function updateTaskDueDate(
         .eq("is_default_task", true);
 
       if (error) return { error: error.message };
-      revalidatePath(`/projects/${projectId}`);
-      revalidatePath("/tasks");
+      revalidatePath(`/portal/projects/${projectId}`);
+      revalidatePath("/portal/tasks");
       return {};
     }
   }
@@ -138,8 +127,8 @@ export async function updateTaskDueDate(
   const { error } = await supabase.from("tasks").update({ due_date: dueDate }).eq("id", taskId);
   if (error) return { error: error.message };
 
-  revalidatePath(`/projects/${projectId}`);
-  revalidatePath("/tasks");
+  revalidatePath(`/portal/projects/${projectId}`);
+  revalidatePath("/portal/tasks");
   return {};
 }
 
@@ -157,8 +146,8 @@ export async function updateTaskStageStep(
 
   if (error) return { error: error.message };
 
-  revalidatePath(`/projects/${projectId}`);
-  revalidatePath("/tasks");
+  revalidatePath(`/portal/projects/${projectId}`);
+  revalidatePath("/portal/tasks");
   return {};
 }
 
@@ -172,8 +161,82 @@ export async function resetTaskStage(taskId: string, projectId: string): Promise
 
   if (error) return { error: error.message };
 
-  revalidatePath(`/projects/${projectId}`);
-  revalidatePath("/tasks");
+  revalidatePath(`/portal/projects/${projectId}`);
+  revalidatePath("/portal/tasks");
+  return {};
+}
+
+/**
+ * Bulk version of `deleteTask` -- one batched `.in("id", ...)` delete instead
+ * of a loop, so reassigning/deleting a handful of tasks at once (e.g. moving
+ * everything off someone who just left) doesn't fire N separate DB writes.
+ * Gating mirrors `deleteTask`: leads may delete anything, everyone else only
+ * their own non-default tasks.
+ */
+export async function bulkDeleteTasks(taskIds: string[], projectId: string): Promise<ActionResult> {
+  if (taskIds.length === 0) return {};
+
+  const profile = await getCurrentProfile();
+  const exec = isExec(profile.role);
+  const leads = await canLeadProject(projectId, profile.id, exec);
+
+  const supabase = await createClient();
+
+  if (!leads) {
+    const { data: rows } = await supabase
+      .from("tasks")
+      .select("id, assignee_id, is_default_task")
+      .in("id", taskIds);
+
+    const allDeletable =
+      !!rows &&
+      rows.length === taskIds.length &&
+      rows.every((t) => t.assignee_id === profile.id && !t.is_default_task);
+
+    if (!allDeletable) {
+      return { error: "You can only delete your own tasks." };
+    }
+  }
+
+  const { error } = await supabase.from("tasks").delete().in("id", taskIds);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/portal/projects/${projectId}`);
+  revalidatePath("/portal/tasks");
+  return {};
+}
+
+/**
+ * Bulk reassign, one batched update instead of a loop. Reassigning others'
+ * tasks is a lead-only action (mirrors `canReassign` in TaskRow, which only
+ * ever renders the picker for `canManage` users), so this is gated to leads
+ * rather than mirroring `updateTask` (which has no gating of its own since
+ * the UI never exposes reassignment of others' tasks to base members).
+ */
+export async function bulkReassignTasks(
+  taskIds: string[],
+  newAssigneeId: string,
+  projectId: string,
+): Promise<ActionResult> {
+  if (taskIds.length === 0) return {};
+
+  const profile = await getCurrentProfile();
+  const exec = isExec(profile.role);
+  const leads = await canLeadProject(projectId, profile.id, exec);
+
+  if (!leads) {
+    return { error: "Only PMs/SCs can reassign tasks." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tasks")
+    .update({ assignee_id: newAssigneeId })
+    .in("id", taskIds);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/portal/projects/${projectId}`);
+  revalidatePath("/portal/tasks");
   return {};
 }
 
@@ -202,7 +265,7 @@ export async function deleteTask(taskId: string, projectId: string): Promise<Act
   const { error } = await supabase.from("tasks").delete().eq("id", taskId);
   if (error) return { error: error.message };
 
-  revalidatePath(`/projects/${projectId}`);
-  revalidatePath("/tasks");
+  revalidatePath(`/portal/projects/${projectId}`);
+  revalidatePath("/portal/tasks");
   return {};
 }
