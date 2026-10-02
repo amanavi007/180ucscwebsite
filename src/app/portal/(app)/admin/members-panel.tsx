@@ -15,6 +15,7 @@ import {
 import {
   bulkCreateMembers,
   resetMemberPassword,
+  updateMemberEmail,
   updateMemberRole,
   archiveMember,
   restoreMember,
@@ -359,8 +360,20 @@ function MemberRow({ member, defaultPassword }: { member: Member; defaultPasswor
   const [isPending, startTransition] = useTransition();
   const [resetOpen, setResetOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
   const [roleChangeOpen, setRoleChangeOpen] = useState(false);
   const [pendingRole, setPendingRole] = useState<UserRole | null>(null);
+
+  function onChangeEmail(email: string) {
+    startTransition(async () => {
+      const result = await updateMemberEmail(member.id, email);
+      if (result?.error) toast.error(result.error);
+      else {
+        setEmailOpen(false);
+        toast.success(`Email updated for ${member.name}.`);
+      }
+    });
+  }
 
   function onRoleSelect(value: string | null) {
     if (!value || value === member.role) return;
@@ -458,12 +471,22 @@ function MemberRow({ member, defaultPassword }: { member: Member; defaultPasswor
             }
           />
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setEmailOpen(true)}>Edit email</DropdownMenuItem>
             <DropdownMenuItem onClick={() => setResetOpen(true)}>Reset password</DropdownMenuItem>
             <DropdownMenuItem variant="destructive" onClick={() => setArchiveOpen(true)}>
               Archive
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <EditEmailDialog
+          open={emailOpen}
+          onOpenChange={setEmailOpen}
+          memberName={member.name}
+          currentEmail={member.email}
+          isPending={isPending}
+          onSubmit={onChangeEmail}
+        />
 
         <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
           <AlertDialogContent>
@@ -493,6 +516,65 @@ function MemberRow({ member, defaultPassword }: { member: Member; defaultPasswor
         />
       </TableCell>
     </TableRow>
+  );
+}
+
+function EditEmailDialog({
+  open,
+  onOpenChange,
+  memberName,
+  currentEmail,
+  isPending,
+  onSubmit,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  memberName: string;
+  currentEmail: string;
+  isPending: boolean;
+  onSubmit: (email: string) => void;
+}) {
+  const [email, setEmail] = useState(currentEmail);
+
+  function handleOpenChange(next: boolean) {
+    if (next) setEmail(currentEmail);
+    onOpenChange(next);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit {memberName}&apos;s email</DialogTitle>
+          <DialogDescription>
+            This changes the address they sign in with. Their account, project roster spots, and
+            PM/SC roles stay exactly as they are. Don&apos;t delete and recreate an account to fix
+            an email &mdash; that wipes their project memberships.
+          </DialogDescription>
+        </DialogHeader>
+        <Field>
+          <FieldLabel htmlFor="edit-email">Email</FieldLabel>
+          <Input
+            id="edit-email"
+            type="email"
+            placeholder="name@180dc.org"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </Field>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isPending}>
+            Cancel
+          </Button>
+          <Button
+            disabled={isPending || !email.trim() || email.trim().toLowerCase() === currentEmail.toLowerCase()}
+            onClick={() => onSubmit(email)}
+          >
+            Save email
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

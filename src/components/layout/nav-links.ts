@@ -17,6 +17,7 @@ import {
   Link2,
   BarChart3,
   CalendarHeart,
+  Camera,
 } from "lucide-react";
 
 export interface NavLink {
@@ -123,6 +124,14 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     icon: BarChart3,
     execOnly: true,
     keywords: "attendance tasks deadlines rollup rankings",
+    group: "admin-people",
+  },
+  {
+    href: "/portal/admin/team-page",
+    label: "Team Page",
+    icon: Camera,
+    execOnly: true,
+    keywords: "public photos bios approve pending members",
     group: "admin-people",
   },
   { href: "/portal/admin/quarters", label: "Quarters", icon: CalendarRange, execOnly: true, group: "admin-quarter-setup" },
