@@ -39,8 +39,8 @@ export function TeamMemberCard({
         <PhotoPlaceholder label={`Photo: ${name}`} src={photoUrl} className="aspect-[4/5] w-full rounded-none" />
         <div
           className={cn(
-            "absolute inset-0 flex flex-col justify-end gap-2 bg-gradient-to-t from-primary/90 via-primary/40 to-transparent p-4 opacity-0 transition-opacity duration-300 group-focus-within:opacity-100 [@media(hover:hover)]:group-hover:opacity-100",
-            open && "opacity-100",
+            "pointer-events-none absolute inset-0 flex flex-col justify-end gap-2 bg-gradient-to-t from-primary/90 via-primary/40 to-transparent p-4 opacity-0 transition-opacity duration-300 group-focus-within:pointer-events-auto group-focus-within:opacity-100 [@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-hover:opacity-100",
+            open && "pointer-events-auto opacity-100",
           )}
         >
           {bio && <p className="text-sm leading-snug text-pretty text-white">{bio}</p>}

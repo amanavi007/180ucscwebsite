@@ -7,7 +7,7 @@ import { Check, X } from "lucide-react";
 import { approveAll, approveSubmission, rejectSubmission, setListed } from "@/actions/team-profiles";
 import type { TeamPageAdminRow } from "@/lib/data/team-page";
 import { roleLabel } from "@/lib/auth/roles";
-import { formInitialValues, hasPending, teamPhotoUrl } from "@/lib/team-page";
+import { approvalWouldRelist, formInitialValues, hasPending, teamPhotoUrl } from "@/lib/team-page";
 import { TeamProfileForm } from "@/components/team/team-profile-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -80,7 +80,25 @@ export function TeamPagePanel({ rows }: { rows: TeamPageAdminRow[] }) {
             <CardDescription>Approve to publish on the public Our Team page.</CardDescription>
           </div>
           {pendingRows.length > 1 && (
-            <Button size="sm" disabled={isPending} onClick={() => run(approveAll, "Approved all.")}>
+            <Button
+              size="sm"
+              disabled={isPending}
+              onClick={() =>
+                startTransition(async () => {
+                  const result = await approveAll();
+                  if (result.error) {
+                    toast.error(result.error);
+                    return;
+                  }
+                  toast.success(
+                    result.skipped
+                      ? `Approved. ${result.skipped} hidden member(s) skipped -- approve them individually.`
+                      : "Approved all.",
+                  );
+                  router.refresh();
+                })
+              }
+            >
               <Check /> Approve all
             </Button>
           )}
@@ -105,6 +123,11 @@ export function TeamPagePanel({ rows }: { rows: TeamPageAdminRow[] }) {
                     </Button>
                   </div>
                 </div>
+                {approvalWouldRelist(row) && (
+                  <p className="text-sm text-amber-700 dark:text-amber-400">
+                    Currently hidden from the page. Approving will show them again (Approve all skips them).
+                  </p>
+                )}
                 <div className="grid gap-6 sm:grid-cols-2">
                   {hasLive && (
                     <ProfileSnapshot

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BIO_MAX,
+  approvalWouldRelist,
   approvePending,
   formInitialValues,
   groupTeamMembers,
@@ -276,5 +277,16 @@ describe("teamPhotoUrl", () => {
     expect(teamPhotoUrl("https://abc.supabase.co/", "u/p.jpg")).toBe(
       "https://abc.supabase.co/storage/v1/object/public/team-photos/u/p.jpg",
     );
+  });
+});
+
+describe("approvalWouldRelist", () => {
+  it("is true only for a pending submission on a hidden member who already has a live photo", () => {
+    const pending = { pending_photo_path: "u/p.jpg", pending_submitted_at: NOW };
+    expect(approvalWouldRelist(row({ photo_path: "u/l.jpg", listed: false, ...pending }))).toBe(true);
+    expect(approvalWouldRelist(row({ photo_path: "u/l.jpg", listed: true, ...pending }))).toBe(false);
+    expect(approvalWouldRelist(row({ photo_path: null, listed: false, ...pending }))).toBe(false); // first-ever submission
+    expect(approvalWouldRelist(row({ photo_path: "u/l.jpg", listed: false }))).toBe(false); // nothing pending
+    expect(approvalWouldRelist(null)).toBe(false);
   });
 });

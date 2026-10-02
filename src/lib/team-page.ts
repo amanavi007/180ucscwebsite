@@ -161,6 +161,11 @@ export function approvePending(before: TeamProfileRow | null): Transition | null
   });
 }
 
+/** True when approving would put a currently-hidden member (has a live photo, not listed) back on the page. */
+export function approvalWouldRelist(row: TeamProfileRow | null): boolean {
+  return !!row && hasPending(row) && !row.listed && row.photo_path !== null;
+}
+
 export function rejectPending(before: TeamProfileRow | null): Transition | null {
   if (!before || !hasPending(before)) return null;
   return transition(before, { ...before, ...EMPTY_PENDING });
