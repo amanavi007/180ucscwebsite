@@ -6,6 +6,7 @@ import { getCurrentProfile } from "@/lib/data/profile";
 import { isExec } from "@/lib/auth/roles";
 import { isProjectLead } from "@/lib/auth/project-access";
 import { logAudit } from "@/lib/audit";
+import { planLeadChange } from "@/lib/project-leads";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, ProjectHealth, ProjectStatus } from "@/lib/supabase/database.types";
 
@@ -34,30 +35,38 @@ async function requireProjectEditAccess(projectId: string) {
 
 /**
  * The single-select PM/SC dropdowns (project-header.tsx, new-project-dialog.tsx)
- * express "this one person is the PM" -- demote whoever currently holds the role,
- * then hand it to the new pick. `team_role` memberships are the source of truth;
- * `projects.project_manager_id`/`senior_consultant_id` are kept in sync by a DB
- * trigger. Adding a *second* PM/SC without demoting the first is only exposed via
- * the Team Builder's `assignToTeam`.
+ * only show the project's *primary* lead, so they can only swap that one person.
+ * If the pick is unchanged this does nothing -- otherwise every unrelated header
+ * save would demote a project's additional PMs/SCs, who the dropdown can't show.
+ * `team_role` memberships are the source of truth; `projects.project_manager_id`/
+ * `senior_consultant_id` are kept in sync by a DB trigger. Adding a *second*
+ * PM/SC is only exposed via the Team Builder's `assignToTeam`.
  */
 async function reconcileLead(
   supabase: SupabaseClient<Database>,
   projectId: string,
   role: "pm" | "sc",
+  currentPrimaryId: string | null | undefined,
   userId: string | null | undefined,
 ) {
-  await supabase
-    .from("memberships")
-    .update({ team_role: "member" })
-    .eq("project_id", projectId)
-    .eq("team_role", role);
+  const change = planLeadChange(currentPrimaryId, userId);
+  if (!change) return;
 
-  if (!userId) return;
+  if (change.demote) {
+    await supabase
+      .from("memberships")
+      .update({ team_role: "member" })
+      .eq("project_id", projectId)
+      .eq("user_id", change.demote)
+      .eq("team_role", role);
+  }
+
+  if (!change.promote) return;
 
   await supabase
     .from("memberships")
     .upsert(
-      { project_id: projectId, user_id: userId, team_role: role },
+      { project_id: projectId, user_id: change.promote, team_role: role },
       { onConflict: "project_id,user_id" },
     );
 }
@@ -131,6 +140,12 @@ export async function updateProject(
   if (denied.error) return { error: denied.error };
 
   const supabase = await createClient();
+  const { data: current } = await supabase
+    .from("projects")
+    .select("project_manager_id, senior_consultant_id")
+    .eq("id", id)
+    .single();
+
   const { error } = await supabase
     .from("projects")
     .update({
@@ -145,8 +160,8 @@ export async function updateProject(
 
   if (error) return { error: error.message };
 
-  await reconcileLead(supabase, id, "pm", input.projectManagerId);
-  await reconcileLead(supabase, id, "sc", input.seniorConsultantId);
+  await reconcileLead(supabase, id, "pm", current?.project_manager_id, input.projectManagerId);
+  await reconcileLead(supabase, id, "sc", current?.senior_consultant_id, input.seniorConsultantId);
 
   revalidatePath("/portal/projects");
   revalidatePath(`/portal/projects/${id}`);

@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { statusLabel } from "@/lib/project-labels";
 import { parseLocalDate } from "@/lib/date";
 import type { ProjectWithRelations } from "@/lib/data/types";
+import { pmNames } from "@/lib/project-leads";
 
 type SortKey = "client_name" | "status" | "health" | "pm" | "sc" | "deadline";
 type SortDir = "asc" | "desc";
@@ -26,7 +27,7 @@ const SORT_ACCESSORS: Record<SortKey, (p: ProjectWithRelations) => string> = {
   client_name: (p) => p.client_name ?? "",
   status: (p) => p.status ?? "",
   health: (p) => p.health ?? "",
-  pm: (p) => p.project_manager?.name ?? "",
+  pm: (p) => pmNames(p).join(", "),
   sc: (p) => p.senior_consultant?.name ?? "",
   deadline: (p) => p.deadline ?? "",
 };
@@ -133,7 +134,7 @@ export function ProjectTable({ projects }: { projects: ProjectWithRelations[] })
               <HealthBadge health={project.health} />
             </TableCell>
             <TableCell className="text-muted-foreground">
-              {project.project_manager?.name ?? "—"}
+              {pmNames(project).join(", ") || "—"}
             </TableCell>
             <TableCell className="text-muted-foreground">
               {project.senior_consultant?.name ?? "—"}

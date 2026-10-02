@@ -31,8 +31,11 @@ function canEditProject(
   currentUserId: string,
   isExec: boolean,
 ): boolean {
+  // lead_ids covers every 'pm'/'sc' membership; project_manager_id/senior_consultant_id
+  // only hold the oldest one of each, so an additional PM would be locked out.
   return (
     isExec ||
+    (project.lead_ids ?? []).includes(currentUserId) ||
     project.project_manager_id === currentUserId ||
     project.senior_consultant_id === currentUserId
   );

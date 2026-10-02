@@ -120,6 +120,53 @@ export async function resetMemberPassword(userId: string): Promise<ActionResult>
   return {};
 }
 
+/**
+ * Fixes a wrong sign-in email in place. Never delete + recreate the account for this:
+ * that cascades away the member's project memberships (and their PM/SC lead role).
+ * Only the auth user and the profile row change; the user id, roster spots and history stay.
+ */
+export async function updateMemberEmail(userId: string, newEmail: string): Promise<ActionResult> {
+  const denied = await requireExec();
+  if (denied) return denied;
+
+  const email = newEmail.trim().toLowerCase();
+  if (!EMAIL_DOMAIN.test(email)) return { error: "Must be a @180dc.org address." };
+
+  const admin = createAdminClient();
+  const { data: before, error: loadError } = await admin
+    .from("profiles")
+    .select("name, email")
+    .eq("id", userId)
+    .single();
+  if (loadError || !before) return { error: "Member not found." };
+  if (before.email.toLowerCase() === email) return { error: "That's already their email." };
+
+  const { data: taken } = await admin.from("profiles").select("id").ilike("email", email).maybeSingle();
+  if (taken) return { error: "Another member already uses that email." };
+
+  // email_confirm skips the confirmation email, same as bulk account creation.
+  const { error: authError } = await admin.auth.admin.updateUserById(userId, {
+    email,
+    email_confirm: true,
+  });
+  if (authError) return { error: authError.message };
+
+  // No DB trigger mirrors auth.users email changes into profiles, so do it here.
+  const { error: profileError } = await admin.from("profiles").update({ email }).eq("id", userId);
+  if (profileError) {
+    // Put the sign-in email back so auth and profile never disagree.
+    await admin.auth.admin.updateUserById(userId, { email: before.email, email_confirm: true });
+    return { error: profileError.message };
+  }
+
+  const actor = await getCurrentProfile();
+  await logAudit(actor.id, "member.email_changed", before.name, `${before.email} -> ${email}`);
+
+  revalidatePath("/portal/admin");
+  revalidatePath("/portal/directory");
+  return {};
+}
+
 export async function updateMemberRole(userId: string, role: UserRole): Promise<ActionResult> {
   const denied = await requireExec();
   if (denied) return denied;
