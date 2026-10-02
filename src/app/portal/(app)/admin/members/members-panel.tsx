@@ -3,13 +3,6 @@
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Table,
   TableBody,
   TableCell,
@@ -17,20 +10,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ROLE_LABELS, roleLabel } from "@/lib/auth/roles";
 import { ListSearch } from "@/components/list-search";
 import { useFilteredList } from "@/lib/use-filtered-list";
 import { cn } from "@/lib/utils";
 import type { UserRole } from "@/lib/supabase/database.types";
+import type { MembersAction } from "@/lib/admin-nav";
 import { ROLE_OPTIONS, type Member, type ArchivedMember } from "./member-types";
-import { BulkAddCard } from "./bulk-add-card";
+import { BulkAddDialog } from "./bulk-add-dialog";
 import { MemberRow } from "./member-row";
 import { ArchivedSection } from "./archived-members";
 
@@ -74,14 +62,21 @@ function SortableMemberHead({
   );
 }
 
+const ROLE_CHIPS: { value: UserRole | "all"; label: string }[] = [
+  { value: "all", label: "All" },
+  ...ROLE_OPTIONS.map((r) => ({ value: r, label: ROLE_LABELS[r] })),
+];
+
 export function MembersPanel({
   members,
   archivedMembers,
   defaultPassword,
+  action,
 }: {
   members: Member[];
   archivedMembers: ArchivedMember[];
   defaultPassword: string;
+  action: MembersAction | null;
 }) {
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
   const [sortKey, setSortKey] = useState<MemberSortKey | null>(null);
@@ -116,38 +111,52 @@ export function MembersPanel({
 
   return (
     <div className="space-y-6">
-      <BulkAddCard defaultPassword={defaultPassword} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Members</h1>
+          <p className="text-sm text-muted-foreground">
+            {members.length} active · {archivedMembers.length} archived
+          </p>
+        </div>
+        <BulkAddDialog defaultPassword={defaultPassword} defaultOpen={action === "bulk-add"} />
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Members</CardTitle>
-          <CardDescription>
-            {members.length} member{members.length === 1 ? "" : "s"} total.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <Tabs defaultValue="active">
+        <TabsList>
+          <TabsTrigger value="active">Active {members.length}</TabsTrigger>
+          <TabsTrigger value="archived">Archived {archivedMembers.length}</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="active" className="space-y-4 pt-4">
           <div className="flex flex-wrap items-center gap-3">
             <ListSearch
               value={query}
               onChange={setQuery}
               placeholder="Search name or email..."
               className="w-64"
+              autoFocus={action === "find"}
             />
-            <Select value={roleFilter} onValueChange={(v) => v && setRoleFilter(v as UserRole | "all")}>
-              <SelectTrigger size="sm" className="w-48">
-                <SelectValue>
-                  {(value: UserRole | "all") => (value === "all" ? "All roles" : roleLabel(value))}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All roles</SelectItem>
-                {ROLE_OPTIONS.map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {ROLE_LABELS[r]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by role">
+              {ROLE_CHIPS.map((chip) => {
+                const active = roleFilter === chip.value;
+                return (
+                  <button
+                    key={chip.value}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setRoleFilter(chip.value)}
+                    className={cn(
+                      "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                      active
+                        ? "border-primary/40 bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {chip.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <Table>
             <TableHeader>
@@ -171,10 +180,12 @@ export function MembersPanel({
               ))}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+        </TabsContent>
 
-      <ArchivedSection archivedMembers={archivedMembers} />
+        <TabsContent value="archived" className="pt-4">
+          <ArchivedSection archivedMembers={archivedMembers} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

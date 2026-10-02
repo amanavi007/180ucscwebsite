@@ -9,11 +9,13 @@ export function ListSearch({
   onChange,
   placeholder = "Search...",
   className,
+  autoFocus = false,
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
+  autoFocus?: boolean;
 }) {
   return (
     <div className={cn("relative", className)}>
@@ -23,6 +25,7 @@ export function ListSearch({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        autoFocus={autoFocus}
         className="pl-8"
       />
     </div>

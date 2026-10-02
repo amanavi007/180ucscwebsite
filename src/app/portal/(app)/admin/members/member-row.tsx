@@ -55,8 +55,7 @@ export function MemberRow({ member, defaultPassword }: { member: Member; default
   const [resetOpen, setResetOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
-  const [roleChangeOpen, setRoleChangeOpen] = useState(false);
-  const [pendingRole, setPendingRole] = useState<UserRole | null>(null);
+  const [roleOpen, setRoleOpen] = useState(false);
 
   function onChangeEmail(email: string) {
     startTransition(async () => {
@@ -69,19 +68,14 @@ export function MemberRow({ member, defaultPassword }: { member: Member; default
     });
   }
 
-  function onRoleSelect(value: string | null) {
-    if (!value || value === member.role) return;
-    setPendingRole(value as UserRole);
-    setRoleChangeOpen(true);
-  }
-
-  function onConfirmRoleChange() {
-    if (!pendingRole) return;
+  function onChangeRole(role: UserRole) {
     startTransition(async () => {
-      const result = await updateMemberRole(member.id, pendingRole);
-      setRoleChangeOpen(false);
+      const result = await updateMemberRole(member.id, role);
       if (result?.error) toast.error(result.error);
-      else toast.success("Role updated.");
+      else {
+        setRoleOpen(false);
+        toast.success("Role updated.");
+      }
     });
   }
 
@@ -109,47 +103,7 @@ export function MemberRow({ member, defaultPassword }: { member: Member; default
     <TableRow>
       <TableCell className="font-medium">{member.name}</TableCell>
       <TableCell className="text-muted-foreground">{member.email}</TableCell>
-      <TableCell>
-        <Select value={member.role} onValueChange={onRoleSelect} disabled={isPending}>
-          <SelectTrigger size="sm" className="w-56">
-            <SelectValue>{(value: UserRole) => roleLabel(value)}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {ROLE_OPTIONS.map((r) => (
-              <SelectItem key={r} value={r}>
-                {ROLE_LABELS[r]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <AlertDialog
-          open={roleChangeOpen}
-          onOpenChange={(open) => {
-            setRoleChangeOpen(open);
-            if (!open) setPendingRole(null);
-          }}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Change {member.name}&apos;s role?</AlertDialogTitle>
-              <AlertDialogDescription>
-                {member.name} will be set to{" "}
-                <span className="font-medium">
-                  {pendingRole ? ROLE_LABELS[pendingRole] : ""}
-                </span>
-                .
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={onConfirmRoleChange} disabled={isPending}>
-                Change role
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </TableCell>
+      <TableCell>{roleLabel(member.role)}</TableCell>
       <TableCell className="text-right">
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -165,6 +119,7 @@ export function MemberRow({ member, defaultPassword }: { member: Member; default
             }
           />
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setRoleOpen(true)}>Change role…</DropdownMenuItem>
             <DropdownMenuItem onClick={() => setEmailOpen(true)}>Edit email</DropdownMenuItem>
             <DropdownMenuItem onClick={() => setResetOpen(true)}>Reset password</DropdownMenuItem>
             <DropdownMenuItem variant="destructive" onClick={() => setArchiveOpen(true)}>
@@ -172,6 +127,15 @@ export function MemberRow({ member, defaultPassword }: { member: Member; default
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <ChangeRoleDialog
+          open={roleOpen}
+          onOpenChange={setRoleOpen}
+          memberName={member.name}
+          currentRole={member.role}
+          isPending={isPending}
+          onSubmit={onChangeRole}
+        />
 
         <EditEmailDialog
           open={emailOpen}
@@ -210,6 +174,60 @@ export function MemberRow({ member, defaultPassword }: { member: Member; default
         />
       </TableCell>
     </TableRow>
+  );
+}
+
+function ChangeRoleDialog({
+  open,
+  onOpenChange,
+  memberName,
+  currentRole,
+  isPending,
+  onSubmit,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  memberName: string;
+  currentRole: UserRole;
+  isPending: boolean;
+  onSubmit: (role: UserRole) => void;
+}) {
+  const [role, setRole] = useState<UserRole>(currentRole);
+
+  function handleOpenChange(next: boolean) {
+    if (next) setRole(currentRole);
+    onOpenChange(next);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Change {memberName}&apos;s role</DialogTitle>
+          <DialogDescription>Currently {roleLabel(currentRole)}.</DialogDescription>
+        </DialogHeader>
+        <Select value={role} onValueChange={(v) => v && setRole(v as UserRole)}>
+          <SelectTrigger size="sm" className="w-full">
+            <SelectValue>{(value: UserRole) => roleLabel(value)}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {ROLE_OPTIONS.map((r) => (
+              <SelectItem key={r} value={r}>
+                {ROLE_LABELS[r]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isPending}>
+            Cancel
+          </Button>
+          <Button disabled={isPending || role === currentRole} onClick={() => onSubmit(role)}>
+            Change role
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

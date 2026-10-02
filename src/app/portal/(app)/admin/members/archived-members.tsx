@@ -2,9 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import { restoreMember, deleteMemberPermanently } from "@/actions/members";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -34,55 +33,35 @@ import { roleLabel } from "@/lib/auth/roles";
 import type { ArchivedMember } from "./member-types";
 
 export function ArchivedSection({ archivedMembers }: { archivedMembers: ArchivedMember[] }) {
-  const [open, setOpen] = useState(false);
-
   return (
-    <Card>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-3 px-6 py-4 text-left"
-      >
-        <div>
-          <p className="text-sm font-semibold">Archived ({archivedMembers.length})</p>
-          <p className="text-sm text-muted-foreground">
-            Former members -- restore them or delete permanently.
-          </p>
-        </div>
-        {open ? (
-          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-        )}
-      </button>
-      {open && (
-        <CardContent className="pt-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Archived</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {archivedMembers.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
-                    No archived members.
-                  </TableCell>
-                </TableRow>
-              )}
-              {archivedMembers.map((m) => (
-                <ArchivedMemberRow key={m.id} member={m} />
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      )}
-    </Card>
+    <div>
+      <p className="mb-3 text-sm text-muted-foreground">
+        Former members -- restore them or delete permanently.
+      </p>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead>Archived</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {archivedMembers.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={5} className="text-center text-muted-foreground">
+                No archived members.
+              </TableCell>
+            </TableRow>
+          )}
+          {archivedMembers.map((m) => (
+            <ArchivedMemberRow key={m.id} member={m} />
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 
