@@ -54,8 +54,8 @@ export function TeamProfileForm({
   }
 
   return (
-    <form onSubmit={submit} noValidate>
-      <FieldGroup>
+    <form onSubmit={submit} noValidate className="@container">
+      <div className="grid gap-6 @2xl:grid-cols-[16rem_1fr] @2xl:gap-10">
         <Field>
           <FieldLabel>Photo</FieldLabel>
           <PhotoField
@@ -65,22 +65,24 @@ export function TeamProfileForm({
             disabled={isPending}
           />
         </Field>
-        <Field>
-          <FieldLabel htmlFor="tp-major">Major</FieldLabel>
-          <Input id="tp-major" value={values.major} maxLength={80} placeholder="Business Economics" onChange={(e) => setValues((v) => ({ ...v, major: e.target.value }))} />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="tp-linkedin">LinkedIn</FieldLabel>
-          <Input id="tp-linkedin" value={values.linkedinUrl} placeholder="linkedin.com/in/your-name" onChange={(e) => setValues((v) => ({ ...v, linkedinUrl: e.target.value }))} />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="tp-bio">Bio (optional)</FieldLabel>
-          <Textarea id="tp-bio" value={values.bio} rows={2} placeholder="One line about you." onChange={(e) => setValues((v) => ({ ...v, bio: e.target.value }))} />
-          <FieldDescription className={bioLength > BIO_MAX ? "text-destructive" : undefined}>
-            {bioLength}/{BIO_MAX}. Shows when someone hovers or taps your photo.
-          </FieldDescription>
-        </Field>
-      </FieldGroup>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor="tp-major">Major</FieldLabel>
+            <Input id="tp-major" value={values.major} maxLength={80} placeholder="Business Economics" onChange={(e) => setValues((v) => ({ ...v, major: e.target.value }))} />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="tp-linkedin">LinkedIn</FieldLabel>
+            <Input id="tp-linkedin" value={values.linkedinUrl} placeholder="linkedin.com/in/your-name" onChange={(e) => setValues((v) => ({ ...v, linkedinUrl: e.target.value }))} />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="tp-bio">Bio (optional)</FieldLabel>
+            <Textarea id="tp-bio" value={values.bio} rows={3} placeholder="One line about you." onChange={(e) => setValues((v) => ({ ...v, bio: e.target.value }))} />
+            <FieldDescription className={bioLength > BIO_MAX ? "text-destructive" : undefined}>
+              {bioLength}/{BIO_MAX}. Shows when someone hovers or taps your photo.
+            </FieldDescription>
+          </Field>
+        </FieldGroup>
+      </div>
       <div className="mt-4 flex justify-end">
         <Button type="submit" disabled={isPending}>
           {isPending ? "Saving..." : mode === "member" ? "Submit for review" : "Save"}

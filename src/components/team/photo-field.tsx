@@ -90,8 +90,8 @@ export function PhotoField({
   }
 
   return (
-    <div className="flex items-center gap-4">
-      <div className="relative aspect-[4/5] w-28 shrink-0 overflow-hidden rounded-xl bg-muted">
+    <div className="flex items-center gap-4 @2xl:flex-col @2xl:items-start">
+      <div className="relative aspect-[4/5] w-28 shrink-0 overflow-hidden rounded-xl bg-muted @2xl:w-full @2xl:max-w-64">
         {value ? (
           // eslint-disable-next-line @next/next/no-img-element -- preview of a just-uploaded file; no optimizer needed
           <img src={teamPhotoUrl(process.env.NEXT_PUBLIC_SUPABASE_URL!, value)} alt="Your photo" className="size-full object-cover" />
