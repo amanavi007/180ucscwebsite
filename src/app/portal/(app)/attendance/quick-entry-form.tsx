@@ -51,6 +51,8 @@ export function QuickEntryForm({
   const [marks, setMarks] = useState<Record<string, AttendanceMark>>(
     marksFromSession(initialSession),
   );
+  // Whether a session is already logged for the selected date (past dates with one are locked).
+  const [hasSession, setHasSession] = useState(!!initialSession);
   const [isPending, startTransition] = useTransition();
   const [isLoadingDate, setIsLoadingDate] = useState(false);
   const router = useRouter();
@@ -61,6 +63,7 @@ export function QuickEntryForm({
     startTransition(async () => {
       try {
         const session = newDate === today ? initialSession : await fetchSessionForDate(projectId, newDate);
+        setHasSession(!!session);
         setMarks(marksFromSession(session));
       } catch {
         toast.error("Couldn't load attendance for that date. Try again.");
@@ -111,9 +114,11 @@ export function QuickEntryForm({
   }
 
   const presentCount = roster.length - Object.keys(marks).length;
-  // Viewing a date other than today is read-only -- editing a past record should
-  // be a deliberate action, not a side effect of browsing history via the date picker.
-  const readOnly = date !== today;
+  // Past dates that already have a record stay read-only -- editing one should be a
+  // deliberate action, not a side effect of browsing history via the date picker.
+  // Past dates with no record yet can be backfilled; future dates can't be logged.
+  const isBackfill = date < today && !hasSession;
+  const readOnly = date > today || (date < today && hasSession);
 
   return (
     <Card>
@@ -129,7 +134,12 @@ export function QuickEntryForm({
             onChange={(e) => onDateChange(e.target.value)}
             className="w-44"
           />
-          {readOnly && <Badge variant="outline">Read-only -- past date</Badge>}
+          {readOnly && (
+            <Badge variant="outline">
+              {date > today ? "Read-only -- future date" : "Read-only -- already logged"}
+            </Badge>
+          )}
+          {isBackfill && <Badge variant="outline">Backfill -- not logged yet</Badge>}
         </div>
 
         <p className="text-sm text-muted-foreground">

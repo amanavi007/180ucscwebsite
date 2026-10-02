@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getSessionForDate, type SessionWithMarks } from "@/lib/data/attendance";
+import { getOrgTodayDateString } from "@/lib/date";
 import { isExec } from "@/lib/auth/roles";
 import { isProjectLead } from "@/lib/auth/project-access";
 import type { AttendanceMark } from "@/lib/supabase/database.types";
@@ -31,6 +32,15 @@ export async function submitAttendance(input: {
 }): Promise<ActionResult> {
   const denied = await requireAttendanceAccess(input.projectId);
   if (denied.error) return { error: denied.error };
+
+  const today = getOrgTodayDateString();
+  if (input.date > today) return { error: "Can't log attendance for a future date." };
+  if (input.date < today) {
+    const existing = await getSessionForDate(input.projectId, input.date);
+    if (existing) {
+      return { error: "Attendance for that past date is already logged and can't be edited." };
+    }
+  }
 
   const supabase = await createClient();
 
