@@ -3,6 +3,8 @@ import {
   BIO_MAX,
   approvalWouldRelist,
   approvePending,
+  recropLive,
+  validateCropRect,
   formInitialValues,
   groupTeamMembers,
   isOwnedPhotoPath,
@@ -290,5 +292,58 @@ describe("approvalWouldRelist", () => {
     expect(approvalWouldRelist(row({ photo_path: null, listed: false, ...pending }))).toBe(false); // first-ever submission
     expect(approvalWouldRelist(row({ photo_path: "u/l.jpg", listed: false }))).toBe(false); // nothing pending
     expect(approvalWouldRelist(null)).toBe(false);
+  });
+});
+
+describe("validateCropRect", () => {
+  it("accepts the full 800x1000 image and a smaller 4:5 sub-rectangle", () => {
+    expect(validateCropRect({ x: 0, y: 0, width: 800, height: 1000 }, 800, 1000)).toEqual({
+      ok: true,
+      rect: { x: 0, y: 0, width: 800, height: 1000 },
+    });
+    expect(validateCropRect({ x: 100, y: 50, width: 400, height: 500 }, 800, 1000).ok).toBe(true);
+  });
+  it("rounds fractional values and clamps a 1px overflow", () => {
+    expect(validateCropRect({ x: 100.4, y: 49.6, width: 400.2, height: 499.8 }, 800, 1000)).toEqual({
+      ok: true,
+      rect: { x: 100, y: 50, width: 400, height: 500 },
+    });
+    expect(validateCropRect({ x: 400, y: 500, width: 401, height: 501 }, 800, 1000).ok).toBe(true);
+  });
+  it("rejects crops that are too small, the wrong shape, far outside the image, or not numbers", () => {
+    expect(validateCropRect({ x: 0, y: 0, width: 120, height: 150 }, 800, 1000).ok).toBe(false);
+    expect(validateCropRect({ x: 0, y: 0, width: 800, height: 600 }, 800, 1000).ok).toBe(false);
+    expect(validateCropRect({ x: 700, y: 900, width: 400, height: 500 }, 800, 1000).ok).toBe(false);
+    expect(validateCropRect({ x: -50, y: 0, width: 400, height: 500 }, 800, 1000).ok).toBe(false);
+    expect(validateCropRect({ x: Number.NaN, y: 0, width: 400, height: 500 }, 800, 1000).ok).toBe(false);
+    expect(validateCropRect({ x: 0, y: 0, width: Infinity, height: 500 }, 800, 1000).ok).toBe(false);
+  });
+});
+
+describe("recropLive", () => {
+  it("swaps the live photo and deletes the old one", () => {
+    const before = row({ photo_path: "u/old.jpg", listed: true });
+    const t = recropLive(before, "u/new.jpg")!;
+    expect(t.row.photo_path).toBe("u/new.jpg");
+    expect(t.row.listed).toBe(true);
+    expect(t.deletePaths).toEqual(["u/old.jpg"]);
+  });
+  it("repoints a bio-only pending submission so approving it can't revert the crop or reference a deleted file", () => {
+    const before = row({ photo_path: "u/old.jpg", listed: true, pending_photo_path: "u/old.jpg", pending_bio: "x", pending_submitted_at: NOW });
+    const t = recropLive(before, "u/new.jpg")!;
+    expect(t.row.pending_photo_path).toBe("u/new.jpg");
+    expect(t.row.pending_bio).toBe("x");
+    expect(t.row.pending_submitted_at).toBe(NOW);
+    expect(t.deletePaths).toEqual(["u/old.jpg"]);
+  });
+  it("leaves a different, still-unapproved pending photo alone", () => {
+    const before = row({ photo_path: "u/old.jpg", listed: true, pending_photo_path: "u/pend.jpg", pending_submitted_at: NOW });
+    const t = recropLive(before, "u/new.jpg")!;
+    expect(t.row.pending_photo_path).toBe("u/pend.jpg");
+    expect(t.deletePaths).toEqual(["u/old.jpg"]);
+  });
+  it("returns null when there is no live photo to re-crop", () => {
+    expect(recropLive(row(), "u/new.jpg")).toBeNull();
+    expect(recropLive(null, "u/new.jpg")).toBeNull();
   });
 });

@@ -171,6 +171,56 @@ export function rejectPending(before: TeamProfileRow | null): Transition | null 
   return transition(before, { ...before, ...EMPTY_PENDING });
 }
 
+/** Exec/member re-crop of the already-approved live photo: swaps the file, keeps everything else. */
+export function recropLive(before: TeamProfileRow | null, newPhotoPath: string): Transition | null {
+  if (!before || !before.photo_path) return null;
+  return transition(before, {
+    ...before,
+    photo_path: newPhotoPath,
+    // A bio-only pending submission points at the old live file; follow the swap so approving it
+    // can neither revert the crop nor reference a deleted object.
+    pending_photo_path: before.pending_photo_path === before.photo_path ? newPhotoPath : before.pending_photo_path,
+  });
+}
+
+export interface CropRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+export const MIN_CROP_WIDTH = 200;
+const CROP_ASPECT = 4 / 5;
+const CROP_ASPECT_TOLERANCE = 0.03;
+
+/** Validates a crop rectangle against the source image: integers, inside the image (1px rounding slack), 4:5, not tiny. */
+export function validateCropRect(
+  rect: CropRect,
+  imageWidth: number,
+  imageHeight: number,
+): { ok: true; rect: CropRect } | { ok: false; error: string } {
+  const fail = (error: string) => ({ ok: false as const, error });
+  const values = [rect.x, rect.y, rect.width, rect.height];
+  if (!values.every((n) => typeof n === "number" && Number.isFinite(n))) return fail("Invalid crop.");
+  const x = Math.round(rect.x);
+  const y = Math.round(rect.y);
+  const width = Math.round(rect.width);
+  const height = Math.round(rect.height);
+  if (x < 0 || y < 0 || width <= 0 || height <= 0) return fail("Invalid crop.");
+  if (x + width > imageWidth + 1 || y + height > imageHeight + 1) return fail("The crop is outside the photo.");
+  const clamped = {
+    x,
+    y,
+    width: Math.min(width, imageWidth - x),
+    height: Math.min(height, imageHeight - y),
+  };
+  if (clamped.width < MIN_CROP_WIDTH) return fail("That crop is too small.");
+  if (Math.abs(clamped.width / clamped.height - CROP_ASPECT) > CROP_ASPECT_TOLERANCE) {
+    return fail("The crop must keep the 4:5 shape.");
+  }
+  return { ok: true, rect: clamped };
+}
+
 /** What the edit form should start with: pending if there is one, else live, else the profile's alumni linkedin. */
 export function formInitialValues(row: TeamProfileRow | null, profileLinkedin: string | null) {
   const pending = hasPending(row);

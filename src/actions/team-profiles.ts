@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import sharp from "sharp";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { isExec } from "@/lib/auth/roles";
@@ -10,10 +11,13 @@ import {
   approvalWouldRelist,
   approvePending,
   isOwnedPhotoPath,
+  recropLive,
+  validateCropRect,
   rejectPending,
   saveLive,
   submitPending,
   validateSubmission,
+  type CropRect,
   type SubmissionInput,
   type TeamProfileRow,
   type Transition,
@@ -207,4 +211,64 @@ export async function removeMyListing(): Promise<ActionResult> {
   if (error) return { error: error.message };
   revalidateTeam();
   return {};
+}
+
+const PHOTO_WIDTH = 800;
+const PHOTO_HEIGHT = 1000;
+
+/**
+ * Re-crops the member's already-approved live photo. The browser sends only a
+ * crop rectangle; the server cuts it out of the approved file, so the result
+ * can only ever be a crop of what an exec already approved -- which is why it
+ * goes live without review (a different image would have to go through
+ * saveTeamProfile and the approval queue).
+ */
+export async function recropApprovedPhoto(
+  targetId: string,
+  area: CropRect,
+): Promise<ActionResult & { path?: string }> {
+  const caller = await getCurrentProfile();
+  if (targetId !== caller.id && !isExec(caller.role)) return { error: "You can only edit your own profile." };
+
+  const admin = createAdminClient();
+  const before = await loadRow(admin, targetId);
+  const livePath = before?.row.photo_path;
+  if (!before || !livePath) return { error: "There is no saved photo to edit yet." };
+
+  const { data: blob, error: downloadError } = await admin.storage.from(TEAM_PHOTO_BUCKET).download(livePath);
+  if (downloadError || !blob) return { error: "Couldn't load your saved photo." };
+
+  let output: Buffer;
+  try {
+    const source = Buffer.from(await blob.arrayBuffer());
+    const meta = await sharp(source).metadata();
+    if (!meta.width || !meta.height) return { error: "Couldn't read your saved photo." };
+    const check = validateCropRect(area, meta.width, meta.height);
+    if (!check.ok) return { error: check.error };
+    const { x, y, width, height } = check.rect;
+    output = await sharp(source)
+      .extract({ left: x, top: y, width, height })
+      .resize(PHOTO_WIDTH, PHOTO_HEIGHT)
+      .jpeg({ quality: 85 })
+      .toBuffer();
+  } catch (err) {
+    console.error("recropApprovedPhoto failed:", err);
+    return { error: "Couldn't process that crop. Please try again." };
+  }
+
+  const path = `${targetId}/${crypto.randomUUID()}.jpg`;
+  const { error: uploadError } = await admin.storage
+    .from(TEAM_PHOTO_BUCKET)
+    .upload(path, output, { contentType: "image/jpeg" });
+  if (uploadError) return { error: uploadError.message };
+
+  const t = recropLive(before.row, path);
+  const error = t ? await persist(admin, targetId, before, t) : "There is no saved photo to edit yet.";
+  if (error) {
+    await admin.storage.from(TEAM_PHOTO_BUCKET).remove([path]); // don't leave the unused crop behind
+    return { error };
+  }
+
+  revalidateTeam();
+  return { path };
 }
