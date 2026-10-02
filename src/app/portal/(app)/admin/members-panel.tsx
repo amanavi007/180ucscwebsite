@@ -68,7 +68,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ROLE_LABELS, roleLabel } from "@/lib/auth/roles";
+import { ROLE_LABELS, compareByRole, roleLabel } from "@/lib/auth/roles";
 import { ListSearch } from "@/components/list-search";
 import { useFilteredList } from "@/lib/use-filtered-list";
 import { cn } from "@/lib/utils";
@@ -112,9 +112,9 @@ function MaskedSecret({ value }: { value: string }) {
 type MemberSortKey = "name" | "role";
 type SortDir = "asc" | "desc";
 
-const MEMBER_SORT_ACCESSORS: Record<MemberSortKey, (m: Member) => string> = {
-  name: (m) => m.name,
-  role: (m) => roleLabel(m.role),
+const MEMBER_COMPARATORS: Record<MemberSortKey, (a: Member, b: Member) => number> = {
+  name: (a, b) => a.name.localeCompare(b.name),
+  role: compareByRole, // seniority, not alphabetical by role label
 };
 
 function SortableMemberHead({
@@ -195,14 +195,10 @@ export function MembersPanel({
   }
 
   const visibleMembers = useMemo(() => {
-    if (!sortKey) return roleFiltered;
-    const accessor = MEMBER_SORT_ACCESSORS[sortKey];
     const copy = [...roleFiltered];
-    copy.sort((a, b) => {
-      const cmp = accessor(a).localeCompare(accessor(b));
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-    return copy;
+    if (!sortKey) return copy.sort(compareByRole); // default: seniority, then name
+    const compare = MEMBER_COMPARATORS[sortKey];
+    return copy.sort((a, b) => (sortDir === "asc" ? compare(a, b) : -compare(a, b)));
   }, [roleFiltered, sortKey, sortDir]);
 
   function onCreate() {

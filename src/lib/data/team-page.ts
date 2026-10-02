@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { UserRole } from "@/lib/supabase/database.types";
+import { compareByRole } from "@/lib/auth/roles";
 import { teamPhotoUrl, type PublicTeamMember, type TeamProfileRow } from "@/lib/team-page";
 
 const ROW_COLUMNS =
@@ -78,13 +79,15 @@ export async function getTeamPageAdminRows(): Promise<TeamPageAdminRow[]> {
   if (rowsRes.error) throw rowsRes.error;
 
   const byId = new Map(rowsRes.data.map(({ profile_id, ...row }) => [profile_id, row as TeamProfileRow]));
-  return profilesRes.data.map((p) => ({
-    id: p.id,
-    name: p.name,
-    role: p.role,
-    profileLinkedin: p.linkedin_url,
-    row: byId.get(p.id) ?? null,
-  }));
+  return profilesRes.data
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      role: p.role,
+      profileLinkedin: p.linkedin_url,
+      row: byId.get(p.id) ?? null,
+    }))
+    .sort(compareByRole);
 }
 
 /** Nav badge count. Fails soft (0): it renders in the shared Admin layout and must never break every Admin page. */

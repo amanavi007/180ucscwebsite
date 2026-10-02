@@ -96,6 +96,13 @@ export default async function TeamPage() {
 
       <section className="mx-auto max-w-6xl px-6 py-16">
         <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
+          Senior Consultants
+        </h2>
+        <Roster section="senior_consultant" members={groups.senior_consultant} emptyLabel="Senior consultant" cols="lg:grid-cols-4" />
+      </section>
+
+      <section className="mx-auto max-w-6xl px-6 py-16">
+        <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
           Consultants
         </h2>
         <Roster section="consultant" members={groups.consultant} emptyLabel="Consultant" cols="lg:grid-cols-4" />
