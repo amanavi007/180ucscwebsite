@@ -18,6 +18,12 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "team_plan.unfinalized": "Unfinalized team draft",
   "team_plan.applied": "Applied team draft to live rosters",
   "meeting_dates.updated": "Updated meeting day calendar",
+  "team_page.approved": "Approved team page profile",
+  "team_page.approved_all": "Approved all pending team page profiles",
+  "team_page.rejected": "Rejected team page profile",
+  "team_page.hidden": "Hid member from team page",
+  "team_page.shown": "Showed member on team page",
+  "team_page.edited": "Edited team page profile",
 };
 
 export function auditActionLabel(action: string): string {
