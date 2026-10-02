@@ -95,8 +95,10 @@ export default async function AttendancePage({
       {needsTodayNudge && selectedProject && (
         <Alert>
           <AlertTriangle />
-          {selectedProject.client_name} hasn&apos;t logged today&apos;s attendance yet -- it&apos;s a
-          meeting day.
+          <span>
+            {selectedProject.client_name} hasn&apos;t logged today&apos;s attendance yet -- it&apos;s
+            a meeting day.
+          </span>
         </Alert>
       )}
 
