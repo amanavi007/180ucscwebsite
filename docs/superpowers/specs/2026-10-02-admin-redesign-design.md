@@ -5,6 +5,8 @@ Status: Draft, awaiting review
 
 > **Update (2026-10-02):** the Rooms admin page and all room-assignment features (admin map, dashboard/attendance banners, notifications) were removed on this branch before merge. Wherever this spec mentions Rooms, read it as gone; Quarter setup is now Quarters and Meeting Days. The `room_bookings` and `room_hotspots` tables are intentionally left in the database.
 
+> **Update (2026-10-02):** the "open coffee-chat slots with no booking" needs-attention item was dropped (it fired constantly and wasn't actionable). Needs attention now has three signals: low attendance, unfinalized team draft, pending team-page submissions.
+
 ## Problem
 
 The exec-only Admin area has 10 pages (including Team Page, added with the profile editor) and feels cluttered and confusing to navigate:

@@ -1,8 +1,6 @@
-import { addDays } from "date-fns";
 import { withQuarterParam } from "./admin-nav";
-import { parseLocalDate, toDateString } from "./date";
 
-export type AttentionKind = "attendance" | "draft" | "coffee-chats" | "team-page";
+export type AttentionKind = "attendance" | "draft" | "team-page";
 
 export interface AttentionItem {
   kind: AttentionKind;
@@ -16,7 +14,6 @@ export interface AttentionCounts {
   quarterId: string | null;
   lowAttendance: number | null;
   draftUnfinalized: boolean | null;
-  unbookedSlots: number | null;
   pendingTeamSubmissions: number | null;
 }
 
@@ -26,16 +23,6 @@ export function countBelowThreshold(rows: { attendanceRate: number | null }[], t
 
 export function hasUnfinalizedDraft(plans: { isFinalized: boolean }[]): boolean {
   return plans.length > 0 && !plans.some((p) => p.isFinalized);
-}
-
-export function countUnbookedSlotsThisWeek(
-  slots: { date: string; published: boolean; bookingStatus: "open" | "booked" }[],
-  today: string,
-): number {
-  const lastDay = toDateString(addDays(parseLocalDate(today), 6));
-  return slots.filter(
-    (s) => s.published && s.bookingStatus === "open" && s.date >= today && s.date <= lastDay,
-  ).length;
 }
 
 function plural(n: number, one: string, many: string): string {
@@ -59,14 +46,6 @@ export function buildAttentionItems(counts: AttentionCounts): AttentionItem[] {
       label: "A team draft hasn't been finalized",
       actionLabel: "Review draft",
       href: withQuarterParam("/portal/admin/team-builder", counts.quarterId),
-    });
-  }
-  if (counts.unbookedSlots && counts.unbookedSlots > 0) {
-    items.push({
-      kind: "coffee-chats",
-      label: `${plural(counts.unbookedSlots, "open coffee-chat slot has", "open coffee-chat slots have")} no booking in the next 7 days`,
-      actionLabel: "View slots",
-      href: "/portal/admin/coffee-chats?tab=schedule",
     });
   }
   if (counts.pendingTeamSubmissions && counts.pendingTeamSubmissions > 0) {
