@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ArrowUpRight, CalendarHeart, ChevronDown, FileText, MessageCircle, PartyPopper } from "lucide-react";
+import { ArrowUpRight, ChevronDown, Coffee, FileText, MessageCircle, PartyPopper } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionPanel } from "@/components/ui/accordion";
 import { PhotoPlaceholder } from "@/components/marketing/photo-placeholder";
@@ -10,6 +10,13 @@ export const metadata: Metadata = { title: "Apply Now" };
 // etc.) before launch. This is a placeholder.
 const APPLY_FORM_URL = "https://forms.gle/9pmXAsHmCFmNXKTE8";
 
+// Tilted photo-print collage in the hero. Photos only, no captions.
+const POLAROIDS = [
+  { src: "/stock/hero-team.jpg", label: "180DC UCSC team", className: "top-4 left-0 -rotate-6" },
+  { src: "/stock/apply-info-session.jpg", label: "180DC UCSC info session", className: "top-0 right-0 rotate-[5deg]" },
+  { src: "/stock/team-hero-candid.jpg", label: "180DC UCSC members candid", className: "top-44 left-16 rotate-[3deg] sm:top-48 sm:left-20" },
+];
+
 const STEPS = [
   {
     icon: FileText,
@@ -17,7 +24,7 @@ const STEPS = [
     body: "A short application covering your background and why you're interested in social-impact consulting. Open to every major, every year.",
   },
   {
-    icon: CalendarHeart,
+    icon: Coffee,
     title: "Grab a coffee chat",
     body: "A casual, in-person conversation with two of our exec members. No prep needed, just show up and chat.",
   },
@@ -31,6 +38,14 @@ const STEPS = [
     title: "Join the chapter",
     body: "New members go through onboarding and training before being placed on a client project team for the quarter.",
   },
+];
+
+// TODO: replace these with real member quotes (and attribution) before launch --
+// the quotes below are illustrative placeholders, not actual members.
+const MEMBER_QUOTES = [
+  { quote: "I wanted to apply what I learn in class to something real.", who: "Economics, 3rd year" },
+  { quote: "I had zero consulting background. The training got me there.", who: "Biology, 2nd year" },
+  { quote: "Best team I've worked on at UCSC.", who: "Computer Science, 4th year" },
 ];
 
 const FAQS = [
@@ -55,17 +70,18 @@ const FAQS = [
 export default function ApplyPage() {
   return (
     <div>
-      <section className="mx-auto max-w-6xl px-4 pt-28 sm:px-6">
-        <div className="mint-panel grid gap-10 rounded-[2.5rem] p-8 sm:p-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-16">
+      <section className="w-full overflow-hidden bg-mint pt-32 pb-16 sm:pt-36 sm:pb-20">
+        <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8">
           <div>
             <p className="text-sm font-bold tracking-wide text-primary uppercase">Apply Now</p>
-            <h1 className="font-brand mt-3 max-w-2xl text-4xl leading-[1.05] font-bold tracking-tight text-balance sm:text-5xl">
-              Join a team doing consulting that matters.
+            <h1 className="font-brand mt-3 max-w-2xl text-5xl leading-[0.98] font-extrabold text-balance sm:text-6xl lg:text-7xl">
+              Every major. Every year.{" "}
+              <span className="text-warm">Every kind of curious.</span>
             </h1>
-            <p className="mt-6 max-w-2xl text-lg text-foreground/70 text-pretty">
-              No two members come from the same background, but everyone
-              who joins is here for the same reason: to build real skills while
-              helping an organization that needs it.
+            <p className="mt-6 max-w-xl text-lg text-foreground/70 text-pretty">
+              No consulting experience needed. We train you, then put you on a
+              live client team to build real skills while helping an
+              organization that needs it.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button nativeButton={false}
@@ -82,63 +98,98 @@ export default function ApplyPage() {
               </Button>
             </div>
           </div>
-          <PhotoPlaceholder
-            label="180DC UCSC members at a chapter event"
-            src="/stock/apply-info-session.jpg"
-            className="aspect-[4/3] w-full rounded-[2rem]"
-          />
+
+          <div className="relative mx-auto h-[22rem] w-full max-w-md sm:h-[26rem] lg:max-w-none">
+            {POLAROIDS.map((p) => (
+              <div
+                key={p.src}
+                className={`absolute w-40 rounded-md bg-white p-2.5 pb-7 shadow-xl shadow-black/15 sm:w-52 ${p.className}`}
+              >
+                <PhotoPlaceholder label={p.label} src={p.src} className="aspect-square w-full rounded-sm" />
+              </div>
+            ))}
+            <span className="absolute right-0 bottom-2 -rotate-[4deg] rounded-full bg-warm px-4 py-2.5 text-sm font-bold text-warm-foreground shadow-lg">
+              Undecided? Perfect.
+            </span>
+          </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 py-16">
-        <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
+      <section className="w-full bg-cream py-20 sm:py-24">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <p className="text-sm font-bold tracking-wide text-primary uppercase">From our members</p>
+          <h2 className="font-brand mt-3 text-3xl font-bold tracking-wide uppercase sm:text-4xl">Why they joined</h2>
+          <div className="mt-10 grid gap-6 md:grid-cols-3">
+            {MEMBER_QUOTES.map((q) => (
+              <figure key={q.who} className="rounded-3xl rounded-bl-md bg-white p-6 shadow-md shadow-black/5">
+                <blockquote className="font-brand text-2xl leading-tight font-bold text-balance">
+                  &ldquo;{q.quote}&rdquo;
+                </blockquote>
+                <figcaption className="mt-4 flex items-center gap-2.5 text-sm text-muted-foreground">
+                  <span className="flex size-8 items-center justify-center rounded-full bg-mint text-xs font-bold text-deep">
+                    {q.who[0]}
+                  </span>
+                  {q.who}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-24">
+        <p className="text-sm font-bold tracking-wide text-primary uppercase">Your path in</p>
+        <h2 className="font-brand mt-3 text-3xl font-bold tracking-wide uppercase sm:text-4xl">
           How recruitment works
         </h2>
-        <div className="mt-10 grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:divide-x lg:divide-foreground/10">
+        <div className="mt-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-0 lg:divide-x lg:divide-foreground/10">
           {STEPS.map((step, i) => (
             <div key={step.title} className="lg:px-6 lg:first:pl-0 lg:last:pr-0">
               <div className="flex items-center gap-3">
-                <span className="font-brand flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-                  0{i + 1}
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <step.icon className="size-5" />
                 </span>
-                <step.icon className="size-5 text-primary" />
+                <span className="font-brand text-3xl font-extrabold text-primary/35">0{i + 1}</span>
               </div>
-              <h3 className="mt-4 font-semibold">{step.title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{step.body}</p>
+              <h3 className="font-brand mt-5 text-xl font-bold">{step.title}</h3>
+              <p className="mt-2 text-sm text-muted-foreground text-pretty">{step.body}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-16 pb-24 sm:px-6">
-        <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">FAQs</h2>
-        <Accordion className="mt-8 border-t border-foreground/10">
-          {FAQS.map((faq) => (
-            <AccordionItem key={faq.q} value={faq.q}>
-              <AccordionTrigger>
-                <span className="flex-1 font-semibold">{faq.q}</span>
-                <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-panel-open:rotate-180" />
-              </AccordionTrigger>
-              <AccordionPanel>
-                <p className="text-muted-foreground text-pretty">{faq.a}</p>
-              </AccordionPanel>
-            </AccordionItem>
-          ))}
-        </Accordion>
-
-        <div className="mint-panel mt-12 flex flex-col items-start justify-between gap-6 rounded-[2.5rem] p-10 sm:flex-row sm:items-center">
+      <section className="w-full bg-cream py-20 sm:py-24">
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.7fr_1.3fr] lg:gap-16">
           <div>
-            <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">
-              Ready to apply?
-            </h2>
-            <p className="mt-2 max-w-md text-foreground/70">
-              Applications are reviewed on a rolling basis each quarter.
-            </p>
+            <h2 className="font-brand text-3xl font-bold tracking-wide uppercase sm:text-4xl">FAQs</h2>
+            <Button nativeButton={false} size="lg" variant="outline" render={<a href="/apply/coffee-chat" />} className="mt-6 rounded-full">
+              Book a Coffee Chat
+            </Button>
           </div>
+          <Accordion className="border-t border-foreground/10">
+            {FAQS.map((faq) => (
+              <AccordionItem key={faq.q} value={faq.q}>
+                <AccordionTrigger>
+                  <span className="flex-1 font-semibold">{faq.q}</span>
+                  <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-panel-open:rotate-180" />
+                </AccordionTrigger>
+                <AccordionPanel>
+                  <p className="text-muted-foreground text-pretty">{faq.a}</p>
+                </AccordionPanel>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </div>
+      </section>
+
+      <section className="w-full bg-deep py-20 text-center text-white">
+        <div className="mx-auto max-w-2xl px-4 sm:px-6">
+          <h2 className="font-brand text-4xl font-bold tracking-wide uppercase sm:text-5xl">Ready to apply?</h2>
+          <p className="mt-3 text-white/75">Applications are reviewed on a rolling basis each quarter.</p>
           <Button nativeButton={false}
             size="lg"
             render={<a href={APPLY_FORM_URL} target="_blank" rel="noopener noreferrer" />}
-            className="shrink-0 gap-1.5 rounded-full"
+            className="mt-8 gap-1.5 rounded-full bg-[#b9dc8c] text-[#14200c] hover:bg-[#b9dc8c]/90"
           >
             Start Your Application
             <ArrowUpRight className="size-4" />
