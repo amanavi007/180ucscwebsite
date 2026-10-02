@@ -41,6 +41,20 @@ export function PhotoField({
     setArea(null);
   }
 
+  /** Validates the blob decodes, then opens the cropper on it. */
+  async function openCropper(blob: Blob) {
+    const url = URL.createObjectURL(blob);
+    try {
+      await loadImage(url); // fails fast on files the browser can't decode
+    } catch (err) {
+      URL.revokeObjectURL(url);
+      throw err;
+    }
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setSrc(url);
+  }
+
   async function handleFile(file: File) {
     if (file.size > MAX_INPUT_BYTES) {
       toast.error("That photo is over 15 MB.");
@@ -53,18 +67,24 @@ export function PhotoField({
         const { heicTo } = await import("heic-to");
         blob = await heicTo({ blob: file, type: "image/jpeg", quality: 0.9 });
       }
-      const url = URL.createObjectURL(blob);
-      try {
-        await loadImage(url); // fails fast on files the browser can't decode
-      } catch (err) {
-        URL.revokeObjectURL(url);
-        throw err;
-      }
-      setCrop({ x: 0, y: 0 });
-      setZoom(1);
-      setSrc(url);
+      await openCropper(blob);
     } catch {
       toast.error("Couldn't read this photo. Try exporting it as a JPG.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /** Re-crop the photo that's already saved. Fetched as a blob so the canvas export isn't cross-origin tainted. */
+  async function editExisting() {
+    if (!value) return;
+    setBusy("reading");
+    try {
+      const res = await fetch(teamPhotoUrl(process.env.NEXT_PUBLIC_SUPABASE_URL!, value));
+      if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
+      await openCropper(await res.blob());
+    } catch {
+      toast.error("Couldn't load your photo. Try uploading it again.");
     } finally {
       setBusy(null);
     }
@@ -90,8 +110,8 @@ export function PhotoField({
   }
 
   return (
-    <div className="flex items-center gap-4">
-      <div className="relative aspect-[4/5] w-28 shrink-0 overflow-hidden rounded-xl bg-muted">
+    <div className="flex items-center gap-4 @2xl:flex-col @2xl:items-start">
+      <div className="relative aspect-[4/5] w-28 shrink-0 overflow-hidden rounded-xl bg-muted @2xl:w-full @2xl:max-w-64">
         {value ? (
           // eslint-disable-next-line @next/next/no-img-element -- preview of a just-uploaded file; no optimizer needed
           <img src={teamPhotoUrl(process.env.NEXT_PUBLIC_SUPABASE_URL!, value)} alt="Your photo" className="size-full object-cover" />
@@ -102,10 +122,19 @@ export function PhotoField({
         )}
       </div>
       <div className="space-y-1">
-        <Button type="button" variant="outline" size="sm" disabled={disabled || busy !== null} onClick={() => inputRef.current?.click()}>
-          {busy === "reading" ? "Reading photo..." : value ? "Change photo" : "Upload photo"}
-        </Button>
-        <p className="text-xs text-muted-foreground">JPG, PNG, WebP or HEIC. You can zoom and crop next.</p>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" size="sm" disabled={disabled || busy !== null} onClick={() => inputRef.current?.click()}>
+            {busy === "reading" ? "Reading photo..." : value ? "Change photo" : "Upload photo"}
+          </Button>
+          {value && (
+            <Button type="button" variant="outline" size="sm" disabled={disabled || busy !== null} onClick={editExisting}>
+              Edit photo
+            </Button>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          JPG, PNG, WebP or HEIC. You can zoom and crop next. &quot;Edit photo&quot; re-crops the one you saved.
+        </p>
         <input
           ref={inputRef}
           type="file"

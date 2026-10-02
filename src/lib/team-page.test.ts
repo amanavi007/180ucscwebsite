@@ -243,7 +243,8 @@ describe("sections and ordering", () => {
     expect(sectionForRole("president")).toBe("exec");
     expect(sectionForRole("director_of_marketing")).toBe("exec");
     expect(sectionForRole("project_manager")).toBe("project_manager");
-    for (const r of ["senior_consultant", "consultant", "junior_consultant"] as const) {
+    expect(sectionForRole("senior_consultant")).toBe("senior_consultant");
+    for (const r of ["consultant", "junior_consultant"] as const) {
       expect(sectionForRole(r)).toBe("consultant");
     }
   });
@@ -260,11 +261,12 @@ describe("sections and ordering", () => {
       m("Pm1", "project_manager"),
     ]);
     expect(g.exec.map((x) => x.name)).toEqual(["Pat", "Dee", "Amy", "Zed"]);
-    expect(g.consultant.map((x) => x.name)).toEqual(["Alice", "bob", "Cy"]);
+    expect(g.senior_consultant.map((x) => x.name)).toEqual(["Cy"]);
+    expect(g.consultant.map((x) => x.name)).toEqual(["bob", "Alice"]); // consultant before junior
     expect(g.project_manager.map((x) => x.name)).toEqual(["Pm1", "Pm2"]);
   });
   it("returns empty arrays for empty sections", () => {
-    expect(groupTeamMembers([])).toEqual({ exec: [], project_manager: [], consultant: [] });
+    expect(groupTeamMembers([])).toEqual({ exec: [], project_manager: [], senior_consultant: [], consultant: [] });
   });
   it("subtitle is the role label for exec and the major otherwise", () => {
     expect(memberSubtitle("exec", m("A", "president"))).toBe("President");

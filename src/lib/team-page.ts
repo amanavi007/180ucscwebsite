@@ -1,5 +1,5 @@
 import type { UserRole } from "./supabase/database.types";
-import { EXEC_ROLES, roleLabel } from "./auth/roles";
+import { EXEC_ROLES, compareByRole, roleLabel } from "./auth/roles";
 
 export const BIO_MAX = 120;
 export const MAJOR_MAX = 80;
@@ -184,22 +184,14 @@ export function formInitialValues(row: TeamProfileRow | null, profileLinkedin: s
 
 // ---------- public page ----------
 
-export type TeamSection = "exec" | "project_manager" | "consultant";
+export type TeamSection = "exec" | "project_manager" | "senior_consultant" | "consultant";
 
 export function sectionForRole(role: UserRole): TeamSection {
   if (EXEC_ROLES.includes(role)) return "exec";
   if (role === "project_manager") return "project_manager";
+  if (role === "senior_consultant") return "senior_consultant";
   return "consultant";
 }
-
-const EXEC_DISPLAY_ORDER: UserRole[] = [
-  "president",
-  "director_of_projects",
-  "director_of_internal_affairs",
-  "director_of_external_affairs",
-  "director_of_training",
-  "director_of_marketing",
-];
 
 export interface PublicTeamMember {
   id: string;
@@ -212,13 +204,14 @@ export interface PublicTeamMember {
 }
 
 export function groupTeamMembers(members: PublicTeamMember[]): Record<TeamSection, PublicTeamMember[]> {
-  const out: Record<TeamSection, PublicTeamMember[]> = { exec: [], project_manager: [], consultant: [] };
+  const out: Record<TeamSection, PublicTeamMember[]> = {
+    exec: [],
+    project_manager: [],
+    senior_consultant: [],
+    consultant: [],
+  };
   for (const m of members) out[sectionForRole(m.role)].push(m);
-  const byName = (a: PublicTeamMember, b: PublicTeamMember) =>
-    a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
-  out.exec.sort((a, b) => EXEC_DISPLAY_ORDER.indexOf(a.role) - EXEC_DISPLAY_ORDER.indexOf(b.role) || byName(a, b));
-  out.project_manager.sort(byName);
-  out.consultant.sort(byName);
+  for (const list of Object.values(out)) list.sort(compareByRole); // seniority, then name
   return out;
 }
 

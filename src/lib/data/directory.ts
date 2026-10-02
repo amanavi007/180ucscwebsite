@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/lib/supabase/database.types";
+import { compareByRole } from "@/lib/auth/roles";
 
 export interface DirectoryRow {
   user_id: string;
@@ -23,5 +24,6 @@ export async function getDirectory(activeQuarterId: string | null): Promise<Dire
 
   const { data, error } = await query;
   if (error) throw error;
-  return data;
+  // Seniority order (exec, PM, SC, consultant); user_id keeps one member's per-project rows together.
+  return [...data].sort((a, b) => compareByRole(a, b) || a.user_id.localeCompare(b.user_id));
 }
