@@ -2,6 +2,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "member.bulk_created": "Created member account(s)",
   "member.password_reset": "Reset password",
   "member.role_changed": "Changed role",
+  "member.email_changed": "Changed email",
   "member.archived": "Archived member",
   "member.restored": "Restored member",
   "member.deleted": "Permanently deleted member",
