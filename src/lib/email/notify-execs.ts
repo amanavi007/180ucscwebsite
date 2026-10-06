@@ -14,6 +14,8 @@ import { sendEmail } from "./send";
 export async function notifyExecsOfBooking(
   bookingId: string,
   kind: "booked" | "cancelled",
+  /** Only email these execs (e.g. someone just assigned to an already-booked slot). */
+  onlyExecIds?: string[],
 ): Promise<{ sentTo: string[]; errors: string[] }> {
   const result = { sentTo: [] as string[], errors: [] as string[] };
   try {
@@ -40,44 +42,46 @@ export async function notifyExecsOfBooking(
     );
     const { data: execs, error: execError } = await supabase
       .from("profiles")
-      .select("name, email")
+      .select("id, name, email")
       .in("id", execIds);
     if (execError) throw execError;
 
     await Promise.all(
-      (execs ?? []).map(async (exec) => {
-        const base = {
-          execName: exec.name,
-          applicantName: booking.applicant_name,
-          applicantEmail: booking.applicant_email,
-          date: slot.date,
-          startTime: normalizeTime(slot.start_time),
-          endTime: normalizeTime(slot.end_time),
-          location: booking.location || slot.location,
-          siteUrl: process.env.NEXT_PUBLIC_SITE_URL!,
-        };
-        const content =
-          kind === "booked"
-            ? buildExecBookingNotificationEmail({
-                ...base,
-                manageToken: booking.manage_token,
-              })
-            : buildExecBookingCancelledEmail(base);
-        try {
-          await sendEmail({
-            to: exec.email,
-            subject: content.subject,
-            html: content.html,
-            text: content.text,
-          });
-          result.sentTo.push(exec.email);
-        } catch (emailError) {
-          console.error(`coffee chat exec ${kind} email failed:`, emailError);
-          result.errors.push(
-            `${exec.email}: ${emailError instanceof Error ? emailError.message : String(emailError)}`,
-          );
-        }
-      }),
+      (execs ?? [])
+        .filter((exec) => !onlyExecIds || onlyExecIds.includes(exec.id))
+        .map(async (exec) => {
+          const base = {
+            execName: exec.name,
+            applicantName: booking.applicant_name,
+            applicantEmail: booking.applicant_email,
+            date: slot.date,
+            startTime: normalizeTime(slot.start_time),
+            endTime: normalizeTime(slot.end_time),
+            location: booking.location || slot.location,
+            siteUrl: process.env.NEXT_PUBLIC_SITE_URL!,
+          };
+          const content =
+            kind === "booked"
+              ? buildExecBookingNotificationEmail({
+                  ...base,
+                  manageToken: booking.manage_token,
+                })
+              : buildExecBookingCancelledEmail(base);
+          try {
+            await sendEmail({
+              to: exec.email,
+              subject: content.subject,
+              html: content.html,
+              text: content.text,
+            });
+            result.sentTo.push(exec.email);
+          } catch (emailError) {
+            console.error(`coffee chat exec ${kind} email failed:`, emailError);
+            result.errors.push(
+              `${exec.email}: ${emailError instanceof Error ? emailError.message : String(emailError)}`,
+            );
+          }
+        }),
     );
   } catch (err) {
     console.error(`coffee chat exec ${kind} notification failed:`, err);

@@ -230,6 +230,16 @@ export async function swapSlotExecAction(
     .eq("id", slotId);
   if (updateError) return { error: updateError.message };
 
+  // Someone assigned to an already-booked slot should get the booking email (with calendar links)
+  // just like the execs who were on it when it was booked.
+  const { data: activeBooking } = await supabase
+    .from("coffee_chat_bookings")
+    .select("id")
+    .eq("slot_id", slotId)
+    .eq("status", "confirmed")
+    .maybeSingle();
+  if (activeBooking) await notifyExecsOfBooking(activeBooking.id, "booked", [newExecId]);
+
   revalidateAdmin();
   return {};
 }

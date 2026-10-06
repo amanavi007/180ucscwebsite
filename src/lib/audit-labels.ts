@@ -25,6 +25,11 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "team_page.hidden": "Hid member from team page",
   "team_page.shown": "Showed member on team page",
   "team_page.edited": "Edited team page profile",
+  "interview.slots_generated": "Generated interview slots",
+  "interview.booking_cancelled_by_admin": "Cancelled an interview booking",
+  "interview.invitees_added": "Added interview invitees",
+  "interview.invitee_removed": "Removed an interview invitee",
+  "interview.booking_toggled": "Opened or closed interview booking",
 };
 
 export function auditActionLabel(action: string): string {
