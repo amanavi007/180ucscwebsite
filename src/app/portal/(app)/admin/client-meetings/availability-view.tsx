@@ -11,6 +11,8 @@ import { formatDateLong, toDateString } from "@/lib/date";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RecurringAvailabilityForm } from "./recurring-availability-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -101,6 +103,15 @@ export function AvailabilityView({
           <CardTitle className="text-base">Add the times you&apos;re free for client meetings</CardTitle>
         </CardHeader>
         <CardContent>
+          <Tabs defaultValue="recurring">
+            <TabsList>
+              <TabsTrigger value="recurring">Recurring weekly</TabsTrigger>
+              <TabsTrigger value="dates">Pick dates</TabsTrigger>
+            </TabsList>
+            <TabsContent value="recurring" className="mt-4">
+              <RecurringAvailabilityForm />
+            </TabsContent>
+            <TabsContent value="dates" className="mt-4">
           <div className="grid gap-8 md:grid-cols-[auto_1fr]">
             <div>
               <p className="text-sm font-medium">1. Click every day you&apos;re free</p>
@@ -167,6 +178,8 @@ export function AvailabilityView({
               </div>
             </div>
           </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
       ) : (

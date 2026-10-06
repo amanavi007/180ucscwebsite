@@ -16,7 +16,9 @@ import {
   getClientMeetingSettings,
   getClientMeetingSlots,
 } from "@/lib/data/client-meeting";
-import { expandAvailabilityEntry, overlaps, type TimeBlockInput } from "@/lib/coffee-chat";
+import { expandAvailabilityEntry, normalizeTime, overlaps, type TimeBlockInput } from "@/lib/coffee-chat";
+import { getOrgTodayDateString } from "@/lib/date";
+import { expandRecurringAvailability, type WeekdaySchedule } from "@/lib/recurring-availability";
 import {
   PANEL_SIZE,
   generateClientMeetingSlots,
@@ -98,6 +100,61 @@ export async function addClientMeetingAvailabilityAction(
 
   revalidateAdmin();
   return { addedCount: expanded.rows.length };
+}
+
+/**
+ * Adds a weekly pattern (e.g. Mon 9-12, Wed 1-3) across a date range as ordinary availability rows.
+ * Days already past and blocks the exec already has are skipped, so re-running over the same range is safe.
+ */
+export async function addRecurringClientMeetingAvailabilityAction(input: {
+  startDate: string;
+  endDate: string;
+  schedules: WeekdaySchedule[];
+}): Promise<ActionResult & { addedCount?: number; skippedCount?: number }> {
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error };
+
+  const settings = await getClientMeetingSettings();
+  if (!settings.panelExecIds.includes(profile.id)) {
+    return { error: "Only panel members can add availability." };
+  }
+
+  const expanded = expandRecurringAvailability({
+    startDate: String(input?.startDate ?? ""),
+    endDate: String(input?.endDate ?? ""),
+    schedules: Array.isArray(input?.schedules) ? input.schedules : [],
+  });
+  if ("error" in expanded) return { error: expanded.error };
+
+  const today = getOrgTodayDateString();
+  const upcoming = expanded.rows.filter((row) => row.date >= today);
+  if (upcoming.length === 0) return { error: "Every day in that range has already passed." };
+
+  const supabase = await createClient();
+  const { data: existing, error: existingError } = await supabase
+    .from("client_meeting_availability")
+    .select("date, start_time, end_time")
+    .eq("exec_id", profile.id)
+    .gte("date", upcoming[0].date)
+    .lte("date", upcoming[upcoming.length - 1].date);
+  if (existingError) return { error: existingError.message };
+  const have = new Set((existing ?? []).map((r) => `${r.date}|${normalizeTime(r.start_time)}|${normalizeTime(r.end_time)}`));
+  const fresh = upcoming.filter((row) => !have.has(`${row.date}|${row.startTime}|${row.endTime}`));
+  const skippedCount = expanded.rows.length - fresh.length;
+  if (fresh.length === 0) return { addedCount: 0, skippedCount };
+
+  const { error: insertError } = await supabase.from("client_meeting_availability").insert(
+    fresh.map((row) => ({
+      exec_id: profile.id,
+      date: row.date,
+      start_time: row.startTime,
+      end_time: row.endTime,
+    })),
+  );
+  if (insertError) return { error: insertError.message };
+
+  revalidateAdmin();
+  return { addedCount: fresh.length, skippedCount };
 }
 
 /** Removes a free block, plus any open (unbooked) slot overlapping it. Booked slots are kept; admin regenerates afterwards. */
