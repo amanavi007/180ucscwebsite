@@ -164,6 +164,15 @@ one-time adds.
 4. **Bookings.** All bookings with applicant name/email, status, and an
    admin cancel.
 
+## Applicant cancellation email
+
+When an **admin cancels a booking**, the applicant is emailed that their
+interview was cancelled (date/time, and a note to contact us to rebook; they
+can book again since the allowlist entry and cancel are independent). This
+also stops their reminders. Self-cancellation from the manage page shows
+on-screen confirmation only, and swapping a panel exec sends the applicant
+nothing.
+
 ## Exec notifications
 
 - **Email** (reusing the exec booking/cancel email pattern in
@@ -197,6 +206,7 @@ one-time adds.
 - Content: date, time, SnE Library, manage link (with a note that
   cancelling closes 24h before). Sent through the existing `sendEmail`.
 - A booking made after the day-before window simply skips that reminder.
+- Cancelled bookings never get reminders.
 - Known limit (same as attendance): on Vercel Hobby the cron may fire
   anywhere within its hour.
 - Exec reminders are out of scope; execs have the calendar feed.
@@ -234,7 +244,7 @@ Vitest, in `src/lib/interview.test.ts` and the email/reminder helpers:
   booking.
 - Reminder selection: tomorrow / today windows, already sent, cancelled,
   hour guard in a summer and a winter date.
-- Email builders: applicant confirmation and reminder, exec booked/cancelled
+- Email builders: applicant confirmation, reminder and admin-cancel notice, exec booked/cancelled
   with panel names.
 
 Manual browser verification of the full flow (paste invitees → availability
@@ -246,5 +256,5 @@ cancel → exec feed shows/updates the event) before calling it done.
 - Staggering parallel panels by 30 minutes.
 - Invite links / per-invitee tokens.
 - Exec reminder emails, no-show tracking.
-- Applicant notification when an admin cancels or swaps a panel exec.
+- Applicant notification when an admin swaps a panel exec (admin cancel does email them).
 - A shared abstraction over coffee chat and interviews.
