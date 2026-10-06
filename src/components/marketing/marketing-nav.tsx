@@ -121,12 +121,6 @@ export function MarketingNav({ user }: { user: { name: string } | null }) {
               <NavPendingWatcher />
             </Link>
           )}
-          <Link
-            href="/apply"
-            className="rounded-full bg-warm px-5 py-2 text-sm font-bold tracking-wide text-warm-foreground uppercase transition-[filter] hover:brightness-110"
-          >
-            Apply
-          </Link>
         </div>
 
         <div className="ml-auto flex items-center justify-end lg:hidden">
@@ -164,13 +158,6 @@ export function MarketingNav({ user }: { user: { name: string } | null }) {
             ))}
           </nav>
           <div className="mt-2 flex flex-col gap-2 px-3">
-            <Link
-              href="/apply"
-              onClick={() => setMobileOpen(false)}
-              className="rounded-full bg-warm px-3 py-2.5 text-center text-sm font-bold tracking-wide text-warm-foreground uppercase"
-            >
-              Apply
-            </Link>
             {user ? (
               <>
                 <div className="flex items-center gap-2 px-3 py-1.5">
