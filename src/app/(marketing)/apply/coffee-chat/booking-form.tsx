@@ -38,7 +38,7 @@ function groupByDate(slots: PublicSlot[]): Map<string, PublicSlot[]> {
 }
 
 /** Page chrome for the booking step: the server-rendered intro above the mint panel. The confirmation screen replaces all of it. */
-function BookingShell({ intro, children }: { intro: ReactNode; children: ReactNode }) {
+export function BookingShell({ intro, children }: { intro: ReactNode; children: ReactNode }) {
   return (
     <div className="mx-auto max-w-4xl px-4 pt-28 pb-24 sm:px-6">
       {intro}
@@ -49,7 +49,7 @@ function BookingShell({ intro, children }: { intro: ReactNode; children: ReactNo
 }
 
 /** A radio that looks like a button: the native input stays (hidden) so arrow keys, Tab and screen readers work as they do for any radio group. */
-function ChoiceRadio({
+export function ChoiceRadio({
   name,
   value,
   checked,
@@ -79,8 +79,10 @@ function ChoiceRadio({
   );
 }
 
-function TimeChips({ slots, selectedSlotId, onSelect }: { slots: PublicSlot[]; selectedSlotId: string | null; onSelect: (id: string) => void }) {
-  const chip = (slot: PublicSlot) => {
+type TimeChipSlot = { id: string; startTime: string };
+
+export function TimeChips({ slots, selectedSlotId, onSelect }: { slots: TimeChipSlot[]; selectedSlotId: string | null; onSelect: (id: string) => void }) {
+  const chip = (slot: TimeChipSlot) => {
     const checked = selectedSlotId === slot.id;
     return (
       <ChoiceRadio
@@ -116,10 +118,10 @@ function TimeChips({ slots, selectedSlotId, onSelect }: { slots: PublicSlot[]; s
         ["Afternoon", afternoon],
       ].map(
         ([label, group]) =>
-          (group as PublicSlot[]).length > 0 && (
+          (group as TimeChipSlot[]).length > 0 && (
             <div key={label as string}>
               <p className="mb-1.5 text-xs text-muted-foreground">{label as string}</p>
-              <div className="grid grid-cols-3 gap-1.5">{(group as PublicSlot[]).map(chip)}</div>
+              <div className="grid grid-cols-3 gap-1.5">{(group as TimeChipSlot[]).map(chip)}</div>
             </div>
           ),
       )}
@@ -127,7 +129,7 @@ function TimeChips({ slots, selectedSlotId, onSelect }: { slots: PublicSlot[]; s
   );
 }
 
-function FieldMessage({ id, children }: { id: string; children: ReactNode }) {
+export function FieldMessage({ id, children }: { id: string; children: ReactNode }) {
   return (
     <p id={id} className="mt-1.5 flex items-start gap-1.5 text-sm font-medium text-red-700">
       <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
@@ -137,7 +139,7 @@ function FieldMessage({ id, children }: { id: string; children: ReactNode }) {
 }
 
 // dark:bg-white because the marketing site is always light but the app-wide .dark class can still be on <html>.
-const inputClass = "h-11 border-neutral-500 bg-white px-3 text-base md:text-base dark:bg-white";
+export const inputClass = "h-11 border-neutral-500 bg-white px-3 text-base md:text-base dark:bg-white";
 
 type Errors = { slot?: string; location?: string; name?: string; email?: string; verification?: string };
 

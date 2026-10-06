@@ -2,7 +2,7 @@ import { Apple } from "lucide-react";
 import { buildGoogleCalendarUrl, type CoffeeChatBookingForInvite } from "@/lib/calendar-invite";
 import { Button } from "@/components/ui/button";
 
-function GoogleIcon() {
+export function GoogleIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4">
       <path
