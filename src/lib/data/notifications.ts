@@ -15,7 +15,7 @@ export interface NotificationFeed {
 
 /**
  * Computed from existing tables (tasks, exec_todos, memberships,
- * coffee_chat_bookings) -- no event log to write to on every mutation. "Unread"
+ * coffee_chat_bookings, interview_bookings) -- no event log to write to on every mutation. "Unread"
  * is just "newer than the last time this person opened the bell," tracked
  * in notification_reads. A first-ever open marks the current moment as
  * read so a newly shipped feature doesn't dump old history as unread.
@@ -65,7 +65,7 @@ export async function getMyNotifications(
     lastReadAt = new Date().toISOString();
   }
 
-  const [, { data: coffeeChatBookings }] = await Promise.all([
+  const [, { data: coffeeChatBookings }, { data: interviewBookings }] = await Promise.all([
     needsReadMarker
       ? supabase.from("notification_reads").insert({ user_id: userId, last_read_at: lastReadAt })
       : Promise.resolve(null),
@@ -80,6 +80,19 @@ export async function getMyNotifications(
           .or(`exec_id_1.eq.${userId},exec_id_2.eq.${userId}`, { referencedTable: "slot" })
           .order("created_at", { ascending: false })
           .limit(15)
+      : Promise.resolve({ data: null }),
+    isExecUser
+      ? (async () => {
+          const { data: mine } = await supabase.from("interview_slot_execs").select("slot_id").eq("exec_id", userId);
+          const slotIds = (mine ?? []).map((r) => r.slot_id);
+          if (slotIds.length === 0) return { data: [] };
+          return supabase
+            .from("interview_bookings")
+            .select("id, applicant_name, status, created_at, cancelled_at")
+            .in("slot_id", slotIds)
+            .order("created_at", { ascending: false })
+            .limit(15);
+        })()
       : Promise.resolve({ data: null }),
   ]);
 
@@ -144,6 +157,24 @@ export async function getMyNotifications(
         id: `coffee-chat-cancelled-${b.id}`,
         message: `${b.applicant_name} cancelled their coffee chat with you.`,
         href: "/portal/admin/coffee-chats",
+        occurredAt: b.cancelled_at,
+      });
+    }
+  }
+
+  for (const b of (interviewBookings ?? []) as { id: string; applicant_name: string; status: string; created_at: string; cancelled_at: string | null }[]) {
+    if (b.status === "confirmed") {
+      items.push({
+        id: `interview-booked-${b.id}`,
+        message: `${b.applicant_name} booked an interview with you.`,
+        href: "/portal/admin/interviews?tab=schedule",
+        occurredAt: b.created_at,
+      });
+    } else if (b.status === "cancelled" && b.cancelled_at) {
+      items.push({
+        id: `interview-cancelled-${b.id}`,
+        message: `${b.applicant_name}'s interview with you was cancelled.`,
+        href: "/portal/admin/interviews?tab=schedule",
         occurredAt: b.cancelled_at,
       });
     }

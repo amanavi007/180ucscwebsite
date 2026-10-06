@@ -2,7 +2,8 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeTime } from "@/lib/coffee-chat";
-import { buildIcsCalendar } from "@/lib/calendar-invite";
+import { buildIcsCalendar, type CoffeeChatBookingForInvite } from "@/lib/calendar-invite";
+import { buildInterviewFeedEvents } from "@/lib/interview-feed";
 
 /** Unguessable per-exec signature, derived from the service key so no extra storage or secret is needed. */
 function signExecId(execId: string): string {
@@ -19,8 +20,8 @@ export function calendarFeedPath(execId: string): string {
   return `/api/coffee-chat/feed/${execId}/${signExecId(execId)}/calendar.ics`;
 }
 
-/** Every confirmed coffee chat this exec is on, as a subscribable calendar. */
-export async function buildExecFeed(execId: string): Promise<string> {
+/** Every confirmed coffee chat this exec is on, as calendar events. */
+async function buildCoffeeChatEvents(execId: string): Promise<(CoffeeChatBookingForInvite & { id: string })[]> {
   const supabase = createAdminClient();
   const { data: slots, error } = await supabase
     .from("coffee_chat_slots")
@@ -28,7 +29,7 @@ export async function buildExecFeed(execId: string): Promise<string> {
     .or(`exec_id_1.eq.${execId},exec_id_2.eq.${execId}`);
   if (error) throw error;
   const slotsById = new Map((slots ?? []).map((s) => [s.id, s]));
-  if (slotsById.size === 0) return buildIcsCalendar([]);
+  if (slotsById.size === 0) return [];
 
   const otherExecIds = [
     ...new Set(
@@ -49,8 +50,7 @@ export async function buildExecFeed(execId: string): Promise<string> {
     .in("slot_id", [...slotsById.keys()]);
   if (bookingsError) throw bookingsError;
 
-  return buildIcsCalendar(
-    (bookings ?? []).flatMap((b) => {
+  return (bookings ?? []).flatMap((b) => {
       const slot = slotsById.get(b.slot_id);
       if (!slot) return [];
       return [
@@ -65,6 +65,11 @@ export async function buildExecFeed(execId: string): Promise<string> {
           otherExecName: namesById.get(slot.exec_id_1 === execId ? (slot.exec_id_2 ?? "") : slot.exec_id_1) ?? null,
         },
       ];
-    }),
-  );
+    });
+}
+
+/** Every confirmed coffee chat and interview this exec is on, as one subscribable calendar. */
+export async function buildExecFeed(execId: string): Promise<string> {
+  const [coffeeChats, interviewLines] = await Promise.all([buildCoffeeChatEvents(execId), buildInterviewFeedEvents(execId)]);
+  return buildIcsCalendar(coffeeChats, interviewLines);
 }
