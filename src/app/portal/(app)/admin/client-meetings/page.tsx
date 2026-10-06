@@ -37,7 +37,7 @@ export default async function ClientMeetingsPage({ searchParams }: { searchParam
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Client meetings</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Client Meetings</h1>
           <p className="text-sm text-muted-foreground">
             Pick the 3-exec panel, add availability, publish slots, and manage client bookings. {openSlotCount} open slots.
           </p>
