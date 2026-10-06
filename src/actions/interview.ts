@@ -89,7 +89,7 @@ export async function removeInviteeAction(id: string): Promise<ActionResult & { 
 export async function addInterviewAvailabilityAction(
   dates: string[],
   blocks: TimeBlockInput[],
-): Promise<ActionResult & { addedCount?: number }> {
+): Promise<ActionResult & { addedCount?: number; createdCount?: number; generateError?: string }> {
   const { profile, error } = await requireExec();
   if (error || !profile) return { error };
 
@@ -107,16 +107,19 @@ export async function addInterviewAvailabilityAction(
   );
   if (insertError) return { error: insertError.message };
 
+  // Slots are regenerated automatically; a failure here shouldn't hide that the availability was saved.
+  const generated = await generateMissingInterviewSlots(profile.id);
+
   revalidateAdmin();
-  return { addedCount: expanded.rows.length };
+  return { addedCount: expanded.rows.length, createdCount: generated.createdCount, generateError: generated.error };
 }
 
-/** Removes a free block, plus any not-yet-booked slot that exec was on during it (admin regenerates afterwards). */
+/** Removes a free block, plus any not-yet-booked slot that exec was on during it, then regenerates so the rest of that panel can re-pair. */
 export async function removeInterviewAvailabilityAction(
   id: string,
-): Promise<ActionResult & { removedSlotCount?: number; keptBookedCount?: number }> {
-  const { error } = await requireExec();
-  if (error) return { error };
+): Promise<ActionResult & { removedSlotCount?: number; keptBookedCount?: number; createdCount?: number; generateError?: string }> {
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error };
 
   const supabase = await createClient();
   const { data: block } = await supabase
@@ -147,15 +150,15 @@ export async function removeInterviewAvailabilityAction(
     }
   }
 
+  // The other execs from a removed slot may now pair with someone else who is free.
+  const generated = await generateMissingInterviewSlots(profile.id);
+
   revalidateAdmin();
-  return { removedSlotCount, keptBookedCount };
+  return { removedSlotCount, keptBookedCount, createdCount: generated.createdCount, generateError: generated.error };
 }
 
-/** Creates published slots for availability not already covered. Existing slots are never touched. */
-export async function generateInterviewSlotsAction(): Promise<ActionResult & { createdCount?: number }> {
-  const { profile, error } = await requireExec();
-  if (error || !profile) return { error };
-
+/** Creates published slots for availability not already covered. Existing slots are never touched, so it is safe to re-run. */
+async function generateMissingInterviewSlots(execId: string): Promise<ActionResult & { createdCount?: number }> {
   const [availability, existing, settings] = await Promise.all([
     getInterviewAvailability(),
     getInterviewSlots(),
@@ -192,9 +195,17 @@ export async function generateInterviewSlotsAction(): Promise<ActionResult & { c
     }
   }
 
-  await logAudit(profile.id, "interview.slots_generated", undefined, `${generated.length} slot(s) created`);
-  revalidateAdmin();
+  await logAudit(execId, "interview.slots_generated", undefined, `${generated.length} slot(s) created`);
   return { createdCount: generated.length };
+}
+
+export async function generateInterviewSlotsAction(): Promise<ActionResult & { createdCount?: number }> {
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error };
+
+  const result = await generateMissingInterviewSlots(profile.id);
+  if (!result.error) revalidateAdmin();
+  return result;
 }
 
 /** An exec assigned to an already-booked slot should get the booking email (with calendar links) like the original panel did. */

@@ -62,8 +62,9 @@ export function AvailabilityView({
         return;
       }
       toast.success(
-        `Added ${result.addedCount ?? 0} availability block(s). Use "Generate slots" on the Schedule tab to create (and publish) interview slots.`,
+        `Added ${result.addedCount ?? 0} availability block(s). ${result.createdCount ?? 0} new slot(s) generated.`,
       );
+      if (result.generateError) toast.error(`Couldn't generate slots: ${result.generateError}`);
       setDays([]);
       setBlocks([{ id: nextBlockId, startTime: "", endTime: "" }]);
       setNextBlockId((n) => n + 1);
@@ -79,6 +80,7 @@ export function AvailabilityView({
         return;
       }
       toast.success(`Removed. ${result.removedSlotCount ?? 0} unbooked slot(s) deleted.`);
+      if (result.generateError) toast.error(`Couldn't regenerate slots: ${result.generateError}`);
       if (result.keptBookedCount) {
         toast.warning(
           `${result.keptBookedCount} slot(s) with a confirmed booking were kept. Cancel those bookings first to remove them.`,
