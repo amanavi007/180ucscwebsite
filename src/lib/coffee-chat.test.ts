@@ -3,11 +3,13 @@ import {
   DEFAULT_CHUNK_MINUTES,
   expandAvailabilityEntry,
   formatTime12h,
+  formatTimeRange,
   generateSlots,
   isSlotBookable,
   locationGroupsForSlot,
   isSwapEligible,
   isValidUcscEmail,
+  mapsSearchUrl,
   normalizeTime,
   type AvailabilityBlock,
   type ExistingSlotAssignment,
@@ -422,5 +424,28 @@ describe("locationGroupsForSlot", () => {
 
   it("requires the whole slot to end before closing", () => {
     expect(names({ date: "2026-10-06", startTime: "14:50", endTime: "15:10" })).not.toContain("Cafe Iveta (Westside)");
+  });
+});
+
+describe("formatTimeRange", () => {
+  it("shows the meridiem once when both ends share it", () => {
+    expect(formatTimeRange("14:00", "14:20")).toBe("2:00 \u2013 2:20 PM");
+    expect(formatTimeRange("09:40:00", "10:00:00")).toBe("9:40 \u2013 10:00 AM");
+  });
+
+  it("shows both meridiems when the range crosses noon", () => {
+    expect(formatTimeRange("11:50", "12:10")).toBe("11:50 AM \u2013 12:10 PM");
+  });
+});
+
+describe("mapsSearchUrl", () => {
+  it("builds a Google Maps search for the place, scoped to Santa Cruz", () => {
+    expect(mapsSearchUrl("Oakes Cafe")).toBe(
+      "https://www.google.com/maps/search/?api=1&query=Oakes%20Cafe%2C%20Santa%20Cruz%2C%20CA",
+    );
+  });
+
+  it("encodes characters that would break the query string", () => {
+    expect(mapsSearchUrl("Cat & Cloud Coffee (Westside)")).toContain("Cat%20%26%20Cloud%20Coffee%20(Westside)");
   });
 });

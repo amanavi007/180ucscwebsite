@@ -155,6 +155,20 @@ export function formatTime12h(time: string): string {
   return `${hour12}:${m.toString().padStart(2, "0")} ${suffix}`;
 }
 
+/** "14:00","14:20" -> "2:00 \u2013 2:20 PM"; the meridiem shows once unless the range crosses noon. */
+export function formatTimeRange(start: string, end: string): string {
+  const [startClock, startSuffix] = formatTime12h(start).split(" ");
+  const [endClock, endSuffix] = formatTime12h(end).split(" ");
+  return startSuffix === endSuffix
+    ? `${startClock} \u2013 ${endClock} ${endSuffix}`
+    : `${startClock} ${startSuffix} \u2013 ${endClock} ${endSuffix}`;
+}
+
+/** A Google Maps search for a meeting spot, scoped to Santa Cruz so campus and cafe names resolve locally. */
+export function mapsSearchUrl(location: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${location}, Santa Cruz, CA`)}`;
+}
+
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(":").map(Number);
   return h * 60 + m;

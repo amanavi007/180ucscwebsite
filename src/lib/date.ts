@@ -21,6 +21,16 @@ export function formatDateLong(dateString: string): string {
   });
 }
 
+/** "2026-10-01" -> { weekday: "Thursday", month: "Oct", day: "1" } (date-only, so never shifts a day). */
+export function formatDateParts(dateString: string): { weekday: string; month: string; day: string } {
+  const date = parseLocalDate(dateString);
+  return {
+    weekday: date.toLocaleDateString("en-US", { weekday: "long" }),
+    month: date.toLocaleDateString("en-US", { month: "short" }),
+    day: String(date.getDate()),
+  };
+}
+
 /** A local calendar Date as "YYYY-MM-DD" (the inverse of parseLocalDate). */
 export function toDateString(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");

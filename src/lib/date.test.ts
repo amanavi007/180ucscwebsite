@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { formatDateLong, toDateString, zonedDateTimeToUtc } from "./date";
+import { formatDateLong, formatDateParts, toDateString, zonedDateTimeToUtc } from "./date";
 
 describe("formatDateLong", () => {
   it("formats a YYYY-MM-DD date as a friendly weekday date, without shifting a day", () => {
     expect(formatDateLong("2026-10-01")).toBe("Thursday, October 1, 2026");
+  });
+});
+
+describe("formatDateParts", () => {
+  it("splits a YYYY-MM-DD date into weekday, short month and day number, without shifting a day", () => {
+    expect(formatDateParts("2026-10-01")).toEqual({ weekday: "Thursday", month: "Oct", day: "1" });
+    expect(formatDateParts("2026-12-31")).toEqual({ weekday: "Thursday", month: "Dec", day: "31" });
   });
 });
 
