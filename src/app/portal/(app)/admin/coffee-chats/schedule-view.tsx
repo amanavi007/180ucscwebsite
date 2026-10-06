@@ -130,7 +130,7 @@ function matches(slot: SlotRow, filter: Filter): boolean {
   return true;
 }
 
-function Pill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+export function Pill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       type="button"
@@ -145,12 +145,12 @@ function Pill({ active, onClick, children }: { active: boolean; onClick: () => v
   );
 }
 
-function CalendarHelp({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function CalendarHelp({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Add your coffee chats to your calendar</DialogTitle>
+          <DialogTitle>Add your coffee chats and interviews to your calendar</DialogTitle>
           <DialogDescription>
             Click <strong>Copy my calendar link</strong>, then follow the steps for your calendar. You only do this
             once: new bookings appear automatically and cancelled ones disappear. The link is personal to you, so

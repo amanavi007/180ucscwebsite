@@ -155,6 +155,14 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     keywords: "recruitment applicants scheduling booking availability",
     group: "admin-recruitment",
   },
+  {
+    href: "/portal/admin/interviews",
+    label: "Interviews",
+    icon: ClipboardCheck,
+    execOnly: true,
+    keywords: "recruitment applicants interview invitees booking availability",
+    group: "admin-recruitment",
+  },
   { href: "/portal/admin/settings", label: "Settings", icon: SlidersHorizontal, execOnly: true, group: "admin-system" },
   {
     href: "/portal/admin/activity",
