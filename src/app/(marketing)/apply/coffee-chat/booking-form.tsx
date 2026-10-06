@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import Script from "next/script";
 import { useRouter } from "next/navigation";
-import { Check, CircleAlert, Mail, MapPin } from "lucide-react";
+import { Check, CircleAlert } from "lucide-react";
 import { createBookingAction } from "@/actions/coffee-chat-public";
 import type { PublicSlot } from "@/lib/data/coffee-chat-public";
-import { formatTime12h, formatTimeRange, isValidUcscEmail, locationGroupsForSlot, openUntilLabel, slotMinutes } from "@/lib/coffee-chat";
+import { formatTime12h, isValidUcscEmail, locationGroupsForSlot, openUntilLabel } from "@/lib/coffee-chat";
 import { formatDateParts, parseLocalDate, toDateString } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,6 @@ import { Calendar, CalendarDayButton } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookingConfirmation, type ConfirmedBooking } from "./booking-confirmation";
-import { DateTile } from "./date-tile";
 
 declare global {
   interface Window {
@@ -41,7 +40,7 @@ function groupByDate(slots: PublicSlot[]): Map<string, PublicSlot[]> {
 /** Page chrome for the booking step: the server-rendered intro above the mint panel. The confirmation screen replaces all of it. */
 function BookingShell({ intro, children }: { intro: ReactNode; children: ReactNode }) {
   return (
-    <div className="mx-auto max-w-3xl px-4 pt-28 pb-24 sm:px-6">
+    <div className="mx-auto max-w-4xl px-4 pt-28 pb-24 sm:px-6">
       {intro}
       {/* The brand green is 4.1:1 against white, under the 4.5:1 that small text needs, so this page's filled controls use a darker shade. */}
       <div className="mint-panel mt-8 rounded-[2rem] p-5 [--primary:#4b7a22] sm:rounded-[2.5rem] sm:p-10">{children}</div>
@@ -124,65 +123,6 @@ function TimeChips({ slots, selectedSlotId, onSelect }: { slots: PublicSlot[]; s
             </div>
           ),
       )}
-    </div>
-  );
-}
-
-/** What you're booking, filling in as you choose. Also the on-screen preview of the confirmation. */
-function BookingTicket({
-  slot,
-  location,
-  email,
-  emptyMonth,
-  onChangeLocation,
-}: {
-  slot: PublicSlot | null;
-  location: string;
-  email: string;
-  emptyMonth: string;
-  onChangeLocation: () => void;
-}) {
-  const parts = slot ? formatDateParts(slot.date) : null;
-  const rowClass = "flex items-center gap-2.5 border-t border-dashed border-border px-5 py-3 text-sm";
-  return (
-    <div
-      aria-live="polite"
-      aria-atomic="true"
-      className="overflow-hidden rounded-3xl bg-white shadow-[0_1px_2px_rgb(0_0_0/0.05),0_8px_24px_rgb(47_74_23/0.1)] md:sticky md:top-28 md:self-start"
-    >
-      <div className="flex items-center gap-4 px-5 py-4">
-        <DateTile month={parts ? parts.month : emptyMonth} day={parts?.day} />
-        <div>
-          <p className="text-sm font-semibold text-primary">{parts ? parts.weekday : <span className="text-muted-foreground">Date</span>}</p>
-          {slot ? (
-            <p className="text-xl leading-tight font-bold tracking-tight tabular-nums">{formatTimeRange(slot.startTime, slot.endTime)}</p>
-          ) : (
-            <p className="text-xl leading-tight font-bold tracking-tight text-muted-foreground">Choose a time</p>
-          )}
-          <p className="text-sm text-muted-foreground">
-            {slot ? slotMinutes(slot.startTime, slot.endTime) : 20} minutes · In person
-          </p>
-        </div>
-      </div>
-      <div className={rowClass}>
-        <MapPin className={cn("size-4 shrink-0", location ? "text-primary" : "text-muted-foreground")} aria-hidden />
-        {location ? (
-          <>
-            <span className="font-semibold">{location}</span>
-            <button type="button" onClick={onChangeLocation} className="ml-auto rounded text-xs font-bold text-primary underline underline-offset-2 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-foreground">
-              Change
-            </button>
-          </>
-        ) : (
-          <span className="text-muted-foreground">{slot ? "Pick where to meet below" : "Where: pick after your time"}</span>
-        )}
-      </div>
-      <div className={cn(rowClass, "text-muted-foreground")}>
-        <Mail className="size-4 shrink-0" aria-hidden />
-        <span className="min-w-0 break-words">
-          {isValidUcscEmail(email) ? `Confirmation goes to ${email.trim()}` : "Confirmation goes to your UCSC email"}
-        </span>
-      </div>
     </div>
   );
 }
@@ -310,12 +250,6 @@ export function BookingForm({ slots, turnstileSiteKey, intro }: { slots: PublicS
     });
   }
 
-  function scrollToWhere() {
-    const checked = document.querySelector<HTMLElement>('input[name="location"]:checked');
-    const target = checked ?? document.getElementById("where");
-    target?.scrollIntoView({ block: "center", behavior: "smooth" });
-  }
-
   if (confirmed) {
     return <BookingConfirmation booking={confirmed} applicantName={name} />;
   }
@@ -396,8 +330,10 @@ export function BookingForm({ slots, turnstileSiteKey, intro }: { slots: PublicS
                 Nothing open
               </span>
             </p>
+          </div>
 
-            <div className="mt-5">
+          <div>
+            <div>
               {!selectedDate || !selectedParts ? (
                 <p className="px-1 text-sm text-muted-foreground">Pick a shaded day to see its times.</p>
               ) : (
@@ -423,14 +359,6 @@ export function BookingForm({ slots, turnstileSiteKey, intro }: { slots: PublicS
               )}
             </div>
           </div>
-
-          <BookingTicket
-            slot={selectedSlot}
-            location={location}
-            email={email}
-            emptyMonth={formatDateParts(dates[0]).month}
-            onChangeLocation={scrollToWhere}
-          />
         </div>
 
         {selectedSlot && (

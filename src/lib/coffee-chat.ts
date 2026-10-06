@@ -87,11 +87,6 @@ export function openUntilLabel(location: CoffeeChatLocation, date: string): stri
   return `Open until ${formatTime12h(day.close).replace(":00", "")}`;
 }
 
-/** Slot length in minutes, from "HH:MM" or "HH:MM:SS" times. */
-export function slotMinutes(start: string, end: string): number {
-  return timeToMinutes(normalizeTime(end)) - timeToMinutes(normalizeTime(start));
-}
-
 export interface AvailabilityBlock {
   execId: string;
   date: string; // "YYYY-MM-DD"

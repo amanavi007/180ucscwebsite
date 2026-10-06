@@ -11,7 +11,6 @@ import {
   isValidUcscEmail,
   mapsSearchUrl,
   openUntilLabel,
-  slotMinutes,
   COFFEE_CHAT_LOCATIONS,
   normalizeTime,
   type AvailabilityBlock,
@@ -448,13 +447,6 @@ describe("openUntilLabel", () => {
   it("returns null for places with no listed hours, or closed that day", () => {
     expect(openUntilLabel(find("McHenry Library"), "2026-10-06")).toBeNull();
     expect(openUntilLabel(find("Oakes Cafe"), "2026-10-10")).toBeNull(); // Saturday
-  });
-});
-
-describe("slotMinutes", () => {
-  it("returns the slot length in minutes", () => {
-    expect(slotMinutes("14:00", "14:20")).toBe(20);
-    expect(slotMinutes("09:00:00", "09:30:00")).toBe(30);
   });
 });
 
