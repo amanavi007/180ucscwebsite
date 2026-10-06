@@ -40,14 +40,6 @@ const STEPS = [
   },
 ];
 
-// TODO: replace these with real member quotes (and attribution) before launch --
-// the quotes below are illustrative placeholders, not actual members.
-const MEMBER_QUOTES = [
-  { quote: "I wanted to apply what I learn in class to something real.", who: "Economics, 3rd year" },
-  { quote: "I had zero consulting background. The training got me there.", who: "Biology, 2nd year" },
-  { quote: "Best team I've worked on at UCSC.", who: "Computer Science, 4th year" },
-];
-
 const FAQS = [
   {
     q: "Do I need prior consulting experience?",
@@ -111,28 +103,6 @@ export default function ApplyPage() {
             <span className="absolute right-0 bottom-2 -rotate-[4deg] rounded-full bg-warm px-4 py-2.5 text-sm font-bold text-warm-foreground shadow-lg">
               Undecided? Perfect.
             </span>
-          </div>
-        </div>
-      </section>
-
-      <section className="w-full bg-cream py-20 sm:py-24">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <p className="text-sm font-bold tracking-wide text-primary uppercase">From our members</p>
-          <h2 className="font-brand mt-3 text-3xl font-bold tracking-wide uppercase sm:text-4xl">Why they joined</h2>
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {MEMBER_QUOTES.map((q) => (
-              <figure key={q.who} className="rounded-3xl rounded-bl-md bg-white p-6 shadow-md shadow-black/5">
-                <blockquote className="font-brand text-2xl leading-tight font-bold text-balance">
-                  &ldquo;{q.quote}&rdquo;
-                </blockquote>
-                <figcaption className="mt-4 flex items-center gap-2.5 text-sm text-muted-foreground">
-                  <span className="flex size-8 items-center justify-center rounded-full bg-mint text-xs font-bold text-deep">
-                    {q.who[0]}
-                  </span>
-                  {q.who}
-                </figcaption>
-              </figure>
-            ))}
           </div>
         </div>
       </section>
