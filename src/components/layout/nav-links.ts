@@ -17,6 +17,7 @@ import {
   BarChart3,
   CalendarHeart,
   Camera,
+  Handshake,
 } from "lucide-react";
 
 export interface NavLink {
@@ -161,6 +162,14 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     icon: ClipboardCheck,
     execOnly: true,
     keywords: "recruitment applicants interview invitees booking availability",
+    group: "admin-recruitment",
+  },
+  {
+    href: "/portal/admin/client-meetings",
+    label: "Client meetings",
+    icon: Handshake,
+    execOnly: true,
+    keywords: "clients consulting booking availability panel services",
     group: "admin-recruitment",
   },
   { href: "/portal/admin/settings", label: "Settings", icon: SlidersHorizontal, execOnly: true, group: "admin-system" },

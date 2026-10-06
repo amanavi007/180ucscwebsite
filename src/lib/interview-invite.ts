@@ -28,8 +28,8 @@ function eventText(input: InterviewInviteInput): { title: string; description: s
 }
 
 /** RFC 5545 TEXT escaping so names with commas or semicolons can't break a line. */
-function escapeIcsText(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+export function escapeIcsText(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r\n|\r|\n/g, "\\n");
 }
 
 export function buildInterviewGoogleCalendarUrl(input: InterviewInviteInput): string {

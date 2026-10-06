@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildInterviewGoogleCalendarUrl, buildInterviewIcs, interviewEventLines } from "./interview-invite";
+import { escapeIcsText, buildInterviewGoogleCalendarUrl, buildInterviewIcs, interviewEventLines } from "./interview-invite";
 
 const base = {
   applicantName: "Jane Doe",
@@ -22,6 +22,11 @@ describe("interview invites", () => {
     const exec = buildInterviewIcs({ ...base, audience: "exec", panelNames: ["Ava", "Ben"] });
     expect(exec).toContain("SUMMARY:Interview with Jane Doe");
     expect(exec).toContain("Ava\\, Ben"); // commas are RFC 5545-escaped
+  });
+
+  it("escapes a bare carriage return instead of emitting a raw line break", () => {
+    expect(escapeIcsText("a\rb")).toBe("a\\nb");
+    expect(escapeIcsText("a\r\nb")).toBe("a\\nb");
   });
 
   it("emits CRLF-separated .ics with correct times", () => {

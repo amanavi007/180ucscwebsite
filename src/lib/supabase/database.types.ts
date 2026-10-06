@@ -757,6 +757,72 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["interview_bookings"]["Insert"]>;
         Relationships: [];
       };
+      client_meeting_availability: {
+        Row: { id: string; exec_id: string; date: string; start_time: string; end_time: string; created_at: string };
+        Insert: { id?: string; exec_id: string; date: string; start_time: string; end_time: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["client_meeting_availability"]["Insert"]>;
+        Relationships: [];
+      };
+      client_meeting_slots: {
+        Row: {
+          id: string;
+          date: string;
+          start_time: string;
+          end_time: string;
+          published: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          date: string;
+          start_time: string;
+          end_time: string;
+          published?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["client_meeting_slots"]["Insert"]>;
+        Relationships: [];
+      };
+      client_meetings: {
+        Row: {
+          id: string;
+          slot_id: string;
+          contact_name: string;
+          business_name: string;
+          email: string;
+          phone: string | null;
+          needs: string;
+          panel_exec_ids: string[];
+          meeting_url: string | null;
+          status: string;
+          manage_token: string;
+          reminder_day_before_sent_at: string | null;
+          reminder_morning_sent_at: string | null;
+          created_at: string;
+          cancelled_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          slot_id: string;
+          contact_name: string;
+          business_name: string;
+          email: string;
+          phone?: string | null;
+          needs: string;
+          panel_exec_ids: string[];
+          meeting_url?: string | null;
+          status?: string;
+          manage_token: string;
+          reminder_day_before_sent_at?: string | null;
+          reminder_morning_sent_at?: string | null;
+          created_at?: string;
+          cancelled_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["client_meetings"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: {
       directory_view: {
