@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeTime } from "@/lib/coffee-chat";
 import { buildIcsCalendar, type CoffeeChatBookingForInvite } from "@/lib/calendar-invite";
 import { buildInterviewFeedEvents } from "@/lib/interview-feed";
+import { buildClientMeetingFeedEvents } from "@/lib/client-meeting-feed";
 
 /** Unguessable per-exec signature, derived from the service key so no extra storage or secret is needed. */
 function signExecId(execId: string): string {
@@ -70,6 +71,10 @@ async function buildCoffeeChatEvents(execId: string): Promise<(CoffeeChatBooking
 
 /** Every confirmed coffee chat and interview this exec is on, as one subscribable calendar. */
 export async function buildExecFeed(execId: string): Promise<string> {
-  const [coffeeChats, interviewLines] = await Promise.all([buildCoffeeChatEvents(execId), buildInterviewFeedEvents(execId)]);
-  return buildIcsCalendar(coffeeChats, interviewLines);
+  const [coffeeChats, interviewLines, clientMeetingLines] = await Promise.all([
+    buildCoffeeChatEvents(execId),
+    buildInterviewFeedEvents(execId),
+    buildClientMeetingFeedEvents(execId),
+  ]);
+  return buildIcsCalendar(coffeeChats, [...interviewLines, ...clientMeetingLines]);
 }
