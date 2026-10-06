@@ -897,7 +897,7 @@ describe("interview invites", () => {
     expect(buildInterviewIcs(base)).not.toContain("Jane Doe");
     const exec = buildInterviewIcs({ ...base, audience: "exec", panelNames: ["Ava", "Ben"] });
     expect(exec).toContain("SUMMARY:Interview with Jane Doe");
-    expect(exec).toContain("Ava, Ben");
+    expect(exec).toContain("Ava\\, Ben"); // commas are RFC 5545-escaped
   });
 
   it("emits CRLF-separated .ics with correct times", () => {

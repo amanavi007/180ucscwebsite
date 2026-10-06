@@ -31,7 +31,7 @@ function eventText(booking: CoffeeChatBookingForInvite): {
   };
 }
 
-function toUtcStamp(date: string, time: string): string {
+export function toUtcStamp(date: string, time: string): string {
   const utc = zonedDateTimeToUtc(date, time);
   return utc.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
 }
@@ -49,7 +49,7 @@ export function buildGoogleCalendarUrl(booking: CoffeeChatBookingForInvite): str
 }
 
 /** RFC 5545 requires CRLF line endings. */
-function icsLines(lines: string[]): string {
+export function icsLines(lines: string[]): string {
   return lines.join("\r\n");
 }
 
@@ -76,7 +76,10 @@ export function buildIcsContent(booking: CoffeeChatBookingForInvite): string {
 }
 
 /** One calendar file holding many exec-facing events, so they can be imported in a single step. */
-export function buildIcsCalendar(bookings: (CoffeeChatBookingForInvite & { id: string })[]): string {
+export function buildIcsCalendar(
+  bookings: (CoffeeChatBookingForInvite & { id: string })[],
+  extraEventLines: string[] = [],
+): string {
   const events = bookings.flatMap((b) => {
     const { title, description } = eventText({ ...b, audience: "exec" });
     return [
@@ -95,10 +98,11 @@ export function buildIcsCalendar(bookings: (CoffeeChatBookingForInvite & { id: s
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
     "PRODID:-//180DC UCSC//Coffee Chat//EN",
-    "X-WR-CALNAME:180DC Coffee Chats",
+    "X-WR-CALNAME:180DC Recruitment",
     "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
     "X-PUBLISHED-TTL:PT1H",
     ...events,
+    ...extraEventLines,
     "END:VCALENDAR",
     "",
   ]);
