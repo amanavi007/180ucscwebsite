@@ -29,6 +29,12 @@ describe("client meeting invites", () => {
     expect(exec).toContain("Ava\\, Ben");
     expect(exec).not.toMatch(/Line one\r?\nLine two/);
   });
+  it("neutralises a bare carriage return in needs (no ICS property injection)", () => {
+    const exec = buildClientMeetingIcs({ ...base, needs: "a\rATTENDEE:mailto:evil@x.com\rb", audience: "exec" });
+    expect(exec).toContain("a\\nATTENDEE:mailto:evil@x.com\\nb");
+    expect(exec.split("\r\n").some((l) => l.startsWith("ATTENDEE"))).toBe(false);
+    expect(buildClientMeetingIcs({ ...base, needs: "a\rb", audience: "exec" })).toContain("a\\nb");
+  });
   it("uses CRLF and stable per-booking UIDs for the feed", () => {
     expect(buildClientMeetingIcs(base)).toContain("\r\n");
     const lines = clientMeetingEventLines({ ...base, id: "b1", audience: "exec" });

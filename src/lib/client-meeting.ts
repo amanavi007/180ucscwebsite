@@ -14,14 +14,16 @@ export const MAX_PHONE = 30;
 export const MAX_NEEDS = 1000;
 export const MAX_MEETING_URL = 500;
 
-/** The panel setting is valid only as a JSON array of exactly 3 distinct non-empty strings. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** The panel setting is valid only as a JSON array of exactly 3 distinct UUID strings (trimmed). */
 export function parsePanelSetting(value: string | undefined | null): string[] {
   if (!value) return [];
   try {
     const parsed: unknown = JSON.parse(value);
     if (!Array.isArray(parsed) || parsed.length !== PANEL_SIZE) return [];
-    if (!parsed.every((id) => typeof id === "string" && id.trim() !== "")) return [];
-    const ids = parsed as string[];
+    if (!parsed.every((id) => typeof id === "string" && UUID_RE.test(id.trim()))) return [];
+    const ids = (parsed as string[]).map((id) => id.trim());
     return new Set(ids).size === PANEL_SIZE ? ids : [];
   } catch {
     return [];

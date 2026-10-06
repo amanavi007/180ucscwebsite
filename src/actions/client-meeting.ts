@@ -245,12 +245,14 @@ export async function setClientMeetingUrlAction(bookingId: string, raw: string):
     return { error: "Only the panel for this meeting can set the link." };
   }
 
-  const { error: updateError } = await supabase
+  const { data: updated, error: updateError } = await supabase
     .from("client_meetings")
     .update({ meeting_url: validated.url })
     .eq("id", bookingId)
-    .eq("status", "confirmed");
+    .eq("status", "confirmed")
+    .select("id");
   if (updateError) return { error: updateError.message };
+  if (!updated || updated.length === 0) return { error: "That meeting is no longer confirmed." };
 
   if (validated.url && validated.url !== booking.meeting_url) {
     await emailClientMeetingLink(bookingId);

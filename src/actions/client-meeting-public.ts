@@ -22,6 +22,7 @@ import {
 } from "@/lib/email/notify-client-meeting";
 
 const UNIQUE_VIOLATION = "23505";
+const GENERIC_ERROR = "Something went wrong. Please try again or contact us.";
 
 export interface CreateClientMeetingInput {
   slotId: string;
@@ -90,7 +91,7 @@ export async function createClientMeetingAction(
     businessName: String(input.businessName ?? "").replace(/\s+/g, " ").trim(),
     email: String(input.email ?? ""),
     phone: String(input.phone ?? ""),
-    needs: String(input.needs ?? ""),
+    needs: String(input.needs ?? "").replace(/\r\n?/g, "\n"),
   });
   if ("error" in validated) return { error: validated.error };
   const { contactName, businessName, email, phone, needs } = validated.value;
@@ -199,7 +200,8 @@ export async function createClientMeetingAction(
           "That slot was just taken, or you already have a booking. Please refresh and try again.",
       };
     }
-    return { error: insertError.message };
+    console.error("client meeting insert failed:", insertError);
+    return { error: GENERIC_ERROR };
   }
 
   const startTime = normalizeTime(slot.start_time);
@@ -257,7 +259,10 @@ export async function cancelClientMeetingByTokenAction(
     .select("id, status, slot_id")
     .eq("manage_token", token)
     .maybeSingle();
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("client meeting lookup failed:", error);
+    return { error: GENERIC_ERROR };
+  }
   if (!booking) return { error: "We couldn't find that booking." };
   // Only a confirmed booking can be cancelled; cancelled or completed ones are left untouched.
   if (booking.status !== "confirmed") return {};
@@ -283,7 +288,10 @@ export async function cancelClientMeetingByTokenAction(
     .eq("id", booking.id)
     .eq("status", "confirmed")
     .select("id");
-  if (updateError) return { error: updateError.message };
+  if (updateError) {
+    console.error("client meeting cancel failed:", updateError);
+    return { error: GENERIC_ERROR };
+  }
 
   if ((cancelled ?? []).length > 0) {
     await Promise.all([

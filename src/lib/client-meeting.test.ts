@@ -11,11 +11,24 @@ import {
 } from "./client-meeting";
 
 const panel = ["a", "b", "c"];
+const U1 = "11111111-1111-4111-8111-111111111111";
+const U2 = "22222222-2222-4222-8222-222222222222";
+const U3 = "33333333-3333-4333-8333-333333333333";
+const uuidPanel = [U1, U2, U3];
 const block = (execId: string, startTime: string, endTime: string, date = "2026-10-20") => ({ execId, date, startTime, endTime });
 
 describe("parsePanelSetting", () => {
   it("accepts exactly 3 distinct ids", () => {
-    expect(parsePanelSetting('["a","b","c"]')).toEqual(["a", "b", "c"]);
+    expect(parsePanelSetting(JSON.stringify(uuidPanel))).toEqual(uuidPanel);
+  });
+  it("rejects a non-UUID id", () => {
+    expect(parsePanelSetting(JSON.stringify([U1, U2, "not-a-uuid"]))).toEqual([]);
+  });
+  it("trims surrounding whitespace and returns the trimmed ids", () => {
+    expect(parsePanelSetting(JSON.stringify([` ${U1} `, `${U2}\n`, U3]))).toEqual(uuidPanel);
+  });
+  it("rejects ids that are duplicates once trimmed", () => {
+    expect(parsePanelSetting(JSON.stringify([U1, ` ${U1}`, U3]))).toEqual([]);
   });
   it.each([undefined, null, "", "not json", "[]", '["a","b"]', '["a","b","c","d"]', '["a","a","b"]', '["a","","b"]', '{"a":1}', "[1,2,3]"])(
     "rejects %s",
@@ -31,9 +44,9 @@ describe("parseClientMeetingSettings", () => {
     const s = parseClientMeetingSettings([
       { key: "client_meeting_booking_open", value: "true" },
       { key: "client_meeting_slot_minutes", value: "999" },
-      { key: "client_meeting_panel", value: '["a","b","c"]' },
+      { key: "client_meeting_panel", value: JSON.stringify(uuidPanel) },
     ]);
-    expect(s).toEqual({ bookingOpen: true, slotMinutes: 30, panelExecIds: panel });
+    expect(s).toEqual({ bookingOpen: true, slotMinutes: 30, panelExecIds: uuidPanel });
   });
 });
 

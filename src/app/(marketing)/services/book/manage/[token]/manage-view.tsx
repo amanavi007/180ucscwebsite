@@ -115,7 +115,7 @@ export function ManageView({
             <span className="sr-only"> (opens in a new tab)</span>
           </a>
         ) : (
-          "Video link to follow"
+          "We'll email you the video link before the meeting."
         )}
       </p>
       <ClientMeetingAddToCalendarButtons
