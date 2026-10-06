@@ -21,8 +21,8 @@ export default async function InterviewPage() {
             Book your interview
           </h1>
           <p className="mt-5 max-w-xl text-lg text-foreground/70 text-pretty">
-            This page is for applicants we&apos;ve invited to interview. Pick a time and use the UCSC email we contacted
-            you at.
+            This page is for applicants we&apos;ve invited to interview. Pick a
+            time and use the UCSC email we contacted you at.
           </p>
         </>
       }

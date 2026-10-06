@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 import Script from "next/script";
 import { useRouter } from "next/navigation";
 import { CircleAlert, MapPin } from "lucide-react";
@@ -13,10 +20,23 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar, CalendarDayButton } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
-import { BookingShell, FieldMessage, TimeChips, inputClass } from "../coffee-chat/booking-form";
-import { InterviewConfirmation, type ConfirmedInterview } from "./interview-confirmation";
+import {
+  BookingShell,
+  FieldMessage,
+  TimeChips,
+  inputClass,
+} from "../coffee-chat/booking-form";
+import {
+  InterviewConfirmation,
+  type ConfirmedInterview,
+} from "./interview-confirmation";
 
-type Errors = { slot?: string; name?: string; email?: string; verification?: string };
+type Errors = {
+  slot?: string;
+  name?: string;
+  email?: string;
+  verification?: string;
+};
 
 export function InterviewBookingForm({
   bookingOpen,
@@ -36,7 +56,9 @@ export function InterviewBookingForm({
   const [email, setEmail] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileScriptReady, setTurnstileScriptReady] = useState(false);
-  const [touched, setTouched] = useState<{ name?: boolean; email?: boolean }>({});
+  const [touched, setTouched] = useState<{ name?: boolean; email?: boolean }>(
+    {},
+  );
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState<ConfirmedInterview | null>(null);
@@ -45,9 +67,29 @@ export function InterviewBookingForm({
   const noticeRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
 
+  // Arriving from "Reschedule": the manage page stashed their details so they don't retype them.
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("interview-prefill");
+      if (!saved) return;
+      sessionStorage.removeItem("interview-prefill");
+      const parsed = JSON.parse(saved) as { name?: string; email?: string };
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time prefill from sessionStorage, which can't be read during render
+      if (parsed.name) setName(parsed.name);
+      if (parsed.email) setEmail(parsed.email);
+    } catch {
+      // Storage unavailable or corrupt: leave the fields empty.
+    }
+  }, []);
+
   // If the list refreshes and the chosen time is gone (someone took it), treat it as unselected.
-  const selectedSlotId = chosenSlotId && slots.some((s) => s.id === chosenSlotId) ? chosenSlotId : null;
-  const selectedSlot = selectedSlotId ? (slots.find((s) => s.id === selectedSlotId) ?? null) : null;
+  const selectedSlotId =
+    chosenSlotId && slots.some((s) => s.id === chosenSlotId)
+      ? chosenSlotId
+      : null;
+  const selectedSlot = selectedSlotId
+    ? (slots.find((s) => s.id === selectedSlotId) ?? null)
+    : null;
 
   const byDate = useMemo(() => {
     const map = new Map<string, PublicInterviewSlot[]>();
@@ -63,7 +105,9 @@ export function InterviewBookingForm({
   // Several panels can share a start time; the applicant only needs each time once (the server assigns the panel).
   const timesForSelectedDate = useMemo(() => {
     const seen = new Set<string>();
-    return (selectedDate ? (byDate.get(selectedDate) ?? []) : []).filter((s) => !seen.has(s.startTime) && seen.add(s.startTime));
+    return (selectedDate ? (byDate.get(selectedDate) ?? []) : []).filter(
+      (s) => !seen.has(s.startTime) && seen.add(s.startTime),
+    );
   }, [selectedDate, byDate]);
   const selectedParts = selectedDate ? formatDateParts(selectedDate) : null;
 
@@ -71,7 +115,8 @@ export function InterviewBookingForm({
   if (!selectedSlotId) errors.slot = "Pick a time.";
   if (!name.trim()) errors.name = "Enter your name.";
   if (!email.trim()) errors.email = "Enter your UCSC email.";
-  else if (!isValidUcscEmail(email)) errors.email = "Use your @ucsc.edu address.";
+  else if (!isValidUcscEmail(email))
+    errors.email = "Use your @ucsc.edu address.";
   if (!turnstileToken) errors.verification = "Complete the verification check.";
   const showName = (touched.name || submitAttempted) && errors.name;
   const showEmail = (touched.email || submitAttempted) && errors.email;
@@ -79,12 +124,20 @@ export function InterviewBookingForm({
 
   // Render the Turnstile widget once both the script has loaded and its container exists.
   useEffect(() => {
-    if (!turnstileScriptReady || !turnstileContainerRef.current || !window.turnstile) return;
+    if (
+      !turnstileScriptReady ||
+      !turnstileContainerRef.current ||
+      !window.turnstile
+    )
+      return;
     if (turnstileContainerRef.current.childElementCount > 0) return;
-    turnstileWidgetIdRef.current = window.turnstile.render(turnstileContainerRef.current, {
-      sitekey: turnstileSiteKey,
-      callback: setTurnstileToken,
-    });
+    turnstileWidgetIdRef.current = window.turnstile.render(
+      turnstileContainerRef.current,
+      {
+        sitekey: turnstileSiteKey,
+        callback: setTurnstileToken,
+      },
+    );
   }, [turnstileScriptReady, selectedSlotId, turnstileSiteKey]);
 
   function focusFirstProblem() {
@@ -96,7 +149,8 @@ export function InterviewBookingForm({
           ? document.getElementById("email")
           : turnstileContainerRef.current;
     target?.scrollIntoView({ block: "center", behavior: "smooth" });
-    if (target instanceof HTMLInputElement) target.focus({ preventScroll: true });
+    if (target instanceof HTMLInputElement)
+      target.focus({ preventScroll: true });
   }
 
   function handleSubmit() {
@@ -108,21 +162,30 @@ export function InterviewBookingForm({
     }
 
     startTransition(async () => {
-      const result = await createInterviewBookingAction({ slotId: selectedSlotId, name, email, turnstileToken });
+      const result = await createInterviewBookingAction({
+        slotId: selectedSlotId,
+        name,
+        email,
+        turnstileToken,
+      });
       if (result.error) {
         // Turnstile tokens are single-use and the server has spent this one: get a fresh challenge.
         setTurnstileToken("");
         window.turnstile?.reset(turnstileWidgetIdRef.current ?? undefined);
         setServerError(result.error);
         router.refresh();
-        noticeRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+        noticeRef.current?.scrollIntoView({
+          block: "center",
+          behavior: "smooth",
+        });
         return;
       }
       if (result.booking) setConfirmed(result.booking);
     });
   }
 
-  if (confirmed) return <InterviewConfirmation booking={confirmed} applicantName={name} />;
+  if (confirmed)
+    return <InterviewConfirmation booking={confirmed} applicantName={name} />;
 
   if (!bookingOpen || slots.length === 0) {
     return (
@@ -153,7 +216,11 @@ export function InterviewBookingForm({
         <div
           ref={noticeRef}
           role="alert"
-          className={serverError ? "flex items-start gap-2.5 rounded-2xl border-2 border-red-700 bg-white p-4 text-red-800" : "hidden"}
+          className={
+            serverError
+              ? "flex items-start gap-2.5 rounded-2xl border-2 border-red-700 bg-white p-4 text-red-800"
+              : "hidden"
+          }
         >
           {serverError && (
             <>
@@ -184,14 +251,19 @@ export function InterviewBookingForm({
                   <CalendarDayButton
                     {...props}
                     className={cn(
-                      props.modifiers.available && "bg-primary/10 font-semibold text-deep",
-                      props.modifiers.today && "ring-[1.5px] ring-deep ring-inset",
+                      props.modifiers.available &&
+                        "bg-primary/10 font-semibold text-deep",
+                      props.modifiers.today &&
+                        "ring-[1.5px] ring-deep ring-inset",
                       "group-data-[focused=true]/day:ring-foreground data-[selected-single=true]:hover:bg-primary data-[selected-single=true]:hover:text-primary-foreground",
                     )}
                   >
                     {props.children}
                     {props.modifiers.available && (
-                      <i aria-hidden className="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-primary opacity-100! group-data-[selected=true]/day:bg-white" />
+                      <i
+                        aria-hidden
+                        className="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-primary opacity-100! group-data-[selected=true]/day:bg-white"
+                      />
                     )}
                   </CalendarDayButton>
                 ),
@@ -201,11 +273,17 @@ export function InterviewBookingForm({
             />
             <p className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 px-1 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5">
-                <i aria-hidden className="size-3 rounded border border-primary/30 bg-primary/10" />
+                <i
+                  aria-hidden
+                  className="size-3 rounded border border-primary/30 bg-primary/10"
+                />
                 Open times
               </span>
               <span className="flex items-center gap-1.5">
-                <i aria-hidden className="size-3 rounded border border-border" />
+                <i
+                  aria-hidden
+                  className="size-3 rounded border border-border"
+                />
                 Nothing open
               </span>
             </p>
@@ -213,17 +291,26 @@ export function InterviewBookingForm({
 
           <div>
             {!selectedDate || !selectedParts ? (
-              <p className="px-1 text-sm text-muted-foreground">Pick a shaded day to see its times.</p>
+              <p className="px-1 text-sm text-muted-foreground">
+                Pick a shaded day to see its times.
+              </p>
             ) : (
               <fieldset>
                 <legend className="sr-only">
-                  Times on {selectedParts.weekday}, {selectedParts.month} {selectedParts.day}
+                  Times on {selectedParts.weekday}, {selectedParts.month}{" "}
+                  {selectedParts.day}
                 </legend>
-                <div className="mb-2 flex items-baseline justify-between px-1" aria-hidden>
+                <div
+                  className="mb-2 flex items-baseline justify-between px-1"
+                  aria-hidden
+                >
                   <span className="font-bold">
-                    {selectedParts.weekday}, {selectedParts.month} {selectedParts.day}
+                    {selectedParts.weekday}, {selectedParts.month}{" "}
+                    {selectedParts.day}
                   </span>
-                  <span className="text-xs text-muted-foreground">Pacific Time</span>
+                  <span className="text-xs text-muted-foreground">
+                    Pacific Time
+                  </span>
                 </div>
                 <TimeChips
                   slots={timesForSelectedDate}
@@ -253,7 +340,10 @@ export function InterviewBookingForm({
             <h2 className="text-base font-bold">Your details</h2>
             <div className="mt-3 grid gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="name" className="mb-1.5 block text-sm font-semibold">
+                <label
+                  htmlFor="name"
+                  className="mb-1.5 block text-sm font-semibold"
+                >
                   Name
                 </label>
                 <Input
@@ -264,12 +354,20 @@ export function InterviewBookingForm({
                   autoComplete="name"
                   aria-invalid={showName ? true : undefined}
                   aria-describedby={showName ? "name-error" : undefined}
-                  className={cn(inputClass, showName && "border-2 border-red-700")}
+                  className={cn(
+                    inputClass,
+                    showName && "border-2 border-red-700",
+                  )}
                 />
-                {showName && <FieldMessage id="name-error">{errors.name}</FieldMessage>}
+                {showName && (
+                  <FieldMessage id="name-error">{errors.name}</FieldMessage>
+                )}
               </div>
               <div>
-                <label htmlFor="email" className="mb-1.5 block text-sm font-semibold">
+                <label
+                  htmlFor="email"
+                  className="mb-1.5 block text-sm font-semibold"
+                >
                   UCSC email
                 </label>
                 <Input
@@ -283,20 +381,35 @@ export function InterviewBookingForm({
                   autoComplete="email"
                   aria-invalid={showEmail ? true : undefined}
                   aria-describedby={showEmail ? "email-error" : undefined}
-                  className={cn(inputClass, showEmail && "border-2 border-red-700")}
+                  className={cn(
+                    inputClass,
+                    showEmail && "border-2 border-red-700",
+                  )}
                 />
-                {showEmail && <FieldMessage id="email-error">{errors.email}</FieldMessage>}
+                {showEmail && (
+                  <FieldMessage id="email-error">{errors.email}</FieldMessage>
+                )}
               </div>
             </div>
 
             <div ref={turnstileContainerRef} className="mt-4 empty:hidden" />
-            {showVerification && <FieldMessage id="verification-error">{errors.verification}</FieldMessage>}
+            {showVerification && (
+              <FieldMessage id="verification-error">
+                {errors.verification}
+              </FieldMessage>
+            )}
 
-            <Button type="submit" disabled={isPending} size="lg" className="mt-5 h-12 w-full rounded-2xl text-base font-bold">
+            <Button
+              type="submit"
+              disabled={isPending}
+              size="lg"
+              className="mt-5 h-12 w-full rounded-2xl text-base font-bold"
+            >
               {isPending ? "Booking..." : bookLabel}
             </Button>
             <p className="mt-2.5 text-center text-sm text-muted-foreground">
-              You&apos;ll get a confirmation email with a link to reschedule or cancel (up to 24 hours before).
+              You&apos;ll get a confirmation email with a link to reschedule or
+              cancel (up to 24 hours before).
             </p>
           </form>
         )}

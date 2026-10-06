@@ -23,7 +23,13 @@ const fitToScreen = {
 } as CSSProperties;
 
 /** Post-booking screen: fills the viewport under the nav and owns its own page shell. */
-export function InterviewConfirmation({ booking, applicantName }: { booking: ConfirmedInterview; applicantName: string }) {
+export function InterviewConfirmation({
+  booking,
+  applicantName,
+}: {
+  booking: ConfirmedInterview;
+  applicantName: string;
+}) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const { weekday, month, day } = formatDateParts(booking.date);
 
@@ -33,7 +39,10 @@ export function InterviewConfirmation({ booking, applicantName }: { booking: Con
   }, []);
 
   return (
-    <div style={fitToScreen} className="flex min-h-svh items-center justify-center px-4 pt-24 pb-6 sm:px-6">
+    <div
+      style={fitToScreen}
+      className="flex min-h-svh items-center justify-center px-4 pt-24 pb-6 sm:px-6"
+    >
       <section className="mint-panel w-full max-w-3xl rounded-[2rem] px-5 py-[calc(var(--gap)*1.6)] text-center sm:rounded-[2.5rem] sm:px-10">
         <div className="mx-auto grid size-(--badge) place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_0_0_0.5rem_rgb(88_138_44/0.15),0_0_0_1rem_rgb(88_138_44/0.07)]">
           <Check className="size-[55%]" strokeWidth={2.5} />
@@ -46,17 +55,23 @@ export function InterviewConfirmation({ booking, applicantName }: { booking: Con
         >
           You&apos;re all set!
         </h1>
-        <p className="mt-2 text-[1.0625rem] text-foreground/70">Your interview is booked.</p>
+        <p className="mt-2 text-[1.0625rem] text-foreground/70">
+          Your interview is booked.
+        </p>
 
         <div className="mx-auto mt-(--gap) max-w-[26rem] overflow-hidden rounded-3xl bg-white text-left shadow-[0_1px_2px_rgb(0_0_0/0.05),0_8px_24px_rgb(47_74_23/0.1)]">
           <div className="flex items-center gap-[1.125rem] px-6 py-4">
             <DateTile month={month} day={day} />
             <div>
-              <p className="text-[0.8125rem] font-semibold tracking-[0.08em] text-primary uppercase">{weekday}</p>
+              <p className="text-[0.8125rem] font-semibold tracking-[0.08em] text-primary uppercase">
+                {weekday}
+              </p>
               <p className="text-[1.625rem] leading-[1.15] font-bold tracking-tight tabular-nums">
                 {formatTimeRange(booking.startTime, booking.endTime)}
               </p>
-              <p className="text-sm text-muted-foreground">1 hour · In person</p>
+              <p className="text-sm text-muted-foreground">
+                1 hour · In person
+              </p>
             </div>
           </div>
           <a

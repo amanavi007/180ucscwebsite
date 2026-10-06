@@ -4,6 +4,7 @@ import {
   canRemoveFromPanel,
   canSelfCancel,
   generateInterviewSlots,
+  isInterviewPast,
   isInterviewSlotBookable,
   isInterviewSwapEligible,
   normalizeInviteeEmail,
@@ -234,5 +235,33 @@ describe("parseInterviewSettings", () => {
     });
     expect(parseInterviewSettings([{ key: "interview_slot_minutes", value: "abc" }]).slotMinutes).toBe(60);
     expect(parseInterviewSettings([{ key: "interview_slot_minutes", value: "5" }]).slotMinutes).toBe(60);
+  });
+});
+
+describe("parseInviteeList with several emails on one line", () => {
+  it("treats a semicolon- or comma-separated one-line list as separate invitees, not a name", () => {
+    const { invitees, errors } = parseInviteeList("a@ucsc.edu; b@ucsc.edu; c@ucsc.edu");
+    expect(errors).toEqual([]);
+    expect(invitees).toEqual([
+      { email: "a@ucsc.edu", name: null },
+      { email: "b@ucsc.edu", name: null },
+      { email: "c@ucsc.edu", name: null },
+    ]);
+    expect(parseInviteeList("a@ucsc.edu, b@ucsc.edu").invitees.map((i) => i.email)).toEqual(["a@ucsc.edu", "b@ucsc.edu"]);
+  });
+
+  it("splits space-separated addresses and reports bad ones", () => {
+    const { invitees, errors } = parseInviteeList("a@ucsc.edu b@gmail.com c@ucsc.edu");
+    expect(invitees.map((i) => i.email)).toEqual(["a@ucsc.edu", "c@ucsc.edu"]);
+    expect(errors).toEqual(['Line 1: "b@gmail.com" is not a @ucsc.edu address.']);
+  });
+});
+
+describe("isInterviewPast", () => {
+  // 2026-10-07 10:00 Pacific (PDT) = 17:00Z
+  it("is false before the interview ends and true after", () => {
+    expect(isInterviewPast("2026-10-07", "10:00", new Date("2026-10-07T16:59:00Z"))).toBe(false);
+    expect(isInterviewPast("2026-10-07", "10:00", new Date("2026-10-07T17:00:00Z"))).toBe(true);
+    expect(isInterviewPast("2026-10-07", "10:00", new Date("2027-03-01T00:00:00Z"))).toBe(true);
   });
 });

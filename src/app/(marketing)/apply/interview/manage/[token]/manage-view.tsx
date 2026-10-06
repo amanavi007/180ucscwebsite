@@ -12,14 +12,29 @@ import { formatDateLong } from "@/lib/date";
 import { Button } from "@/components/ui/button";
 import { InterviewAddToCalendarButtons } from "../../interview-add-to-calendar";
 
-export function ManageView({ token, booking }: { token: string; booking: ManagedInterviewBooking | null }) {
+export function ManageView({
+  token,
+  booking,
+}: {
+  token: string;
+  booking: ManagedInterviewBooking | null;
+}) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
   if (!booking) {
     return (
       <p className="text-center text-foreground/70">
-        We can&apos;t find a booking for that link. If you think this is a mistake, reach out to us directly.
+        We can&apos;t find a booking for that link. If you think this is a
+        mistake, reach out to us directly.
+      </p>
+    );
+  }
+
+  if (booking.status === "completed") {
+    return (
+      <p className="text-center text-foreground/70">
+        This interview has already taken place.
       </p>
     );
   }
@@ -28,7 +43,11 @@ export function ManageView({ token, booking }: { token: string; booking: Managed
     return (
       <div className="text-center">
         <p className="text-foreground/70">This booking has been cancelled.</p>
-        <Button nativeButton={false} render={<a href="/apply/interview" />} className="mt-6 gap-1.5">
+        <Button
+          nativeButton={false}
+          render={<a href="/apply/interview" />}
+          className="mt-6 gap-1.5"
+        >
           Book a new time
           <ArrowUpRight className="size-4" />
         </Button>
@@ -50,11 +69,24 @@ export function ManageView({ token, booking }: { token: string; booking: Managed
 
   // Navigation waits for the cancel to resolve so the old slot is actually freed.
   function handleReschedule() {
+    if (!booking) return;
     startTransition(async () => {
       const result = await cancelInterviewBookingByTokenAction(token);
       if (result.error) {
         toast.error(result.error);
         return;
+      }
+      // Carry name and email over to the picker (kept out of the URL).
+      try {
+        sessionStorage.setItem(
+          "interview-prefill",
+          JSON.stringify({
+            name: booking.applicantName,
+            email: booking.applicantEmail,
+          }),
+        );
+      } catch {
+        // Private mode: they just retype it.
       }
       router.push("/apply/interview");
     });
@@ -79,20 +111,31 @@ export function ManageView({ token, booking }: { token: string; booking: Managed
       {booking.canSelfCancel ? (
         <>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Button variant="outline" onClick={handleCancel} disabled={isPending}>
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isPending}
+            >
               Cancel booking
             </Button>
-            <Button onClick={handleReschedule} disabled={isPending}>
+            <Button
+              onClick={handleReschedule}
+              disabled={isPending || !booking.canReschedule}
+            >
               Reschedule
             </Button>
           </div>
           <p className="mt-4 text-xs text-muted-foreground">
-            &quot;Reschedule&quot; cancels this booking and takes you back to pick a new time. Changes close 24 hours before your interview.
+            {booking.canReschedule
+              ? '"Reschedule" cancels this booking and takes you back to pick a new time. '
+              : "Rescheduling isn't available right now (no other times are open), so your booking is safe. You can still cancel, or contact us. "}
+            Changes close 24 hours before your interview.
           </p>
         </>
       ) : (
         <p className="mt-8 text-sm text-foreground/70">
-          Your interview is less than 24 hours away, so it can no longer be changed online. Please contact us and we&apos;ll help.
+          Your interview is less than 24 hours away, so it can no longer be
+          changed online. Please contact us and we&apos;ll help.
         </p>
       )}
     </div>

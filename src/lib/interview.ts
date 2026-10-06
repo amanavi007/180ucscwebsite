@@ -152,6 +152,11 @@ export function isInterviewSlotBookable(
   return slotStart.getTime() - now.getTime() >= minLeadMinutes * 60_000;
 }
 
+/** True once the interview's end time has passed (used to retire last cycle's bookings). */
+export function isInterviewPast(date: string, endTime: string, now: Date): boolean {
+  return zonedDateTimeToUtc(date, normalizeTime(endTime)).getTime() <= now.getTime();
+}
+
 /** Applicants can cancel or reschedule themselves until 24 hours before the interview. */
 export function canSelfCancel(date: string, startTime: string, now: Date): boolean {
   const slotStart = zonedDateTimeToUtc(date, normalizeTime(startTime));
@@ -197,18 +202,28 @@ export function parseInviteeList(text: string): { invitees: { email: string; nam
   const errors: string[] = [];
   const seen = new Set<string>();
 
-  text.split(/\r?\n/).forEach((line, index) => {
-    if (line.trim() === "") return;
-    const [rawEmail, ...rest] = line.split(/[,;\t]/);
+  function add(rawEmail: string, rawName: string, lineNumber: number) {
     const email = normalizeInviteeEmail(rawEmail);
     if (!isValidUcscEmail(email)) {
-      errors.push(`Line ${index + 1}: "${rawEmail.trim()}" is not a @ucsc.edu address.`);
+      errors.push(`Line ${lineNumber}: "${rawEmail.trim()}" is not a @ucsc.edu address.`);
       return;
     }
     if (seen.has(email)) return;
     seen.add(email);
-    const name = rest.join(" ").trim();
+    const name = rawName.trim();
     invitees.push({ email, name: name === "" ? null : name });
+  }
+
+  text.split(/\r?\n/).forEach((line, index) => {
+    if (line.trim() === "") return;
+    // Several addresses on one line (e.g. copied from a mail client) are separate invitees, not "email, name".
+    const addresses = line.split(/[\s,;]+/).filter((token) => token.includes("@"));
+    if (addresses.length > 1) {
+      for (const address of addresses) add(address, "", index + 1);
+      return;
+    }
+    const [rawEmail, ...rest] = line.split(/[,;\t]/);
+    add(rawEmail, rest.join(" "), index + 1);
   });
 
   return { invitees, errors };
