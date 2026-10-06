@@ -9,6 +9,7 @@ import { logAudit } from "@/lib/audit";
 import { emailApplicantInterviewCancelled, notifyInterviewExecs } from "@/lib/email/notify-interview";
 import { getInterviewAdminSettings, getInterviewAvailability, getInterviewExecOptions, getInterviewSlots } from "@/lib/data/interview";
 import { expandAvailabilityEntry, overlaps, type TimeBlockInput } from "@/lib/coffee-chat";
+import { getOrgTodayDateString } from "@/lib/date";
 import {
   canAddToPanel,
   canRemoveFromPanel,
@@ -157,26 +158,53 @@ export async function removeInterviewAvailabilityAction(
   return { removedSlotCount, keptBookedCount, createdCount: generated.createdCount, generateError: generated.error };
 }
 
-/** Creates published slots for availability not already covered. Existing slots are never touched, so it is safe to re-run. */
-async function generateMissingInterviewSlots(execId: string): Promise<ActionResult & { createdCount?: number }> {
+const slotKey = (s: { date: string; startTime: string; endTime: string; execIds: string[] }) =>
+  `${s.date}|${s.startTime}|${s.endTime}|${[...s.execIds].sort().join(",")}`;
+
+/**
+ * Brings slots in line with everyone's availability. Booked, past and
+ * admin-unpublished slots are fixed. Every other slot is recomputed from
+ * scratch, so an exec who adds time after the first panels were formed
+ * still gets paired in instead of being locked out. Only slots whose panel
+ * actually changes are deleted/created. With `rebalance: false` it only
+ * adds slots and never touches an existing one.
+ */
+async function generateMissingInterviewSlots(
+  execId: string,
+  { rebalance = true }: { rebalance?: boolean } = {},
+): Promise<ActionResult & { createdCount?: number }> {
   const [availability, existing, settings] = await Promise.all([
     getInterviewAvailability(),
     getInterviewSlots(),
     getInterviewAdminSettings(),
   ]);
 
-  const assignments: InterviewSlotAssignment[] = existing.map((s) => ({
-    slotId: s.id,
-    date: s.date,
-    startTime: s.startTime,
-    endTime: s.endTime,
-    execIds: s.execs.map((e) => e.id),
-  }));
-  const generated = generateInterviewSlots(
+  const today = getOrgTodayDateString();
+  const isRebuildable = (s: (typeof existing)[number]) =>
+    rebalance && s.bookingStatus === "open" && s.published && s.date >= today;
+  const rebuildable = existing.filter(isRebuildable);
+
+  const assignments: InterviewSlotAssignment[] = existing
+    .filter((s) => !isRebuildable(s))
+    .map((s) => ({
+      slotId: s.id,
+      date: s.date,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      execIds: s.execs.map((e) => e.id),
+    }));
+  const wanted = generateInterviewSlots(
     availability.map((a) => ({ execId: a.execId, date: a.date, startTime: a.startTime, endTime: a.endTime })),
     assignments,
     settings.slotMinutes,
   );
+
+  const wantedKeys = new Set(wanted.map(slotKey));
+  const keptKeys = new Set(
+    rebuildable.map((s) => slotKey({ ...s, execIds: s.execs.map((e) => e.id) })).filter((k) => wantedKeys.has(k)),
+  );
+  const staleIds = rebuildable.filter((s) => !wantedKeys.has(slotKey({ ...s, execIds: s.execs.map((e) => e.id) }))).map((s) => s.id);
+  const generated = wanted.filter((g) => !keptKeys.has(slotKey(g)));
 
   if (generated.length > 0) {
     const supabase = await createClient();
@@ -195,7 +223,14 @@ async function generateMissingInterviewSlots(execId: string): Promise<ActionResu
     }
   }
 
-  await logAudit(execId, "interview.slots_generated", undefined, `${generated.length} slot(s) created`);
+  // New slots are in; now drop the unbooked ones they replace.
+  if (staleIds.length > 0) {
+    const supabase = await createClient();
+    const { error: deleteError } = await supabase.from("interview_slots").delete().in("id", staleIds);
+    if (deleteError) return { error: deleteError.message };
+  }
+
+  await logAudit(execId, "interview.slots_generated", undefined, `${generated.length} slot(s) created, ${staleIds.length} replaced`);
   return { createdCount: generated.length };
 }
 
@@ -203,7 +238,7 @@ export async function generateInterviewSlotsAction(): Promise<ActionResult & { c
   const { profile, error } = await requireExec();
   if (error || !profile) return { error };
 
-  const result = await generateMissingInterviewSlots(profile.id);
+  const result = await generateMissingInterviewSlots(profile.id, { rebalance: false });
   if (!result.error) revalidateAdmin();
   return result;
 }
