@@ -14,7 +14,10 @@ import {
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { buildInterviewConfirmationEmail } from "@/lib/email/interview-emails";
 import { sendEmail } from "@/lib/email/send";
-import { notifyInterviewExecs } from "@/lib/email/notify-interview";
+import {
+  emailApplicantInterviewCancelled,
+  notifyInterviewExecs,
+} from "@/lib/email/notify-interview";
 
 const UNIQUE_VIOLATION = "23505";
 
@@ -214,8 +217,13 @@ export async function createInterviewBookingAction(
   return { booking: { manageToken, date: slot.date, startTime, endTime } };
 }
 
+/**
+ * Self-cancel from the manage link. The applicant gets a receipt email, except when this cancel is
+ * just the first half of "Reschedule" (the new booking's confirmation email is their receipt then).
+ */
 export async function cancelInterviewBookingByTokenAction(
   token: string,
+  options: { reschedule?: boolean } = {},
 ): Promise<{ error?: string }> {
   const supabase = createAdminClient();
   const { data: booking, error } = await supabase
@@ -250,8 +258,14 @@ export async function cancelInterviewBookingByTokenAction(
     .select("id");
   if (updateError) return { error: updateError.message };
 
-  if ((cancelled ?? []).length > 0)
-    await notifyInterviewExecs(booking.id, "cancelled");
+  if ((cancelled ?? []).length > 0) {
+    await Promise.all([
+      notifyInterviewExecs(booking.id, "cancelled"),
+      options.reschedule
+        ? Promise.resolve()
+        : emailApplicantInterviewCancelled(booking.id, "applicant"),
+    ]);
+  }
 
   revalidatePath("/apply/interview");
   revalidatePath("/portal/admin/interviews");

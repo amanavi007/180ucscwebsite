@@ -169,9 +169,10 @@ one-time adds.
 When an **admin cancels a booking**, the applicant is emailed that their
 interview was cancelled (date/time, and a note to contact us to rebook; they
 can book again since the allowlist entry and cancel are independent). This
-also stops their reminders. Self-cancellation from the manage page shows
-on-screen confirmation only, and swapping a panel exec sends the applicant
-nothing.
+also stops their reminders. Self-cancellation from the manage page also emails the applicant a
+receipt (user request after testing), except when the cancel is the first
+half of "Reschedule", where the new booking's confirmation is the receipt.
+Swapping a panel exec sends the applicant nothing.
 
 ## Exec notifications
 

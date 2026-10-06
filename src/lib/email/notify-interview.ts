@@ -37,7 +37,11 @@ async function loadBookingContext(bookingId: string) {
   if (execsError) throw execsError;
   return {
     booking,
-    when: { date: slot.date, startTime: normalizeTime(slot.start_time), endTime: normalizeTime(slot.end_time) },
+    when: {
+      date: slot.date,
+      startTime: normalizeTime(slot.start_time),
+      endTime: normalizeTime(slot.end_time),
+    },
     execs: execs ?? [],
   };
 }
@@ -61,44 +65,67 @@ export async function notifyInterviewExecs(
       execs
         .filter((exec) => !onlyExecIds || onlyExecIds.includes(exec.id))
         .map(async (exec) => {
-        const base = {
-          execName: exec.name,
-          applicantName: booking.applicant_name,
-          applicantEmail: booking.applicant_email,
-          otherPanelNames: execs.filter((e) => e.id !== exec.id).map((e) => e.name),
-          ...when,
-          siteUrl,
-        };
-        const content =
-          kind === "booked"
-            ? buildInterviewExecBookedEmail({ ...base, manageToken: booking.manage_token })
-            : buildInterviewExecCancelledEmail(base);
-        try {
-          await sendEmail({ to: exec.email, subject: content.subject, html: content.html, text: content.text });
-          result.sentTo.push(exec.email);
-        } catch (emailError) {
-          console.error(`interview exec ${kind} email failed:`, emailError);
-          result.errors.push(`${exec.email}: ${emailError instanceof Error ? emailError.message : String(emailError)}`);
-        }
-      }),
+          const base = {
+            execName: exec.name,
+            applicantName: booking.applicant_name,
+            applicantEmail: booking.applicant_email,
+            otherPanelNames: execs
+              .filter((e) => e.id !== exec.id)
+              .map((e) => e.name),
+            ...when,
+            siteUrl,
+          };
+          const content =
+            kind === "booked"
+              ? buildInterviewExecBookedEmail({
+                  ...base,
+                  manageToken: booking.manage_token,
+                })
+              : buildInterviewExecCancelledEmail(base);
+          try {
+            await sendEmail({
+              to: exec.email,
+              subject: content.subject,
+              html: content.html,
+              text: content.text,
+            });
+            result.sentTo.push(exec.email);
+          } catch (emailError) {
+            console.error(`interview exec ${kind} email failed:`, emailError);
+            result.errors.push(
+              `${exec.email}: ${emailError instanceof Error ? emailError.message : String(emailError)}`,
+            );
+          }
+        }),
     );
   } catch (err) {
     console.error(`interview exec ${kind} notification failed:`, err);
-    result.errors.push(err instanceof Error ? err.message : JSON.stringify(err));
+    result.errors.push(
+      err instanceof Error ? err.message : JSON.stringify(err),
+    );
   }
   return result;
 }
 
-/** Tells the applicant an admin cancelled their interview. Best effort, like the exec emails. */
-export async function emailApplicantInterviewCancelled(bookingId: string): Promise<void> {
+/** Tells the applicant their interview was cancelled (by an admin, or by themselves as a receipt). Best effort, like the exec emails. */
+export async function emailApplicantInterviewCancelled(
+  bookingId: string,
+  cancelledBy: "admin" | "applicant" = "admin",
+): Promise<void> {
   try {
     const { booking, when } = await loadBookingContext(bookingId);
     const content = buildInterviewAdminCancelledEmail({
       applicantName: booking.applicant_name,
       ...when,
       siteUrl: process.env.NEXT_PUBLIC_SITE_URL!,
+      cancelledBy,
     });
-    await sendEmail({ to: booking.applicant_email, subject: content.subject, html: content.html, text: content.text });
+    await sendEmail({
+      to: booking.applicant_email,
+      subject: content.subject,
+      html: content.html,
+      text: content.text,
+    });
   } catch (err) {
     console.error("interview admin-cancel email to applicant failed:", err);
   }

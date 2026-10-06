@@ -11,7 +11,8 @@ interface When {
 }
 
 const dateLabel = (w: When) => formatDateLong(w.date);
-const timeLabel = (w: When) => `${formatTime12h(w.startTime)} to ${formatTime12h(w.endTime)}`;
+const timeLabel = (w: When) =>
+  `${formatTime12h(w.startTime)} to ${formatTime12h(w.endTime)}`;
 
 function detailsList(w: When): string {
   return `
@@ -23,11 +24,17 @@ function detailsList(w: When): string {
 }
 
 function detailsText(w: When): string[] {
-  return [`Date: ${dateLabel(w)}`, `Time: ${timeLabel(w)}`, `Location: ${INTERVIEW_LOCATION}`];
+  return [
+    `Date: ${dateLabel(w)}`,
+    `Time: ${timeLabel(w)}`,
+    `Location: ${INTERVIEW_LOCATION}`,
+  ];
 }
 
-const manageUrl = (siteUrl: string, token: string) => `${siteUrl}/apply/interview/manage/${token}`;
-const icsUrl = (siteUrl: string, token: string) => `${siteUrl}/api/interview/${token}/calendar.ics`;
+const manageUrl = (siteUrl: string, token: string) =>
+  `${siteUrl}/apply/interview/manage/${token}`;
+const icsUrl = (siteUrl: string, token: string) =>
+  `${siteUrl}/api/interview/${token}/calendar.ics`;
 
 export interface InterviewConfirmationEmailInput extends When {
   applicantName: string;
@@ -35,7 +42,9 @@ export interface InterviewConfirmationEmailInput extends When {
   siteUrl: string;
 }
 
-export function buildInterviewConfirmationEmail(input: InterviewConfirmationEmailInput): EmailContent {
+export function buildInterviewConfirmationEmail(
+  input: InterviewConfirmationEmailInput,
+): EmailContent {
   const googleUrl = buildInterviewGoogleCalendarUrl(input);
   const manage = manageUrl(input.siteUrl, input.manageToken);
   const ics = icsUrl(input.siteUrl, input.manageToken);
@@ -75,7 +84,9 @@ export interface InterviewReminderEmailInput extends When {
   siteUrl: string;
 }
 
-export function buildInterviewReminderEmail(input: InterviewReminderEmailInput): EmailContent {
+export function buildInterviewReminderEmail(
+  input: InterviewReminderEmailInput,
+): EmailContent {
   const when = input.kind === "day_before" ? "tomorrow" : "today";
   const manage = manageUrl(input.siteUrl, input.manageToken);
 
@@ -94,31 +105,53 @@ export function buildInterviewReminderEmail(input: InterviewReminderEmailInput):
     `Manage your booking (changes close 24 hours before; after that please contact us): ${manage}`,
   ].join("\n");
 
-  return { subject: `Reminder: your 180DC UCSC interview is ${when}`, html, text };
+  return {
+    subject: `Reminder: your 180DC UCSC interview is ${when}`,
+    html,
+    text,
+  };
 }
 
 export interface InterviewAdminCancelledEmailInput extends When {
   applicantName: string;
   siteUrl: string;
+  /** Who cancelled: an admin (default), or the applicant themselves, for whom this is a receipt. */
+  cancelledBy?: "admin" | "applicant";
 }
 
-export function buildInterviewAdminCancelledEmail(input: InterviewAdminCancelledEmailInput): EmailContent {
+export function buildInterviewAdminCancelledEmail(
+  input: InterviewAdminCancelledEmailInput,
+): EmailContent {
   const bookUrl = `${input.siteUrl}/apply/interview`;
+  const byApplicant = input.cancelledBy === "applicant";
+  const intro = byApplicant
+    ? "You cancelled your 180DC UCSC interview:"
+    : "Your 180DC UCSC interview has been cancelled:";
+  const closing = byApplicant
+    ? "If you change your mind, you can pick a new time when booking is open, or contact us and we'll help."
+    : "Please contact us if you'd like to rebook or have any questions.";
+
   const html = `
     <p>Hi ${escapeHtml(input.applicantName)},</p>
-    <p>Your 180DC UCSC interview has been cancelled:</p>
+    <p>${intro}</p>
     ${detailsList(input)}
-    <p>Please contact us if you'd like to rebook or have any questions. If booking is open you can also pick a new time at <a href="${escapeHtml(bookUrl)}">${escapeHtml(bookUrl)}</a>.</p>
+    <p>${closing} If booking is open you can also pick a new time at <a href="${escapeHtml(bookUrl)}">${escapeHtml(bookUrl)}</a>.</p>
   `.trim();
 
   const text = [
     `Hi ${input.applicantName},`,
-    "Your 180DC UCSC interview has been cancelled:",
+    intro,
     ...detailsText(input),
-    `Please contact us if you'd like to rebook or have any questions. If booking is open you can also pick a new time at ${bookUrl}`,
+    `${closing} If booking is open you can also pick a new time at ${bookUrl}`,
   ].join("\n");
 
-  return { subject: "Your 180DC UCSC interview was cancelled", html, text };
+  return {
+    subject: byApplicant
+      ? "You cancelled your 180DC UCSC interview"
+      : "Your 180DC UCSC interview was cancelled",
+    html,
+    text,
+  };
 }
 
 export interface InterviewExecEmailInput extends When {
@@ -129,9 +162,12 @@ export interface InterviewExecEmailInput extends When {
   siteUrl: string;
 }
 
-const panelLine = (names: string[]) => (names.length > 0 ? names.join(", ") : "none yet");
+const panelLine = (names: string[]) =>
+  names.length > 0 ? names.join(", ") : "none yet";
 
-export function buildInterviewExecBookedEmail(input: InterviewExecEmailInput & { manageToken: string }): EmailContent {
+export function buildInterviewExecBookedEmail(
+  input: InterviewExecEmailInput & { manageToken: string },
+): EmailContent {
   const portalUrl = `${input.siteUrl}/portal/admin/interviews?tab=schedule`;
   const googleUrl = buildInterviewGoogleCalendarUrl({
     ...input,
@@ -159,10 +195,16 @@ export function buildInterviewExecBookedEmail(input: InterviewExecEmailInput & {
     `View interviews: ${portalUrl}`,
   ].join("\n");
 
-  return { subject: `${input.applicantName} booked an interview with you`, html, text };
+  return {
+    subject: `${input.applicantName} booked an interview with you`,
+    html,
+    text,
+  };
 }
 
-export function buildInterviewExecCancelledEmail(input: InterviewExecEmailInput): EmailContent {
+export function buildInterviewExecCancelledEmail(
+  input: InterviewExecEmailInput,
+): EmailContent {
   const portalUrl = `${input.siteUrl}/portal/admin/interviews?tab=schedule`;
 
   const html = `
@@ -182,5 +224,9 @@ export function buildInterviewExecCancelledEmail(input: InterviewExecEmailInput)
     `View interviews: ${portalUrl}`,
   ].join("\n");
 
-  return { subject: `${input.applicantName}'s interview was cancelled`, html, text };
+  return {
+    subject: `${input.applicantName}'s interview was cancelled`,
+    html,
+    text,
+  };
 }

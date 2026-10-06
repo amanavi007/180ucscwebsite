@@ -71,7 +71,9 @@ export function ManageView({
   function handleReschedule() {
     if (!booking) return;
     startTransition(async () => {
-      const result = await cancelInterviewBookingByTokenAction(token);
+      const result = await cancelInterviewBookingByTokenAction(token, {
+        reschedule: true,
+      });
       if (result.error) {
         toast.error(result.error);
         return;

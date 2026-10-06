@@ -40,6 +40,20 @@ describe("interview emails", () => {
     expect(text).not.toContain("/manage/");
   });
 
+  it("applicant-cancelled receipt confirms they cancelled and has no manage link", () => {
+    const { subject, html, text } = buildInterviewAdminCancelledEmail({
+      applicantName: "Jane",
+      ...when,
+      siteUrl,
+      cancelledBy: "applicant",
+    });
+    expect(subject).toBe("You cancelled your 180DC UCSC interview");
+    expect(html).toContain("Wednesday, October 7, 2026");
+    expect(text).toContain("You cancelled");
+    expect(text).not.toContain("/manage/");
+    expect(text).toContain("https://example.org/apply/interview");
+  });
+
   it("exec booked email names the applicant and the other panel members", () => {
     const { subject, html, text } = buildInterviewExecBookedEmail({
       execName: "Ava",
