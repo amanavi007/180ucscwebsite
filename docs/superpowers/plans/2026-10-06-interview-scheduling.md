@@ -4143,12 +4143,14 @@ export async function GET(request: Request) {
   let failed = 0;
   for (const reminder of selectInterviewReminders({ today, tomorrow, bookings })) {
     const column = reminder.kind === "day_before" ? "reminder_day_before_sent_at" : "reminder_morning_sent_at";
+    const stamp = (value: string | null) =>
+      reminder.kind === "day_before" ? { reminder_day_before_sent_at: value } : { reminder_morning_sent_at: value };
 
     // Claim the reminder first (only one concurrent run can win the null -> now update), so a retried
     // invocation can't send it twice. If the send then fails, release the claim so it can be retried.
     const { data: claimed, error: claimError } = await supabase
       .from("interview_bookings")
-      .update({ [column]: new Date().toISOString() })
+      .update(stamp(new Date().toISOString()))
       .eq("id", reminder.bookingId)
       .is(column, null)
       .select("id");
@@ -4169,7 +4171,7 @@ export async function GET(request: Request) {
     } catch (err) {
       failed++;
       console.error(`interview reminder (${reminder.kind}) to ${reminder.to} failed:`, err);
-      await supabase.from("interview_bookings").update({ [column]: null }).eq("id", reminder.bookingId);
+      await supabase.from("interview_bookings").update(stamp(null)).eq("id", reminder.bookingId);
     }
   }
 
