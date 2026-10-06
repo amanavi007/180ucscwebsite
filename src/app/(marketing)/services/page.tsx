@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LogoMarquee } from "@/components/marketing/logo-marquee";
@@ -46,7 +47,7 @@ export default function ServicesPage() {
             teams for a full academic quarter, free of charge, to tackle a
             real strategic challenge alongside a dedicated student team.
           </p>
-          <div className="mt-8">
+          <div className="mt-8 flex flex-wrap gap-3">
             <Button
               nativeButton={false}
               size="lg"
@@ -55,6 +56,15 @@ export default function ServicesPage() {
             >
               Become a Client
               <ArrowUpRight className="size-4" />
+            </Button>
+            <Button
+              nativeButton={false}
+              size="lg"
+              variant="outline"
+              className="rounded-full"
+              render={<Link href="/services/book" />}
+            >
+              Book an intro call
             </Button>
           </div>
         </div>
@@ -122,15 +132,26 @@ export default function ServicesPage() {
               Tell us about your organization and what you&apos;re working
               through. We review client applications every quarter.
             </p>
-            <Button
-              nativeButton={false}
-              size="lg"
-              className="mt-6 gap-1.5 rounded-full bg-white text-deep hover:bg-white/90"
-              render={<a href={CLIENT_FORM_URL} target="_blank" rel="noopener noreferrer" />}
-            >
-              Become a Client
-              <ArrowUpRight className="size-4" />
-            </Button>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button
+                nativeButton={false}
+                size="lg"
+                className="gap-1.5 rounded-full bg-white text-deep hover:bg-white/90"
+                render={<a href={CLIENT_FORM_URL} target="_blank" rel="noopener noreferrer" />}
+              >
+                Become a Client
+                <ArrowUpRight className="size-4" />
+              </Button>
+              <Button
+                nativeButton={false}
+                size="lg"
+                variant="outline"
+                className="rounded-full border-white/60 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                render={<Link href="/services/book" />}
+              >
+                Book an intro call
+              </Button>
+            </div>
           </div>
         </div>
       </section>

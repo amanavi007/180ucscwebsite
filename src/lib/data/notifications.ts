@@ -65,7 +65,7 @@ export async function getMyNotifications(
     lastReadAt = new Date().toISOString();
   }
 
-  const [, { data: coffeeChatBookings }, { data: interviewBookings }] = await Promise.all([
+  const [, { data: coffeeChatBookings }, { data: interviewBookings }, { data: clientMeetings }] = await Promise.all([
     needsReadMarker
       ? supabase.from("notification_reads").insert({ user_id: userId, last_read_at: lastReadAt })
       : Promise.resolve(null),
@@ -93,6 +93,14 @@ export async function getMyNotifications(
             .order("created_at", { ascending: false })
             .limit(15);
         })()
+      : Promise.resolve({ data: null }),
+    isExecUser
+      ? supabase
+          .from("client_meetings")
+          .select("id, business_name, status, meeting_url, created_at, cancelled_at")
+          .contains("panel_exec_ids", [userId])
+          .order("created_at", { ascending: false })
+          .limit(15)
       : Promise.resolve({ data: null }),
   ]);
 
@@ -175,6 +183,24 @@ export async function getMyNotifications(
         id: `interview-cancelled-${b.id}`,
         message: `${b.applicant_name}'s interview with you was cancelled.`,
         href: "/portal/admin/interviews?tab=schedule",
+        occurredAt: b.cancelled_at,
+      });
+    }
+  }
+
+  for (const b of (clientMeetings ?? []) as { id: string; business_name: string; status: string; meeting_url: string | null; created_at: string; cancelled_at: string | null }[]) {
+    if (b.status === "confirmed") {
+      items.push({
+        id: `client-meeting-booked-${b.id}`,
+        message: `${b.business_name} booked an intro call with you${b.meeting_url ? "." : ". Add the video link."}`,
+        href: "/portal/admin/client-meetings?tab=bookings",
+        occurredAt: b.created_at,
+      });
+    } else if (b.status === "cancelled" && b.cancelled_at) {
+      items.push({
+        id: `client-meeting-cancelled-${b.id}`,
+        message: `${b.business_name}'s intro call with you was cancelled.`,
+        href: "/portal/admin/client-meetings?tab=bookings",
         occurredAt: b.cancelled_at,
       });
     }
