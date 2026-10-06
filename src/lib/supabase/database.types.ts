@@ -689,6 +689,74 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["coffee_chat_bookings"]["Insert"]>;
         Relationships: [];
       };
+      interview_invitees: {
+        Row: { id: string; email: string; name: string | null; created_at: string };
+        Insert: { id?: string; email: string; name?: string | null; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["interview_invitees"]["Insert"]>;
+        Relationships: [];
+      };
+      interview_availability: {
+        Row: { id: string; exec_id: string; date: string; start_time: string; end_time: string; created_at: string };
+        Insert: { id?: string; exec_id: string; date: string; start_time: string; end_time: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["interview_availability"]["Insert"]>;
+        Relationships: [];
+      };
+      interview_slots: {
+        Row: {
+          id: string;
+          date: string;
+          start_time: string;
+          end_time: string;
+          published: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          date: string;
+          start_time: string;
+          end_time: string;
+          published?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["interview_slots"]["Insert"]>;
+        Relationships: [];
+      };
+      interview_slot_execs: {
+        Row: { slot_id: string; exec_id: string };
+        Insert: { slot_id: string; exec_id: string };
+        Update: Partial<Database["public"]["Tables"]["interview_slot_execs"]["Insert"]>;
+        Relationships: [];
+      };
+      interview_bookings: {
+        Row: {
+          id: string;
+          slot_id: string;
+          applicant_name: string;
+          applicant_email: string;
+          status: string;
+          manage_token: string;
+          reminder_day_before_sent_at: string | null;
+          reminder_morning_sent_at: string | null;
+          created_at: string;
+          cancelled_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          slot_id: string;
+          applicant_name: string;
+          applicant_email: string;
+          status?: string;
+          manage_token: string;
+          reminder_day_before_sent_at?: string | null;
+          reminder_morning_sent_at?: string | null;
+          created_at?: string;
+          cancelled_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["interview_bookings"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: {
       directory_view: {
