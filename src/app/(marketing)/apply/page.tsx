@@ -31,7 +31,7 @@ const STEPS = [
   {
     icon: MessageCircle,
     title: "Interview with our team",
-    body: "A conversational interview (sometimes including a short case exercise) to get to know you and how you think through problems.",
+    body: "By invitation. If we invite you, you'll get an email with a link to book a one-hour, conversational interview with a panel of our execs (sometimes including a short case exercise) at the SnE Library.",
   },
   {
     icon: PartyPopper,
