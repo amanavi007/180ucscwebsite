@@ -536,7 +536,7 @@ describe("invitee parsing", () => {
   });
 
   it("parses email-only and email,name lines, ignoring blanks", () => {
-    const { invitees, errors } = parseInviteeList("a@ucsc.edu\n\n  B@UCSC.EDU , Bea Smith \nc@ucsc.edu;Cy\td@ucsc.edu\tDee");
+    const { invitees, errors } = parseInviteeList("a@ucsc.edu\n\n  B@UCSC.EDU , Bea Smith \nc@ucsc.edu;Cy\nd@ucsc.edu\tDee");
     expect(errors).toEqual([]);
     expect(invitees).toEqual([
       { email: "a@ucsc.edu", name: null },

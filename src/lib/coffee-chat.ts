@@ -182,12 +182,12 @@ export function mapsSearchUrl(location: string): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${location}, Santa Cruz, CA`)}`;
 }
 
-function timeToMinutes(time: string): number {
+export function timeToMinutes(time: string): number {
   const [h, m] = time.split(":").map(Number);
   return h * 60 + m;
 }
 
-function minutesToTime(totalMinutes: number): string {
+export function minutesToTime(totalMinutes: number): string {
   const h = Math.floor(totalMinutes / 60)
     .toString()
     .padStart(2, "0");
