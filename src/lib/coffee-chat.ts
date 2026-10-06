@@ -21,9 +21,10 @@ export interface CoffeeChatLocation {
 
 // Hours checked Sept 2026 from each place's own site / UCSC dining. Where
 // sources disagreed the narrower window is used. Re-check each quarter.
-export const COFFEE_CHAT_LOCATION_GROUPS: { label: string; locations: CoffeeChatLocation[] }[] = [
+export const COFFEE_CHAT_LOCATION_GROUPS: { label: string; tab: string; locations: CoffeeChatLocation[] }[] = [
   {
     label: "On campus",
+    tab: "On campus",
     locations: [
       { name: "SNE (Science & Engineering Library)" },
       { name: "Baskin Engineering" },
@@ -34,6 +35,7 @@ export const COFFEE_CHAT_LOCATION_GROUPS: { label: string; locations: CoffeeChat
   },
   {
     label: "Off campus, near campus (Westside)",
+    tab: "Westside",
     locations: [
       { name: "Cafe Iveta (Westside)", hours: everyDay("08:00", "15:00") },
       { name: "Verve Coffee Roasters (Westside)", hours: everyDay("07:00", "18:00") },
@@ -42,6 +44,7 @@ export const COFFEE_CHAT_LOCATION_GROUPS: { label: string; locations: CoffeeChat
   },
   {
     label: "Downtown Santa Cruz",
+    tab: "Downtown",
     locations: [
       { name: "The 11th Hour Coffee", hours: everyDay("07:00", "18:30") },
       { name: "Verve Coffee Roasters (Pacific Ave)", hours: everyDay("07:00", "18:00") },
@@ -70,8 +73,23 @@ export function isLocationOpenForSlot(
 export function locationGroupsForSlot(slot: { date: string; startTime: string; endTime: string }) {
   return COFFEE_CHAT_LOCATION_GROUPS.map((group) => ({
     label: group.label,
+    tab: group.tab,
     locations: group.locations.filter((l) => isLocationOpenForSlot(l, slot)),
   })).filter((group) => group.locations.length > 0);
+}
+
+/** "Open until 8 PM" for the day, or null when the place has no listed hours (or is closed that day). */
+export function openUntilLabel(location: CoffeeChatLocation, date: string): string | null {
+  if (!location.hours) return null;
+  const [y, m, d] = date.split("-").map(Number);
+  const day = location.hours[new Date(y, m - 1, d).getDay()];
+  if (day === "closed") return null;
+  return `Open until ${formatTime12h(day.close).replace(":00", "")}`;
+}
+
+/** Slot length in minutes, from "HH:MM" or "HH:MM:SS" times. */
+export function slotMinutes(start: string, end: string): number {
+  return timeToMinutes(normalizeTime(end)) - timeToMinutes(normalizeTime(start));
 }
 
 export interface AvailabilityBlock {

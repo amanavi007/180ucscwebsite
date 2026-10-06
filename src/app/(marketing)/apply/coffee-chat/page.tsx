@@ -17,8 +17,7 @@ export default async function CoffeeChatPage() {
       turnstileSiteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
       intro={
         <>
-          <p className="text-sm font-bold tracking-wide text-primary uppercase">Recruitment</p>
-          <h1 className="font-brand mt-3 text-4xl leading-[1.05] font-bold tracking-tight text-balance sm:text-5xl">
+          <h1 className="font-brand text-4xl leading-[1.05] font-bold tracking-tight text-balance sm:text-5xl">
             Book a coffee chat
           </h1>
           <p className="mt-5 max-w-xl text-lg text-foreground/70 text-pretty">

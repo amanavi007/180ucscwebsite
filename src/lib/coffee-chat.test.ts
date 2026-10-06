@@ -10,6 +10,9 @@ import {
   isSwapEligible,
   isValidUcscEmail,
   mapsSearchUrl,
+  openUntilLabel,
+  slotMinutes,
+  COFFEE_CHAT_LOCATIONS,
   normalizeTime,
   type AvailabilityBlock,
   type ExistingSlotAssignment,
@@ -424,6 +427,34 @@ describe("locationGroupsForSlot", () => {
 
   it("requires the whole slot to end before closing", () => {
     expect(names({ date: "2026-10-06", startTime: "14:50", endTime: "15:10" })).not.toContain("Cafe Iveta (Westside)");
+  });
+});
+
+describe("openUntilLabel", () => {
+  const find = (name: string) => COFFEE_CHAT_LOCATIONS.find((l) => l.name === name)!;
+
+  it("drops :00 from a closing time on the hour", () => {
+    expect(openUntilLabel(find("Oakes Cafe"), "2026-10-06")).toBe("Open until 8 PM"); // Tuesday
+  });
+
+  it("keeps minutes when the cafe closes off the hour", () => {
+    expect(openUntilLabel(find("The 11th Hour Coffee"), "2026-10-06")).toBe("Open until 6:30 PM");
+  });
+
+  it("uses that weekday's hours", () => {
+    expect(openUntilLabel(find("University Center Cafe"), "2026-10-09")).toBe("Open until 2 PM"); // Friday
+  });
+
+  it("returns null for places with no listed hours, or closed that day", () => {
+    expect(openUntilLabel(find("McHenry Library"), "2026-10-06")).toBeNull();
+    expect(openUntilLabel(find("Oakes Cafe"), "2026-10-10")).toBeNull(); // Saturday
+  });
+});
+
+describe("slotMinutes", () => {
+  it("returns the slot length in minutes", () => {
+    expect(slotMinutes("14:00", "14:20")).toBe(20);
+    expect(slotMinutes("09:00:00", "09:30:00")).toBe(30);
   });
 });
 

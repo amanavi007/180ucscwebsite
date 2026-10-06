@@ -6,6 +6,7 @@ import { Check, ChevronRight, Mail, MapPin } from "lucide-react";
 import { formatTimeRange, mapsSearchUrl } from "@/lib/coffee-chat";
 import { formatDateParts } from "@/lib/date";
 import { AddToCalendarButtons } from "./add-to-calendar";
+import { DateTile } from "./date-tile";
 
 export interface ConfirmedBooking {
   date: string;
@@ -52,10 +53,7 @@ export function BookingConfirmation({ booking, applicantName }: { booking: Confi
 
         <div className="mx-auto mt-(--gap) max-w-[26rem] overflow-hidden rounded-3xl bg-white text-left shadow-[0_1px_2px_rgb(0_0_0/0.05),0_8px_24px_rgb(47_74_23/0.1)]">
           <div className="flex items-center gap-[1.125rem] px-6 py-4">
-            <div className="w-[4.25rem] shrink-0 overflow-hidden rounded-[0.875rem] border border-deep/20 text-center">
-              <div className="bg-deep py-1 text-[0.6875rem] font-bold tracking-[0.12em] text-white uppercase">{month}</div>
-              <div className="font-brand pt-1 pb-1.5 text-4xl leading-none font-extrabold text-deep">{day}</div>
-            </div>
+            <DateTile month={month} day={day} />
             <div>
               <p className="text-[0.8125rem] font-semibold tracking-[0.08em] text-primary uppercase">{weekday}</p>
               <p className="text-[1.625rem] leading-[1.15] font-bold tracking-tight tabular-nums">
