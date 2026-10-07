@@ -19,6 +19,7 @@ import {
   Camera,
   Handshake,
   ListOrdered,
+  Sparkles,
 } from "lucide-react";
 
 export interface NavLink {
@@ -39,9 +40,16 @@ export interface NavLink {
 export const NAV_LINKS: NavLink[] = [
   {
     href: "/portal",
+    label: "Assistant",
+    icon: Sparkles,
+    keywords: "ai chat ask help home",
+    tourDescription: "Ask anything about your projects, tasks and events, or have the assistant draft changes for you to approve.",
+  },
+  {
+    href: "/portal/dashboard",
     label: "Dashboard",
     icon: LayoutDashboard,
-    tourDescription: "Your home base -- a quick view of your tasks, your team, and anything that needs attention.",
+    tourDescription: "Your full overview -- tasks, your team, and anything that needs attention.",
   },
   {
     href: "/portal/projects",
