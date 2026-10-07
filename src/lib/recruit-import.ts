@@ -1,4 +1,4 @@
-import { normalizeName } from "./recruit-matching";
+import { findMatches, normalizeName, type MatchCandidate, type MatchableApplicant } from "./recruit-matching";
 
 export interface ParsedAttendee {
   rawName: string;
@@ -137,4 +137,143 @@ export function cleanDisplayName(raw: string): string {
     s = s.toLowerCase().replace(/(^|\s)([a-z])/g, (_, space: string, ch: string) => `${space}${ch.toUpperCase()}`);
   }
   return s;
+}
+
+export type ImportGroup = "matched" | "needs-look" | "new" | "ignored" | "already";
+
+export interface ReviewContext {
+  applicants: MatchableApplicant[];
+  /** Normalized names the exec has told us to ignore this quarter. */
+  ignoredNames: Set<string>;
+  /** Normalized names of portal members/execs (hosts, co-hosts). */
+  memberNames: Set<string>;
+  /** Applicants who already hold live points for the chosen event. */
+  awardedApplicantIds: Set<string>;
+  minMinutes: number;
+}
+
+export interface ReviewRow {
+  key: string;
+  attendee: ParsedAttendee;
+  group: ImportGroup;
+  reason: string;
+  candidates: MatchCandidate[];
+  applicantId: string | null;
+}
+
+export function reviewImport(attendees: ParsedAttendee[], ctx: ReviewContext): ReviewRow[] {
+  const byId = new Map(ctx.applicants.map((a) => [a.id, a]));
+  const claimed = new Set<string>();
+
+  return attendees.map((attendee, index): ReviewRow => {
+    const key = String(index);
+    const norm = normalizeName(attendee.rawName);
+    const base = { key, attendee, candidates: [] as MatchCandidate[], applicantId: null as string | null };
+
+    if (!norm && !attendee.email) return { ...base, group: "ignored", reason: "No name" };
+    if (attendee.minutes !== null && attendee.minutes < ctx.minMinutes) {
+      return { ...base, group: "ignored", reason: `Stayed ${Math.round(attendee.minutes)} min` };
+    }
+    if (norm && ctx.ignoredNames.has(norm)) return { ...base, group: "ignored", reason: "On your ignore list" };
+
+    const matches = findMatches({ name: attendee.rawName, email: attendee.email }, ctx.applicants);
+    const sure = matches.filter((m) => m.kind === "duplicate" || m.kind === "likely");
+
+    if (sure.length === 1) {
+      const id = sure[0].applicantId;
+      if (claimed.has(id)) {
+        return {
+          ...base,
+          group: "needs-look",
+          reason: `Another name in this list already matched ${byId.get(id)?.name ?? "this applicant"}`,
+          candidates: matches,
+        };
+      }
+      claimed.add(id);
+      if (ctx.awardedApplicantIds.has(id)) {
+        return { ...base, group: "already", reason: "Already has points for this event", applicantId: id };
+      }
+      return { ...base, group: "matched", reason: "", applicantId: id };
+    }
+
+    if (matches.length > 0) {
+      return {
+        ...base,
+        group: "needs-look",
+        reason: sure.length > 1 ? "Matches more than one applicant" : "Looks similar to an existing applicant",
+        candidates: matches,
+      };
+    }
+    if (norm && ctx.memberNames.has(norm)) return { ...base, group: "ignored", reason: "Looks like a member or exec" };
+    return { ...base, group: "new", reason: "" };
+  });
+}
+
+export type ImportAction =
+  | { action: "award"; applicantId: string }
+  | { action: "new" }
+  | { action: "skip" }
+  | { action: "ignore" };
+
+export function defaultActions(rows: ReviewRow[]): Record<string, ImportAction> {
+  const out: Record<string, ImportAction> = {};
+  for (const row of rows) {
+    if (row.group === "matched" && row.applicantId) out[row.key] = { action: "award", applicantId: row.applicantId };
+    else if (row.group === "new") out[row.key] = { action: "new" };
+    else out[row.key] = { action: "skip" };
+  }
+  return out;
+}
+
+export type CommitRow =
+  | { kind: "existing"; applicantId: string; alias: string | null }
+  | { kind: "new"; name: string; email: string | null }
+  | { kind: "ignore"; alias: string };
+
+export function buildCommitRows(
+  rows: ReviewRow[],
+  actions: Record<string, ImportAction>,
+  applicants: MatchableApplicant[],
+): CommitRow[] {
+  const byId = new Map(applicants.map((a) => [a.id, a]));
+  const out: CommitRow[] = [];
+  for (const row of rows) {
+    const action = actions[row.key] ?? { action: "skip" };
+    const norm = normalizeName(row.attendee.rawName);
+
+    if (action.action === "award") {
+      const applicant = byId.get(action.applicantId);
+      const known = applicant ? [applicant.name, ...applicant.aliases].map(normalizeName) : [];
+      out.push({
+        kind: "existing",
+        applicantId: action.applicantId,
+        alias: norm && !known.includes(norm) ? norm : null,
+      });
+    } else if (action.action === "new") {
+      out.push({ kind: "new", name: cleanDisplayName(row.attendee.rawName), email: row.attendee.email });
+    } else if (action.action === "ignore" && norm) {
+      out.push({ kind: "ignore", alias: norm });
+    }
+  }
+  return out;
+}
+
+export function summarizeActions(
+  rows: ReviewRow[],
+  actions: Record<string, ImportAction>,
+): { award: number; create: number; skip: number; unresolved: number } {
+  let award = 0;
+  let create = 0;
+  let skip = 0;
+  let unresolved = 0;
+  for (const row of rows) {
+    const action = actions[row.key] ?? { action: "skip" };
+    if (action.action === "award") award++;
+    else if (action.action === "new") create++;
+    else {
+      skip++;
+      if (row.group === "needs-look" && action.action === "skip") unresolved++;
+    }
+  }
+  return { award, create, skip, unresolved };
 }
