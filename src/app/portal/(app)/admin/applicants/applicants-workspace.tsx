@@ -11,6 +11,7 @@ import { ApplicantsView } from "./applicants-view";
 import { DuplicatesView } from "./duplicates-view";
 import { GivePointsDialog } from "./give-points-dialog";
 import { HowItWorks } from "./how-it-works";
+import { ImportDialog } from "./import-dialog";
 import { SetupView } from "./setup-view";
 
 export function ApplicantsWorkspace({
@@ -48,6 +49,7 @@ export function ApplicantsWorkspace({
         </div>
         <div className="flex items-center gap-2">
           <HowItWorks />
+          <ImportDialog quarterId={quarterId} categories={categories} events={events} />
           <AddApplicantDialog quarterId={quarterId} />
         </div>
       </div>
