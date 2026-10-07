@@ -477,6 +477,54 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["notification_reads"]["Insert"]>;
         Relationships: [];
       };
+      chat_threads: {
+        Row: { id: string; user_id: string; title: string; created_at: string; updated_at: string };
+        Insert: { id?: string; user_id: string; title?: string; created_at?: string; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["chat_threads"]["Insert"]>;
+        Relationships: [];
+      };
+      chat_messages: {
+        Row: { id: string; thread_id: string; role: "user" | "assistant" | "system"; parts: unknown; created_at: string };
+        Insert: { id?: string; thread_id: string; role: "user" | "assistant" | "system"; parts: unknown; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["chat_messages"]["Insert"]>;
+        Relationships: [];
+      };
+      chat_proposals: {
+        Row: {
+          id: string;
+          user_id: string;
+          thread_id: string | null;
+          tool: string;
+          args: unknown;
+          preview: string;
+          status: "pending" | "rejected" | "expired" | "approved" | "executed" | "failed";
+          error: string | null;
+          created_at: string;
+          expires_at: string;
+          executed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          thread_id?: string | null;
+          tool: string;
+          args: unknown;
+          preview: string;
+          status?: "pending" | "rejected" | "expired" | "approved" | "executed" | "failed";
+          error?: string | null;
+          created_at?: string;
+          expires_at?: string;
+          executed_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["chat_proposals"]["Insert"]>;
+        Relationships: [];
+      };
+      chat_usage: {
+        Row: { user_id: string; day: string; message_count: number; tokens_in: number; tokens_out: number };
+        Insert: { user_id: string; day: string; message_count?: number; tokens_in?: number; tokens_out?: number };
+        Update: Partial<Database["public"]["Tables"]["chat_usage"]["Insert"]>;
+        Relationships: [];
+      };
       exec_todos: {
         Row: {
           id: string;
@@ -1002,6 +1050,17 @@ export interface Database {
       undo_merge_recruit_applicants: {
         Args: { p_log_id: string };
         Returns: unknown;
+      };
+      consume_chat_message: {
+        Args: { p_user_cap: number; p_global_cap: number };
+        Returns: "ok" | "user_cap" | "global_cap" | "unauthenticated";
+      };
+      refund_chat_message: { Args: Record<string, never>; Returns: undefined };
+      record_chat_tokens: { Args: { p_in: number; p_out: number }; Returns: undefined };
+      assistant_is_enabled: { Args: Record<string, never>; Returns: boolean };
+      get_chat_usage_today: {
+        Args: Record<string, never>;
+        Returns: { user_messages: number; global_messages: number }[];
       };
     };
   };
