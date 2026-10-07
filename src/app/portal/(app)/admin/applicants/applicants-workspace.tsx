@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import type { ApplicantRow, MergeLogRow, RecruitCategory, RecruitEvent } from "@/lib/data/recruit";
+import type { AttendanceData } from "@/lib/data/recruit-import";
 import type { DuplicatePair } from "@/lib/recruit-matching";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AddApplicantDialog } from "./add-applicant-dialog";
 import { ApplicantPanel } from "./applicant-panel";
 import { ApplicantsView } from "./applicants-view";
+import { AttendanceView } from "./attendance-view";
 import { DuplicatesView } from "./duplicates-view";
 import { GivePointsDialog } from "./give-points-dialog";
 import { HowItWorks } from "./how-it-works";
@@ -22,6 +24,7 @@ export function ApplicantsWorkspace({
   events,
   pairs,
   merges,
+  attendance,
 }: {
   quarterId: string;
   quarterName: string;
@@ -30,8 +33,10 @@ export function ApplicantsWorkspace({
   events: RecruitEvent[];
   pairs: DuplicatePair[];
   merges: MergeLogRow[];
+  attendance: AttendanceData;
 }) {
   const [tab, setTab] = useState("applicants");
+  const applicantNames = Object.fromEntries(rows.map((r) => [r.id, r.name]));
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [givingId, setGivingId] = useState<string | null>(null);
   const selected = rows.find((r) => r.id === selectedId) ?? null;
@@ -57,6 +62,10 @@ export function ApplicantsWorkspace({
       <Tabs value={tab} onValueChange={(v) => v && setTab(String(v))}>
         <TabsList>
           <TabsTrigger value="applicants">Applicants</TabsTrigger>
+          <TabsTrigger value="attendance">
+            Attendance
+            {attendance.toMark.length > 0 && <Badge variant="secondary">{attendance.toMark.length}</Badge>}
+          </TabsTrigger>
           <TabsTrigger value="setup">Setup</TabsTrigger>
           <TabsTrigger value="duplicates">
             Duplicates
@@ -70,10 +79,15 @@ export function ApplicantsWorkspace({
             categories={categories}
             events={events}
             duplicateCount={pairs.length}
+            toMarkCount={attendance.toMark.length}
             onReviewDuplicates={() => setTab("duplicates")}
+            onReviewAttendance={() => setTab("attendance")}
             onSelect={setSelectedId}
             addButton={<AddApplicantDialog quarterId={quarterId} />}
           />
+        </TabsContent>
+        <TabsContent value="attendance">
+          <AttendanceView quarterId={quarterId} data={attendance} applicantNames={applicantNames} />
         </TabsContent>
         <TabsContent value="setup">
           <SetupView quarterId={quarterId} categories={categories} events={events} />

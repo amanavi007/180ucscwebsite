@@ -5,7 +5,6 @@ import { Search, UserPlus } from "lucide-react";
 import type { ApplicantRow, RecruitCategory, RecruitEvent } from "@/lib/data/recruit";
 import { rankByTotal, ringFraction } from "@/lib/recruit";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,7 +16,9 @@ type Sort = "points" | "name";
 export function ApplicantsView({
   rows,
   duplicateCount,
+  toMarkCount,
   onReviewDuplicates,
+  onReviewAttendance,
   onSelect,
   addButton,
 }: {
@@ -26,7 +27,9 @@ export function ApplicantsView({
   categories: RecruitCategory[];
   events: RecruitEvent[];
   duplicateCount: number;
+  toMarkCount: number;
   onReviewDuplicates: () => void;
+  onReviewAttendance: () => void;
   onSelect: (id: string) => void;
   addButton: React.ReactNode;
 }) {
@@ -93,14 +96,19 @@ export function ApplicantsView({
         ))}
       </div>
 
-      {duplicateCount > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm dark:border-amber-500/40 dark:bg-amber-500/10">
-          <span>
-            <b>To do:</b> {duplicateCount} possible duplicate{duplicateCount === 1 ? "" : "s"} to check
-          </span>
-          <Button size="sm" variant="outline" onClick={onReviewDuplicates}>
-            Review
-          </Button>
+      {(duplicateCount > 0 || toMarkCount > 0) && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm dark:border-amber-500/40 dark:bg-amber-500/10">
+          <b>To do:</b>
+          {toMarkCount > 0 && (
+            <button type="button" className="underline-offset-2 hover:underline" onClick={onReviewAttendance}>
+              {toMarkCount} booking{toMarkCount === 1 ? "" : "s"} to mark →
+            </button>
+          )}
+          {duplicateCount > 0 && (
+            <button type="button" className="underline-offset-2 hover:underline" onClick={onReviewDuplicates}>
+              {duplicateCount} possible duplicate{duplicateCount === 1 ? "" : "s"} →
+            </button>
+          )}
         </div>
       )}
 
