@@ -166,7 +166,7 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
   },
   {
     href: "/portal/admin/client-meetings",
-    label: "Client meetings",
+    label: "Client Meetings",
     icon: Handshake,
     execOnly: true,
     keywords: "clients consulting booking availability panel services",
