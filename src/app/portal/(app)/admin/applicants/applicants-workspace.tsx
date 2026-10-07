@@ -5,7 +5,10 @@ import type { ApplicantRow, MergeLogRow, RecruitCategory, RecruitEvent } from "@
 import type { DuplicatePair } from "@/lib/recruit-matching";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AddApplicantDialog } from "./add-applicant-dialog";
+import { ApplicantPanel } from "./applicant-panel";
 import { ApplicantsView } from "./applicants-view";
+import { GivePointsDialog } from "./give-points-dialog";
 import { HowItWorks } from "./how-it-works";
 
 export function ApplicantsWorkspace({
@@ -26,6 +29,9 @@ export function ApplicantsWorkspace({
 }) {
   const [tab, setTab] = useState("applicants");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [givingId, setGivingId] = useState<string | null>(null);
+  const selected = rows.find((r) => r.id === selectedId) ?? null;
+  const giving = rows.find((r) => r.id === givingId) ?? null;
 
   return (
     <div className="space-y-6">
@@ -37,7 +43,10 @@ export function ApplicantsWorkspace({
             chats and more, then compare everyone in one place.
           </p>
         </div>
-        <HowItWorks />
+        <div className="flex items-center gap-2">
+          <HowItWorks />
+          <AddApplicantDialog quarterId={quarterId} />
+        </div>
       </div>
 
       <Tabs value={tab} onValueChange={(v) => v && setTab(String(v))}>
@@ -58,7 +67,7 @@ export function ApplicantsWorkspace({
             duplicateCount={pairs.length}
             onReviewDuplicates={() => setTab("duplicates")}
             onSelect={setSelectedId}
-            addButton={null}
+            addButton={<AddApplicantDialog quarterId={quarterId} />}
           />
         </TabsContent>
         <TabsContent value="setup">
@@ -68,7 +77,17 @@ export function ApplicantsWorkspace({
           <p className="mt-4 text-sm text-muted-foreground">Duplicates arrive in a later task.</p>
         </TabsContent>
       </Tabs>
-      <span hidden>{selectedId}</span>
+      <ApplicantPanel
+        applicant={selected}
+        onClose={() => setSelectedId(null)}
+        onGivePoints={() => setGivingId(selectedId)}
+      />
+      <GivePointsDialog
+        applicant={giving}
+        categories={categories}
+        events={events}
+        onOpenChange={(open) => !open && setGivingId(null)}
+      />
     </div>
   );
 }
