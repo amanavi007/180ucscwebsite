@@ -86,15 +86,17 @@ Migration: `supabase/migrations/20261007000001_recruitment_points.sql`. Update
   `voided_at is null`, computed on read (≈120 applicants, a few thousand rows — no denormalized totals).
 
 ### Merge function
-`public.merge_recruit_applicants(survivor uuid, absorbed uuid, keep_email text default null)` — a SQL
-function that checks `public.is_exec()` and runs in a single transaction: re-points `recruit_points` and
-aliases to the survivor, fills the survivor's empty fields (email, major, year; notes appended) from the
-absorbed record, archives the absorbed record with `merged_into_id = survivor`, and adds the absorbed
-record's name as an alias of the survivor. If both have different non-null emails, `keep_email` is
-required, otherwise the function raises.
+`public.merge_recruit_applicants(p_survivor uuid, p_absorbed uuid, p_absorbed_alias text default null,
+p_keep_email text default null)` — a SQL function that checks `public.is_exec()` and runs in a single
+transaction: re-points `recruit_points` and aliases to the survivor, fills the survivor's empty fields
+(email, major, year; notes appended) from the absorbed record, archives the absorbed record with
+`merged_into_id = survivor`, and adds `p_absorbed_alias` (the app passes the absorbed record's normalized
+name, since SQL can't replicate the JS normalization) as an alias of the survivor. If both have different
+non-null emails, `p_keep_email` is required, otherwise the function raises.
 
 ### `recruit_merge_log`
 `id`, `survivor_id`, `absorbed_id`, `moved_point_ids uuid[]`, `moved_alias_ids uuid[]`,
+`added_alias_id uuid` (the alias the merge created, so undo can remove it),
 `survivor_before jsonb` (the survivor's fields before filling), `created_at`, `undone_at`. The merge
 function writes one row. **Undo merge** (a second SQL function) restores the absorbed record, moves back
 exactly the recorded rows, restores the survivor's prior fields, and sets `undone_at`. Undo is refused if
@@ -112,8 +114,8 @@ handles `Last, First` ordering and strips a trailing Zoom suffix such as `(he/hi
    nickname-prefix matches ("Jess" ~ "Jessica"), reordering, and small edit distance. Must keep
    "Jessica Kim" and "Jessica Kimball" apart.
 
-Auto-accept threshold defaults to exact normalized matches only; anything else is surfaced for a human.
-The threshold is an `org_settings` value (`recruit_match_auto_accept`) so it can be tuned later.
+Piece 1 never auto-accepts a match; every suspected duplicate is surfaced for a human. An auto-accept
+threshold (exact normalized matches only by default) arrives with the bulk importer in piece 2.
 
 Detection runs (a) live in the Add-applicant dialog, (b) as the "possible duplicates" count and list on the
 Applicants page (recomputed on load across the quarter's applicants), and (c) later in the import review.
