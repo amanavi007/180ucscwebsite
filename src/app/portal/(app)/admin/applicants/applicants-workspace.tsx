@@ -10,6 +10,7 @@ import { ApplicantPanel } from "./applicant-panel";
 import { ApplicantsView } from "./applicants-view";
 import { GivePointsDialog } from "./give-points-dialog";
 import { HowItWorks } from "./how-it-works";
+import { SetupView } from "./setup-view";
 
 export function ApplicantsWorkspace({
   quarterId,
@@ -71,7 +72,7 @@ export function ApplicantsWorkspace({
           />
         </TabsContent>
         <TabsContent value="setup">
-          <p className="mt-4 text-sm text-muted-foreground">Setup arrives in a later task.</p>
+          <SetupView quarterId={quarterId} categories={categories} events={events} />
         </TabsContent>
         <TabsContent value="duplicates">
           <p className="mt-4 text-sm text-muted-foreground">Duplicates arrive in a later task.</p>
