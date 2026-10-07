@@ -18,6 +18,7 @@ import {
   CalendarHeart,
   Camera,
   Handshake,
+  ListOrdered,
 } from "lucide-react";
 
 export interface NavLink {
@@ -147,6 +148,15 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     keywords: "calendar schedule",
     quarterScoped: true,
     group: "admin-quarter-setup",
+  },
+  {
+    href: "/portal/admin/applicants",
+    label: "Applicants",
+    icon: ListOrdered,
+    execOnly: true,
+    quarterScoped: true,
+    keywords: "recruitment applicants points leaderboard ranking scores attendance info session",
+    group: "admin-recruitment",
   },
   {
     href: "/portal/admin/coffee-chats",
