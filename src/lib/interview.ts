@@ -99,16 +99,20 @@ export function generateInterviewSlots(
     const [date, startTime] = key.split("|");
     const endTime = minutesToTime(timeToMinutes(startTime) + slotMinutes);
 
+    // Starts are staggered: one panel per start time, so the next :30 start can use other execs
+    // (12-1, 12:30-1:30, 1-2). Execs who can't make the next start would otherwise be wasted, so they get panels now.
+    const nextFree = free.get(`${date}|${minutesToTime(timeToMinutes(startTime) + INTERVIEW_GRID_MINUTES)}`);
+    const isStranded = (id: string) => !nextFree?.has(id);
     const pool = [...execIds]
       .filter((id) => !(intervals.get(id) ?? []).some((i) => i.date === date && overlaps(i.start, i.end, startTime, endTime)))
-      .sort((x, y) => loadOf(x) - loadOf(y) || x.localeCompare(y));
+      .sort((x, y) => Number(!isStranded(x)) - Number(!isStranded(y)) || loadOf(x) - loadOf(y) || x.localeCompare(y));
 
-    for (const size of panelSizes(pool.length)) {
-      const group = [pool.shift()!];
+    function takePanel(from: string[], size: number) {
+      const group = [from.shift()!];
       while (group.length < size) {
         let bestIndex = 0;
         let bestScore: [number, number, string] | null = null;
-        pool.forEach((candidate, index) => {
+        from.forEach((candidate, index) => {
           const score: [number, number, string] = [
             group.reduce((sum, member) => sum + pairsOf(member, candidate), 0),
             loadOf(candidate),
@@ -123,12 +127,16 @@ export function generateInterviewSlots(
             bestIndex = index;
           }
         });
-        group.push(pool.splice(bestIndex, 1)[0]);
+        group.push(from.splice(bestIndex, 1)[0]);
       }
       const sorted = [...group].sort();
       record(sorted, date, startTime, endTime);
       generated.push({ date, startTime, endTime, execIds: sorted });
     }
+
+    if (pool.length >= MIN_PANEL_SIZE) takePanel(pool, pool.length === 3 ? 3 : 2);
+    const stranded = pool.filter(isStranded);
+    for (const size of panelSizes(stranded.length)) takePanel(stranded, size);
   }
   return generated;
 }

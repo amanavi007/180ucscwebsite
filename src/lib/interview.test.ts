@@ -88,9 +88,15 @@ describe("generateInterviewSlots", () => {
     ]);
   });
 
-  it("never puts an exec on two overlapping slots, so a 2-hour block yields back-to-back hours", () => {
+  it("staggers slots every 30 minutes when there are enough execs (12-1, 12:30-1:30, 1-2)", () => {
+    const slots = generateInterviewSlots(["a", "b", "c", "d"].map((id) => block(id, "12:00", "14:00")));
+    expect(slots.map((s) => `${s.startTime}-${s.endTime}`)).toEqual(["12:00-13:00", "12:30-13:30", "13:00-14:00"]);
+    expect(slots[0].execIds).not.toEqual(slots[1].execIds);
+  });
+
+  it("never puts an exec on two overlapping slots", () => {
     const slots = generateInterviewSlots(["a", "b", "c", "d"].map((id) => block(id, "14:00", "16:00")));
-    expect(slots.map((s) => s.startTime)).toEqual(["14:00", "14:00", "15:00", "15:00"]);
+    expect(slots.map((s) => s.startTime)).toEqual(["14:00", "14:30", "15:00"]);
     for (const x of slots) {
       for (const y of slots) {
         if (x === y) continue;
@@ -102,7 +108,7 @@ describe("generateInterviewSlots", () => {
   });
 
   it("does not repeat a pairing when other pairings are possible", () => {
-    const slots = generateInterviewSlots(["a", "b", "c", "d"].map((id) => block(id, "14:00", "16:00")));
+    const slots = generateInterviewSlots(["a", "b", "c", "d", "e", "f"].map((id) => block(id, "14:00", "15:30")));
     const pairs = slots.map((s) => [...s.execIds].sort().join("|"));
     expect(new Set(pairs).size).toBe(pairs.length);
   });
