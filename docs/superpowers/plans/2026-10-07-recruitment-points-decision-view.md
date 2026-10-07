@@ -613,8 +613,9 @@ export function rankApplicants(rows: DecisionInput[], cfg: DecisionConfig): Rank
 /** Ids within `width` rows either side of the accept/decline line (the line sits after `acceptingCount` rows). */
 export function bubbleIds(ranked: { id: string }[], acceptingCount: number, width: number): Set<string> {
   if (acceptingCount <= 0 || width <= 0) return new Set();
-  const start = Math.max(0, acceptingCount - width);
-  const end = Math.min(ranked.length, acceptingCount + width);
+  const line = Math.min(acceptingCount, ranked.length);
+  const start = Math.max(0, line - width);
+  const end = Math.min(ranked.length, line + width);
   return new Set(ranked.slice(start, end).map((r) => r.id));
 }
 
