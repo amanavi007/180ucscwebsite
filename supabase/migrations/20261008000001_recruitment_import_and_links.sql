@@ -276,3 +276,169 @@ begin
   delete from public.recruit_booking_links where id = existing.id;
 end;
 $$;
+
+-- Merging duplicate applicants must also move their booking links, otherwise the
+-- survivor loses its interview attendance (and the absorbed, archived record keeps it).
+-- Replaces the piece 1 merge/undo functions; the log gains the ids of the links it moved.
+alter table public.recruit_merge_log
+  add column if not exists moved_link_ids uuid[] not null default '{}';
+
+create or replace function public.merge_recruit_applicants(
+  p_survivor uuid,
+  p_absorbed uuid,
+  p_absorbed_alias text default null,
+  p_keep_email text default null
+)
+returns uuid
+language plpgsql
+as $$
+declare
+  s public.recruit_applicants;
+  a public.recruit_applicants;
+  new_email text;
+  new_notes text;
+  moved_points uuid[];
+  moved_aliases uuid[];
+  moved_links uuid[];
+  added_alias uuid;
+  log_id uuid;
+begin
+  if not public.is_exec() then
+    raise exception 'Only exec can merge applicants.';
+  end if;
+  if p_survivor = p_absorbed then
+    raise exception 'Pick two different applicants.';
+  end if;
+
+  select * into s from public.recruit_applicants where id = p_survivor for update;
+  select * into a from public.recruit_applicants where id = p_absorbed for update;
+  if s.id is null or a.id is null then
+    raise exception 'Applicant not found.';
+  end if;
+  if s.quarter_id <> a.quarter_id then
+    raise exception 'Those applicants are in different quarters.';
+  end if;
+  if s.archived_at is not null or a.archived_at is not null then
+    raise exception 'An archived applicant cannot be merged.';
+  end if;
+
+  if s.email is not null and a.email is not null and s.email <> a.email then
+    if p_keep_email is null or p_keep_email not in (s.email, a.email) then
+      raise exception 'Both applicants have different emails; choose which one to keep.';
+    end if;
+    new_email := p_keep_email;
+  else
+    new_email := coalesce(s.email, a.email);
+  end if;
+
+  new_notes := case
+    when btrim(s.notes) = '' then a.notes
+    when btrim(a.notes) = '' then s.notes
+    else s.notes || E'\n\n' || a.notes
+  end;
+
+  insert into public.recruit_merge_log (survivor_id, absorbed_id, survivor_before)
+  values (
+    p_survivor, p_absorbed,
+    jsonb_build_object('email', s.email, 'major', s.major, 'year', s.year, 'notes', s.notes)
+  )
+  returning id into log_id;
+
+  -- Archive first so the absorbed row releases its email before the survivor takes it.
+  update public.recruit_applicants
+    set archived_at = now(), merged_into_id = p_survivor
+    where id = p_absorbed;
+
+  select coalesce(array_agg(id), '{}') into moved_points
+    from public.recruit_points where applicant_id = p_absorbed;
+  update public.recruit_points set applicant_id = p_survivor where applicant_id = p_absorbed;
+
+  select coalesce(array_agg(id), '{}') into moved_aliases
+    from public.recruit_applicant_aliases where applicant_id = p_absorbed;
+  update public.recruit_applicant_aliases set applicant_id = p_survivor where applicant_id = p_absorbed;
+
+  select coalesce(array_agg(id), '{}') into moved_links
+    from public.recruit_booking_links where applicant_id = p_absorbed;
+  update public.recruit_booking_links set applicant_id = p_survivor where applicant_id = p_absorbed;
+
+  if p_absorbed_alias is not null and btrim(p_absorbed_alias) <> '' then
+    insert into public.recruit_applicant_aliases (applicant_id, quarter_id, alias)
+    values (p_survivor, s.quarter_id, p_absorbed_alias)
+    on conflict (quarter_id, alias) do nothing
+    returning id into added_alias;
+  end if;
+
+  update public.recruit_applicants
+    set email = new_email,
+        major = coalesce(s.major, a.major),
+        year = coalesce(s.year, a.year),
+        notes = new_notes
+    where id = p_survivor;
+
+  update public.recruit_merge_log
+    set moved_point_ids = moved_points,
+        moved_alias_ids = moved_aliases,
+        moved_link_ids = moved_links,
+        added_alias_id = added_alias
+    where id = log_id;
+
+  return log_id;
+end;
+$$;
+
+create or replace function public.undo_merge_recruit_applicants(p_log_id uuid)
+returns void
+language plpgsql
+as $$
+declare
+  l public.recruit_merge_log;
+  s public.recruit_applicants;
+begin
+  if not public.is_exec() then
+    raise exception 'Only exec can undo a merge.';
+  end if;
+
+  select * into l from public.recruit_merge_log where id = p_log_id for update;
+  if l.id is null then
+    raise exception 'Merge not found.';
+  end if;
+  if l.undone_at is not null then
+    raise exception 'That merge was already undone.';
+  end if;
+
+  select * into s from public.recruit_applicants where id = l.survivor_id for update;
+  if s.archived_at is not null then
+    raise exception 'The surviving applicant was merged into someone else; undo that merge first.';
+  end if;
+
+  -- Undo restores a snapshot of the survivor taken at merge time, so a newer merge
+  -- into the same survivor has to be undone first or its data would be clobbered.
+  if exists (
+    select 1 from public.recruit_merge_log
+    where survivor_id = l.survivor_id and undone_at is null and created_at > l.created_at
+  ) then
+    raise exception 'Undo the newer merge into this applicant first.';
+  end if;
+
+  update public.recruit_applicants
+    set email = l.survivor_before ->> 'email',
+        major = l.survivor_before ->> 'major',
+        year = l.survivor_before ->> 'year',
+        notes = coalesce(l.survivor_before ->> 'notes', '')
+    where id = l.survivor_id;
+
+  update public.recruit_applicants
+    set archived_at = null, merged_into_id = null
+    where id = l.absorbed_id;
+
+  update public.recruit_points set applicant_id = l.absorbed_id where id = any (l.moved_point_ids);
+  update public.recruit_applicant_aliases set applicant_id = l.absorbed_id where id = any (l.moved_alias_ids);
+  update public.recruit_booking_links set applicant_id = l.absorbed_id where id = any (l.moved_link_ids);
+
+  if l.added_alias_id is not null then
+    delete from public.recruit_applicant_aliases where id = l.added_alias_id;
+  end if;
+
+  update public.recruit_merge_log set undone_at = now() where id = p_log_id;
+end;
+$$;

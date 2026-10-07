@@ -836,6 +836,7 @@ export interface Database {
           absorbed_id: string;
           moved_point_ids: string[];
           moved_alias_ids: string[];
+          moved_link_ids: string[];
           added_alias_id: string | null;
           survivor_before: Record<string, string | null>;
           created_at: string;
@@ -847,6 +848,7 @@ export interface Database {
           absorbed_id: string;
           moved_point_ids?: string[];
           moved_alias_ids?: string[];
+          moved_link_ids?: string[];
           added_alias_id?: string | null;
           survivor_before: Record<string, string | null>;
           created_at?: string;
