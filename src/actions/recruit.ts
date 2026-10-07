@@ -6,6 +6,7 @@ import { getCurrentProfile } from "@/lib/data/profile";
 import { isExec } from "@/lib/auth/roles";
 import { logAudit } from "@/lib/audit";
 import { getMatchableApplicants } from "@/lib/data/recruit";
+import { getAwardedApplicantIds, getImportContext } from "@/lib/data/recruit-import";
 import {
   isPlausibleEmail,
   normalizeApplicantEmail,
@@ -14,6 +15,8 @@ import {
   type RecruitSection,
 } from "@/lib/recruit";
 import { findMatches, normalizeName, pairKey, type MatchClass } from "@/lib/recruit-matching";
+import { cleanDisplayName, parseAttendeeInput, reviewImport, type CommitRow, type ReviewRow } from "@/lib/recruit-import";
+import { NO_SHOW_DEFAULT_REASON, systemKeyFor, type AttendanceStatus, type BookingKind } from "@/lib/recruit-attendance";
 
 export interface ActionResult {
   error?: string;
@@ -64,6 +67,24 @@ export async function checkApplicantMatchesAction(input: {
   return { matches };
 }
 
+/** The same email's live applicant record from an earlier quarter, for the "Previously applied" note. */
+async function findPreviousApplicantId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  email: string | null,
+  quarterId: string,
+): Promise<string | null> {
+  if (!email) return null;
+  const { data } = await supabase
+    .from("recruit_applicants")
+    .select("id")
+    .eq("email", email)
+    .neq("quarter_id", quarterId)
+    .is("archived_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  return data?.[0]?.id ?? null;
+}
+
 export async function addApplicantAction(input: {
   quarterId: string;
   name: string;
@@ -88,19 +109,7 @@ export async function addApplicantAction(input: {
   if (matches.length > 0 && !input.confirmDuplicate) return { needsConfirm: true };
 
   const supabase = await createClient();
-
-  let previousId: string | null = null;
-  if (email) {
-    const { data: prev, error: prevError } = await supabase
-      .from("recruit_applicants")
-      .select("id")
-      .eq("email", email)
-      .neq("quarter_id", input.quarterId)
-      .order("created_at", { ascending: false })
-      .limit(1);
-    if (prevError) return { error: prevError.message };
-    previousId = prev?.[0]?.id ?? null;
-  }
+  const previousId = await findPreviousApplicantId(supabase, email, input.quarterId);
 
   const { error: insertError } = await supabase.from("recruit_applicants").insert({
     quarter_id: input.quarterId,
@@ -317,23 +326,27 @@ export async function createEventAction(input: {
   categoryId: string;
   name: string;
   date: string;
-}): Promise<ActionResult> {
+}): Promise<ActionResult & { eventId?: string }> {
   const { error } = await requireExec();
   if (error) return { error };
   if (!input.name.trim()) return { error: "Give the event a name." };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) return { error: "Pick the event's date." };
 
   const supabase = await createClient();
-  const { error: insertError } = await supabase.from("recruit_events").insert({
-    quarter_id: input.quarterId,
-    category_id: input.categoryId,
-    name: input.name.trim(),
-    date: input.date,
-  });
+  const { data, error: insertError } = await supabase
+    .from("recruit_events")
+    .insert({
+      quarter_id: input.quarterId,
+      category_id: input.categoryId,
+      name: input.name.trim(),
+      date: input.date,
+    })
+    .select("id")
+    .single();
   if (insertError) return { error: insertError.message };
 
   revalidateAll();
-  return {};
+  return { eventId: data.id };
 }
 
 export async function deleteEventAction(id: string): Promise<ActionResult> {
@@ -414,6 +427,205 @@ export async function dismissDuplicateAction(aId: string, bId: string): Promise<
     .from("recruit_not_duplicates")
     .upsert({ applicant_a: a, applicant_b: b }, { onConflict: "applicant_a,applicant_b" });
   if (upsertError) return { error: upsertError.message };
+
+  revalidateAll();
+  return {};
+}
+
+export async function reviewImportAction(input: {
+  quarterId: string;
+  text: string;
+  eventId: string | null;
+  minMinutes: number;
+}): Promise<{ error?: string; rows?: ReviewRow[]; applicants?: { id: string; name: string; email: string | null }[] }> {
+  const { error } = await requireExec();
+  if (error) return { error };
+
+  const attendees = parseAttendeeInput(input.text);
+  if (attendees.length === 0) {
+    return { error: "Couldn't find any names in that. Paste one name per line or upload a Zoom CSV." };
+  }
+
+  const [context, awarded] = await Promise.all([
+    getImportContext(input.quarterId),
+    input.eventId ? getAwardedApplicantIds(input.eventId) : Promise.resolve(new Set<string>()),
+  ]);
+
+  const rows = reviewImport(attendees, {
+    applicants: context.applicants,
+    ignoredNames: context.ignoredNames,
+    memberNames: context.memberNames,
+    awardedApplicantIds: awarded,
+    minMinutes: Number.isFinite(input.minMinutes) ? Math.max(0, input.minMinutes) : 10,
+  });
+  return {
+    rows,
+    applicants: context.applicants
+      .map((a) => ({ id: a.id, name: a.name, email: a.email }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  };
+}
+
+export async function commitImportAction(input: {
+  quarterId: string;
+  eventId: string | null;
+  categoryId: string;
+  points: number;
+  rows: CommitRow[];
+}): Promise<ActionResult & { batchId?: string; created?: number; awarded?: number; skipped?: number }> {
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error };
+  if (!Number.isFinite(input.points)) return { error: "Enter the points as a number." };
+  if (input.rows.length === 0) return { error: "Nothing to import — every row was skipped." };
+
+  const supabase = await createClient();
+  const { data: category, error: categoryError } = await supabase
+    .from("recruit_categories")
+    .select("archived_at, name")
+    .eq("id", input.categoryId)
+    .maybeSingle();
+  if (categoryError) return { error: categoryError.message };
+  if (!category || category.archived_at) return { error: "That category is archived — pick another one." };
+
+  const { data, error: rpcError } = await supabase.rpc("commit_recruit_import", {
+    p_quarter: input.quarterId,
+    p_event: input.eventId,
+    p_category: input.categoryId,
+    p_points: input.points,
+    p_rows: input.rows,
+  });
+  if (rpcError) return { error: rpcError.message };
+
+  const result = data as { batchId: string; created: number; awarded: number; skipped: number };
+  await logAudit(
+    profile.id,
+    "recruit.import_committed",
+    category.name,
+    `${result.awarded} awarded, ${result.created} new applicants, ${result.skipped} skipped`,
+  );
+  revalidateAll();
+  return { batchId: result.batchId, created: result.created, awarded: result.awarded, skipped: result.skipped };
+}
+
+export async function undoImportAction(batchId: string): Promise<ActionResult & { voided?: number }> {
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error };
+
+  const supabase = await createClient();
+  const { data, error: rpcError } = await supabase.rpc("undo_recruit_import", { p_batch: batchId });
+  if (rpcError) return { error: rpcError.message };
+
+  await logAudit(profile.id, "recruit.import_undone", null, `${data} entries voided`);
+  revalidateAll();
+  return { voided: data as number };
+}
+
+export async function markBookingAction(input: {
+  quarterId: string;
+  kind: BookingKind;
+  bookingId: string;
+  status: AttendanceStatus;
+  resolution?: { applicantId?: string; createNew?: boolean };
+}): Promise<ActionResult & { needsPick?: { applicantId: string; name: string; email: string | null; score: number }[] }> {
+  const { error } = await requireExec();
+  if (error) return { error };
+
+  const supabase = await createClient();
+  const table = input.kind === "coffee_chat" ? "coffee_chat_bookings" : "interview_bookings";
+  const { data: booking, error: bookingError } = await supabase
+    .from(table)
+    .select("applicant_name, applicant_email")
+    .eq("id", input.bookingId)
+    .maybeSingle();
+  if (bookingError) return { error: bookingError.message };
+  if (!booking) return { error: "That booking no longer exists." };
+
+  const existing = await getMatchableApplicants(input.quarterId);
+  const byId = new Map(existing.map((a) => [a.id, a]));
+  const email = normalizeApplicantEmail(booking.applicant_email);
+  const matches = findMatches({ name: booking.applicant_name, email }, existing);
+
+  let applicantId: string | null = null;
+  const emailHit = matches.find((m) => m.kind === "duplicate");
+  if (emailHit) {
+    applicantId = emailHit.applicantId;
+  } else if (input.resolution?.applicantId && byId.has(input.resolution.applicantId)) {
+    applicantId = input.resolution.applicantId;
+    const alias = normalizeName(booking.applicant_name);
+    if (alias) {
+      await supabase
+        .from("recruit_applicant_aliases")
+        .upsert(
+          { applicant_id: applicantId, quarter_id: input.quarterId, alias },
+          { onConflict: "quarter_id,alias", ignoreDuplicates: true },
+        );
+    }
+  } else if (!input.resolution?.createNew && matches.length > 0) {
+    return {
+      needsPick: matches.map((m) => ({
+        applicantId: m.applicantId,
+        name: byId.get(m.applicantId)?.name ?? "Unknown",
+        email: byId.get(m.applicantId)?.email ?? null,
+        score: m.score,
+      })),
+    };
+  }
+
+  if (!applicantId) {
+    const previousId = await findPreviousApplicantId(supabase, email, input.quarterId);
+    const { data: created, error: createError } = await supabase
+      .from("recruit_applicants")
+      .insert({
+        quarter_id: input.quarterId,
+        name: cleanDisplayName(booking.applicant_name),
+        email,
+        previous_applicant_id: previousId,
+      })
+      .select("id")
+      .single();
+    if (createError) return { error: createError.message };
+    applicantId = created.id;
+  }
+
+  let categoryId: string | null = null;
+  let points: number | null = null;
+  let reason: string | null = null;
+  const key = systemKeyFor(input.kind, input.status);
+  if (key) {
+    const { data: category, error: categoryError } = await supabase
+      .from("recruit_categories")
+      .select("id, default_points")
+      .eq("system_key", key)
+      .maybeSingle();
+    if (categoryError) return { error: categoryError.message };
+    if (!category) return { error: "The automatic points category is missing — check the Setup tab." };
+    categoryId = category.id;
+    points = Number(category.default_points);
+    reason = input.status === "no_show" ? NO_SHOW_DEFAULT_REASON : null;
+  }
+
+  const { error: rpcError } = await supabase.rpc("mark_recruit_booking", {
+    p_kind: input.kind,
+    p_booking: input.bookingId,
+    p_applicant: applicantId,
+    p_status: input.status,
+    p_category: categoryId,
+    p_points: points,
+    p_reason: reason,
+  });
+  if (rpcError) return { error: rpcError.message };
+
+  revalidateAll();
+  return {};
+}
+
+export async function clearBookingMarkAction(kind: BookingKind, bookingId: string): Promise<ActionResult> {
+  const { error } = await requireExec();
+  if (error) return { error };
+
+  const supabase = await createClient();
+  const { error: rpcError } = await supabase.rpc("clear_recruit_booking_mark", { p_kind: kind, p_booking: bookingId });
+  if (rpcError) return { error: rpcError.message };
 
   revalidateAll();
   return {};

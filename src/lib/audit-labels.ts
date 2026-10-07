@@ -37,6 +37,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "recruit.category_updated": "Edited a recruitment points category",
   "recruit.category_archived": "Archived a recruitment points category",
   "recruit.category_restored": "Restored a recruitment points category",
+  "recruit.import_committed": "Imported attendee points",
+  "recruit.import_undone": "Undid an attendee import",
 };
 
 export function auditActionLabel(action: string): string {
