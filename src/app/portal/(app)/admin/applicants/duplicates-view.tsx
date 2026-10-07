@@ -162,10 +162,14 @@ export function DuplicatesView({
                   <b>{m.absorbedName}</b> merged into <b>{m.survivorName}</b>
                   <span className="text-muted-foreground"> · {new Date(m.createdAt).toLocaleDateString()}</span>
                 </span>
-                <Button size="sm" variant="outline" disabled={isPending} onClick={() => undo(m.id)}>
-                  <Undo2 />
-                  Undo
-                </Button>
+                {m.canUndo ? (
+                  <Button size="sm" variant="outline" disabled={isPending} onClick={() => undo(m.id)}>
+                    <Undo2 />
+                    Undo
+                  </Button>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Undo the newer merge into {m.survivorName} first</span>
+                )}
               </li>
             ))}
           </ul>

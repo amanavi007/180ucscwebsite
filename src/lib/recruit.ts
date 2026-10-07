@@ -92,6 +92,29 @@ export function rankByTotal<T extends { id: string; name: string; total: number 
   });
 }
 
+/** What the Add-applicant dialog should do with `addApplicantAction`'s result: only "added" means a row was saved. */
+export function classifyAddResult(result: { error?: string; needsConfirm?: boolean }): "added" | "needs-confirm" | "error" {
+  if (result.error) return "error";
+  if (result.needsConfirm) return "needs-confirm";
+  return "added";
+}
+
+/**
+ * Merges that can be undone safely: the newest not-yet-undone merge per survivor. Undoing an older one first
+ * would restore a stale snapshot of the survivor and could clobber the later merge's data.
+ */
+export function undoableMergeIds(
+  logs: { id: string; survivorId: string; createdAt: string; undoneAt: string | null }[],
+): Set<string> {
+  const newest = new Map<string, { id: string; createdAt: string }>();
+  for (const l of logs) {
+    if (l.undoneAt) continue;
+    const current = newest.get(l.survivorId);
+    if (!current || l.createdAt > current.createdAt) newest.set(l.survivorId, { id: l.id, createdAt: l.createdAt });
+  }
+  return new Set([...newest.values()].map((v) => v.id));
+}
+
 export function ringFraction(total: number, max: number): number {
   if (max <= 0) return 0;
   return Math.min(1, Math.max(0, total / max));

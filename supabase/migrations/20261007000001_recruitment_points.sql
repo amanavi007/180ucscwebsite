@@ -89,7 +89,9 @@ create policy recruit_events_all on public.recruit_events
 -- Append-only ledger. Never hard-deleted: voiding is the only removal.
 create table public.recruit_points (
   id uuid primary key default gen_random_uuid(),
-  applicant_id uuid not null references public.recruit_applicants (id),
+  -- Cascade from the applicant so deleting a whole quarter (which cascades to its
+  -- applicants and events) still works; exec actions never delete ledger rows.
+  applicant_id uuid not null references public.recruit_applicants (id) on delete cascade,
   category_id uuid not null references public.recruit_categories (id),
   event_id uuid references public.recruit_events (id),
   points numeric not null,
@@ -275,6 +277,15 @@ begin
   select * into s from public.recruit_applicants where id = l.survivor_id for update;
   if s.archived_at is not null then
     raise exception 'The surviving applicant was merged into someone else; undo that merge first.';
+  end if;
+
+  -- Undo restores a snapshot of the survivor taken at merge time, so a newer merge
+  -- into the same survivor has to be undone first or its data would be clobbered.
+  if exists (
+    select 1 from public.recruit_merge_log
+    where survivor_id = l.survivor_id and undone_at is null and created_at > l.created_at
+  ) then
+    raise exception 'Undo the newer merge into this applicant first.';
   end if;
 
   update public.recruit_applicants

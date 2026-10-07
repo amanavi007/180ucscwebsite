@@ -2,7 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllPages } from "@/lib/paginate";
 import { getQuarters } from "@/lib/data/quarters";
-import { sumPoints, type RecruitSection } from "@/lib/recruit";
+import { sumPoints, undoableMergeIds, type RecruitSection } from "@/lib/recruit";
 import { pairKey, type MatchableApplicant } from "@/lib/recruit-matching";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
@@ -59,6 +59,8 @@ export interface MergeLogRow {
   survivorName: string;
   absorbedName: string;
   createdAt: string;
+  /** False when a newer merge into the same survivor must be undone first. */
+  canUndo: boolean;
 }
 
 export async function getRecruitCategories(): Promise<RecruitCategory[]> {
@@ -272,6 +274,10 @@ export async function getRecentMerges(quarterId: string): Promise<MergeLogRow[]>
   if (peopleError) throw peopleError;
   const byId = new Map((people ?? []).map((p) => [p.id, p]));
 
+  const undoable = undoableMergeIds(
+    logs.map((l) => ({ id: l.id, survivorId: l.survivor_id, createdAt: l.created_at, undoneAt: null })),
+  );
+
   return logs
     .filter((l) => byId.get(l.survivor_id)?.quarter_id === quarterId)
     .map((l) => ({
@@ -279,5 +285,6 @@ export async function getRecentMerges(quarterId: string): Promise<MergeLogRow[]>
       survivorName: byId.get(l.survivor_id)?.name ?? "Unknown",
       absorbedName: byId.get(l.absorbed_id)?.name ?? "Unknown",
       createdAt: l.created_at,
+      canUndo: undoable.has(l.id),
     }));
 }

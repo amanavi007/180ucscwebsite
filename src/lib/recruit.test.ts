@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  classifyAddResult,
   formatPoints,
   isPlausibleEmail,
   needsEmailChoice,
@@ -9,6 +10,7 @@ import {
   ringFraction,
   roundPoints,
   sumPoints,
+  undoableMergeIds,
   validateAward,
   type MergeSide,
 } from "./recruit";
@@ -142,5 +144,51 @@ describe("ringFraction", () => {
   });
   it("is 0 when nobody has points", () => {
     expect(ringFraction(0, 0)).toBe(0);
+  });
+});
+
+describe("classifyAddResult", () => {
+  it("treats needsConfirm as NOT added, so the UI can't claim success", () => {
+    expect(classifyAddResult({ needsConfirm: true })).toBe("needs-confirm");
+  });
+  it("treats an error as an error", () => {
+    expect(classifyAddResult({ error: "Someone with that email is already an applicant this quarter." })).toBe("error");
+  });
+  it("treats an empty result as added", () => {
+    expect(classifyAddResult({})).toBe("added");
+  });
+  it("prefers the error when both are present", () => {
+    expect(classifyAddResult({ error: "x", needsConfirm: true })).toBe("error");
+  });
+});
+
+describe("undoableMergeIds", () => {
+  const log = (id: string, survivorId: string, createdAt: string, undoneAt: string | null = null) => ({
+    id,
+    survivorId,
+    createdAt,
+    undoneAt,
+  });
+
+  it("allows undo of a lone merge", () => {
+    expect(undoableMergeIds([log("m1", "A", "2026-10-01T00:00:00Z")])).toEqual(new Set(["m1"]));
+  });
+  it("only allows the newest merge per survivor (out-of-order undo corrupts records)", () => {
+    const ids = undoableMergeIds([log("m1", "A", "2026-10-01T00:00:00Z"), log("m2", "A", "2026-10-02T00:00:00Z")]);
+    expect(ids).toEqual(new Set(["m2"]));
+  });
+  it("keeps merges of different survivors independent", () => {
+    const ids = undoableMergeIds([log("m1", "A", "2026-10-01T00:00:00Z"), log("m2", "B", "2026-10-02T00:00:00Z")]);
+    expect(ids).toEqual(new Set(["m1", "m2"]));
+  });
+  it("frees the older merge once the newer one is undone", () => {
+    const ids = undoableMergeIds([
+      log("m1", "A", "2026-10-01T00:00:00Z"),
+      log("m2", "A", "2026-10-02T00:00:00Z", "2026-10-03T00:00:00Z"),
+    ]);
+    expect(ids).toEqual(new Set(["m1"]));
+  });
+  it("never offers an already-undone merge", () => {
+    expect(undoableMergeIds([log("m1", "A", "2026-10-01T00:00:00Z", "2026-10-02T00:00:00Z")])).toEqual(new Set());
   });
 });

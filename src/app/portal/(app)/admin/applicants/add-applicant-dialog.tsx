@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { TriangleAlert, UserPlus } from "lucide-react";
 import { addApplicantAction, checkApplicantMatchesAction, type MatchPreview } from "@/actions/recruit";
+import { classifyAddResult } from "@/lib/recruit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,10 +25,14 @@ export function AddApplicantDialog({ quarterId, trigger }: { quarterId: string; 
   const [email, setEmail] = useState("");
   const [major, setMajor] = useState("");
   const [year, setYear] = useState("");
-  const [matches, setMatches] = useState<MatchPreview[]>([]);
+  // Matches are stored with the exact name/email they were computed for, so results for an
+  // earlier input can never be shown (or used to confirm a save) for the current one.
+  const [checked, setChecked] = useState<{ key: string; matches: MatchPreview[] } | null>(null);
   const [isPending, startTransition] = useTransition();
   const requestId = useRef(0);
   const router = useRouter();
+
+  const inputKey = `${name.trim().toLowerCase()}|${email.trim().toLowerCase()}`;
 
   // Live duplicate check, debounced; stale responses are ignored.
   const shouldCheck = open && (name.trim().length >= 2 || email.includes("@"));
@@ -36,13 +41,13 @@ export function AddApplicantDialog({ quarterId, trigger }: { quarterId: string; 
     const id = ++requestId.current;
     const timer = setTimeout(async () => {
       const result = await checkApplicantMatchesAction({ quarterId, name, email });
-      if (id === requestId.current) setMatches(result.matches);
+      if (id === requestId.current) setChecked({ key: inputKey, matches: result.matches });
     }, 350);
     return () => clearTimeout(timer);
-  }, [shouldCheck, quarterId, name, email]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldCheck, quarterId, inputKey]);
 
-  // Results from an earlier check are hidden (not cleared in an effect) once there's nothing to check.
-  const liveMatches = shouldCheck ? matches : [];
+  const liveMatches = shouldCheck && checked?.key === inputKey ? checked.matches : [];
   const hardDuplicate = liveMatches.find((m) => m.kind === "duplicate");
   const softMatches = liveMatches.filter((m) => m.kind !== "duplicate");
 
@@ -51,7 +56,7 @@ export function AddApplicantDialog({ quarterId, trigger }: { quarterId: string; 
     setEmail("");
     setMajor("");
     setYear("");
-    setMatches([]);
+    setChecked(null);
   }
 
   function submit() {
@@ -64,8 +69,16 @@ export function AddApplicantDialog({ quarterId, trigger }: { quarterId: string; 
         year,
         confirmDuplicate: softMatches.length > 0,
       });
-      if (result.error) {
+      const outcome = classifyAddResult(result);
+      if (outcome === "error") {
         toast.error(result.error);
+        return;
+      }
+      if (outcome === "needs-confirm") {
+        // The server found a possible duplicate the live check hadn't shown yet: show it and wait for a second click.
+        const fresh = await checkApplicantMatchesAction({ quarterId, name, email });
+        setChecked({ key: inputKey, matches: fresh.matches });
+        toast.warning("This might be someone already added. Check the warning, then click Add anyway.");
         return;
       }
       toast.success(`${name.trim()} added.`);
