@@ -13,7 +13,7 @@ describe("resolveModelSpecs", () => {
   });
   it("google primary + groq fallback when both keys are set", () => {
     expect(resolveModelSpecs({ GOOGLE_GENERATIVE_AI_API_KEY: "g", GROQ_API_KEY: "q" })).toEqual([
-      { provider: "google", modelId: "gemini-flash-latest" },
+      { provider: "google", modelId: "gemini-flash-lite-latest" },
       { provider: "groq", modelId: "openai/gpt-oss-120b" },
     ]);
   });
