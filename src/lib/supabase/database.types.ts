@@ -701,6 +701,7 @@ export interface Database {
           previous_applicant_id: string | null;
           merged_into_id: string | null;
           archived_at: string | null;
+          created_by_batch_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -712,6 +713,7 @@ export interface Database {
           major?: string | null;
           year?: string | null;
           notes?: string;
+          created_by_batch_id?: string | null;
           previous_applicant_id?: string | null;
           merged_into_id?: string | null;
           archived_at?: string | null;
@@ -735,6 +737,7 @@ export interface Database {
           default_points: number;
           sort_order: number;
           archived_at: string | null;
+          system_key: string | null;
           created_at: string;
         };
         Insert: {
@@ -744,9 +747,40 @@ export interface Database {
           default_points?: number;
           sort_order?: number;
           archived_at?: string | null;
+          system_key?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["recruit_categories"]["Insert"]>;
+        Relationships: [];
+      };
+      recruit_ignored_names: {
+        Row: { id: string; quarter_id: string; name: string; created_at: string };
+        Insert: { id?: string; quarter_id: string; name: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["recruit_ignored_names"]["Insert"]>;
+        Relationships: [];
+      };
+      recruit_booking_links: {
+        Row: {
+          id: string;
+          booking_kind: "coffee_chat" | "interview";
+          booking_id: string;
+          applicant_id: string;
+          status: "attended" | "no_show" | "excused";
+          points_id: string | null;
+          marked_by: string | null;
+          marked_at: string;
+        };
+        Insert: {
+          id?: string;
+          booking_kind: "coffee_chat" | "interview";
+          booking_id: string;
+          applicant_id: string;
+          status: "attended" | "no_show" | "excused";
+          points_id?: string | null;
+          marked_by?: string | null;
+          marked_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["recruit_booking_links"]["Insert"]>;
         Relationships: [];
       };
       recruit_events: {
@@ -1001,6 +1035,30 @@ export interface Database {
       };
       undo_merge_recruit_applicants: {
         Args: { p_log_id: string };
+        Returns: unknown;
+      };
+      commit_recruit_import: {
+        Args: { p_quarter: string; p_event: string | null; p_category: string; p_points: number; p_rows: unknown };
+        Returns: unknown;
+      };
+      undo_recruit_import: {
+        Args: { p_batch: string };
+        Returns: number;
+      };
+      mark_recruit_booking: {
+        Args: {
+          p_kind: string;
+          p_booking: string;
+          p_applicant: string;
+          p_status: string;
+          p_category: string | null;
+          p_points: number | null;
+          p_reason: string | null;
+        };
+        Returns: string;
+      };
+      clear_recruit_booking_mark: {
+        Args: { p_kind: string; p_booking: string };
         Returns: unknown;
       };
     };

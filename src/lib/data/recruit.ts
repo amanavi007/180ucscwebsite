@@ -14,6 +14,8 @@ export interface RecruitCategory {
   defaultPoints: number;
   sortOrder: number;
   archived: boolean;
+  /** Set for categories the app uses automatically (e.g. coffee chat points); these can't be archived. */
+  systemKey: string | null;
 }
 
 export interface RecruitEvent {
@@ -78,6 +80,7 @@ export async function getRecruitCategories(): Promise<RecruitCategory[]> {
     defaultPoints: Number(c.default_points),
     sortOrder: c.sort_order,
     archived: c.archived_at !== null,
+    systemKey: c.system_key,
   }));
 }
 

@@ -95,15 +95,21 @@ export function SetupView({
                     </Button>
                   }
                 />
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  aria-label={`Archive ${c.name}`}
-                  disabled={isPending}
-                  onClick={() => run(() => setCategoryArchivedAction(c.id, true), `${c.name} archived.`)}
-                >
-                  <Archive />
-                </Button>
+                {c.systemKey ? (
+                  <Badge variant="outline" title="The portal uses this category automatically, so it can be renamed but not archived.">
+                    Used automatically
+                  </Badge>
+                ) : (
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label={`Archive ${c.name}`}
+                    disabled={isPending}
+                    onClick={() => run(() => setCategoryArchivedAction(c.id, true), `${c.name} archived.`)}
+                  >
+                    <Archive />
+                  </Button>
+                )}
               </li>
             ))}
             {active.length === 0 && <li className="p-3 text-sm text-muted-foreground">No categories yet. Add the first one.</li>}
