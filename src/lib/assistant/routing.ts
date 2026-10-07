@@ -1,5 +1,13 @@
 export type Area = "projects" | "tasks" | "events" | "recruitment" | "attendance" | "people" | "actions";
-export type Shortcut = "my_open_tasks" | "upcoming_events";
+/** Shortcut ids are the names of the tool whose result they show. */
+export type Shortcut =
+  | "my_open_tasks"
+  | "upcoming_events"
+  | "my_projects"
+  | "quarter_projects"
+  | "attendance_report"
+  | "my_attendance"
+  | "top_applicants";
 
 const DEFAULT_AREAS: Area[] = ["projects", "tasks", "events"];
 
@@ -22,6 +30,11 @@ export function selectAreas(text: string): Area[] {
 const SHORTCUTS: [Shortcut, RegExp][] = [
   ["my_open_tasks", /^(what('?s| is| are)?\s+)?(my\s+)?(open\s+)?(tasks|due|due soon)\??$/i],
   ["upcoming_events", /^(what('?s| is)?\s+)?(upcoming events|events (this|next) week|what'?s coming up)\??$/i],
+  ["my_projects", /^(show |list |what are )?my projects\??$/i],
+  ["quarter_projects", /^(show |list )?(all projects|every project|projects this quarter)\??$/i],
+  ["attendance_report", /^((who('s| has| is)?\s+)?(the\s+)?(worst|lowest)\s+attendance(\s+right now)?|attendance report)\??$/i],
+  ["my_attendance", /^(what('?s| is)?\s+)?my attendance\??$/i],
+  ["top_applicants", /^(top applicants|(recruitment|applicant) (rankings?|leaderboard))\??$/i],
 ];
 
 /** Exact short intents only, so a real question is never hijacked. */

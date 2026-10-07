@@ -5,11 +5,10 @@ import { buildModel } from "@/lib/assistant/provider";
 import { supabaseThreadStore } from "@/lib/assistant/threads";
 import { buildTools } from "@/lib/assistant/tools";
 import { realDataAccess } from "@/lib/assistant/tools/data-access";
-import { runMyOpenTasks, runUpcomingEvents } from "@/lib/assistant/tools/read-tools";
+import { runShortcutTool } from "@/lib/assistant/tools/shortcuts";
 import { registerExecutors, supabaseProposalStore } from "@/lib/assistant/tools/write-tools";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getActiveQuarter } from "@/lib/data/quarters";
-import { getOrgTodayDateString } from "@/lib/date";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -47,15 +46,7 @@ export async function POST(request: Request) {
     profile: toolDeps.profile,
     quarter: quarter ? { id: quarter.id, name: quarter.name } : null,
     buildTools: (areas, threadId) => buildTools(areas, toolDeps, { threadId, store }),
-    shortcutData: async (s) => {
-      const r =
-        s === "my_open_tasks"
-          ? await runMyOpenTasks(toolDeps)
-          : await runUpcomingEvents(toolDeps, getOrgTodayDateString());
-      if (r.items.length === 0) return r.note ?? "Nothing to show.";
-      const lines = r.items.map((i) => `- ${Object.values(i).filter(Boolean).join(" - ")}`);
-      return `${lines.join("\n")}${r.truncated ? `\n\n(Showing ${r.items.length} of ${r.total}.)` : ""}`;
-    },
+    runShortcut: async (id) => ({ tool: id, output: await runShortcutTool(id, toolDeps) }),
     threads: supabaseThreadStore(supabase, profile.id),
     cache,
     now: () => new Date(),

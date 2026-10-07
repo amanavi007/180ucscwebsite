@@ -1,6 +1,6 @@
 import type { UIMessage } from "ai";
 import { describe, expect, it } from "vitest";
-import { capHistory, prepareHistory, STUB, titleFromText, validateIncoming } from "./context";
+import { capHistory, prepareHistory, titleFromText, validateIncoming } from "./context";
 
 const user = (id: string, text: string): UIMessage => ({ id, role: "user", parts: [{ type: "text", text }] });
 const asst = (id: string, parts: UIMessage["parts"]): UIMessage => ({ id, role: "assistant", parts });
@@ -56,11 +56,20 @@ describe("prepareHistory", () => {
     const msgs = [user("1", "a"), asst("2", [{ type: "text", text: "A" }]), user("3", "b"), asst("4", [{ type: "text", text: "B" }]), user("5", "c")];
     expect(prepareHistory(msgs, 2).map((m) => m.id)).toEqual(["3", "4", "5"]);
   });
-  it("stubs tool outputs from earlier turns but keeps the current turn intact", () => {
-    const msgs = [user("1", "a"), asst("2", [toolPart({ big: "x".repeat(500) })]), user("3", "b"), asst("4", [toolPart({ keep: 1 })])];
+  it("keeps only the text of earlier turns (no tool calls, results, reasoning or step markers) but leaves the current turn intact", () => {
+    const msgs = [
+      user("1", "a"),
+      asst("2", [{ type: "step-start" } as UIMessage["parts"][number], toolPart({ big: "x".repeat(500) }), { type: "text", text: "Here you go." }]),
+      user("3", "b"),
+      asst("4", [toolPart({ keep: 1 })]),
+    ];
     const out = prepareHistory(msgs, 8);
-    expect((out[1].parts[0] as { output: unknown }).output).toBe(STUB);
+    expect(out[1].parts).toEqual([{ type: "text", text: "Here you go." }]);
     expect((out[3].parts[0] as { output: unknown }).output).toEqual({ keep: 1 });
+  });
+  it("drops earlier assistant messages that had no text at all (cards only)", () => {
+    const msgs = [user("1", "a"), asst("2", [toolPart({ a: 1 })]), user("3", "b")];
+    expect(prepareHistory(msgs, 8).map((m) => m.id)).toEqual(["1", "3"]);
   });
   it("does not mutate its input", () => {
     const msgs = [user("1", "a"), asst("2", [toolPart({ a: 1 })]), user("3", "b")];

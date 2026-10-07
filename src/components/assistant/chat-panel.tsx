@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { friendlyErrorResponse } from "@/lib/assistant/client-fetch";
 import { ProposalCard } from "./proposal-card";
+import { ToolCard } from "./tool-cards";
 
 const MAX_CHARS = 2000;
 const SUGGESTIONS = ["What's due?", "Upcoming events", "Which projects am I on?"];
@@ -101,30 +102,42 @@ export function ChatPanel({
         )}
 
         {messages.map((m) => (
-          <div key={m.id} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
-            <div
-              className={cn(
-                "max-w-[85%] rounded-lg px-3 py-2",
-                m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted",
-              )}
-            >
-              {m.parts.map((part, i) => {
-                if (part.type === "text") {
-                  return m.role === "user" ? (
-                    <p key={i} className="whitespace-pre-wrap text-sm">{part.text}</p>
-                  ) : (
-                    <MarkdownContent key={i} body={part.text} />
-                  );
-                }
-                if (part.type === "tool-propose_exec_todo" && part.state === "output-available") {
-                  const out = part.output as ProposalOutput;
-                  if (out.status === "awaiting_user_approval" && out.proposalId && out.preview) {
-                    return <ProposalCard key={i} proposalId={out.proposalId} preview={out.preview} />;
-                  }
+          <div key={m.id} className={cn("flex flex-col gap-2", m.role === "user" ? "items-end" : "items-start")}>
+            {m.parts.map((part, i) => {
+              if (part.type === "text") {
+                return (
+                  <div
+                    key={i}
+                    className={cn(
+                      "max-w-[85%] rounded-lg px-3 py-2",
+                      m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted",
+                    )}
+                  >
+                    {m.role === "user" ? (
+                      <p className="whitespace-pre-wrap text-sm">{part.text}</p>
+                    ) : (
+                      <MarkdownContent body={part.text} />
+                    )}
+                  </div>
+                );
+              }
+              if (!part.type.startsWith("tool-")) return null;
+              const toolPart = part as { type: string; state: string; output?: unknown };
+              const toolName = toolPart.type.slice("tool-".length);
+              if (toolPart.state !== "output-available") {
+                return toolName === "propose_exec_todo" ? null : (
+                  <p key={i} className="text-xs text-muted-foreground">Looking that up...</p>
+                );
+              }
+              if (toolName === "propose_exec_todo") {
+                const out = toolPart.output as ProposalOutput;
+                if (out.status === "awaiting_user_approval" && out.proposalId && out.preview) {
+                  return <ProposalCard key={i} proposalId={out.proposalId} preview={out.preview} />;
                 }
                 return null;
-              })}
-            </div>
+              }
+              return <ToolCard key={i} toolName={toolName} output={toolPart.output} />;
+            })}
           </div>
         ))}
 

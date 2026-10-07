@@ -26,6 +26,18 @@ describe("matchShortcut", () => {
     expect(matchShortcut("What's due?")).toBe("my_open_tasks");
     expect(matchShortcut("upcoming events")).toBe("upcoming_events");
   });
+  it("matches the other common one-liners", () => {
+    expect(matchShortcut("who has the worst attendance right now")).toBe("attendance_report");
+    expect(matchShortcut("Attendance report")).toBe("attendance_report");
+    expect(matchShortcut("my attendance?")).toBe("my_attendance");
+    expect(matchShortcut("my projects")).toBe("my_projects");
+    expect(matchShortcut("all projects")).toBe("quarter_projects");
+    expect(matchShortcut("top applicants")).toBe("top_applicants");
+  });
+  it("does not hijack longer or conditional versions", () => {
+    expect(matchShortcut("who has the worst attendance on the Acme team and why")).toBeNull();
+    expect(matchShortcut("show my projects that are at risk because of delays")).toBeNull();
+  });
   it("does not hijack real questions", () => {
     expect(matchShortcut("which of my tasks are blocking the Acme deliverable and why?")).toBeNull();
     expect(matchShortcut("create a task called my tasks")).toBeNull();

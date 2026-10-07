@@ -1,7 +1,5 @@
 import type { UIMessage } from "ai";
 
-export const STUB = "(earlier result omitted)";
-
 type Validated = { ok: true; messages: UIMessage[]; text: string } | { ok: false; error: string };
 
 function textOf(message: UIMessage): string {
@@ -29,25 +27,24 @@ export function validateIncoming(messages: unknown, maxChars: number): Validated
   return { ok: true, messages: messages as UIMessage[], text };
 }
 
-function stubOutputs(message: UIMessage): UIMessage {
-  let changed = false;
-  const parts = message.parts.map((part) => {
-    if (part.type.startsWith("tool-") && "output" in part && part.output !== undefined) {
-      changed = true;
-      return { ...part, output: STUB };
-    }
-    return part;
-  });
-  return changed ? ({ ...message, parts } as UIMessage) : message;
+/** Earlier turns keep only their text: tool calls/results, reasoning and step markers are dropped. */
+function textOnly(message: UIMessage): UIMessage | null {
+  if (message.role === "user") return message;
+  const parts = message.parts.filter((part) => part.type === "text");
+  return parts.length > 0 ? ({ ...message, parts } as UIMessage) : null;
 }
 
-/** Sliding window of the last `turns` user turns; older tool results replaced by a short stub. */
+/** Sliding window of the last `turns` user turns; everything before the latest turn is text-only. */
 export function prepareHistory(messages: UIMessage[], turns: number): UIMessage[] {
   const userIdx = messages.map((m, i) => (m.role === "user" ? i : -1)).filter((i) => i >= 0);
   const start = userIdx.length > turns ? userIdx[userIdx.length - turns] : 0;
   const window = messages.slice(start);
   const lastUser = window.map((m) => m.role).lastIndexOf("user");
-  return window.map((m, i) => (i < lastUser ? stubOutputs(m) : m));
+  return window.flatMap((m, i) => {
+    if (i >= lastUser) return [m];
+    const slim = textOnly(m);
+    return slim ? [slim] : [];
+  });
 }
 
 /**

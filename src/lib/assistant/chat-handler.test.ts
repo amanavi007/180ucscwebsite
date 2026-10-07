@@ -63,7 +63,7 @@ function deps(over: Partial<ChatDeps> = {}): ChatDeps {
     profile: { id: "u1", name: "Sam", role: "consultant" },
     quarter: { id: "q1", name: "Fall 2026" },
     buildTools: () => ({}),
-    shortcutData: async () => "- **Task A** (Acme), due 2026-10-09",
+    runShortcut: async (id) => ({ tool: id, output: { items: [{ task: "Task A", project: "Acme" }], total: 1, truncated: false } }),
     threads: { ensure: async () => "thread-1", save: vi.fn(async () => {}) },
     cache: new AnswerCache(60_000, 50),
     now: () => new Date("2026-10-07T12:00:00Z"),
@@ -109,7 +109,11 @@ describe("handleChat", () => {
     const res = await handleChat({ messages: [user("my tasks")] }, deps({ model: m as never }));
     expect(res.status).toBe(200);
     expect(m.doStreamCalls).toHaveLength(0);
-    expect(await bodyOf(res)).toContain("Task A");
+    const body = await bodyOf(res);
+    // Delivered as a tool result the page draws as a card, not as prose.
+    expect(body).toContain("tool-output-available");
+    expect(body).toContain("my_open_tasks");
+    expect(body).toContain("Task A");
   });
   it("streams a model answer, saves the thread, and records tokens via the system ledger", async () => {
     const q = quota("ok");

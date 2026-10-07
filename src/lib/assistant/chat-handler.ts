@@ -29,7 +29,8 @@ export interface ChatDeps {
   profile: { id: string; name: string; role: UserRole };
   quarter: { id: string; name: string } | null;
   buildTools(areas: Area[], threadId: string | null): ToolSet;
-  shortcutData(s: Shortcut): Promise<string>;
+  /** Runs the tool a shortcut stands for and returns its structured result (drawn as a card). */
+  runShortcut(s: Shortcut): Promise<{ tool: string; output: unknown }>;
   threads: {
     ensure(threadId: string | null, firstText: string): Promise<string>;
     save(threadId: string, messages: UIMessage[]): Promise<void>;
@@ -73,6 +74,24 @@ function textStreamResponse(
   return createUIMessageStreamResponse({ stream, headers: { "x-thread-id": threadId } });
 }
 
+function toolCardResponse(
+  original: UIMessage[],
+  result: { tool: string; output: unknown },
+  threadId: string,
+  onEnd: (messages: UIMessage[]) => Promise<void>,
+) {
+  const stream = createUIMessageStream({
+    originalMessages: original,
+    execute: ({ writer }) => {
+      const toolCallId = generateId();
+      writer.write({ type: "tool-input-available", toolCallId, toolName: result.tool, input: {} });
+      writer.write({ type: "tool-output-available", toolCallId, output: result.output });
+    },
+    onEnd: async ({ messages }) => onEnd(messages),
+  });
+  return createUIMessageStreamResponse({ stream, headers: { "x-thread-id": threadId } });
+}
+
 export async function handleChat(req: ChatRequest, deps: ChatDeps): Promise<Response> {
   const { cfg } = deps;
 
@@ -95,10 +114,10 @@ export async function handleChat(req: ChatRequest, deps: ChatDeps): Promise<Resp
     // 3. Zero-token deterministic shortcut. It costs no model quota, so the message is handed back.
     const shortcut = matchShortcut(input.text);
     if (shortcut) {
-      const answer = await deps.shortcutData(shortcut);
+      const result = await deps.runShortcut(shortcut);
       await refund(deps.ledger, deps.profile.id);
       deps.log({ ...logBase, path: "shortcut", shortcut, tokensIn: 0, tokensOut: 0 });
-      return textStreamResponse(input.messages, answer, threadId, save);
+      return toolCardResponse(input.messages, result, threadId, save);
     }
 
     // 4. Short-TTL answer cache, only for standalone first messages: a follow-up like "and the

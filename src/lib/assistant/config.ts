@@ -27,8 +27,8 @@ export function loadAssistantConfig(env: Env = process.env): AssistantConfig {
   return {
     userDailyCap: readInt(env.ASSISTANT_USER_DAILY_CAP, 30),
     globalDailyCap: readInt(env.ASSISTANT_GLOBAL_DAILY_CAP, 200),
-    historyTurns: readInt(env.ASSISTANT_HISTORY_TURNS, 8),
-    maxSteps: readInt(env.ASSISTANT_MAX_STEPS, 4),
+    historyTurns: readInt(env.ASSISTANT_HISTORY_TURNS, 4),
+    maxSteps: readInt(env.ASSISTANT_MAX_STEPS, 3),
     maxOutputTokens: readInt(env.ASSISTANT_MAX_OUTPUT_TOKENS, 700),
     maxInputChars: readInt(env.ASSISTANT_MAX_INPUT_CHARS, 2000),
     maxHistoryChars: readInt(env.ASSISTANT_MAX_HISTORY_CHARS, 60_000),
