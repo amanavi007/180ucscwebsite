@@ -14,7 +14,7 @@ import type { UserRole } from "@/lib/supabase/database.types";
 import { getOrgTodayDateString } from "@/lib/date";
 import { cacheKey, type AnswerCache } from "./answer-cache";
 import type { AssistantConfig } from "./config";
-import { prepareHistory, validateIncoming } from "./context";
+import { capHistory, prepareHistory, validateIncoming } from "./context";
 import { checkAndConsume, quotaMessage, recordTokens, refund, type QuotaClient } from "./quota";
 import { matchShortcut, selectAreas, type Area, type Shortcut } from "./routing";
 import { buildInstructions } from "./system-prompt";
@@ -23,6 +23,8 @@ export interface ChatDeps {
   cfg: AssistantConfig;
   model: LanguageModel | null;
   quota: QuotaClient;
+  /** System-level client for refunds and token accounting (users must not be able to call these). */
+  ledger: QuotaClient;
   profile: { id: string; name: string; role: UserRole };
   quarter: { id: string; name: string } | null;
   buildTools(areas: Area[], threadId: string | null): ToolSet;
@@ -81,18 +83,22 @@ export async function handleChat(req: ChatRequest, deps: ChatDeps): Promise<Resp
     const threadId = await deps.threads.ensure(req.threadId ?? null, input.text);
     const save = (messages: UIMessage[]) => deps.threads.save(threadId, messages);
 
-    // 3. Zero-token deterministic shortcut.
+    // 3. Zero-token deterministic shortcut. It costs no model quota, so the message is handed back.
     const shortcut = matchShortcut(input.text);
     if (shortcut) {
       const answer = await deps.shortcutData(shortcut);
+      await refund(deps.ledger, deps.profile.id);
       deps.log({ ...logBase, path: "shortcut", shortcut, tokensIn: 0, tokensOut: 0 });
       return textStreamResponse(input.messages, answer, threadId, save);
     }
 
-    // 4. Short-TTL answer cache for identical questions.
+    // 4. Short-TTL answer cache, only for standalone first messages: a follow-up like "and the
+    // deadline?" means something different in every conversation, so it is never cached or served.
+    const standalone = input.messages.length === 1;
     const key = cacheKey(deps.profile.id, input.text);
-    const cached = deps.cache.get(key, started);
+    const cached = standalone ? deps.cache.get(key, started) : undefined;
     if (cached !== undefined) {
+      await refund(deps.ledger, deps.profile.id);
       deps.log({ ...logBase, path: "cache", tokensIn: 0, tokensOut: 0 });
       return textStreamResponse(input.messages, cached, threadId, save);
     }
@@ -100,7 +106,7 @@ export async function handleChat(req: ChatRequest, deps: ChatDeps): Promise<Resp
     // 5. Model call with trimmed history and only the relevant tools.
     const areas = selectAreas(input.text);
     const tools = deps.buildTools(areas, threadId);
-    const history = prepareHistory(input.messages, cfg.historyTurns);
+    const history = capHistory(prepareHistory(input.messages, cfg.historyTurns), cfg.maxHistoryChars);
     const todayIso = getOrgTodayDateString();
 
     const result = streamText({
@@ -114,13 +120,13 @@ export async function handleChat(req: ChatRequest, deps: ChatDeps): Promise<Resp
       onEnd: async ({ totalUsage, steps }) => {
         const tokensIn = totalUsage.inputTokens ?? 0;
         const tokensOut = totalUsage.outputTokens ?? 0;
-        await recordTokens(deps.quota, tokensIn, tokensOut);
+        await recordTokens(deps.ledger, deps.profile.id, tokensIn, tokensOut);
         deps.log({ ...logBase, path: "model", tokensIn, tokensOut, steps: steps.length, ms: deps.now().getTime() - started });
       },
       onError: async ({ error }) => {
         // Provider failed after we charged a message: give it back.
         deps.log({ ...logBase, path: "error", error: error instanceof Error ? error.message : String(error) });
-        await refund(deps.quota);
+        await refund(deps.ledger, deps.profile.id);
       },
     });
 
@@ -137,13 +143,13 @@ export async function handleChat(req: ChatRequest, deps: ChatDeps): Promise<Resp
           .filter((p) => p.type === "text")
           .map((p) => (p as { text: string }).text)
           .join("");
-        if (last?.role === "assistant" && !hasTool && text) deps.cache.set(key, text, deps.now().getTime());
+        if (standalone && last?.role === "assistant" && !hasTool && text) deps.cache.set(key, text, deps.now().getTime());
       },
       onError: () => "Something went wrong. Please try again.",
     });
     return createUIMessageStreamResponse({ stream, headers: { "x-thread-id": threadId } });
   } catch (err) {
-    await refund(deps.quota);
+    await refund(deps.ledger, deps.profile.id);
     deps.log({ ...logBase, path: "error", error: err instanceof Error ? err.message : String(err) });
     return json(503, "The assistant had a problem. Please try again.");
   }

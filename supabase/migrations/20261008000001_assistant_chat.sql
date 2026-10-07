@@ -86,18 +86,26 @@ begin
   return 'ok';
 end $$;
 
-create or replace function public.refund_chat_message()
+-- System-only ledger functions (service_role). They take the user explicitly and are NOT
+-- callable by signed-in users: if a user could call refund_chat_message they could refund
+-- themselves after every message and defeat the daily cap.
+create or replace function public.refund_chat_message(p_user uuid)
 returns void language sql security definer set search_path = public as $$
   update public.chat_usage set message_count = greatest(message_count - 1, 0)
-  where user_id = auth.uid() and day = public.chat_day();
+  where user_id = p_user and day = public.chat_day();
 $$;
 
-create or replace function public.record_chat_tokens(p_in int, p_out int)
+create or replace function public.record_chat_tokens(p_user uuid, p_in int, p_out int)
 returns void language sql security definer set search_path = public as $$
   update public.chat_usage
   set tokens_in = tokens_in + greatest(p_in, 0), tokens_out = tokens_out + greatest(p_out, 0)
-  where user_id = auth.uid() and day = public.chat_day();
+  where user_id = p_user and day = public.chat_day();
 $$;
+
+revoke execute on function public.refund_chat_message(uuid) from public, anon, authenticated;
+revoke execute on function public.record_chat_tokens(uuid, int, int) from public, anon, authenticated;
+grant execute on function public.refund_chat_message(uuid) to service_role;
+grant execute on function public.record_chat_tokens(uuid, int, int) to service_role;
 
 -- Kill switch: org_settings is exec-only under RLS, so expose just this flag.
 -- Missing row means enabled.
@@ -120,7 +128,5 @@ language sql stable security definer set search_path = public as $$
 $$;
 
 grant execute on function public.consume_chat_message(int, int) to authenticated;
-grant execute on function public.refund_chat_message() to authenticated;
-grant execute on function public.record_chat_tokens(int, int) to authenticated;
 grant execute on function public.assistant_is_enabled() to authenticated;
 grant execute on function public.get_chat_usage_today() to authenticated;

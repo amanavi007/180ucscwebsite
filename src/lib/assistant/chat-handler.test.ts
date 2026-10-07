@@ -43,11 +43,23 @@ function quota(consume: string, enabled = true) {
   return { client, calls };
 }
 
+function ledger() {
+  const calls: { name: string; args?: Record<string, unknown> }[] = [];
+  const client: QuotaClient = {
+    rpc: async (name, args) => {
+      calls.push({ name, args });
+      return { data: null, error: null };
+    },
+  };
+  return { client, calls };
+}
+
 function deps(over: Partial<ChatDeps> = {}): ChatDeps {
   return {
     cfg: loadAssistantConfig({}),
     model: model("Hello!") as unknown as ChatDeps["model"],
     quota: quota("ok").client,
+    ledger: ledger().client,
     profile: { id: "u1", name: "Sam", role: "consultant" },
     quarter: { id: "q1", name: "Fall 2026" },
     buildTools: () => ({}),
@@ -99,18 +111,21 @@ describe("handleChat", () => {
     expect(m.doStreamCalls).toHaveLength(0);
     expect(await bodyOf(res)).toContain("Task A");
   });
-  it("streams a model answer, saves the thread, and records tokens", async () => {
+  it("streams a model answer, saves the thread, and records tokens via the system ledger", async () => {
     const q = quota("ok");
+    const l = ledger();
     const save = vi.fn(async () => {});
     const res = await handleChat(
       { messages: [user("explain our recruitment process")] },
-      deps({ quota: q.client, threads: { ensure: async () => "thread-1", save } }),
+      deps({ quota: q.client, ledger: l.client, threads: { ensure: async () => "thread-1", save } }),
     );
     expect(res.status).toBe(200);
     expect(res.headers.get("x-thread-id")).toBe("thread-1");
     expect(await bodyOf(res)).toContain("Hello!");
     expect(save).toHaveBeenCalledTimes(1);
-    expect(q.calls).toContain("record_chat_tokens");
+    expect(q.calls).not.toContain("record_chat_tokens");
+    expect(l.calls.find((c) => c.name === "record_chat_tokens")?.args).toMatchObject({ p_user: "u1", p_in: 10, p_out: 5 });
+    expect(l.calls.map((c) => c.name)).not.toContain("refund_chat_message");
   });
   it("serves a repeated identical question from cache without a second model call", async () => {
     const m = model("Cached answer");
@@ -129,5 +144,49 @@ describe("handleChat", () => {
       ),
     );
     expect(seen[0]).toContain("actions");
+  });
+});
+
+describe("handleChat cost protections", () => {
+  it("refunds the message when a shortcut answers without the model", async () => {
+    const l = ledger();
+    await bodyOf(await handleChat({ messages: [user("my tasks")] }, deps({ ledger: l.client })));
+    expect(l.calls).toContainEqual({ name: "refund_chat_message", args: { p_user: "u1" } });
+  });
+  it("refunds the message on an answer-cache hit", async () => {
+    const l = ledger();
+    const d = deps({ ledger: l.client });
+    await bodyOf(await handleChat({ messages: [user("explain our recruitment process")] }, d));
+    const before = l.calls.filter((c) => c.name === "refund_chat_message").length;
+    await bodyOf(await handleChat({ messages: [user("explain our recruitment process")] }, d));
+    expect(l.calls.filter((c) => c.name === "refund_chat_message").length).toBe(before + 1);
+  });
+  it("never serves or stores cached answers for follow-up messages that depend on earlier context", async () => {
+    const m = model("fresh answer");
+    const d = deps({ model: m as never });
+    const history: UIMessage[] = [
+      user("tell me about Acme"),
+      { id: "a", role: "assistant", parts: [{ type: "text", text: "Acme is a client." }] },
+      user("what about the deadline?"),
+    ];
+    await bodyOf(await handleChat({ messages: history }, d));
+    // The same words as a standalone first message must NOT get the follow-up's answer.
+    await bodyOf(await handleChat({ messages: [user("what about the deadline?")] }, d));
+    expect(m.doStreamCalls).toHaveLength(2);
+    // And a follow-up never reads a cached standalone answer either.
+    await bodyOf(await handleChat({ messages: history }, d));
+    expect(m.doStreamCalls).toHaveLength(3);
+  });
+  it("trims an oversized client-supplied history instead of sending it to the model", async () => {
+    const m = model("ok");
+    const huge: UIMessage[] = [
+      user("old question"),
+      { id: "a", role: "assistant", parts: [{ type: "text", text: "y".repeat(500_000) }] },
+      user("new question please"),
+    ];
+    await bodyOf(await handleChat({ messages: huge }, deps({ model: m as never })));
+    const sent = JSON.stringify(m.doStreamCalls[0].prompt);
+    expect(sent.length).toBeLessThan(100_000);
+    expect(sent).toContain("new question please");
   });
 });

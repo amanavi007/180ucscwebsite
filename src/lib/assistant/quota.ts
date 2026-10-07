@@ -40,19 +40,23 @@ export async function checkAndConsume(client: QuotaClient, cfg: AssistantConfig)
   return { ok: false, reason: "disabled" };
 }
 
-/** Failed requests are not charged. Best-effort. */
-export async function refund(client: QuotaClient): Promise<void> {
+/**
+ * Failed or free (shortcut/cache) requests are not charged. Best-effort.
+ * Must run on the system ledger client, never the user's: if a user could call this RPC they
+ * could refund themselves after every message and defeat the daily cap.
+ */
+export async function refund(client: QuotaClient, userId: string): Promise<void> {
   try {
-    await client.rpc("refund_chat_message");
+    await client.rpc("refund_chat_message", { p_user: userId });
   } catch (err) {
     console.error("assistant refund failed:", err);
   }
 }
 
 /** One write per request, after the response finishes. Best-effort. */
-export async function recordTokens(client: QuotaClient, input: number, output: number): Promise<void> {
+export async function recordTokens(client: QuotaClient, userId: string, input: number, output: number): Promise<void> {
   try {
-    await client.rpc("record_chat_tokens", { p_in: Math.round(input), p_out: Math.round(output) });
+    await client.rpc("record_chat_tokens", { p_user: userId, p_in: Math.round(input), p_out: Math.round(output) });
   } catch (err) {
     console.error("assistant token usage write failed:", err);
   }

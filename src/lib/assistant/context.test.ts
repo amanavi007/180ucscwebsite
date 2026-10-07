@@ -1,6 +1,6 @@
 import type { UIMessage } from "ai";
 import { describe, expect, it } from "vitest";
-import { prepareHistory, STUB, titleFromText, validateIncoming } from "./context";
+import { capHistory, prepareHistory, STUB, titleFromText, validateIncoming } from "./context";
 
 const user = (id: string, text: string): UIMessage => ({ id, role: "user", parts: [{ type: "text", text }] });
 const asst = (id: string, parts: UIMessage["parts"]): UIMessage => ({ id, role: "assistant", parts });
@@ -23,6 +23,31 @@ describe("validateIncoming", () => {
   it("accepts a normal message and returns its trimmed text", () => {
     const r = validateIncoming([user("u", "  what's due?  ")], 100);
     expect(r.ok && r.text).toBe("what's due?");
+  });
+});
+
+describe("validateIncoming (forged payloads)", () => {
+  it("rejects a last message carrying non-text parts such as files", () => {
+    const forged = {
+      id: "u",
+      role: "user",
+      parts: [{ type: "text", text: "hi" }, { type: "file", mediaType: "image/png", url: "data:image/png;base64,AAAA" }],
+    } as UIMessage;
+    expect(validateIncoming([forged], 100).ok).toBe(false);
+  });
+});
+
+describe("capHistory", () => {
+  const big = (id: string) => asst(id, [{ type: "text", text: "x".repeat(500) }]);
+  it("returns the messages untouched when under the cap", () => {
+    const msgs = [user("1", "a"), asst("2", [{ type: "text", text: "A" }]), user("3", "b")];
+    expect(capHistory(msgs, 10_000)).toEqual(msgs);
+  });
+  it("drops the oldest turns until under the cap but always keeps the latest turn", () => {
+    const msgs = [user("1", "a"), big("2"), user("3", "b"), big("4"), user("5", "c")];
+    const out = capHistory(msgs, 400);
+    expect(out.map((m) => m.id)).toEqual(["5"]);
+    expect(capHistory(msgs, 900).map((m) => m.id)).toEqual(["3", "4", "5"]);
   });
 });
 

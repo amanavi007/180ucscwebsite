@@ -5,6 +5,7 @@ export interface AssistantConfig {
   maxSteps: number;
   maxOutputTokens: number;
   maxInputChars: number;
+  maxHistoryChars: number;
   rowCap: number;
   answerCacheTtlMs: number;
 }
@@ -24,6 +25,7 @@ export function loadAssistantConfig(env: Env = process.env): AssistantConfig {
     maxSteps: readInt(env.ASSISTANT_MAX_STEPS, 4),
     maxOutputTokens: readInt(env.ASSISTANT_MAX_OUTPUT_TOKENS, 700),
     maxInputChars: readInt(env.ASSISTANT_MAX_INPUT_CHARS, 2000),
+    maxHistoryChars: readInt(env.ASSISTANT_MAX_HISTORY_CHARS, 60_000),
     rowCap: readInt(env.ASSISTANT_ROW_CAP, 20),
     answerCacheTtlMs: readInt(env.ASSISTANT_ANSWER_CACHE_TTL_MS, 60_000),
   };

@@ -19,6 +19,10 @@ export function validateIncoming(messages: unknown, maxChars: number): Validated
   if (!last || last.role !== "user" || !Array.isArray(last.parts)) {
     return { ok: false, error: "The last message must be from you." };
   }
+  // Text only: a forged file/image part would otherwise ride along to the model uncounted.
+  if (last.parts.some((part) => part.type !== "text")) {
+    return { ok: false, error: "Only text messages are supported." };
+  }
   const text = textOf(last);
   if (!text) return { ok: false, error: "Message is empty." };
   if (text.length > maxChars) return { ok: false, error: `Message is too long (max ${maxChars} characters).` };
@@ -44,6 +48,20 @@ export function prepareHistory(messages: UIMessage[], turns: number): UIMessage[
   const window = messages.slice(start);
   const lastUser = window.map((m) => m.role).lastIndexOf("user");
   return window.map((m, i) => (i < lastUser ? stubOutputs(m) : m));
+}
+
+/**
+ * The client supplies the history, so bound its size: drop the oldest whole turns until the
+ * serialized window fits, always keeping the latest turn.
+ */
+export function capHistory(messages: UIMessage[], maxChars: number): UIMessage[] {
+  let window = messages;
+  while (JSON.stringify(window).length > maxChars) {
+    const nextTurn = window.findIndex((m, i) => i > 0 && m.role === "user");
+    if (nextTurn === -1) break;
+    window = window.slice(nextTurn);
+  }
+  return window;
 }
 
 /** Thread titles cost no tokens: derived from the first message. */

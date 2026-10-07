@@ -10,6 +10,7 @@ import { registerExecutors, supabaseProposalStore } from "@/lib/assistant/tools/
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getActiveQuarter } from "@/lib/data/quarters";
 import { getOrgTodayDateString } from "@/lib/date";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +42,8 @@ export async function POST(request: Request) {
     cfg,
     model: buildModel(),
     quota: supabase,
+    // System ledger: refunds and token accounting are service-role only (see the migration).
+    ledger: createAdminClient(),
     profile: toolDeps.profile,
     quarter: quarter ? { id: quarter.id, name: quarter.name } : null,
     buildTools: (areas, threadId) => buildTools(areas, toolDeps, { threadId, store }),

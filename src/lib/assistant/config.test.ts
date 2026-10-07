@@ -10,6 +10,7 @@ describe("loadAssistantConfig", () => {
       maxSteps: 4,
       maxOutputTokens: 700,
       maxInputChars: 2000,
+      maxHistoryChars: 60_000,
       rowCap: 20,
       answerCacheTtlMs: 60_000,
     });

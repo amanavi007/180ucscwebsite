@@ -1055,8 +1055,8 @@ export interface Database {
         Args: { p_user_cap: number; p_global_cap: number };
         Returns: "ok" | "user_cap" | "global_cap" | "unauthenticated";
       };
-      refund_chat_message: { Args: Record<string, never>; Returns: undefined };
-      record_chat_tokens: { Args: { p_in: number; p_out: number }; Returns: undefined };
+      refund_chat_message: { Args: { p_user: string }; Returns: undefined };
+      record_chat_tokens: { Args: { p_user: string; p_in: number; p_out: number }; Returns: undefined };
       assistant_is_enabled: { Args: Record<string, never>; Returns: boolean };
       get_chat_usage_today: {
         Args: Record<string, never>;

@@ -38,8 +38,18 @@ describe("checkAndConsume", () => {
 describe("best-effort helpers", () => {
   it("never throw", async () => {
     const bad: QuotaClient = { rpc: vi.fn(async () => { throw new Error("x"); }) };
-    await expect(refund(bad)).resolves.toBeUndefined();
-    await expect(recordTokens(bad, 1, 2)).resolves.toBeUndefined();
+    await expect(refund(bad, "u1")).resolves.toBeUndefined();
+    await expect(recordTokens(bad, "u1", 1, 2)).resolves.toBeUndefined();
+  });
+  it("pass the user id explicitly because they run as the system, not the user", async () => {
+    const seen: { name: string; args?: Record<string, unknown> }[] = [];
+    const c: QuotaClient = { rpc: async (name, args) => { seen.push({ name, args }); return { data: null, error: null }; } };
+    await refund(c, "u1");
+    await recordTokens(c, "u1", 10.4, 5);
+    expect(seen).toEqual([
+      { name: "refund_chat_message", args: { p_user: "u1" } },
+      { name: "record_chat_tokens", args: { p_user: "u1", p_in: 10, p_out: 5 } },
+    ]);
   });
   it("has a message for every reason", () => {
     for (const r of ["disabled", "user_cap", "global_cap", "unauthenticated"] as const) {

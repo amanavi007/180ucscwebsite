@@ -8,6 +8,7 @@ import { MarkdownContent } from "@/components/markdown-content";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { friendlyErrorResponse } from "@/lib/assistant/client-fetch";
 import { ProposalCard } from "./proposal-card";
 
 const MAX_CHARS = 2000;
@@ -43,7 +44,7 @@ export function ChatPanel({
           const res = await fetch(url, init);
           const id = res.headers.get("x-thread-id");
           if (id) thread.set(id);
-          return res;
+          return friendlyErrorResponse(res);
         },
       }),
   );
