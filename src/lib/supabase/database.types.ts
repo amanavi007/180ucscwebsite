@@ -689,6 +689,138 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["coffee_chat_bookings"]["Insert"]>;
         Relationships: [];
       };
+      recruit_applicants: {
+        Row: {
+          id: string;
+          quarter_id: string;
+          name: string;
+          email: string | null;
+          major: string | null;
+          year: string | null;
+          notes: string;
+          previous_applicant_id: string | null;
+          merged_into_id: string | null;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          quarter_id: string;
+          name: string;
+          email?: string | null;
+          major?: string | null;
+          year?: string | null;
+          notes?: string;
+          previous_applicant_id?: string | null;
+          merged_into_id?: string | null;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["recruit_applicants"]["Insert"]>;
+        Relationships: [];
+      };
+      recruit_applicant_aliases: {
+        Row: { id: string; applicant_id: string; quarter_id: string; alias: string; created_at: string };
+        Insert: { id?: string; applicant_id: string; quarter_id: string; alias: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["recruit_applicant_aliases"]["Insert"]>;
+        Relationships: [];
+      };
+      recruit_categories: {
+        Row: {
+          id: string;
+          name: string;
+          section: "engagement" | "resume" | "interview";
+          default_points: number;
+          sort_order: number;
+          archived_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          section: "engagement" | "resume" | "interview";
+          default_points?: number;
+          sort_order?: number;
+          archived_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["recruit_categories"]["Insert"]>;
+        Relationships: [];
+      };
+      recruit_events: {
+        Row: { id: string; quarter_id: string; category_id: string; name: string; date: string; created_at: string };
+        Insert: { id?: string; quarter_id: string; category_id: string; name: string; date: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["recruit_events"]["Insert"]>;
+        Relationships: [];
+      };
+      recruit_points: {
+        Row: {
+          id: string;
+          applicant_id: string;
+          category_id: string;
+          event_id: string | null;
+          points: number;
+          reason: string | null;
+          source: "manual" | "import" | "booking";
+          batch_id: string | null;
+          awarded_by: string | null;
+          created_at: string;
+          voided_at: string | null;
+          voided_by: string | null;
+          void_reason: string | null;
+        };
+        Insert: {
+          id?: string;
+          applicant_id: string;
+          category_id: string;
+          event_id?: string | null;
+          points: number;
+          reason?: string | null;
+          source?: "manual" | "import" | "booking";
+          batch_id?: string | null;
+          awarded_by?: string | null;
+          created_at?: string;
+          voided_at?: string | null;
+          voided_by?: string | null;
+          void_reason?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["recruit_points"]["Insert"]>;
+        Relationships: [];
+      };
+      recruit_not_duplicates: {
+        Row: { applicant_a: string; applicant_b: string; created_at: string };
+        Insert: { applicant_a: string; applicant_b: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["recruit_not_duplicates"]["Insert"]>;
+        Relationships: [];
+      };
+      recruit_merge_log: {
+        Row: {
+          id: string;
+          survivor_id: string;
+          absorbed_id: string;
+          moved_point_ids: string[];
+          moved_alias_ids: string[];
+          added_alias_id: string | null;
+          survivor_before: Record<string, string | null>;
+          created_at: string;
+          undone_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          survivor_id: string;
+          absorbed_id: string;
+          moved_point_ids?: string[];
+          moved_alias_ids?: string[];
+          added_alias_id?: string | null;
+          survivor_before: Record<string, string | null>;
+          created_at?: string;
+          undone_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["recruit_merge_log"]["Insert"]>;
+        Relationships: [];
+      };
       interview_invitees: {
         Row: { id: string; email: string; name: string | null; created_at: string };
         Insert: { id?: string; email: string; name?: string | null; created_at?: string };
@@ -862,6 +994,14 @@ export interface Database {
       member_has_history: {
         Args: { target: string };
         Returns: boolean;
+      };
+      merge_recruit_applicants: {
+        Args: { p_survivor: string; p_absorbed: string; p_absorbed_alias?: string | null; p_keep_email?: string | null };
+        Returns: string;
+      };
+      undo_merge_recruit_applicants: {
+        Args: { p_log_id: string };
+        Returns: unknown;
       };
     };
   };
