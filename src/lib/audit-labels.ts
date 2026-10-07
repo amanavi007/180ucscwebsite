@@ -30,6 +30,13 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "interview.invitees_added": "Added interview invitees",
   "interview.invitee_removed": "Removed an interview invitee",
   "interview.booking_toggled": "Opened or closed interview booking",
+  "recruit.applicants_merged": "Merged duplicate applicants",
+  "recruit.merge_undone": "Undid an applicant merge",
+  "recruit.points_voided": "Voided a recruitment points entry",
+  "recruit.category_created": "Created a recruitment points category",
+  "recruit.category_updated": "Edited a recruitment points category",
+  "recruit.category_archived": "Archived a recruitment points category",
+  "recruit.category_restored": "Restored a recruitment points category",
 };
 
 export function auditActionLabel(action: string): string {
