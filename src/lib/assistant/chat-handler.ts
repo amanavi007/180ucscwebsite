@@ -1,4 +1,5 @@
 import {
+  APICallError,
   convertToModelMessages,
   createUIMessageStream,
   createUIMessageStreamResponse,
@@ -36,6 +37,14 @@ export interface ChatDeps {
   cache: AnswerCache;
   now(): Date;
   log(line: Record<string, unknown>): void;
+}
+
+/** What the user sees when the stream fails: say "busy" for provider overload, not a vague error. */
+export function friendlyStreamError(err: unknown): string {
+  if (APICallError.isInstance(err) && (err.statusCode === 429 || (err.statusCode ?? 0) >= 500)) {
+    return "The AI provider is busy right now. Please try again in a minute.";
+  }
+  return "Something went wrong. Please try again.";
 }
 
 export interface ChatRequest {
@@ -116,6 +125,7 @@ export async function handleChat(req: ChatRequest, deps: ChatDeps): Promise<Resp
       tools,
       stopWhen: isStepCount(cfg.maxSteps),
       maxOutputTokens: cfg.maxOutputTokens,
+      maxRetries: cfg.maxRetries,
       timeout: { totalMs: 45_000 },
       onEnd: async ({ totalUsage, steps }) => {
         const tokensIn = totalUsage.inputTokens ?? 0;
@@ -145,7 +155,7 @@ export async function handleChat(req: ChatRequest, deps: ChatDeps): Promise<Resp
           .join("");
         if (standalone && last?.role === "assistant" && !hasTool && text) deps.cache.set(key, text, deps.now().getTime());
       },
-      onError: () => "Something went wrong. Please try again.",
+      onError: friendlyStreamError,
     });
     return createUIMessageStreamResponse({ stream, headers: { "x-thread-id": threadId } });
   } catch (err) {

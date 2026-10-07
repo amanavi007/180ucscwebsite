@@ -1,10 +1,12 @@
-export type Area = "projects" | "tasks" | "events" | "recruitment" | "actions";
+export type Area = "projects" | "tasks" | "events" | "recruitment" | "attendance" | "people" | "actions";
 export type Shortcut = "my_open_tasks" | "upcoming_events";
 
 const DEFAULT_AREAS: Area[] = ["projects", "tasks", "events"];
 
 const AREA_PATTERNS: [Area, RegExp][] = [
   ["recruitment", /\b(applicants?|recruit\w*|points?|coffee chats?|interviews?|info sessions?|candidates?)\b/i],
+  ["attendance", /\b(attendance|absent|absences?|tardy|tardies|late|present|no-?shows?)\b/i],
+  ["people", /\b(who|members?|roster|directory|pm|project managers?|consultants?|execs?|president|directors?)\b/i],
   ["projects", /\b(projects?|clients?|deliverables?|deadlines?|health|team)\b/i],
   ["tasks", /\b(tasks?|to-?dos?|due|overdue|assigned)\b/i],
   ["events", /\b(events?|calendar|meetings?|schedule|upcoming)\b/i],

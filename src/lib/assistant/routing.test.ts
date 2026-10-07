@@ -11,6 +11,10 @@ describe("selectAreas", () => {
   it("adds actions for create/add/remind verbs", () => {
     expect(selectAreas("add a to-do to call the client")).toContain("actions");
   });
+  it("routes attendance and people questions", () => {
+    expect(selectAreas("who has the worst attendance right now")).toContain("attendance");
+    expect(selectAreas("who is on the Acme team?")).toContain("people");
+  });
   it("never returns an empty list", () => {
     expect(selectAreas("").length).toBeGreaterThan(0);
   });

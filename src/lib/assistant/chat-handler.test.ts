@@ -1,4 +1,4 @@
-import { simulateReadableStream, type UIMessage } from "ai";
+import { APICallError, simulateReadableStream, type UIMessage } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
 import { describe, expect, it, vi } from "vitest";
 import { AnswerCache } from "./answer-cache";
@@ -188,5 +188,29 @@ describe("handleChat cost protections", () => {
     const sent = JSON.stringify(m.doStreamCalls[0].prompt);
     expect(sent.length).toBeLessThan(100_000);
     expect(sent).toContain("new question please");
+  });
+});
+
+describe("handleChat provider trouble", () => {
+  it("tells the user the AI provider is busy (not a generic error) and gives the message back", async () => {
+    const busy = new MockLanguageModelV4({
+      doStream: async () => {
+        throw new APICallError({
+          message: "This model is currently experiencing high demand.",
+          url: "https://example.test",
+          requestBodyValues: {},
+          statusCode: 503,
+        });
+      },
+    });
+    const l = ledger();
+    const res = await handleChat(
+      { messages: [user("explain our recruitment process")] },
+      deps({ model: busy as never, ledger: l.client, cfg: loadAssistantConfig({ ASSISTANT_MAX_RETRIES: "0" }) }),
+    );
+    const body = await bodyOf(res);
+    expect(body).toMatch(/busy/i);
+    expect(body).not.toMatch(/something went wrong/i);
+    expect(l.calls.map((c) => c.name)).toContain("refund_chat_message");
   });
 });

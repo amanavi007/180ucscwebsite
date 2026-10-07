@@ -4,6 +4,10 @@ import { getMyProjects } from "@/lib/data/projects";
 import { getVisibleTasks } from "@/lib/data/tasks";
 import { getCalendarEvents } from "@/lib/data/calendar";
 import { getApplicantRows } from "@/lib/data/recruit";
+import { getMyAttendanceSummary, getQuarterAttendanceRates } from "@/lib/data/attendance";
+import { getDirectory } from "@/lib/data/directory";
+import { getProjects } from "@/lib/data/projects";
+import { roleLabel } from "@/lib/auth/roles";
 import type { DataAccess } from "./types";
 
 export function realDataAccess(): DataAccess {
@@ -29,5 +33,46 @@ export function realDataAccess(): DataAccess {
       })),
     topApplicants: async (quarterId) =>
       (await getApplicantRows(quarterId)).map((a) => ({ name: a.name, total: a.total })),
+    attendanceByMember: async (quarterId) => {
+      const people = await getDirectory(quarterId);
+      const rates = await getQuarterAttendanceRates(quarterId, people);
+      return people.map((m) => {
+        const r = rates[m.user_id];
+        return {
+          name: m.name,
+          team: m.client_name,
+          rate: r?.rate ?? null,
+          unexcused: r?.unexcusedCount ?? 0,
+          tardy: r?.tardyCount ?? 0,
+          excused: r?.excusedCount ?? 0,
+        };
+      });
+    },
+    myAttendance: async (userId, quarterId) => {
+      const a = await getMyAttendanceSummary(userId, quarterId);
+      return {
+        rate: a.rate,
+        unexcused: a.unexcusedCount,
+        tardy: a.tardyCount,
+        excused: a.excusedCount,
+        totalSessions: a.totalSessions,
+      };
+    },
+    quarterProjects: async (quarterId) =>
+      (await getProjects(quarterId)).map((p) => ({
+        id: p.id,
+        client_name: p.client_name,
+        status: p.status,
+        health: p.health,
+        deadline: p.deadline,
+        pm: p.project_manager?.name ?? null,
+        sc: p.senior_consultant?.name ?? null,
+      })),
+    directory: async (quarterId) =>
+      (await getDirectory(quarterId)).map((m) => ({
+        name: m.name,
+        role: roleLabel(m.role),
+        team: m.client_name,
+      })),
   };
 }

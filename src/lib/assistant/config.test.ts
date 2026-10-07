@@ -11,9 +11,15 @@ describe("loadAssistantConfig", () => {
       maxOutputTokens: 700,
       maxInputChars: 2000,
       maxHistoryChars: 60_000,
+      maxRetries: 1,
       rowCap: 20,
       answerCacheTtlMs: 60_000,
     });
+  });
+
+  it("allows retries to be turned off with 0", () => {
+    expect(loadAssistantConfig({ ASSISTANT_MAX_RETRIES: "0" }).maxRetries).toBe(0);
+    expect(loadAssistantConfig({ ASSISTANT_MAX_RETRIES: "-1" }).maxRetries).toBe(1);
   });
 
   it("reads overrides and ignores junk or non-positive values", () => {

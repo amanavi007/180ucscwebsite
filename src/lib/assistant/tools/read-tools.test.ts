@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { runMyOpenTasks, runMyProjects, runTopApplicants, runUpcomingEvents } from "./read-tools";
+import {
+  runAttendanceReport,
+  runDirectory,
+  runMyAttendance,
+  runMyOpenTasks,
+  runMyProjects,
+  runQuarterProjects,
+  runTopApplicants,
+  runUpcomingEvents,
+} from "./read-tools";
 import type { DataAccess, ToolDeps } from "./types";
 
 const base: DataAccess = {
@@ -8,6 +17,10 @@ const base: DataAccess = {
   myOpenTasks: async () => [],
   upcomingEvents: async () => [],
   topApplicants: async () => [],
+  attendanceByMember: async () => [],
+  myAttendance: async () => ({ rate: null, unexcused: 0, tardy: 0, excused: 0, totalSessions: 0 }),
+  quarterProjects: async () => [],
+  directory: async () => [],
 };
 const deps = (over: Partial<DataAccess> = {}, role: ToolDeps["profile"]["role"] = "consultant", rowCap = 3): ToolDeps => ({
   profile: { id: "u1", name: "Sam", role },
@@ -71,5 +84,76 @@ describe("runTopApplicants", () => {
     const r = await runTopApplicants(deps({ topApplicants: async () => rows }, "president"));
     expect(r.items).toHaveLength(3);
     expect(r.total).toBe(6);
+  });
+});
+
+describe("runAttendanceReport", () => {
+  const rows = [
+    { name: "Ana", team: "Acme", rate: 0.95, unexcused: 0, tardy: 1, excused: 0 },
+    { name: "Ben", team: "Beta", rate: 0.5, unexcused: 3, tardy: 0, excused: 1 },
+    { name: "Cy", team: null, rate: null, unexcused: 0, tardy: 0, excused: 0 },
+    { name: "Dee", team: "Acme", rate: 0.7, unexcused: 2, tardy: 1, excused: 0 },
+  ];
+  it("refuses non-execs without touching data", async () => {
+    let called = false;
+    const r = await runAttendanceReport(deps({ attendanceByMember: async () => { called = true; return rows; } }, "consultant"));
+    expect(called).toBe(false);
+    expect(r.note).toMatch(/exec/i);
+  });
+  it("lists the lowest rates first, skips members with no rate, as percents", async () => {
+    const r = await runAttendanceReport(deps({ attendanceByMember: async () => rows }, "president"));
+    expect(r.items.map((i) => i.name)).toEqual(["Ben", "Dee", "Ana"]);
+    expect(r.items[0]).toMatchObject({ team: "Beta", ratePct: 50, unexcused: 3 });
+  });
+  it("says so when there is no attendance data yet", async () => {
+    const r = await runAttendanceReport(deps({}, "president"));
+    expect(r.items).toEqual([]);
+    expect(r.note).toMatch(/no attendance/i);
+  });
+});
+
+describe("runMyAttendance", () => {
+  it("reports the user's own rate as a percent", async () => {
+    const r = await runMyAttendance(deps({ myAttendance: async () => ({ rate: 0.875, unexcused: 1, tardy: 0, excused: 0, totalSessions: 8 }) }));
+    expect(r.ratePct).toBe(88);
+    expect(r.unexcused).toBe(1);
+  });
+  it("handles no sessions logged yet", async () => {
+    const r = await runMyAttendance(deps());
+    expect(r.ratePct).toBeNull();
+    expect(r.note).toMatch(/no sessions/i);
+  });
+});
+
+describe("runQuarterProjects", () => {
+  it("lists compact project rows and caps", async () => {
+    const projects = Array.from({ length: 5 }, (_, i) => ({
+      id: `p${i}`, client_name: `C${i}`, status: "active", health: "on_track", deadline: null, pm: "Pat", sc: null,
+    }));
+    const r = await runQuarterProjects(deps({ quarterProjects: async () => projects }));
+    expect(r.items).toHaveLength(3);
+    expect(r.truncated).toBe(true);
+    expect(Object.keys(r.items[0]).sort()).toEqual(["client", "deadline", "health", "pm", "sc", "status"]);
+  });
+  it("handles no active quarter", async () => {
+    const r = await runQuarterProjects(deps({ activeQuarter: async () => null }));
+    expect(r.note).toMatch(/no active quarter/i);
+  });
+});
+
+describe("runDirectory", () => {
+  const people = [
+    { name: "Ana Lee", role: "Consultant", team: "Acme" },
+    { name: "Ben Ro", role: "Project Manager", team: "Beta" },
+    { name: "Cy Ng", role: "President", team: null },
+  ];
+  it("filters by name, role or team, case-insensitively", async () => {
+    expect((await runDirectory(deps({ directory: async () => people }), "acme")).items.map((p) => p.name)).toEqual(["Ana Lee"]);
+    expect((await runDirectory(deps({ directory: async () => people }), "PROJECT MANAGER")).items.map((p) => p.name)).toEqual(["Ben Ro"]);
+  });
+  it("returns everyone (capped) when no query is given and never includes emails", async () => {
+    const r = await runDirectory(deps({ directory: async () => people }), undefined);
+    expect(r.items).toHaveLength(3);
+    expect(Object.keys(r.items[0]).sort()).toEqual(["name", "role", "team"]);
   });
 });
