@@ -14,7 +14,7 @@ describe("resolveModelSpecs", () => {
   it("google primary + groq fallback when both keys are set", () => {
     expect(resolveModelSpecs({ GOOGLE_GENERATIVE_AI_API_KEY: "g", GROQ_API_KEY: "q" })).toEqual([
       { provider: "google", modelId: "gemini-flash-latest" },
-      { provider: "groq", modelId: "llama-3.3-70b-versatile" },
+      { provider: "groq", modelId: "openai/gpt-oss-120b" },
     ]);
   });
   it("groq becomes primary when it is the only key", () => {

@@ -18,7 +18,7 @@ export function resolveModelSpecs(env: Env = process.env): ModelSpec[] {
     specs.push({ provider: "google", modelId: env.ASSISTANT_MODEL || "gemini-flash-latest" });
   }
   if (env.GROQ_API_KEY) {
-    specs.push({ provider: "groq", modelId: env.ASSISTANT_FALLBACK_MODEL || "llama-3.3-70b-versatile" });
+    specs.push({ provider: "groq", modelId: env.ASSISTANT_FALLBACK_MODEL || "openai/gpt-oss-120b" });
   }
   return specs;
 }
