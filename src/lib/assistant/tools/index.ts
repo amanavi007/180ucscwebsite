@@ -3,6 +3,8 @@ import { z } from "zod";
 import { getOrgTodayDateString } from "@/lib/date";
 import type { Area } from "../routing";
 import { runMyOpenTasks, runMyProjects, runTopApplicants, runUpcomingEvents } from "./read-tools";
+import type { Actor, ProposalStore } from "../proposals";
+import { buildWriteTools } from "./write-tools";
 import type { ToolDeps } from "./types";
 
 export function buildReadTools(areas: Area[], deps: ToolDeps): ToolSet {
@@ -37,4 +39,16 @@ export function buildReadTools(areas: Area[], deps: ToolDeps): ToolSet {
     });
   }
   return tools;
+}
+
+export function buildTools(
+  areas: Area[],
+  deps: ToolDeps,
+  ctx: { threadId: string | null; store: ProposalStore },
+): ToolSet {
+  const actor: Actor = { id: deps.profile.id, role: deps.profile.role };
+  return {
+    ...buildReadTools(areas, deps),
+    ...(areas.includes("actions") ? buildWriteTools(actor, ctx.threadId, ctx.store) : {}),
+  };
 }
