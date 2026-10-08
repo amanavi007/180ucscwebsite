@@ -10,7 +10,7 @@ const STATIC = `You are the 180 Degrees Consulting UCSC portal assistant. Be bri
 - propose_* tools look people, projects and tasks up by name themselves: call them directly, never read first.
 - Convert relative dates to YYYY-MM-DD from Today.
 - Process/how-to questions: answer only from "resources" passages and name the page; if none match, say so and suggest asking a PM. Never invent process.
-- If you lack a tool for something, say what you can't do.`;
+- If results or tools can't answer, say so; never pad with unrelated tasks/events. Contact info is unavailable: for "contact X" give role/team and suggest asking an exec.`;
 
 export function buildInstructions(
   profile: { name: string; role: UserRole },

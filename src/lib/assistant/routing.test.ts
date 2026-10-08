@@ -15,6 +15,10 @@ describe("selectAreas", () => {
     expect(selectAreas("who has the worst attendance right now")).toContain("attendance");
     expect(selectAreas("who is on the Acme team?")).toContain("people");
   });
+  it("routes contact requests to the people tools instead of the default set", () => {
+    expect(selectAreas("contact aman")).toContain("people");
+    expect(selectAreas("how can I reach Jo Park")).toContain("people");
+  });
   it("sends how-to questions to the guide", () => {
     expect(selectAreas("how do I build an issue tree?")).toContain("wiki");
     expect(selectAreas("what should I do next on my project")).toContain("guide");
