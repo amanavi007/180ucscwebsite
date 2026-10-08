@@ -9,6 +9,8 @@ import {
   getRecruitEvents,
 } from "@/lib/data/recruit";
 import { getAttendanceData } from "@/lib/data/recruit-import";
+import { getRubrics } from "@/lib/data/recruit-scoring";
+import { getRecruitSettings } from "@/lib/data/recruit-settings";
 import { findDuplicatePairs } from "@/lib/recruit-matching";
 import { Card, CardContent } from "@/components/ui/card";
 import { ApplicantsWorkspace } from "./applicants-workspace";
@@ -32,13 +34,15 @@ export default async function ApplicantsPage({ searchParams }: { searchParams: P
     );
   }
 
-  const [rows, categories, events, dismissed, merges, attendance] = await Promise.all([
+  const [rows, categories, events, dismissed, merges, attendance, rubrics, settings] = await Promise.all([
     getApplicantRows(quarterId),
     getRecruitCategories(),
     getRecruitEvents(quarterId),
     getDismissedPairKeys(),
     getRecentMerges(quarterId),
     getAttendanceData(quarterId),
+    getRubrics(),
+    getRecruitSettings(),
   ]);
   const pairs = findDuplicatePairs(
     rows.map((r) => ({ id: r.id, name: r.name, email: r.email, aliases: r.aliases })),
@@ -56,6 +60,8 @@ export default async function ApplicantsPage({ searchParams }: { searchParams: P
       pairs={pairs}
       merges={merges}
       attendance={attendance}
+      rubrics={rubrics}
+      settings={settings}
     />
   );
 }

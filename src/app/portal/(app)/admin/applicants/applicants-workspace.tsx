@@ -3,6 +3,9 @@
 import { useState } from "react";
 import type { ApplicantRow, MergeLogRow, RecruitCategory, RecruitEvent } from "@/lib/data/recruit";
 import type { AttendanceData } from "@/lib/data/recruit-import";
+import type { RubricRow } from "@/lib/data/recruit-scoring";
+import type { RecruitSettings } from "@/lib/recruit-settings";
+import type { Stage } from "@/lib/recruit-scoring";
 import type { DuplicatePair } from "@/lib/recruit-matching";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,6 +28,8 @@ export function ApplicantsWorkspace({
   pairs,
   merges,
   attendance,
+  rubrics,
+  settings,
 }: {
   quarterId: string;
   quarterName: string;
@@ -34,6 +39,8 @@ export function ApplicantsWorkspace({
   pairs: DuplicatePair[];
   merges: MergeLogRow[];
   attendance: AttendanceData;
+  rubrics: Record<Stage, RubricRow>;
+  settings: RecruitSettings;
 }) {
   const [tab, setTab] = useState("applicants");
   const applicantNames = Object.fromEntries(rows.map((r) => [r.id, r.name]));
@@ -90,7 +97,7 @@ export function ApplicantsWorkspace({
           <AttendanceView quarterId={quarterId} data={attendance} applicantNames={applicantNames} />
         </TabsContent>
         <TabsContent value="setup">
-          <SetupView quarterId={quarterId} categories={categories} events={events} />
+          <SetupView quarterId={quarterId} categories={categories} events={events} rubrics={rubrics} settings={settings} />
         </TabsContent>
         <TabsContent value="duplicates">
           <DuplicatesView rows={rows} pairs={pairs} merges={merges} />
