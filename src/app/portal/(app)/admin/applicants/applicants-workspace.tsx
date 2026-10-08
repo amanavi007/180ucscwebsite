@@ -3,9 +3,7 @@
 import { useState } from "react";
 import type { ApplicantRow, MergeLogRow, RecruitCategory, RecruitEvent } from "@/lib/data/recruit";
 import type { AttendanceData } from "@/lib/data/recruit-import";
-import type { RubricRow } from "@/lib/data/recruit-scoring";
-import type { RecruitSettings } from "@/lib/recruit-settings";
-import type { Stage } from "@/lib/recruit-scoring";
+import type { ScoringBundle } from "@/lib/data/recruit-scoring";
 import type { DuplicatePair } from "@/lib/recruit-matching";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,6 +15,7 @@ import { DuplicatesView } from "./duplicates-view";
 import { GivePointsDialog } from "./give-points-dialog";
 import { HowItWorks } from "./how-it-works";
 import { ImportDialog } from "./import-dialog";
+import { ScoringView } from "./scoring-view";
 import { SetupView } from "./setup-view";
 
 export function ApplicantsWorkspace({
@@ -28,8 +27,7 @@ export function ApplicantsWorkspace({
   pairs,
   merges,
   attendance,
-  rubrics,
-  settings,
+  scoring,
 }: {
   quarterId: string;
   quarterName: string;
@@ -39,8 +37,7 @@ export function ApplicantsWorkspace({
   pairs: DuplicatePair[];
   merges: MergeLogRow[];
   attendance: AttendanceData;
-  rubrics: Record<Stage, RubricRow>;
-  settings: RecruitSettings;
+  scoring: ScoringBundle;
 }) {
   const [tab, setTab] = useState("applicants");
   const applicantNames = Object.fromEntries(rows.map((r) => [r.id, r.name]));
@@ -73,6 +70,7 @@ export function ApplicantsWorkspace({
             Attendance
             {attendance.toMark.length > 0 && <Badge variant="secondary">{attendance.toMark.length}</Badge>}
           </TabsTrigger>
+          <TabsTrigger value="scoring">Scoring</TabsTrigger>
           <TabsTrigger value="setup">Setup</TabsTrigger>
           <TabsTrigger value="duplicates">
             Duplicates
@@ -96,8 +94,11 @@ export function ApplicantsWorkspace({
         <TabsContent value="attendance">
           <AttendanceView quarterId={quarterId} data={attendance} applicantNames={applicantNames} />
         </TabsContent>
+        <TabsContent value="scoring">
+          <ScoringView stages={scoring.stages} settings={scoring.settings} />
+        </TabsContent>
         <TabsContent value="setup">
-          <SetupView quarterId={quarterId} categories={categories} events={events} rubrics={rubrics} settings={settings} />
+          <SetupView quarterId={quarterId} categories={categories} events={events} rubrics={{ resume: scoring.stages.resume.rubric, interview: scoring.stages.interview.rubric }} settings={scoring.settings} />
         </TabsContent>
         <TabsContent value="duplicates">
           <DuplicatesView rows={rows} pairs={pairs} merges={merges} />
