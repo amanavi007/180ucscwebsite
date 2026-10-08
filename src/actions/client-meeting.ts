@@ -53,6 +53,8 @@ export async function setClientMeetingPanelAction(execIds: string[]): Promise<Ac
     .upsert({ key: "client_meeting_panel", value: JSON.stringify(ids) }, { onConflict: "key" });
   if (upsertError) return { error: upsertError.message };
   await logAudit(profile.id, "client_meeting.panel_set", undefined, ids.join(","));
+  // A new panel changes which times everyone is free; resync (failures shouldn't hide that the panel saved).
+  await syncClientMeetingSlots(profile.id);
   revalidateAdmin();
   return {};
 }
@@ -75,7 +77,7 @@ export async function setClientMeetingBookingOpenAction(open: boolean): Promise<
 export async function addClientMeetingAvailabilityAction(
   dates: string[],
   blocks: TimeBlockInput[],
-): Promise<ActionResult & { addedCount?: number }> {
+): Promise<ActionResult & { addedCount?: number; createdCount?: number; generateError?: string }> {
   const { profile, error } = await requireExec();
   if (error || !profile) return { error };
 
@@ -98,8 +100,10 @@ export async function addClientMeetingAvailabilityAction(
   );
   if (insertError) return { error: insertError.message };
 
+  const synced = await syncClientMeetingSlots(profile.id);
+
   revalidateAdmin();
-  return { addedCount: expanded.rows.length };
+  return { addedCount: expanded.rows.length, createdCount: synced.createdCount, generateError: synced.error };
 }
 
 /**
@@ -110,7 +114,7 @@ export async function addRecurringClientMeetingAvailabilityAction(input: {
   startDate: string;
   endDate: string;
   schedules: WeekdaySchedule[];
-}): Promise<ActionResult & { addedCount?: number; skippedCount?: number }> {
+}): Promise<ActionResult & { addedCount?: number; skippedCount?: number; createdCount?: number; generateError?: string }> {
   const { profile, error } = await requireExec();
   if (error || !profile) return { error };
 
@@ -153,16 +157,18 @@ export async function addRecurringClientMeetingAvailabilityAction(input: {
   );
   if (insertError) return { error: insertError.message };
 
+  const synced = await syncClientMeetingSlots(profile.id);
+
   revalidateAdmin();
-  return { addedCount: fresh.length, skippedCount };
+  return { addedCount: fresh.length, skippedCount, createdCount: synced.createdCount, generateError: synced.error };
 }
 
-/** Removes a free block, plus any open (unbooked) slot overlapping it. Booked slots are kept; admin regenerates afterwards. */
+/** Removes a free block, plus any open (unbooked) slot overlapping it, then resyncs. Booked slots are kept. */
 export async function removeClientMeetingAvailabilityAction(
   id: string,
-): Promise<ActionResult & { removedSlotCount?: number; keptBookedCount?: number }> {
-  const { error } = await requireExec();
-  if (error) return { error };
+): Promise<ActionResult & { removedSlotCount?: number; keptBookedCount?: number; createdCount?: number; generateError?: string }> {
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error };
 
   const supabase = await createClient();
   const { data: block } = await supabase
@@ -192,42 +198,71 @@ export async function removeClientMeetingAvailabilityAction(
     }
   }
 
+  // Other availability may still cover (or newly allow) slots around the removed block.
+  const synced = await syncClientMeetingSlots(profile.id);
+
   revalidateAdmin();
-  return { removedSlotCount, keptBookedCount };
+  return { removedSlotCount, keptBookedCount, createdCount: synced.createdCount, generateError: synced.error };
 }
 
-/** Creates unpublished slots where all 3 panel execs are free. Existing slots are never touched. */
+const slotKey = (s: { date: string; startTime: string; endTime: string }) =>
+  `${s.date}|${normalizeTime(s.startTime)}|${normalizeTime(s.endTime)}`;
+
+/**
+ * Brings slots in line with the panel's availability and publishes new ones. Booked, past and
+ * admin-unpublished slots are fixed. Every other slot is recomputed from scratch, so a changed
+ * availability or panel never leaves a stale slot on the public page. Only slots whose time
+ * actually changes are deleted/created. With `rebalance: false` it only adds slots.
+ */
+async function syncClientMeetingSlots(
+  execId: string,
+  { rebalance = true }: { rebalance?: boolean } = {},
+): Promise<ActionResult & { createdCount?: number; removedCount?: number }> {
+  const settings = await getClientMeetingSettings();
+  if (settings.panelExecIds.length !== PANEL_SIZE) return { error: "Set a panel of exactly 3 execs first." };
+  const [availability, existing] = await Promise.all([getClientMeetingAvailability(), getClientMeetingSlots()]);
+
+  const today = getOrgTodayDateString();
+  const isRebuildable = (s: (typeof existing)[number]) =>
+    rebalance && s.bookingStatus === "open" && s.published && s.date >= today;
+  const rebuildable = existing.filter(isRebuildable);
+
+  const wanted = generateClientMeetingSlots(
+    settings.panelExecIds,
+    availability.map((a) => ({ execId: a.execId, date: a.date, startTime: a.startTime, endTime: a.endTime })),
+    existing.filter((s) => !isRebuildable(s)).map((s) => ({ date: s.date, startTime: s.startTime, endTime: s.endTime })),
+    settings.slotMinutes,
+  ).filter((g) => g.date >= today);
+
+  const wantedKeys = new Set(wanted.map(slotKey));
+  const keptKeys = new Set(rebuildable.map(slotKey).filter((k) => wantedKeys.has(k)));
+  const staleIds = rebuildable.filter((s) => !wantedKeys.has(slotKey(s))).map((s) => s.id);
+  const generated = wanted.filter((g) => !keptKeys.has(slotKey(g)));
+
+  const supabase = await createClient();
+  if (generated.length > 0) {
+    const { error: slotError } = await supabase.from("client_meeting_slots").insert(
+      generated.map((g) => ({ date: g.date, start_time: g.startTime, end_time: g.endTime, published: true })),
+    );
+    if (slotError) return { error: slotError.message };
+  }
+  if (staleIds.length > 0) {
+    const { error: deleteError } = await supabase.from("client_meeting_slots").delete().in("id", staleIds);
+    if (deleteError) return { error: deleteError.message };
+  }
+
+  await logAudit(execId, "client_meeting.slots_generated", undefined, `${generated.length} slot(s) created, ${staleIds.length} removed`);
+  return { createdCount: generated.length, removedCount: staleIds.length };
+}
+
+/** Manual "generate" adds and publishes missing slots without touching existing ones. */
 export async function generateClientMeetingSlotsAction(): Promise<ActionResult & { createdCount?: number }> {
   const { profile, error } = await requireExec();
   if (error || !profile) return { error };
 
-  const settings = await getClientMeetingSettings();
-  if (settings.panelExecIds.length !== PANEL_SIZE) {
-    return { error: "Set a panel of exactly 3 execs first." };
-  }
-  const [availability, existing] = await Promise.all([
-    getClientMeetingAvailability(),
-    getClientMeetingSlots(),
-  ]);
-
-  const generated = generateClientMeetingSlots(
-    settings.panelExecIds,
-    availability.map((a) => ({ execId: a.execId, date: a.date, startTime: a.startTime, endTime: a.endTime })),
-    existing.map((s) => ({ date: s.date, startTime: s.startTime, endTime: s.endTime })),
-    settings.slotMinutes,
-  );
-
-  if (generated.length > 0) {
-    const supabase = await createClient();
-    const { error: slotError } = await supabase.from("client_meeting_slots").insert(
-      generated.map((g) => ({ date: g.date, start_time: g.startTime, end_time: g.endTime, published: false })),
-    );
-    if (slotError) return { error: slotError.message };
-  }
-
-  await logAudit(profile.id, "client_meeting.slots_generated", undefined, `${generated.length} slot(s) created`);
-  revalidateAdmin();
-  return { createdCount: generated.length };
+  const result = await syncClientMeetingSlots(profile.id, { rebalance: false });
+  if (!result.error) revalidateAdmin();
+  return result;
 }
 
 /** Unpublishing only hides the slot from new bookings; an existing booking is left alone. */
