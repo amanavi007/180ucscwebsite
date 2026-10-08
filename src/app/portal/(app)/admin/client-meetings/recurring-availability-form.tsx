@@ -123,8 +123,9 @@ export function RecurringAvailabilityForm() {
       }
       const skipped = result.skippedCount ? ` ${result.skippedCount} already-added or past block(s) were skipped.` : "";
       toast.success(
-        `Added ${result.addedCount ?? 0} availability block(s).${skipped} Use "Generate slots" on the Slots tab to create client meeting slots.`,
+        `Added ${result.addedCount ?? 0} availability block(s).${skipped} ${result.createdCount ?? 0} new slot(s) generated and published.`,
       );
+      if (result.generateError) toast.error(`Couldn't generate slots: ${result.generateError}`);
       router.refresh();
     });
   }

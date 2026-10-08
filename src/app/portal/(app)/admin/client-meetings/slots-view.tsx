@@ -36,7 +36,7 @@ export function SlotsView({ slots, feedUrl }: { slots: ClientMeetingSlotRow[]; f
     startTransition(async () => {
       const result = await generateClientMeetingSlotsAction();
       if (result.error) toast.error(result.error);
-      else toast.success(`Generated ${result.createdCount ?? 0} new slot(s).`);
+      else toast.success(`Generated ${result.createdCount ?? 0} new slot(s) and published them.`);
       router.refresh();
     });
   }
@@ -92,7 +92,7 @@ export function SlotsView({ slots, feedUrl }: { slots: ClientMeetingSlotRow[]; f
 
       {slots.length === 0 ? (
         <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-          No slots yet. Add availability, then click &quot;Generate slots&quot;.
+          No slots yet. Slots are created and published automatically once all 3 panel execs share free time.
         </p>
       ) : (
         <Table>
