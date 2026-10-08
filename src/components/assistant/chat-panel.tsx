@@ -187,7 +187,7 @@ export function ChatPanel({
                     <Avatar180 />
                     <div className="flex min-w-0 flex-1 flex-col items-start gap-2">
                       {m.parts.map((part, i) => {
-                        if (part.type === "text") return <MarkdownContent key={i} body={part.text} />;
+                        if (part.type === "text") return <MarkdownContent key={i} body={part.text} noImages />;
                         if (!part.type.startsWith("tool-")) return null;
                         const toolPart = part as { type: string; state: string; output?: unknown };
                         const toolName = toolPart.type.slice("tool-".length);

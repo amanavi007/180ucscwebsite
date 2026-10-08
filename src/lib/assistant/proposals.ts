@@ -18,6 +18,11 @@ export class UserFacingError extends Error {}
 
 export const PROPOSAL_ACTIONS = { ...ACTIONS, ...ADMIN_ACTIONS };
 
+/** Own keys only: a name like "constructor" or "__proto__" must never resolve to an inherited object member. */
+function lookupAction(name: string) {
+  return Object.hasOwn(PROPOSAL_ACTIONS, name) ? PROPOSAL_ACTIONS[name] : undefined;
+}
+
 export async function createProposal(
   store: ProposalStore,
   actor: Actor,
@@ -25,7 +30,7 @@ export async function createProposal(
   toolName: string,
   rawArgs: unknown,
 ): Promise<{ ok: true; proposalId: string; preview: string; warning?: string } | { ok: false; error: string }> {
-  const action = PROPOSAL_ACTIONS[toolName];
+  const action = lookupAction(toolName);
   if (!action) return { ok: false, error: "That action isn't available." };
   if (action.requiresExec && !isExec(actor.role)) return { ok: false, error: "Only execs can do that." };
   const parsed = action.schema.safeParse(rawArgs);
@@ -44,7 +49,7 @@ export async function approveProposal(
   const claimed = await store.claim(id, actor.id, now.toISOString());
   if (!claimed) return { ok: false, error: "This proposal is no longer available (expired, already handled, or not yours)." };
 
-  const action = PROPOSAL_ACTIONS[claimed.tool];
+  const action = lookupAction(claimed.tool);
   if (!action) {
     await store.markFailed(id, "unknown action");
     return { ok: false, error: "That action isn't available." };
