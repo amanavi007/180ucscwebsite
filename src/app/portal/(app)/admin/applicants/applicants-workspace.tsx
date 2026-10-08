@@ -108,6 +108,12 @@ export function ApplicantsWorkspace({
         applicant={selected}
         onClose={() => setSelectedId(null)}
         onGivePoints={() => setGivingId(selectedId)}
+        summaries={
+          selected
+            ? { resume: scoring.summaries.resume[selected.id], interview: scoring.summaries.interview[selected.id] }
+            : {}
+        }
+        disagreementThreshold={scoring.settings.disagreementThreshold}
       />
       <GivePointsDialog
         applicant={giving}
