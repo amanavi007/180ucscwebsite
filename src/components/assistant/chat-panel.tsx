@@ -244,11 +244,7 @@ export function ChatPanel({
 
 function Avatar180() {
   return (
-    <div
-      aria-hidden
-      className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary font-display text-[10px] text-primary-foreground"
-    >
-      180
-    </div>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src="/logo-icon.png" alt="" aria-hidden className="mt-0.5 size-7 shrink-0 object-contain" />
   );
 }

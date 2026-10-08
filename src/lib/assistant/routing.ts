@@ -28,7 +28,7 @@ export function selectAreas(text: string): Area[] {
 }
 
 const SHORTCUTS: [Shortcut, RegExp][] = [
-  ["my_open_tasks", /^(what('?s| is| are)?\s+)?(my\s+)?(open\s+)?(tasks|due|due soon)\??$/i],
+  ["my_open_tasks", /^(what('?s| is| are)?\s+)?(my\s+)?(open\s+)?(tasks|to-?dos?|due|due soon)\??$/i],
   ["upcoming_events", /^(what('?s| is)?\s+)?(upcoming events|events (this|next) week|what'?s coming up)\??$/i],
   ["my_projects", /^(show |list |what are )?my projects\??$/i],
   ["quarter_projects", /^(show |list )?(all projects|every project|projects this quarter)\??$/i],

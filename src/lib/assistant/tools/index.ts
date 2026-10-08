@@ -66,7 +66,7 @@ export function buildReadTools(areas: Area[], deps: ToolDeps): ToolSet {
   }
   if (areas.includes("tasks")) {
     tools.my_open_tasks = tool({
-      description: "List the user's open tasks (task, project, due date, status, priority).",
+      description: "List the user's open tasks (task, project, due date, status, priority). For execs this also includes their items on the exec to-do list, so use it for any 'tasks' or 'todos' question.",
       inputSchema: empty,
       toModelOutput,
       execute: () => runMyOpenTasks(deps),

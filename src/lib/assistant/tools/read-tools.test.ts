@@ -15,6 +15,7 @@ const base: DataAccess = {
   activeQuarter: async () => ({ id: "q1", name: "Fall 2026" }),
   myProjects: async () => [],
   myOpenTasks: async () => [],
+  openExecTodos: async () => [],
   upcomingEvents: async () => [],
   topApplicants: async () => [],
   attendanceByMember: async () => [],
@@ -155,5 +156,21 @@ describe("runDirectory", () => {
     const r = await runDirectory(deps({ directory: async () => people }), undefined);
     expect(r.items).toHaveLength(3);
     expect(Object.keys(r.items[0]).sort()).toEqual(["name", "role", "team"]);
+  });
+});
+
+describe("runMyOpenTasks exec to-dos", () => {
+  const todos = [
+    { title: "Mine", due_date: "2026-10-09", assigned_to: ["u1"] },
+    { title: "Anyone", due_date: null, assigned_to: [] },
+    { title: "Theirs", due_date: null, assigned_to: ["other"] },
+  ];
+  it("includes unassigned and own exec to-dos for execs", async () => {
+    const r = await runMyOpenTasks(deps({ openExecTodos: async () => todos }, "president"));
+    expect(r.items.map((i) => i.task)).toEqual(["Mine", "Anyone"]);
+  });
+  it("never includes them for non-execs", async () => {
+    const r = await runMyOpenTasks(deps({ openExecTodos: async () => todos }));
+    expect(r.items).toEqual([]);
   });
 });

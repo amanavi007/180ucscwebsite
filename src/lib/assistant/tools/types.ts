@@ -5,6 +5,7 @@ export interface TaskRow {
   id: string; task_name: string; due_date: string | null; status: string; priority: string;
   project: { client_name: string } | null;
 }
+export interface ExecTodoRow { title: string; due_date: string | null; assigned_to: string[] }
 export interface EventRow { date: string; title: string; type: string; time: string | null; location: string | null }
 export interface ApplicantTotal { name: string; total: number }
 
@@ -39,6 +40,8 @@ export interface DataAccess {
   activeQuarter(): Promise<{ id: string; name: string } | null>;
   myProjects(userId: string, quarterId: string): Promise<ProjectRow[]>;
   myOpenTasks(userId: string, quarterId: string): Promise<TaskRow[]>;
+  /** Open items on the shared exec to-do list. Callers must only use this for execs. */
+  openExecTodos(): Promise<ExecTodoRow[]>;
   upcomingEvents(): Promise<EventRow[]>;
   topApplicants(quarterId: string): Promise<ApplicantTotal[]>;
   attendanceByMember(quarterId: string): Promise<MemberAttendance[]>;

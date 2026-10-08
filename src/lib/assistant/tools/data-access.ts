@@ -2,6 +2,7 @@ import "server-only";
 import { getActiveQuarter } from "@/lib/data/quarters";
 import { getMyProjects } from "@/lib/data/projects";
 import { getVisibleTasks } from "@/lib/data/tasks";
+import { getExecTodos } from "@/lib/data/exec-todos";
 import { getCalendarEvents } from "@/lib/data/calendar";
 import { getApplicantRows } from "@/lib/data/recruit";
 import { getMyAttendanceSummary, getQuarterAttendanceRates } from "@/lib/data/attendance";
@@ -27,6 +28,10 @@ export function realDataAccess(): DataAccess {
           id: t.id, task_name: t.task_name, due_date: t.due_date, status: t.status,
           priority: t.priority, project: t.project ? { client_name: t.project.client_name } : null,
         })),
+    openExecTodos: async () =>
+      (await getExecTodos())
+        .filter((t) => t.status === "open")
+        .map((t) => ({ title: t.title, due_date: t.due_date, assigned_to: t.assigned_to })),
     upcomingEvents: async () =>
       (await getCalendarEvents()).map((e) => ({
         date: e.date, title: e.title, type: e.type, time: e.time, location: e.location,

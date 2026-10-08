@@ -17,6 +17,14 @@ export async function runMyOpenTasks(deps: ToolDeps) {
     status: t.status,
     priority: t.priority,
   }));
+  // The exec to-do list is a separate, shared list. Show what is assigned to this exec or to nobody in particular.
+  if (isExec(deps.profile.role)) {
+    const todos = (await deps.data.openExecTodos())
+      .filter((t) => t.assigned_to.length === 0 || t.assigned_to.includes(deps.profile.id))
+      .map((t) => ({ task: t.title, project: "Exec to-do list", due: t.due_date, status: "not_started", priority: "medium" }));
+    compact.push(...todos);
+    compact.sort((a, b) => (a.due ?? "9999").localeCompare(b.due ?? "9999"));
+  }
   return capped(compact, deps.rowCap, compact.length === 0 ? "No open tasks." : undefined);
 }
 

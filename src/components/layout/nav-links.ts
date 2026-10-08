@@ -1,6 +1,5 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  LayoutDashboard,
   Kanban,
   ListTodo,
   Users,
@@ -44,12 +43,6 @@ export const NAV_LINKS: NavLink[] = [
     icon: Sparkles,
     keywords: "ai chat ask help home",
     tourDescription: "Ask anything about your projects, tasks and events, or have the assistant draft changes for you to approve.",
-  },
-  {
-    href: "/portal/dashboard",
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    tourDescription: "Your full overview -- tasks, your team, and anything that needs attention.",
   },
   {
     href: "/portal/projects",
