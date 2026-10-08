@@ -23,6 +23,15 @@ describe("selectAreas", () => {
     expect(selectAreas("mark the memo task done")).toContain("actions");
     expect(selectAreas("who has an interview booked")).toContain("scheduling");
   });
+  it("keeps verbs that double as nouns from hiding the read area", () => {
+    expect(selectAreas("what did people change recently")).toContain("admin");
+    expect(selectAreas("cancel Jo Park's interview")).toEqual(expect.arrayContaining(["actions", "scheduling"]));
+    expect(selectAreas("what's the process for client emails")).toContain("wiki");
+  });
+  it("matches the common phrasings of the zero-token shortcuts", () => {
+    for (const q of ["what todos do I have", "my tasks", "what's due", "who are the top applicants"]) expect(matchShortcut(q)).not.toBeNull();
+    expect(matchShortcut("what todos do I have for the Acme project")).toBeNull();
+  });
   it("never returns an empty list", () => {
     expect(selectAreas("").length).toBeGreaterThan(0);
   });

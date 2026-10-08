@@ -208,7 +208,7 @@ export function buildWriteTools(actor: Actor, threadId: string | null, store: Pr
         }),
     }),
     propose_task_update: tool({
-      description: `Propose changing an existing task: mark done / in progress, change priority or due date, reassign.${NOTE}`,
+      description: `Propose changing an existing task (mark done / in progress, push or set the due date, change priority, reassign). Pass the task's name; do not look it up first.${NOTE}`,
       inputSchema: z.object({
         task: z.string().describe("Part of the task name"),
         project: z.string().optional().describe("Project name, to disambiguate"),
