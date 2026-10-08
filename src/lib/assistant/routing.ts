@@ -28,7 +28,7 @@ const DEFAULT_AREAS: Area[] = ["projects", "tasks", "events", "search", "wiki"];
 const AREA_PATTERNS: [Area, RegExp][] = [
   ["recruitment", /\b(applicants?|recruit\w*|points?|coffee chats?|interviews?|info sessions?|candidates?)\b/i],
   ["attendance", /\b(attendance|absent|absences?|tardy|tardies|late|present|no-?shows?|miss(ed|es|ing)?)\b/i],
-  ["people", /\b(who|members?|roster|directory|pm|project managers?|consultants?|execs?|president|directors?|alumni|alum)\b/i],
+  ["people", /\b(who|members?|roster|directory|pm|project managers?|consultants?|execs?|president|directors?|alumni|alum|contact|reach|email|phone|dm|message|get in touch)\b/i],
   ["projects", /\b(projects?|clients?|deliverables?|deadlines?|health|team)\b/i],
   ["tasks", /\b(tasks?|to-?dos?|due|overdue|assigned|working on|workload)\b/i],
   ["events", /\b(events?|calendar|meetings?|meeting days?|schedule|upcoming)\b/i],
