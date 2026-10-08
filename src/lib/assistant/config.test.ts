@@ -7,7 +7,7 @@ describe("loadAssistantConfig", () => {
       userDailyCap: 30,
       globalDailyCap: 200,
       historyTurns: 4,
-      maxSteps: 3,
+      maxSteps: 5,
       maxOutputTokens: 700,
       maxInputChars: 2000,
       maxHistoryChars: 60_000,
@@ -33,7 +33,7 @@ describe("loadAssistantConfig", () => {
     expect(c.userDailyCap).toBe(50);
     expect(c.globalDailyCap).toBe(200);
     expect(c.historyTurns).toBe(4);
-    expect(c.maxSteps).toBe(3);
+    expect(c.maxSteps).toBe(5);
     expect(c.rowCap).toBe(10);
   });
 });

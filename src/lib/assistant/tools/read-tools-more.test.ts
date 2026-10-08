@@ -48,6 +48,32 @@ describe("runScheduling", () => {
   });
 });
 
+describe("runScheduling filters", () => {
+  const b = (id: string, date: string, start: string, execs: string[], kind: "coffee_chat" | "interview" = "coffee_chat") => ({ kind, id, who: id, date, start, end: "23:00:00", status: "confirmed", withExecs: execs });
+  const data = { bookings: async () => [
+    b("a", "2026-10-08", "12:20:00", ["Other", "Third"]),
+    b("b", "2026-10-08", "13:40:00", ["Me", "Third"]),
+    b("c", "2026-10-09", "09:00:00", ["Me"], "interview"),
+  ] };
+  it("mine + limit 1 returns only my soonest booking", async () => {
+    const r = await runScheduling(deps(data), "2026-10-08", { kind: "coffee_chat", mine: true, limit: 1 });
+    expect(r.items.map((i) => i.who)).toEqual(["b"]);
+  });
+  it("after/before cut by start time, so noon counts as afternoon", async () => {
+    const r = await runScheduling(deps(data), "2026-10-08", { date: "2026-10-08", after: "12:00", before: "17:00" });
+    expect(r.items.map((i) => i.who)).toEqual(["a", "b"]);
+    expect((await runScheduling(deps(data), "2026-10-08", { after: "13:00" })).items.map((i) => i.who)).toEqual(["b"]);
+  });
+  it("filters by date and person", async () => {
+    expect((await runScheduling(deps(data), "2026-10-08", { date: "2026-10-09" })).items.map((i) => i.who)).toEqual(["c"]);
+    expect((await runScheduling(deps(data), "2026-10-08", { person: "other" })).items.map((i) => i.who)).toEqual(["a"]);
+  });
+  it("says so when nothing of mine matches", async () => {
+    const r = await runScheduling(deps({ bookings: async () => [b("a", "2026-10-08", "12:00:00", ["Other"])] }), "2026-10-08", { mine: true });
+    expect(r.note).toMatch(/no upcoming bookings/i);
+  });
+});
+
 describe("runTeamAttendanceStatus", () => {
   it("only lists teams that are behind", async () => {
     const r = await runTeamAttendanceStatus(

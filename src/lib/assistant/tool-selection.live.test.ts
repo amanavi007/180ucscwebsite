@@ -3,7 +3,7 @@
  * Data is a stub, so no database is touched: this only measures whether the right tool is chosen.
  *   LIVE_EVAL=1 npx vitest run src/lib/assistant/tool-selection.live.test.ts
  */
-import { readFileSync } from "node:fs";
+import { appendFileSync, readFileSync } from "node:fs";
 import { generateText, isStepCount } from "ai";
 import { describe, expect, it, vi } from "vitest";
 
@@ -21,7 +21,15 @@ import type { ToolDeps } from "./tools/types";
 
 const RUN = process.env.LIVE_EVAL === "1";
 
-type Case = { q: string; role?: "exec" | "consultant"; any: string[] };
+type Case = {
+  q: string;
+  role?: "exec" | "consultant";
+  any: string[];
+  /** Earlier turns, for follow-up questions that only make sense in context. */
+  prior?: { role: "user" | "assistant"; content: string }[];
+  /** Checks the arguments of the first call to one of `any`. */
+  args?: (input: Record<string, unknown>) => boolean;
+};
 /** `any`: the first step must call at least one of these tools. "shortcut" = answered with zero tokens. */
 const CASES: Case[] = [
   // reads
@@ -57,6 +65,32 @@ const CASES: Case[] = [
   { q: "what should I do next on my project", role: "consultant", any: ["my_next_steps"] },
   { q: "I'm stuck, where do I start", role: "consultant", any: ["my_next_steps", "resources"] },
   { q: "show me the onboarding page", role: "consultant", any: ["resources"] },
+  // independence: paraphrases, vague asks, follow-ups, and questions the wiki should answer
+  { q: "whens my next coffee chat", role: "exec", any: ["scheduling"], args: (a) => a.limit === 1 && a.mine === true },
+  { q: "do I have any coffee chats this afternoon", role: "exec", any: ["scheduling"], args: (a) => a.mine === true },
+  { q: "what other things should i pay attention to when formatting my slides", role: "consultant", any: ["resources"] },
+  { q: "how do i lead a team as PM", role: "consultant", any: ["resources"] },
+  { q: "how do I run a kickoff meeting", role: "consultant", any: ["resources"] },
+  { q: "any tips for client calls", role: "consultant", any: ["resources"] },
+  { q: "what's the dress code for the final presentation", role: "consultant", any: ["resources"] },
+  { q: "how should I structure my deliverable", role: "consultant", any: ["resources"] },
+  { q: "what do I need to pay attention to this week", role: "consultant", any: ["my_next_steps", "my_open_tasks", "upcoming_events", "tasks"] },
+  { q: "when is my next deadline", role: "consultant", any: ["my_open_tasks", "my_projects", "tasks"] },
+  { q: "who is my PM", role: "consultant", any: ["my_projects", "project_detail", "quarter_projects"] },
+  { q: "what's going on with Acme", role: "consultant", any: ["project_detail"] },
+  { q: "is anyone on Acme behind", role: "exec", any: ["tasks", "project_detail", "attendance_report"] },
+  { q: "who is Jo Park", role: "exec", any: ["person_detail", "directory", "search", "applicant_detail"] },
+  { q: "where can I find the brand kit", role: "consultant", any: ["quick_links", "search", "resources"] },
+  { q: "what's the next info session", role: "consultant", any: ["upcoming_events"] },
+  { q: "email for Priya", role: "consultant", any: ["directory", "person_detail", "search"] },
+  { q: "how many people applied", role: "exec", any: ["top_applicants", "applicant_detail"] },
+  { q: "what is the attendance policy", role: "consultant", any: ["resources"] },
+  { q: "what should the issue tree look like", role: "consultant", any: ["resources"] },
+  { q: "how do i write an email to a client", role: "consultant", any: ["resources"] },
+  { q: "what else should I watch out for", role: "consultant", any: ["resources"], prior: [{ role: "user", content: "how do i lead a team as PM" }, { role: "assistant", content: "Pick a democratic leadership style, know your team's stage, and run an All About Me one-pager. See Leading Your Consulting Team." }] },
+  { q: "push it to next wednesday", role: "consultant", any: ["propose_task_update"], prior: [{ role: "user", content: "what's my next task" }, { role: "assistant", content: "Your next task is Draft memo on Acme, due Friday." }] },
+  { q: "and who's the SC?", role: "consultant", any: ["project_detail", "quarter_projects", "my_projects"], prior: [{ role: "user", content: "who is the PM on Acme" }, { role: "assistant", content: "Pat Kim is the PM on Acme Corp." }] },
+  { q: "what about tomorrow", role: "exec", any: ["scheduling"], args: (a) => !!a.date || !!a.limit, prior: [{ role: "user", content: "any coffee chats today" }, { role: "assistant", content: "Yes, 4 coffee chats today starting at 12:20." }] },
   // writes
   { q: "add a task to Acme called draft the memo for Priya due Friday", any: ["propose_task"] },
   { q: "mark the memo task done", any: ["propose_task_update"] },
@@ -86,6 +120,8 @@ const CASES: Case[] = [
 ];
 
 const data = makeData();
+/** LIVE_SET=core runs a small, high-signal subset so the eval stays inside free-tier limits. */
+const CORE = new Set<string>(["whens my next coffee chat", "do I have any coffee chats this afternoon", "what other things should i pay attention to when formatting my slides", "how do i lead a team as PM", "what's the dress code for the final presentation", "any tips for client calls", "what do I need to pay attention to this week", "when is my next deadline", "who is my PM", "what's going on with Acme", "who is Jo Park", "how many people applied", "where can I find the brand kit", "which projects are at risk", "who has missed the most meetings", "anything that needs my attention", "what else should I watch out for", "push it to next wednesday", "what about tomorrow", "and who's the SC?", "add a task to Acme called draft the memo for Priya due Friday", "mark the memo task done", "add a to-do to book the venue for the social", "give Jo Park 3 points for the coffee chat", "cancel Jo Park's interview", "make Priya a project manager", "email for Priya", "what should I do next on my project"]);
 
 describe.skipIf(!RUN)("tool selection (live model)", () => {
   it("picks sensible first-step tools", async () => {
@@ -100,10 +136,12 @@ describe.skipIf(!RUN)("tool selection (live model)", () => {
     const failures: string[] = [];
     const rows: string[] = [];
     for (const c of CASES) {
+      if (process.env.LIVE_SET === "core" && !CORE.has(c.q)) continue;
       if (process.env.LIVE_ONLY && !new RegExp(process.env.LIVE_ONLY, "i").test(c.q)) continue;
       const role = c.role === "exec" ? "president" : "consultant";
       const deps: ToolDeps = { profile: { id: "me", name: "Alex Rivera", role }, rowCap: 20, data };
       let got: string[];
+      let calls: { toolName: string; input: unknown }[] = [];
       if (matchShortcut(c.q)) got = ["shortcut"];
       else {
         const areas = selectAreas(c.q);
@@ -112,12 +150,13 @@ describe.skipIf(!RUN)("tool selection (live model)", () => {
           const r = await generateText({
             model,
             instructions: buildInstructions({ name: deps.profile.name, role }, "Fall 2026", "2026-10-07"),
-            prompt: c.q,
+            messages: [...(c.prior ?? []), { role: "user" as const, content: c.q }],
             tools,
             stopWhen: isStepCount(1),
             maxOutputTokens: 400,
             maxRetries: 3,
           });
+          calls = r.toolCalls as never;
           got = r.toolCalls.map((t) => t.toolName);
           if (got.length === 0) got = [`(no tool) said: ${r.text.replace(/\s+/g, " ").slice(0, 120)}`];
         } catch (e) {
@@ -125,12 +164,14 @@ describe.skipIf(!RUN)("tool selection (live model)", () => {
         }
         await new Promise((r) => setTimeout(r, 1500));
       }
-      const ok = got.some((g) => c.any.includes(g));
+      let ok = got.some((g) => c.any.includes(g));
+      if (ok && c.args && !got.includes("shortcut")) ok = calls.some((t) => c.any.includes(t.toolName) && c.args!(t.input as Record<string, unknown>));
       rows.push(`${ok ? "PASS" : "FAIL"} | ${c.q} | expected ${c.any.join("/")} | got ${got.join(",")}${ok ? "" : ` | areas ${selectAreas(c.q).join(",")}`}`);
       if (!ok) failures.push(rows[rows.length - 1]);
+      if (process.env.LIVE_OUT) appendFileSync(process.env.LIVE_OUT, `${rows[rows.length - 1]}\n`);
     }
     console.log(rows.filter(Boolean).join("\n"));
     console.log(`\n${rows.length - failures.length}/${rows.length} passed`);
     expect(failures).toEqual([]);
-  }, 900_000);
+  }, 3_600_000);
 });

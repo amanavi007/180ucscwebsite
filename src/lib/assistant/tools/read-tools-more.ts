@@ -64,14 +64,44 @@ export async function runAlumni(deps: ToolDeps, query: string | undefined) {
   return capped(rows, deps.rowCap, rows.length === 0 ? "No alumni found." : undefined);
 }
 
-/** Upcoming coffee chats, interviews and client meetings (exec only). */
-export async function runScheduling(deps: ToolDeps, todayIso: string, kind?: string) {
+export interface SchedulingOpts {
+  kind?: string;
+  /** Only bookings the signed-in exec is on (as a host/panelist). */
+  mine?: boolean;
+  /** Only bookings with this applicant/contact or host, matched by name. */
+  person?: string;
+  /** Only bookings on this YYYY-MM-DD date. */
+  date?: string;
+  /** Only bookings starting at or after / before this HH:MM. */
+  after?: string;
+  before?: string;
+  /** Show only the soonest N ("next" = 1). */
+  limit?: number;
+}
+
+/** Upcoming coffee chats, interviews and client meetings (exec only). Filters so the card shows only what was asked. */
+export async function runScheduling(deps: ToolDeps, todayIso: string, opts: SchedulingOpts = {}) {
   if (!isExec(deps.profile.role)) return EXEC_ONLY("Scheduling");
-  const rows = (await deps.data.bookings())
-    .filter((b) => b.status === "confirmed" && b.date >= todayIso && (!kind || b.kind === kind))
-    .sort((a, b) => `${a.date} ${a.start}`.localeCompare(`${b.date} ${b.start}`))
-    .map((b) => ({ type: b.kind.replace("_", " "), when: `${b.date} ${b.start.slice(0, 5)}`, who: b.who, execs: b.withExecs.join(", ") }));
-  return capped(rows, deps.rowCap, rows.length === 0 ? "No upcoming bookings." : undefined);
+  const me = deps.profile.name.trim().toLowerCase();
+  const needle = opts.person?.trim().toLowerCase();
+  const all = (await deps.data.bookings())
+    .filter((b) => b.status === "confirmed" && b.date >= todayIso && (!opts.kind || b.kind === opts.kind))
+    .filter((b) => !opts.date || b.date === opts.date)
+    .filter((b) => !opts.after || b.start.slice(0, 5) >= opts.after.padStart(5, "0"))
+    .filter((b) => !opts.before || b.start.slice(0, 5) < opts.before.padStart(5, "0"))
+    .filter((b) => !opts.mine || b.withExecs.some((n) => n.trim().toLowerCase() === me))
+    .filter((b) => !needle || [b.who, ...b.withExecs].some((n) => n.toLowerCase().includes(needle)))
+    .sort((a, b) => `${a.date} ${a.start}`.localeCompare(`${b.date} ${b.start}`));
+  const limit = opts.limit && opts.limit > 0 ? Math.floor(opts.limit) : undefined;
+  const rows = (limit ? all.slice(0, limit) : all).map((b) => ({
+    type: b.kind.replace("_", " "),
+    when: `${b.date} ${b.start.slice(0, 5)}`,
+    who: b.who,
+    execs: b.withExecs.join(", "),
+  }));
+  const none = opts.mine ? "You have no upcoming bookings of that kind." : "No upcoming bookings match.";
+  const more = limit && all.length > limit ? `${all.length - limit} more later; not shown.` : undefined;
+  return capped(rows, deps.rowCap, rows.length === 0 ? none : more);
 }
 
 export async function runMeetingDates(deps: ToolDeps, todayIso: string) {
