@@ -11,6 +11,7 @@
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --font-brand: var(--font-big-shoulders);
+  --font-display: var(--font-lato);
   --color-warm: var(--warm);
   --color-warm-foreground: var(--warm-foreground);
   --color-mint: var(--mint);

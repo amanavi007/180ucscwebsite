@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Big_Shoulders } from "next/font/google";
+import { Geist, Geist_Mono, Big_Shoulders, Lato } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -20,6 +20,12 @@ const bigShoulders = Big_Shoulders({
   variable: "--font-big-shoulders",
   subsets: ["latin"],
   axes: ["opsz"],
+});
+
+const lato = Lato({
+  variable: "--font-lato",
+  weight: "900",
+  subsets: ["latin"],
 });
 
 const SITE_TITLE = "180 Degrees Consulting at UC Santa Cruz";
@@ -54,7 +60,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${bigShoulders.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${bigShoulders.variable} ${lato.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
