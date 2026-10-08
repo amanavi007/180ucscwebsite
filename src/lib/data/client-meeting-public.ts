@@ -98,6 +98,7 @@ export interface ManagedClientMeeting {
   contactName: string;
   businessName: string;
   email: string;
+  phone: string | null;
   date: string;
   startTime: string;
   endTime: string;
@@ -113,7 +114,7 @@ export async function getClientMeetingByToken(
   const supabase = createAdminClient();
   const { data: booking, error } = await supabase
     .from("client_meetings")
-    .select("status, contact_name, business_name, email, meeting_url, slot_id")
+    .select("status, contact_name, business_name, email, phone, meeting_url, slot_id")
     .eq("manage_token", token)
     .maybeSingle();
   if (error) throw error;
@@ -133,6 +134,7 @@ export async function getClientMeetingByToken(
     contactName: booking.contact_name,
     businessName: booking.business_name,
     email: booking.email,
+    phone: booking.phone,
     date: slot.date,
     startTime,
     endTime: normalizeTime(slot.end_time),

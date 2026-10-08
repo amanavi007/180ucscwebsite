@@ -150,7 +150,7 @@ export function validateClientMeetingInput(input: {
   needs: string;
 }):
   | { error: string }
-  | { value: { contactName: string; businessName: string; email: string; phone: string | null; needs: string } } {
+  | { value: { contactName: string; businessName: string; email: string; phone: string; needs: string } } {
   const contactName = input.contactName.trim();
   const businessName = input.businessName.trim();
   const email = input.email.trim().toLowerCase();
@@ -162,9 +162,10 @@ export function validateClientMeetingInput(input: {
   if (!businessName) return { error: "Enter your business or organization name." };
   if (businessName.length > MAX_BUSINESS_NAME) return { error: "The business name is too long." };
   if (!isValidEmail(email)) return { error: "Enter a valid email address." };
+  if (!phone) return { error: "Enter a phone number." };
   if (phone.length > MAX_PHONE) return { error: "That phone number is too long." };
   if (!needs) return { error: "Tell us a little about what you need help with." };
   if (needs.length > MAX_NEEDS) return { error: `Keep it under ${MAX_NEEDS} characters.` };
 
-  return { value: { contactName, businessName, email, phone: phone === "" ? null : phone, needs } };
+  return { value: { contactName, businessName, email, phone, needs } };
 }

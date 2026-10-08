@@ -114,13 +114,16 @@ describe("validateMeetingUrl", () => {
 });
 
 describe("validateClientMeetingInput", () => {
-  const ok = { contactName: " Jo ", businessName: "Acme", email: " Jo@Acme.COM ", phone: "", needs: "Marketing help" };
+  const ok = { contactName: " Jo ", businessName: "Acme", email: " Jo@Acme.COM ", phone: " 831-555-0100 ", needs: "Marketing help" };
   it("normalizes", () => {
     expect(validateClientMeetingInput(ok)).toEqual({
-      value: { contactName: "Jo", businessName: "Acme", email: "jo@acme.com", phone: null, needs: "Marketing help" },
+      value: { contactName: "Jo", businessName: "Acme", email: "jo@acme.com", phone: "831-555-0100", needs: "Marketing help" },
     });
   });
   it.each([
+    { phone: "" },
+    { phone: "   " },
+    { phone: "1".repeat(31) },
     { contactName: "" },
     { businessName: " " },
     { email: "nope" },

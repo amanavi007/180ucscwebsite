@@ -83,7 +83,7 @@ export function ManageView({
             contactName: meeting.contactName,
             businessName: meeting.businessName,
             email: meeting.email,
-            phone: "",
+            phone: meeting.phone ?? "",
             needs: "",
             token,
           }),
