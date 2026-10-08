@@ -702,6 +702,7 @@ export interface Database {
           merged_into_id: string | null;
           archived_at: string | null;
           created_by_batch_id: string | null;
+          application_link: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -714,6 +715,7 @@ export interface Database {
           year?: string | null;
           notes?: string;
           created_by_batch_id?: string | null;
+          application_link?: string | null;
           previous_applicant_id?: string | null;
           merged_into_id?: string | null;
           archived_at?: string | null;
@@ -751,6 +753,66 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["recruit_categories"]["Insert"]>;
+        Relationships: [];
+      };
+      recruit_rubrics: {
+        Row: { id: string; stage: "resume" | "interview"; scale_min: number; scale_max: number; updated_at: string };
+        Insert: { id?: string; stage: "resume" | "interview"; scale_min?: number; scale_max?: number; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["recruit_rubrics"]["Insert"]>;
+        Relationships: [];
+      };
+      recruit_rubric_criteria: {
+        Row: {
+          id: string;
+          rubric_id: string;
+          name: string;
+          description: string;
+          weight: number;
+          sort_order: number;
+          archived_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          rubric_id: string;
+          name: string;
+          description?: string;
+          weight?: number;
+          sort_order?: number;
+          archived_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["recruit_rubric_criteria"]["Insert"]>;
+        Relationships: [];
+      };
+      recruit_reviews: {
+        Row: {
+          id: string;
+          applicant_id: string;
+          stage: "resume" | "interview";
+          reviewer_id: string;
+          comment: string;
+          submitted_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          applicant_id: string;
+          stage: "resume" | "interview";
+          reviewer_id: string;
+          comment?: string;
+          submitted_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["recruit_reviews"]["Insert"]>;
+        Relationships: [];
+      };
+      recruit_review_scores: {
+        Row: { id: string; review_id: string; criterion_id: string; score: number };
+        Insert: { id?: string; review_id: string; criterion_id: string; score: number };
+        Update: Partial<Database["public"]["Tables"]["recruit_review_scores"]["Insert"]>;
         Relationships: [];
       };
       recruit_ignored_names: {
