@@ -49,6 +49,7 @@ export interface ApplicantRow {
   major: string | null;
   year: string | null;
   notes: string;
+  applicationLink: string | null;
   hasPrevious: boolean;
   previousQuarterName: string | null;
   aliases: string[];
@@ -208,6 +209,7 @@ export async function getApplicantRows(quarterId: string): Promise<ApplicantRow[
       major: a.major,
       year: a.year,
       notes: a.notes,
+      applicationLink: a.application_link,
       hasPrevious: a.previous_applicant_id !== null,
       previousQuarterName: a.previous_applicant_id ? (previousQuarterById.get(a.previous_applicant_id) ?? null) : null,
       aliases: aliasesByApplicant.get(a.id) ?? [],

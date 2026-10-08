@@ -16,6 +16,8 @@ import {
 } from "@/lib/recruit";
 import { findMatches, normalizeName, pairKey, type MatchClass } from "@/lib/recruit-matching";
 import { cleanDisplayName, parseAttendeeInput, reviewImport, type CommitRow, type ReviewRow } from "@/lib/recruit-import";
+import { validateScore, type Stage } from "@/lib/recruit-scoring";
+import { RECRUIT_SETTING_KEYS, validateRecruitSettings, type RecruitSettings } from "@/lib/recruit-settings";
 import { NO_SHOW_DEFAULT_REASON, systemKeyFor, type AttendanceStatus, type BookingKind } from "@/lib/recruit-attendance";
 
 export interface ActionResult {
@@ -127,7 +129,7 @@ export async function addApplicantAction(input: {
 
 export async function updateApplicantAction(
   id: string,
-  input: { name: string; email?: string; major?: string; year?: string; notes: string },
+  input: { name: string; email?: string; major?: string; year?: string; notes: string; applicationLink?: string },
 ): Promise<ActionResult> {
   const { error } = await requireExec();
   if (error) return { error };
@@ -136,11 +138,22 @@ export async function updateApplicantAction(
   if (!name) return { error: "Enter the applicant's name." };
   const email = normalizeApplicantEmail(input.email);
   if (email && !isPlausibleEmail(email)) return { error: "That email doesn't look right." };
+  const applicationLink = cleanText(input.applicationLink);
+  if (applicationLink && !/^https?:\/\//i.test(applicationLink)) {
+    return { error: "The application link should start with http:// or https://." };
+  }
 
   const supabase = await createClient();
   const { error: updateError } = await supabase
     .from("recruit_applicants")
-    .update({ name, email, major: cleanText(input.major), year: cleanText(input.year), notes: input.notes })
+    .update({
+      name,
+      email,
+      major: cleanText(input.major),
+      year: cleanText(input.year),
+      notes: input.notes,
+      application_link: applicationLink,
+    })
     .eq("id", id);
   if (updateError) {
     return {
@@ -627,6 +640,224 @@ export async function clearBookingMarkAction(kind: BookingKind, bookingId: strin
   const { error: rpcError } = await supabase.rpc("clear_recruit_booking_mark", { p_kind: kind, p_booking: bookingId });
   if (rpcError) return { error: rpcError.message };
 
+  revalidateAll();
+  return {};
+}
+
+const STAGE_VALUES: Stage[] = ["resume", "interview"];
+
+export async function saveReviewAction(input: {
+  applicantId: string;
+  stage: Stage;
+  scores: Record<string, number>;
+  comment: string;
+  submit: boolean;
+}): Promise<ActionResult> {
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error };
+  if (!STAGE_VALUES.includes(input.stage)) return { error: "Unknown stage." };
+
+  const supabase = await createClient();
+  const { data: applicant, error: applicantError } = await supabase
+    .from("recruit_applicants")
+    .select("id, archived_at")
+    .eq("id", input.applicantId)
+    .maybeSingle();
+  if (applicantError) return { error: applicantError.message };
+  if (!applicant || applicant.archived_at) {
+    return { error: "That applicant was merged or removed — refresh the page." };
+  }
+
+  if (input.stage === "interview") {
+    const { count, error: linkError } = await supabase
+      .from("recruit_booking_links")
+      .select("id", { count: "exact", head: true })
+      .eq("booking_kind", "interview")
+      .eq("status", "attended")
+      .eq("applicant_id", input.applicantId);
+    if (linkError) return { error: linkError.message };
+    if ((count ?? 0) === 0) return { error: "Only applicants marked as having attended their interview can be scored." };
+  }
+
+  const { data: rubric, error: rubricError } = await supabase
+    .from("recruit_rubrics")
+    .select("id, scale_min, scale_max")
+    .eq("stage", input.stage)
+    .maybeSingle();
+  if (rubricError) return { error: rubricError.message };
+  if (!rubric) return { error: "The rubric for this stage is missing." };
+
+  const { data: criteria, error: criteriaError } = await supabase
+    .from("recruit_rubric_criteria")
+    .select("id, archived_at")
+    .eq("rubric_id", rubric.id);
+  if (criteriaError) return { error: criteriaError.message };
+  const active = new Set((criteria ?? []).filter((c) => !c.archived_at).map((c) => c.id));
+
+  const entries = Object.entries(input.scores);
+  for (const [criterionId, score] of entries) {
+    if (!active.has(criterionId)) return { error: "One of those criteria was archived or removed — refresh the page." };
+    const problem = validateScore(score, Number(rubric.scale_min), Number(rubric.scale_max));
+    if (problem) return { error: problem };
+  }
+  if (input.submit && entries.length < active.size) {
+    return { error: "Score every criterion before submitting, or save a draft." };
+  }
+
+  const { data: review, error: reviewError } = await supabase
+    .from("recruit_reviews")
+    .upsert(
+      {
+        applicant_id: input.applicantId,
+        stage: input.stage,
+        reviewer_id: profile.id,
+        comment: input.comment,
+        ...(input.submit ? { submitted_at: new Date().toISOString() } : {}),
+      },
+      { onConflict: "applicant_id,stage,reviewer_id" },
+    )
+    .select("id")
+    .single();
+  if (reviewError) return { error: reviewError.message };
+
+  if (entries.length > 0) {
+    const { error: scoreError } = await supabase.from("recruit_review_scores").upsert(
+      entries.map(([criterionId, score]) => ({ review_id: review.id, criterion_id: criterionId, score })),
+      { onConflict: "review_id,criterion_id" },
+    );
+    if (scoreError) return { error: scoreError.message };
+  }
+
+  revalidateAll();
+  return {};
+}
+
+function validateCriterionInput(input: { name: string; weight: number }): string | null {
+  if (!input.name.trim()) return "Give the criterion a name.";
+  if (!Number.isFinite(input.weight) || input.weight < 0) return "The weight has to be 0 or more.";
+  return null;
+}
+
+export async function createCriterionAction(input: {
+  stage: Stage;
+  name: string;
+  description: string;
+  weight: number;
+}): Promise<ActionResult> {
+  const { error } = await requireExec();
+  if (error) return { error };
+  const problem = validateCriterionInput(input);
+  if (problem) return { error: problem };
+
+  const supabase = await createClient();
+  const { data: rubric } = await supabase.from("recruit_rubrics").select("id").eq("stage", input.stage).maybeSingle();
+  if (!rubric) return { error: "The rubric for this stage is missing." };
+  const { data: last } = await supabase
+    .from("recruit_rubric_criteria")
+    .select("sort_order")
+    .eq("rubric_id", rubric.id)
+    .order("sort_order", { ascending: false })
+    .limit(1);
+
+  const { error: insertError } = await supabase.from("recruit_rubric_criteria").insert({
+    rubric_id: rubric.id,
+    name: input.name.trim(),
+    description: input.description.trim(),
+    weight: input.weight,
+    sort_order: (last?.[0]?.sort_order ?? 0) + 10,
+  });
+  if (insertError) return { error: insertError.message };
+  revalidateAll();
+  return {};
+}
+
+export async function updateCriterionAction(
+  id: string,
+  input: { name: string; description: string; weight: number },
+): Promise<ActionResult> {
+  const { error } = await requireExec();
+  if (error) return { error };
+  const problem = validateCriterionInput(input);
+  if (problem) return { error: problem };
+
+  const supabase = await createClient();
+  const { error: updateError } = await supabase
+    .from("recruit_rubric_criteria")
+    .update({ name: input.name.trim(), description: input.description.trim(), weight: input.weight })
+    .eq("id", id);
+  if (updateError) return { error: updateError.message };
+  revalidateAll();
+  return {};
+}
+
+export async function setCriterionArchivedAction(id: string, archived: boolean): Promise<ActionResult> {
+  const { error } = await requireExec();
+  if (error) return { error };
+
+  const supabase = await createClient();
+  const { error: updateError } = await supabase
+    .from("recruit_rubric_criteria")
+    .update({ archived_at: archived ? new Date().toISOString() : null })
+    .eq("id", id);
+  if (updateError) return { error: updateError.message };
+  revalidateAll();
+  return {};
+}
+
+export async function reorderCriteriaAction(orderedIds: string[]): Promise<ActionResult> {
+  const { error } = await requireExec();
+  if (error) return { error };
+
+  const supabase = await createClient();
+  for (const [index, id] of orderedIds.entries()) {
+    const { error: updateError } = await supabase
+      .from("recruit_rubric_criteria")
+      .update({ sort_order: (index + 1) * 10 })
+      .eq("id", id);
+    if (updateError) return { error: updateError.message };
+  }
+  revalidateAll();
+  return {};
+}
+
+export async function updateRubricScaleAction(
+  stage: Stage,
+  input: { scaleMin: number; scaleMax: number },
+): Promise<ActionResult> {
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error };
+  if (!Number.isFinite(input.scaleMin) || !Number.isFinite(input.scaleMax)) return { error: "Enter the scale as numbers." };
+  if (input.scaleMax <= input.scaleMin) return { error: "The top of the scale has to be higher than the bottom." };
+  if (input.scaleMax - input.scaleMin > 20) return { error: "Keep the scale to 20 steps or fewer." };
+
+  const supabase = await createClient();
+  const { error: updateError } = await supabase
+    .from("recruit_rubrics")
+    .update({ scale_min: input.scaleMin, scale_max: input.scaleMax })
+    .eq("stage", stage);
+  if (updateError) return { error: updateError.message };
+
+  await logAudit(profile.id, "recruit.rubric_scale_changed", stage, `${input.scaleMin}–${input.scaleMax}`);
+  revalidateAll();
+  return {};
+}
+
+export async function updateRecruitSettingsAction(partial: Partial<RecruitSettings>): Promise<ActionResult> {
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error };
+  const problem = validateRecruitSettings(partial);
+  if (problem) return { error: problem };
+
+  const rows = (Object.keys(partial) as (keyof RecruitSettings)[])
+    .filter((k) => partial[k] !== undefined)
+    .map((k) => ({ key: RECRUIT_SETTING_KEYS[k], value: String(partial[k]) }));
+  if (rows.length === 0) return {};
+
+  const supabase = await createClient();
+  const { error: upsertError } = await supabase.from("org_settings").upsert(rows, { onConflict: "key" });
+  if (upsertError) return { error: upsertError.message };
+
+  await logAudit(profile.id, "recruit.settings_changed", null, rows.map((r) => `${r.key}=${r.value}`).join(", "));
   revalidateAll();
   return {};
 }

@@ -32,6 +32,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "interview.booking_toggled": "Opened or closed interview booking",
   "recruit.applicants_merged": "Merged duplicate applicants",
   "recruit.merge_undone": "Undid an applicant merge",
+  "recruit.rubric_scale_changed": "Changed a rubric scale",
+  "recruit.settings_changed": "Changed recruitment scoring settings",
   "recruit.points_voided": "Voided a recruitment points entry",
   "recruit.category_created": "Created a recruitment points category",
   "recruit.category_updated": "Edited a recruitment points category",
