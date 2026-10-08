@@ -5,7 +5,11 @@ import {
   runMyAttendance,
   runMyOpenTasks,
   runMyProjects,
+  runProjectDetail,
   runQuarterProjects,
+  runTasks,
+  runWiki,
+  runMemberStats,
   runTopApplicants,
   runUpcomingEvents,
 } from "./read-tools";
@@ -22,6 +26,15 @@ const base: DataAccess = {
   myAttendance: async () => ({ rate: null, unexcused: 0, tardy: 0, excused: 0, totalSessions: 0 }),
   quarterProjects: async () => [],
   directory: async () => [],
+  tasks: async () => [],
+  projectDetail: async () => ({ id: "p1", client_name: "Acme", status: "issue_tree", health: "on_track", deadline: null, pm: "Pat", sc: null, members: [] }),
+  wikiPages: async () => [],
+  quickLinks: async () => [],
+  notifications: async () => ({ items: [], unreadCount: 0 }),
+  search: async () => [],
+  memberStats: async () => [],
+  activityLog: async () => [],
+  attentionItems: async () => [],
 };
 const deps = (over: Partial<DataAccess> = {}, role: ToolDeps["profile"]["role"] = "consultant", rowCap = 3): ToolDeps => ({
   profile: { id: "u1", name: "Sam", role },
@@ -144,9 +157,9 @@ describe("runQuarterProjects", () => {
 
 describe("runDirectory", () => {
   const people = [
-    { name: "Ana Lee", role: "Consultant", team: "Acme" },
-    { name: "Ben Ro", role: "Project Manager", team: "Beta" },
-    { name: "Cy Ng", role: "President", team: null },
+    { id: "a", name: "Ana Lee", role: "Consultant", team: "Acme" },
+    { id: "b", name: "Ben Ro", role: "Project Manager", team: "Beta" },
+    { id: "c", name: "Cy Ng", role: "President", team: null },
   ];
   it("filters by name, role or team, case-insensitively", async () => {
     expect((await runDirectory(deps({ directory: async () => people }), "acme")).items.map((p) => p.name)).toEqual(["Ana Lee"]);
@@ -161,9 +174,9 @@ describe("runDirectory", () => {
 
 describe("runMyOpenTasks exec to-dos", () => {
   const todos = [
-    { title: "Mine", due_date: "2026-10-09", assigned_to: ["u1"] },
-    { title: "Anyone", due_date: null, assigned_to: [] },
-    { title: "Theirs", due_date: null, assigned_to: ["other"] },
+    { id: "1", title: "Mine", due_date: "2026-10-09", assigned_to: ["u1"] },
+    { id: "2", title: "Anyone", due_date: null, assigned_to: [] },
+    { id: "3", title: "Theirs", due_date: null, assigned_to: ["other"] },
   ];
   it("includes unassigned and own exec to-dos for execs", async () => {
     const r = await runMyOpenTasks(deps({ openExecTodos: async () => todos }, "president"));
@@ -172,5 +185,80 @@ describe("runMyOpenTasks exec to-dos", () => {
   it("never includes them for non-execs", async () => {
     const r = await runMyOpenTasks(deps({ openExecTodos: async () => todos }));
     expect(r.items).toEqual([]);
+  });
+});
+
+const task = (over: object) => ({
+  id: "t", task_name: "Memo", due_date: null, status: "not_started", priority: "medium", task_type: "other",
+  project_id: "p1", project: "Acme", assignee_id: "u2", assignee: "Priya Patel", ...over,
+});
+const qp = [{ id: "p1", client_name: "Acme Corp", status: "issue_tree", health: "on_track", deadline: null, pm: null, sc: null }];
+const dir = [
+  { id: "u2", name: "Priya Patel", role: "Consultant", team: "Acme Corp" },
+  { id: "u3", name: "Sam Lee", role: "Consultant", team: null },
+  { id: "u4", name: "Sam Wong", role: "Consultant", team: null },
+];
+
+describe("runTasks", () => {
+  it("resolves the assignee by name, hides done tasks by default and can filter overdue", async () => {
+    const seen: unknown[] = [];
+    const data = {
+      quarterProjects: async () => qp,
+      directory: async () => dir,
+      tasks: async (_q: string, f: unknown) => {
+        seen.push(f);
+        return [task({ id: "1", due_date: "2026-10-01" }), task({ id: "2", status: "done" }), task({ id: "3", due_date: "2026-12-01" })];
+      },
+    };
+    const r = await runTasks(deps(data), { assignee: "priya", overdueOnly: true }, "2026-10-07");
+    expect(seen).toEqual([{ assigneeId: "u2" }]);
+    expect(r.items).toHaveLength(1);
+  });
+  it("tells the model when a name is ambiguous instead of guessing", async () => {
+    const r = await runTasks(deps({ directory: async () => dir }), { assignee: "Sam" }, "2026-10-07");
+    expect(r.items).toEqual([]);
+    expect(r.note).toMatch(/more than one person/i);
+  });
+});
+
+describe("runProjectDetail", () => {
+  it("summarizes tasks and team for one project", async () => {
+    const r = await runProjectDetail(
+      deps({
+        quarterProjects: async () => qp,
+        tasks: async () => [task({ id: "1", due_date: "2026-10-01" }), task({ id: "2", status: "done" })],
+        projectDetail: async () => ({ id: "p1", client_name: "Acme Corp", status: "issue_tree", health: "at_risk", deadline: null, pm: "Pat", sc: "Sue", members: [{ name: "Pat", team_role: "pm" }, { name: "Ann", team_role: "member" }] }),
+      }),
+      "acme",
+      "2026-10-07",
+    );
+    expect(r).toMatchObject({ client: "Acme Corp", tasksOpen: 1, tasksDone: 1, tasksOverdue: 1, team: "Pat (PM), Ann" });
+  });
+  it("returns a note for an unknown project", async () => {
+    expect(await runProjectDetail(deps({ quarterProjects: async () => qp }), "zzz", "2026-10-07")).toEqual({ note: expect.stringMatching(/no project/i) });
+  });
+});
+
+describe("runWiki", () => {
+  const pages = [
+    { title: "Onboarding", slug: "onboarding", section: "consultant", body: "Welcome to **180**", updated_at: "2026-09-01T00:00:00Z" },
+    { title: "PM Playbook", slug: "pm", section: "pm", body: "How to run a project", updated_at: "2026-09-02T00:00:00Z" },
+  ];
+  it("asks the data layer for PM pages only for elevated roles", async () => {
+    const asked: boolean[] = [];
+    const wikiPages = async (v: boolean) => (asked.push(v), pages);
+    await runWiki(deps({ wikiPages }), "x", false);
+    await runWiki(deps({ wikiPages }, "project_manager"), "x", false);
+    expect(asked).toEqual([false, true]);
+  });
+  it("returns page text when asked to read, with markdown stripped", async () => {
+    const r = (await runWiki(deps({ wikiPages: async () => pages }), "onboarding", true)) as { content: string };
+    expect(r.content).toBe("Welcome to 180");
+  });
+});
+
+describe("runMemberStats", () => {
+  it("is exec only", async () => {
+    expect((await runMemberStats(deps({}), "overdue")).note).toMatch(/only available to execs/i);
   });
 });

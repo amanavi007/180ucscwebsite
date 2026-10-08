@@ -3,11 +3,20 @@ import { z } from "zod";
 import { getOrgTodayDateString } from "@/lib/date";
 import type { Area } from "../routing";
 import {
+  runActivityLog,
   runAttendanceReport,
   runDirectory,
   runMyAttendance,
   runMyOpenTasks,
   runMyProjects,
+  runMemberStats,
+  runNeedsAttention,
+  runNotifications,
+  runProjectDetail,
+  runQuickLinks,
+  runSearch,
+  runTasks,
+  runWiki,
   runQuarterProjects,
   runTopApplicants,
   runUpcomingEvents,
@@ -88,6 +97,81 @@ export function buildReadTools(areas: Area[], deps: ToolDeps): ToolSet {
       execute: () => runTopApplicants(deps),
     });
   }
+  if (areas.includes("projects")) {
+    tools.project_detail = tool({
+      description: "Everything about ONE project by client name: status, health, deadline, PM/SC, team, task counts, overdue and next tasks.",
+      inputSchema: z.object({ project: z.string().describe("Client/project name") }),
+      toModelOutput,
+      execute: ({ project }) => runProjectDetail(deps, project, getOrgTodayDateString()),
+    });
+  }
+  if (areas.includes("tasks")) {
+    tools.tasks = tool({
+      description:
+        "Tasks across the team, filterable by project name, assignee name, status or overdue. For the user's OWN tasks use my_open_tasks instead.",
+      inputSchema: z.object({
+        project: z.string().optional(),
+        assignee: z.string().optional().describe("Person's name"),
+        status: z.enum(["not_started", "in_progress", "done"]).optional().describe("Omit for all open tasks"),
+        overdue_only: z.boolean().optional(),
+      }),
+      toModelOutput,
+      execute: (f) => runTasks(deps, { project: f.project, assignee: f.assignee, status: f.status, overdueOnly: f.overdue_only }, getOrgTodayDateString()),
+    });
+  }
+  if (areas.includes("wiki")) {
+    tools.resources = tool({
+      description:
+        "Search the Resources wiki (guides, templates, policies). Set read=true to get the text of the best-matching page.",
+      inputSchema: z.object({ query: z.string(), read: z.boolean().optional() }),
+      toModelOutput,
+      execute: ({ query, read }) => runWiki(deps, query, !!read),
+    });
+  }
+  if (areas.includes("links")) {
+    tools.quick_links = tool({
+      description: "The portal's quick links (title, url, category). Optional text filter.",
+      inputSchema: z.object({ query: z.string().optional() }),
+      toModelOutput,
+      execute: ({ query }) => runQuickLinks(deps, query),
+    });
+  }
+  if (areas.includes("notifications")) {
+    tools.notifications = tool({
+      description: "The user's recent notifications.",
+      inputSchema: empty,
+      toModelOutput,
+      execute: () => runNotifications(deps),
+    });
+  }
+  if (areas.includes("search")) {
+    tools.search = tool({
+      description: "Search projects, tasks, resources pages and people by name when no other tool fits.",
+      inputSchema: z.object({ query: z.string().min(2) }),
+      toModelOutput,
+      execute: ({ query }) => runSearch(deps, query),
+    });
+  }
+  if (areas.includes("admin")) {
+    tools.member_stats = tool({
+      description: "Exec only: per-member attendance and task completion/overdue counts for the quarter.",
+      inputSchema: z.object({ sort_by: z.enum(["overdue", "attendance", "completion"]).optional() }),
+      toModelOutput,
+      execute: ({ sort_by }) => runMemberStats(deps, sort_by ?? "overdue"),
+    });
+    tools.activity_log = tool({
+      description: "Exec only: recent activity/audit log (who did what).",
+      inputSchema: empty,
+      toModelOutput,
+      execute: () => runActivityLog(deps),
+    });
+    tools.needs_attention = tool({
+      description: "Exec only: items needing attention (low attendance, unfinalized team plan, pending team-page submissions).",
+      inputSchema: empty,
+      toModelOutput,
+      execute: () => runNeedsAttention(deps),
+    });
+  }
   return tools;
 }
 
@@ -99,6 +183,6 @@ export function buildTools(
   const actor: Actor = { id: deps.profile.id, role: deps.profile.role };
   return {
     ...buildReadTools(areas, deps),
-    ...(areas.includes("actions") ? buildWriteTools(actor, ctx.threadId, ctx.store) : {}),
+    ...(areas.includes("actions") ? buildWriteTools(actor, ctx.threadId, ctx.store, deps) : {}),
   };
 }

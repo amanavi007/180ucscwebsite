@@ -192,11 +192,11 @@ export function ChatPanel({
                         const toolPart = part as { type: string; state: string; output?: unknown };
                         const toolName = toolPart.type.slice("tool-".length);
                         if (toolPart.state !== "output-available") {
-                          return toolName === "propose_exec_todo" ? null : (
+                          return toolName.startsWith("propose_") ? null : (
                             <p key={i} className="text-xs text-muted-foreground">Looking that up...</p>
                           );
                         }
-                        if (toolName === "propose_exec_todo") {
+                        if (toolName.startsWith("propose_")) {
                           const out = toolPart.output as ProposalOutput;
                           if (out.status === "awaiting_user_approval" && out.proposalId && out.preview) {
                             return <ProposalCard key={i} proposalId={out.proposalId} preview={out.preview} />;

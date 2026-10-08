@@ -1,4 +1,16 @@
-export type Area = "projects" | "tasks" | "events" | "recruitment" | "attendance" | "people" | "actions";
+export type Area =
+  | "projects"
+  | "tasks"
+  | "events"
+  | "recruitment"
+  | "attendance"
+  | "people"
+  | "actions"
+  | "wiki"
+  | "links"
+  | "notifications"
+  | "admin"
+  | "search";
 /** Shortcut ids are the names of the tool whose result they show. */
 export type Shortcut =
   | "my_open_tasks"
@@ -9,7 +21,7 @@ export type Shortcut =
   | "my_attendance"
   | "top_applicants";
 
-const DEFAULT_AREAS: Area[] = ["projects", "tasks", "events"];
+const DEFAULT_AREAS: Area[] = ["projects", "tasks", "events", "search"];
 
 const AREA_PATTERNS: [Area, RegExp][] = [
   ["recruitment", /\b(applicants?|recruit\w*|points?|coffee chats?|interviews?|info sessions?|candidates?)\b/i],
@@ -18,7 +30,11 @@ const AREA_PATTERNS: [Area, RegExp][] = [
   ["projects", /\b(projects?|clients?|deliverables?|deadlines?|health|team)\b/i],
   ["tasks", /\b(tasks?|to-?dos?|due|overdue|assigned)\b/i],
   ["events", /\b(events?|calendar|meetings?|schedule|upcoming)\b/i],
-  ["actions", /\b(add|create|make|new|remind|schedule)\b/i],
+  ["wiki", /\b(wiki|resources?|guides?|handbook|docs?|documentation|policy|policies|template|onboarding|how (do|to|can))\b/i],
+  ["links", /\b(links?|urls?|drive|folder|form)\b/i],
+  ["notifications", /\b(notifications?|alerts?|inbox|unread|what('s| did) i miss)\b/i],
+  ["admin", /\b(stats?|statistics|activity|audit|log|needs? attention|overdue|completion|rollup|quality)\b/i],
+  ["actions", /\b(add|create|make|new|remind|schedule|mark|complete|finish|done|reopen|change|update|set|move|assign|reassign|unassign|delete|remove|reschedule|rename|push|put)\b/i],
 ];
 
 /** Keyword routing: no extra model call. Only the matched areas' tools are sent. */

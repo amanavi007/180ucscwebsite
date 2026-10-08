@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { ACTIONS } from "./proposal-actions";
 import { isExec } from "@/lib/auth/roles";
 import type { UserRole } from "@/lib/supabase/database.types";
 
@@ -12,32 +12,10 @@ export interface ProposalStore {
 
 export interface Actor { id: string; role: UserRole }
 
-interface ProposalAction<A = unknown> {
-  requiresExec: boolean;
-  schema: z.ZodType<A>;
-  preview(args: A): string;
-  execute(args: A, ctx: { userId: string }): Promise<void>;
-}
+/** Thrown by executors when the underlying action refused (permissions, validation): the message is safe to show. */
+export class UserFacingError extends Error {}
 
-const createExecTodoSchema = z.object({
-  title: z.string().trim().min(1).max(200),
-  due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
-});
-
-/** Registry of everything the assistant may do on a user's behalf. Pieces 3/4 add entries here. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const PROPOSAL_ACTIONS: Record<string, ProposalAction<any>> = {
-  create_exec_todo: {
-    requiresExec: true,
-    schema: createExecTodoSchema,
-    preview: (a: z.infer<typeof createExecTodoSchema>) =>
-      `Add exec to-do: "${a.title}"${a.due_date ? ` (due ${a.due_date})` : ""}`,
-    // Real execution is wired in tools/write-tools.ts (user-scoped Supabase insert); replaced in tests.
-    execute: async () => {
-      throw new Error("create_exec_todo executor not registered");
-    },
-  },
-};
+export const PROPOSAL_ACTIONS = ACTIONS;
 
 export async function createProposal(
   store: ProposalStore,
@@ -83,7 +61,7 @@ export async function approveProposal(
     await action.execute(parsed.data, { userId: actor.id });
   } catch (err) {
     await store.markFailed(id, err instanceof Error ? err.message : "execution failed");
-    return { ok: false, error: "That didn't work. Nothing was changed." };
+    return { ok: false, error: err instanceof UserFacingError ? err.message : "That didn't work. Nothing was changed." };
   }
   await store.markExecuted(id, now.toISOString());
   return { ok: true };

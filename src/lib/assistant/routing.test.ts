@@ -3,7 +3,7 @@ import { matchShortcut, selectAreas } from "./routing";
 
 describe("selectAreas", () => {
   it("defaults to the cheap common areas", () => {
-    expect(selectAreas("hello there")).toEqual(["projects", "tasks", "events"]);
+    expect(selectAreas("hello there")).toEqual(["projects", "tasks", "events", "search"]);
   });
   it("routes recruitment words", () => {
     expect(selectAreas("who are the top applicants by points?")).toContain("recruitment");

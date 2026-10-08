@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { HealthBadge } from "@/components/health-badge";
 import { Badge } from "@/components/ui/badge";
 import { attendanceTone, barPercent, deadlineLabel, humanize, type Tone } from "@/lib/assistant/card-format";
@@ -47,17 +48,19 @@ function DueText({ due, today }: { due: string | null; today: string }) {
   return <span className={cn("text-xs", d.overdue ? "font-medium text-destructive" : "text-muted-foreground")}>{d.text}</span>;
 }
 
-type Task = { task: string; project: string | null; due: string | null; status: string; priority: string };
-function TasksCard({ r }: { r: Result<Task> }) {
+type Task = { task: string; project: string | null; assignee?: string | null; due: string | null; status: string; priority: string };
+function TasksCard({ r, title = "Open tasks" }: { r: Result<Task>; title?: string }) {
   const today = getOrgTodayDateString();
   return (
-    <Shell title="Open tasks" result={r}>
+    <Shell title={title} result={r}>
       {r.items?.map((t, i) => (
         <div key={i} className="flex items-center gap-3 py-2">
           <span className={cn("size-2 shrink-0 rounded-full", TASK_PRIORITY_DOT_CLASS[t.priority as TaskPriority] ?? "bg-muted")} title={`${t.priority} priority`} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">{t.task}</p>
-            {t.project && <p className="truncate text-xs text-muted-foreground">{t.project}</p>}
+            {(t.project || t.assignee) && (
+              <p className="truncate text-xs text-muted-foreground">{[t.project, t.assignee].filter(Boolean).join(" · ")}</p>
+            )}
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1">
             <Badge variant="outline" className={TASK_STATUS_BADGE_CLASS[t.status as TaskStatus]}>
@@ -205,6 +208,64 @@ function DirectoryCard({ r }: { r: Result<Person> }) {
   );
 }
 
+type Row = { primary: string; secondary?: string | null; badge?: string | null; href?: string | null };
+function ListCard({ r, title, row }: { r: Result<Record<string, unknown>>; title: string; row: (i: Record<string, unknown>) => Row }) {
+  return (
+    <Shell title={title} result={r}>
+      {r.items?.map((item, i) => {
+        const x = row(item);
+        const body = (
+          <>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{x.primary}</p>
+              {x.secondary && <p className="truncate text-xs text-muted-foreground">{x.secondary}</p>}
+            </div>
+            {x.badge && <Badge variant="outline">{x.badge}</Badge>}
+          </>
+        );
+        return x.href ? (
+          x.href.startsWith("/") ? (
+            <Link key={i} href={x.href} className="flex items-center gap-3 py-2 hover:bg-muted/50">{body}</Link>
+          ) : (
+            <a key={i} href={x.href} target="_blank" rel="noreferrer noopener" className="flex items-center gap-3 py-2 hover:bg-muted/50">{body}</a>
+          )
+        ) : (
+          <div key={i} className="flex items-center gap-3 py-2">{body}</div>
+        );
+      })}
+    </Shell>
+  );
+}
+
+const str = (v: unknown) => (v === null || v === undefined ? null : String(v));
+const safeHref = (v: unknown) => (typeof v === "string" && /^\/portal(\/|$|\?)/.test(v) ? v : null);
+
+type ProjectDetail = {
+  client?: string; status?: string; health?: string; deadline?: string | null; pm?: string | null; sc?: string | null;
+  team?: string; tasksDone?: number; tasksOpen?: number; tasksOverdue?: number; nextTasks?: string; href?: string; note?: string;
+};
+function ProjectDetailCard({ r }: { r: ProjectDetail }) {
+  const today = getOrgTodayDateString();
+  if (!r.client) {
+    return <div className="w-full max-w-xl rounded-lg border bg-card p-3 text-sm text-muted-foreground">{r.note ?? "Project not found."}</div>;
+  }
+  const href = safeHref(r.href);
+  return (
+    <div className="w-full max-w-xl space-y-2 rounded-lg border bg-card p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          {href ? <Link href={href} className="truncate text-sm font-semibold hover:underline">{r.client}</Link> : <p className="truncate text-sm font-semibold">{r.client}</p>}
+          <p className="text-xs text-muted-foreground">{humanize(r.status ?? "")}{r.deadline ? ` · due ` : ""}{r.deadline && <DueText due={r.deadline} today={today} />}</p>
+        </div>
+        {r.health && <HealthBadge health={r.health as ProjectHealth} />}
+      </div>
+      <p className="text-xs text-muted-foreground">PM {r.pm ?? "—"} · SC {r.sc ?? "—"}</p>
+      <p className="text-xs"><span className="font-medium">{r.tasksOpen ?? 0}</span> open · <span className="font-medium">{r.tasksDone ?? 0}</span> done{(r.tasksOverdue ?? 0) > 0 && <span className="font-medium text-destructive"> · {r.tasksOverdue} overdue</span>}</p>
+      {r.team && <p className="text-xs text-muted-foreground">Team: {r.team}</p>}
+    </div>
+  );
+}
+
 /** Draws a read tool's structured result. Returns null for tools without a card (e.g. write proposals). */
 export function ToolCard({ toolName, output }: { toolName: string; output: unknown }): ReactNode {
   switch (toolName) {
@@ -224,6 +285,31 @@ export function ToolCard({ toolName, output }: { toolName: string; output: unkno
       return <ApplicantsCard r={output as Result<Applicant>} />;
     case "directory":
       return <DirectoryCard r={output as Result<Person>} />;
+    case "tasks":
+      return <TasksCard r={output as Result<Task>} title="Tasks" />;
+    case "project_detail":
+      return <ProjectDetailCard r={output as ProjectDetail} />;
+    case "resources":
+      return (output as { content?: string }).content !== undefined ? (
+        <div className="w-full max-w-xl rounded-lg border bg-card p-3">
+          <p className="text-sm font-semibold">{str((output as { title?: string }).title)}</p>
+          <p className="mt-1 whitespace-pre-line text-xs text-muted-foreground">{str((output as { content?: string }).content)}</p>
+        </div>
+      ) : (
+        <ListCard r={output as Result<Record<string, unknown>>} title="Resources" row={(i) => ({ primary: String(i.title), secondary: str(i.summary), badge: str(i.section), href: safeHref(i.href) })} />
+      );
+    case "quick_links":
+      return <ListCard r={output as Result<Record<string, unknown>>} title="Quick links" row={(i) => ({ primary: String(i.title), secondary: str(i.description) ?? str(i.url), badge: str(i.category), href: /^https?:\/\//i.test(String(i.url)) ? String(i.url) : null })} />;
+    case "notifications":
+      return <ListCard r={output as Result<Record<string, unknown>>} title="Notifications" row={(i) => ({ primary: String(i.message), badge: str(i.when), href: safeHref(i.href) })} />;
+    case "search":
+      return <ListCard r={output as Result<Record<string, unknown>>} title="Search results" row={(i) => ({ primary: String(i.title), secondary: str(i.subtitle), badge: str(i.type), href: safeHref(i.href) })} />;
+    case "member_stats":
+      return <ListCard r={output as Result<Record<string, unknown>>} title="Member stats" row={(i) => ({ primary: String(i.name), secondary: `${i.team ?? "No team"} · ${i.done}/${i.total} tasks done${Number(i.overdue) > 0 ? ` · ${i.overdue} overdue` : ""}`, badge: i.attendancePct === null ? "—" : `${i.attendancePct}%` })} />;
+    case "activity_log":
+      return <ListCard r={output as Result<Record<string, unknown>>} title="Recent activity" row={(i) => ({ primary: `${i.who}: ${String(i.action).replace(/[._]/g, " ")}`, secondary: [i.target, i.detail].filter(Boolean).join(" · "), badge: str(i.when) })} />;
+    case "needs_attention":
+      return <ListCard r={output as Result<Record<string, unknown>>} title="Needs attention" row={(i) => ({ primary: String(i.label), href: safeHref(i.href) })} />;
     default:
       return null;
   }
