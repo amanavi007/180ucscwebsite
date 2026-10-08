@@ -9,7 +9,9 @@ import { logAudit } from "@/lib/audit";
 import { createQuickLink } from "@/actions/quick-links";
 import { createTask, updateTask, updateTaskDueDate } from "@/actions/tasks";
 import { PROPOSAL_ACTIONS, UserFacingError, createProposal, type Actor, type ProposalStore } from "../proposals";
+import { isExec } from "@/lib/auth/roles";
 import { findPerson, findProject, type Lookup } from "./lookup";
+import { buildAdminWriteTools, registerAdminExecutors } from "./write-tools-admin";
 import { resolveByName } from "./resolve";
 import type { ToolDeps } from "./types";
 
@@ -97,6 +99,8 @@ export function registerExecutors() {
   A.create_quick_link.execute = async (a) =>
     check(await createQuickLink({ title: a.title, url: a.url, description: a.description ?? "", category: a.category ?? "" }));
 
+  registerAdminExecutors();
+
   // Everything the assistant does on someone's behalf lands in the activity log, whichever action ran.
   for (const [name, action] of Object.entries(A)) {
     const run = action.execute;
@@ -118,7 +122,9 @@ async function withLookup<T>(l: Lookup<T>, then: (item: T) => Promise<unknown>) 
 export function buildWriteTools(actor: Actor, threadId: string | null, store: ProposalStore, deps: ToolDeps): ToolSet {
   const propose = async (name: string, args: unknown) => {
     const r = await createProposal(store, actor, threadId, name, args);
-    return r.ok ? { status: "awaiting_user_approval", proposalId: r.proposalId, preview: r.preview } : refused(r.error);
+    return r.ok
+      ? { status: "awaiting_user_approval", proposalId: r.proposalId, preview: r.preview, ...(r.warning ? { warning: r.warning } : {}) }
+      : refused(r.error);
   };
   const NOTE = " This does NOT change anything: the user must approve a card first.";
 
@@ -146,7 +152,7 @@ export function buildWriteTools(actor: Actor, threadId: string | null, store: Pr
     return who.ok ? ({ ok: true, id: who.item.id, label: who.item.name } as const) : who;
   }
 
-  return {
+  const core: ToolSet = {
     propose_exec_todo: tool({
       description: `Propose adding an item to the exec to-do list. Exec only.${NOTE}`,
       inputSchema: z.object({
@@ -269,4 +275,12 @@ export function buildWriteTools(actor: Actor, threadId: string | null, store: Pr
       execute: (a) => propose("create_quick_link", a),
     }),
   };
+
+  const all = { ...core, ...buildAdminWriteTools(actor, deps, propose, NOTE) };
+  if (isExec(actor.role)) return all;
+  // Everyone else only gets the tools their role can actually use: fewer tools means fewer wasted tokens and wrong picks.
+  return Object.fromEntries(Object.entries(all).filter(([name]) => NON_EXEC_TOOLS.has(name)));
 }
+
+/** Tools a PM/SC/consultant may use (the underlying actions still enforce per-project permissions). */
+const NON_EXEC_TOOLS = new Set(["propose_task", "propose_task_update", "propose_task_delete", "propose_project_status", "propose_project_member", "propose_project_health", "propose_attendance"]);

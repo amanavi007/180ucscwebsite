@@ -23,7 +23,7 @@ class ThreadHolder {
   }
 }
 
-type ProposalOutput = { status?: string; proposalId?: string; preview?: string };
+type ProposalOutput = { status?: string; proposalId?: string; preview?: string; warning?: string };
 
 export function ChatPanel({
   greeting,
@@ -199,7 +199,7 @@ export function ChatPanel({
                         if (toolName.startsWith("propose_")) {
                           const out = toolPart.output as ProposalOutput;
                           if (out.status === "awaiting_user_approval" && out.proposalId && out.preview) {
-                            return <ProposalCard key={i} proposalId={out.proposalId} preview={out.preview} />;
+                            return <ProposalCard key={i} proposalId={out.proposalId} preview={out.preview} warning={out.warning} />;
                           }
                           return null;
                         }

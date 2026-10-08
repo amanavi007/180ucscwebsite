@@ -7,6 +7,8 @@ export type Area =
   | "people"
   | "actions"
   | "wiki"
+  | "guide"
+  | "scheduling"
   | "links"
   | "notifications"
   | "admin"
@@ -21,19 +23,21 @@ export type Shortcut =
   | "my_attendance"
   | "top_applicants";
 
-const DEFAULT_AREAS: Area[] = ["projects", "tasks", "events", "search"];
+const DEFAULT_AREAS: Area[] = ["projects", "tasks", "events", "search", "wiki"];
 
 const AREA_PATTERNS: [Area, RegExp][] = [
   ["recruitment", /\b(applicants?|recruit\w*|points?|coffee chats?|interviews?|info sessions?|candidates?)\b/i],
   ["attendance", /\b(attendance|absent|absences?|tardy|tardies|late|present|no-?shows?)\b/i],
-  ["people", /\b(who|members?|roster|directory|pm|project managers?|consultants?|execs?|president|directors?)\b/i],
+  ["people", /\b(who|members?|roster|directory|pm|project managers?|consultants?|execs?|president|directors?|alumni|alum)\b/i],
   ["projects", /\b(projects?|clients?|deliverables?|deadlines?|health|team)\b/i],
   ["tasks", /\b(tasks?|to-?dos?|due|overdue|assigned)\b/i],
-  ["events", /\b(events?|calendar|meetings?|schedule|upcoming)\b/i],
+  ["events", /\b(events?|calendar|meetings?|meeting days?|schedule|upcoming)\b/i],
+  ["guide", /\b(what should i (do|work|focus)|next steps?|stuck|where (do|should) i (start|begin)|what'?s next|walk me through|get started)\b/i],
+  ["scheduling", /\b(coffee chats?|interviews?|bookings?|booked|client meetings?|slots?)\b/i],
   ["wiki", /\b(wiki|resources?|guides?|handbook|docs?|documentation|policy|policies|template|onboarding|how (do|to|can))\b/i],
   ["links", /\b(links?|urls?|drive|folder|form)\b/i],
   ["notifications", /\b(notifications?|alerts?|inbox|unread|what('s| did) i miss)\b/i],
-  ["admin", /\b(stats?|statistics|activity|audit|log|needs? attention|overdue|completion|rollup|quality)\b/i],
+  ["admin", /\b(stats?|statistics|activity|audit|log|needs? attention|overdue|completion|rollup|quality|quarters?|clients?|plans?|team builder)\b/i],
   ["actions", /\b(add|create|make|new|remind|schedule|mark|complete|finish|done|reopen|change|update|set|move|assign|reassign|unassign|delete|remove|reschedule|rename|push|put)\b/i],
 ];
 

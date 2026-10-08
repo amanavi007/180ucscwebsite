@@ -1,4 +1,5 @@
 import { ACTIONS } from "./proposal-actions";
+import { ADMIN_ACTIONS } from "./proposal-actions-admin";
 import { isExec } from "@/lib/auth/roles";
 import type { UserRole } from "@/lib/supabase/database.types";
 
@@ -15,7 +16,7 @@ export interface Actor { id: string; role: UserRole }
 /** Thrown by executors when the underlying action refused (permissions, validation): the message is safe to show. */
 export class UserFacingError extends Error {}
 
-export const PROPOSAL_ACTIONS = ACTIONS;
+export const PROPOSAL_ACTIONS = { ...ACTIONS, ...ADMIN_ACTIONS };
 
 export async function createProposal(
   store: ProposalStore,
@@ -23,7 +24,7 @@ export async function createProposal(
   threadId: string | null,
   toolName: string,
   rawArgs: unknown,
-): Promise<{ ok: true; proposalId: string; preview: string } | { ok: false; error: string }> {
+): Promise<{ ok: true; proposalId: string; preview: string; warning?: string } | { ok: false; error: string }> {
   const action = PROPOSAL_ACTIONS[toolName];
   if (!action) return { ok: false, error: "That action isn't available." };
   if (action.requiresExec && !isExec(actor.role)) return { ok: false, error: "Only execs can do that." };
@@ -31,7 +32,7 @@ export async function createProposal(
   if (!parsed.success) return { ok: false, error: "Those details aren't valid." };
   const preview = action.preview(parsed.data);
   const { id } = await store.insert({ userId: actor.id, threadId, tool: toolName, args: parsed.data, preview });
-  return { ok: true, proposalId: id, preview };
+  return { ok: true, proposalId: id, preview, ...(action.warning ? { warning: action.warning } : {}) };
 }
 
 export async function approveProposal(

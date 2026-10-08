@@ -3,7 +3,7 @@ import { matchShortcut, selectAreas } from "./routing";
 
 describe("selectAreas", () => {
   it("defaults to the cheap common areas", () => {
-    expect(selectAreas("hello there")).toEqual(["projects", "tasks", "events", "search"]);
+    expect(selectAreas("hello there")).toEqual(["projects", "tasks", "events", "search", "wiki"]);
   });
   it("routes recruitment words", () => {
     expect(selectAreas("who are the top applicants by points?")).toContain("recruitment");
@@ -14,6 +14,14 @@ describe("selectAreas", () => {
   it("routes attendance and people questions", () => {
     expect(selectAreas("who has the worst attendance right now")).toContain("attendance");
     expect(selectAreas("who is on the Acme team?")).toContain("people");
+  });
+  it("sends how-to questions to the guide", () => {
+    expect(selectAreas("how do I build an issue tree?")).toContain("wiki");
+    expect(selectAreas("what should I do next on my project")).toContain("guide");
+  });
+  it("routes write verbs to actions and scheduling words to scheduling", () => {
+    expect(selectAreas("mark the memo task done")).toContain("actions");
+    expect(selectAreas("who has an interview booked")).toContain("scheduling");
   });
   it("never returns an empty list", () => {
     expect(selectAreas("").length).toBeGreaterThan(0);

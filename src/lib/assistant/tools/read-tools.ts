@@ -1,11 +1,13 @@
 import { isElevatedOrAbove, isExec } from "@/lib/auth/roles";
 import { findPerson, findProject } from "./lookup";
+import { resolveByName } from "./resolve";
+import { searchWiki, wikiHref } from "./wiki-search";
 import type { ReadResult, ToolDeps } from "./types";
 
-function capped<T>(rows: T[], cap: number, note?: string): ReadResult<T> {
+export function capped<T>(rows: T[], cap: number, note?: string): ReadResult<T> {
   return { items: rows.slice(0, cap), total: rows.length, truncated: rows.length > cap, ...(note ? { note } : {}) };
 }
-const empty = <T,>(note: string): ReadResult<T> => ({ items: [], total: 0, truncated: false, note });
+export const empty = <T,>(note: string): ReadResult<T> => ({ items: [], total: 0, truncated: false, note });
 
 export async function runMyOpenTasks(deps: ToolDeps) {
   const quarter = await deps.data.activeQuarter();
@@ -37,9 +39,13 @@ export async function runMyProjects(deps: ToolDeps) {
   return capped(compact, deps.rowCap, compact.length === 0 ? "You are not on any projects this quarter (no projects found)." : undefined);
 }
 
-export async function runUpcomingEvents(deps: ToolDeps, todayIso: string) {
+export async function runUpcomingEvents(deps: ToolDeps, todayIso: string, opts: { days?: number; query?: string } = {}) {
+  const needle = opts.query?.trim().toLowerCase();
+  const until = opts.days ? new Date(Date.parse(`${todayIso}T00:00:00Z`) + opts.days * 86_400_000).toISOString().slice(0, 10) : null;
   const rows = (await deps.data.upcomingEvents())
     .filter((e) => e.date >= todayIso)
+    .filter((e) => !until || e.date <= until)
+    .filter((e) => !needle || `${e.title} ${e.type} ${e.location ?? ""}`.toLowerCase().includes(needle))
     .sort((a, b) => a.date.localeCompare(b.date));
   return capped(
     rows.map((e) => ({ date: e.date, title: e.title, type: e.type, time: e.time, location: e.location })),
@@ -185,27 +191,58 @@ export async function runProjectDetail(deps: ToolDeps, query: string, todayIso: 
   };
 }
 
-const snippet = (body: string, max: number) => {
-  const flat = body.replace(/[#*_`>\[\]]/g, "").replace(/\s+/g, " ").trim();
-  return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
+const flat = (body: string, max: number) => {
+  const text = body.replace(/^#{1,6}\s+/gm, "").replace(/\s+/g, " ").trim();
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 };
 
-/** Search wiki titles and bodies. With `read: true` and one hit, returns that page's text. */
+/**
+ * The Resources wiki as the consultants' guide. A question returns the best-matching passages from up to
+ * three pages (so the model can answer from them and cite the page); `read` returns one page's full text.
+ */
 export async function runWiki(deps: ToolDeps, query: string, read: boolean) {
-  const needle = query.trim().toLowerCase();
   const pages = await deps.data.wikiPages(isElevatedOrAbove(deps.profile.role));
-  const hits = pages
-    .filter((p) => !needle || p.title.toLowerCase().includes(needle) || p.body.toLowerCase().includes(needle))
-    .sort((a, b) => Number(b.title.toLowerCase().includes(needle)) - Number(a.title.toLowerCase().includes(needle)));
-  if (read && hits.length > 0) {
-    const p = hits[0];
-    return { title: p.title, section: p.section, updated: p.updated_at.slice(0, 10), content: snippet(p.body, 1800), href: `/portal/resources?section=${p.section}&page=${p.slug}` };
+  if (read) {
+    const exact = resolveByName(query, pages, (p) => p.title);
+    const page = exact.kind === "one" ? exact.item : exact.kind === "many" ? exact.items[0] : searchWiki(pages, query, { maxPages: 1 }).map((h) => pages.find((p) => p.slug === h.slug && p.section === h.section)!)[0];
+    if (!page) return { note: "No resources page matches that." };
+    return { title: page.title, section: page.section, updated: page.updated_at.slice(0, 10), content: flat(page.body, 6000), href: wikiHref(page.section, page.slug) };
   }
+  const hits = searchWiki(pages, query);
   return capped(
-    hits.map((p) => ({ title: p.title, section: p.section, summary: snippet(p.body, 120), href: `/portal/resources?section=${p.section}&page=${p.slug}` })),
+    hits.map((h) => ({ title: h.title, section: h.section, excerpt: h.excerpt, href: wikiHref(h.section, h.slug) })),
     deps.rowCap,
-    hits.length === 0 ? "No resources pages match." : undefined,
+    hits.length === 0 ? "No resources page covers that. Say so; do not invent a process, and suggest asking a PM or exec." : undefined,
   );
+}
+
+/** "What should I do now?": each of the user's projects with its stage, nearest tasks, and the guide passage for that stage. */
+export async function runNextSteps(deps: ToolDeps, todayIso: string) {
+  const quarter = await deps.data.activeQuarter();
+  if (!quarter) return empty<never>("There is no active quarter yet.");
+  const [projects, tasks, pages] = await Promise.all([
+    deps.data.myProjects(deps.profile.id, quarter.id),
+    deps.data.myOpenTasks(deps.profile.id, quarter.id),
+    deps.data.wikiPages(isElevatedOrAbove(deps.profile.role)),
+  ]);
+  const rows = projects.map((p) => {
+    const mine = tasks
+      .filter((t) => t.project?.client_name === p.client_name)
+      .sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"));
+    const stage = p.status.replace(/_/g, " ");
+    const guide = searchWiki(pages, stage, { maxPages: 1, excerptChars: 450 })[0];
+    return {
+      project: p.client_name,
+      stage,
+      health: p.health,
+      deadline: p.deadline,
+      overdue: mine.filter((t) => t.due_date !== null && t.due_date < todayIso).length,
+      nextTasks: mine.slice(0, 3).map((t) => `${t.task_name}${t.due_date ? ` (due ${t.due_date})` : ""}`).join("; ") || "none open",
+      guide: guide ? `${guide.title}: ${guide.excerpt}` : null,
+      guideHref: guide ? wikiHref(guide.section, guide.slug) : null,
+    };
+  });
+  return capped(rows, deps.rowCap, rows.length === 0 ? "You are not on any projects this quarter." : undefined);
 }
 
 export async function runQuickLinks(deps: ToolDeps, query: string | undefined) {

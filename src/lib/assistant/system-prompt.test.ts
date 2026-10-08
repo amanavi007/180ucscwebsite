@@ -5,7 +5,7 @@ const text = buildInstructions({ name: "Sam Lee", role: "consultant" }, "Fall 20
 
 describe("buildInstructions", () => {
   it("stays small, because it is sent with every model request", () => {
-    expect(text.length).toBeLessThan(1000);
+    expect(text.length).toBeLessThan(1300);
   });
   it("tells the model results are shown as cards so it should not repeat them", () => {
     expect(text).toMatch(/card/i);

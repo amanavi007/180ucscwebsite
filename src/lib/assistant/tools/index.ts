@@ -8,6 +8,7 @@ import {
   runDirectory,
   runMyAttendance,
   runMyOpenTasks,
+  runNextSteps,
   runMyProjects,
   runMemberStats,
   runNeedsAttention,
@@ -21,6 +22,19 @@ import {
   runTopApplicants,
   runUpcomingEvents,
 } from "./read-tools";
+import {
+  runAlumni,
+  runApplicantDetail,
+  runClients,
+  runMeetingDates,
+  runPersonDetail,
+  runProjectAttendance,
+  runQuarters,
+  runRecruitSetup,
+  runScheduling,
+  runTeamAttendanceStatus,
+  runTeamPlans,
+} from "./read-tools-more";
 import type { Actor, ProposalStore } from "../proposals";
 import { buildWriteTools } from "./write-tools";
 import { compactForModel } from "./compact";
@@ -83,10 +97,16 @@ export function buildReadTools(areas: Area[], deps: ToolDeps): ToolSet {
   }
   if (areas.includes("events")) {
     tools.upcoming_events = tool({
-      description: "List upcoming meetings, deadlines and events visible to the user.",
+      description: "List upcoming meetings, deadlines and events visible to the user. Optional: only the next N days, or a text filter.",
+      inputSchema: z.object({ days: z.number().int().min(1).max(365).optional(), query: z.string().optional() }),
+      toModelOutput,
+      execute: ({ days, query }) => runUpcomingEvents(deps, getOrgTodayDateString(), { days, query }),
+    });
+    tools.meeting_dates = tool({
+      description: "The remaining weekly meeting days this quarter.",
       inputSchema: empty,
       toModelOutput,
-      execute: () => runUpcomingEvents(deps, getOrgTodayDateString()),
+      execute: () => runMeetingDates(deps, getOrgTodayDateString()),
     });
   }
   if (areas.includes("recruitment")) {
@@ -119,10 +139,10 @@ export function buildReadTools(areas: Area[], deps: ToolDeps): ToolSet {
       execute: (f) => runTasks(deps, { project: f.project, assignee: f.assignee, status: f.status, overdueOnly: f.overdue_only }, getOrgTodayDateString()),
     });
   }
-  if (areas.includes("wiki")) {
+  if (areas.includes("wiki") || areas.includes("guide")) {
     tools.resources = tool({
       description:
-        "Search the Resources wiki (guides, templates, policies). Set read=true to get the text of the best-matching page.",
+        "The consultant guide: search the Resources wiki (how-tos, templates, policies, process). Returns the best passages with page links; set read=true to get one whole page. Use it for ANY 'how do I / what is the process' question.",
       inputSchema: z.object({ query: z.string(), read: z.boolean().optional() }),
       toModelOutput,
       execute: ({ query, read }) => runWiki(deps, query, !!read),
@@ -170,6 +190,85 @@ export function buildReadTools(areas: Area[], deps: ToolDeps): ToolSet {
       inputSchema: empty,
       toModelOutput,
       execute: () => runNeedsAttention(deps),
+    });
+  }
+  if (areas.includes("recruitment")) {
+    tools.applicant_detail = tool({
+      description: "Exec only: one applicant by name with their total and point breakdown.",
+      inputSchema: z.object({ name: z.string() }),
+      toModelOutput,
+      execute: ({ name }) => runApplicantDetail(deps, name),
+    });
+    tools.recruit_setup = tool({
+      description: "Exec only: recruitment point categories and this quarter's recruitment events.",
+      inputSchema: empty,
+      toModelOutput,
+      execute: () => runRecruitSetup(deps),
+    });
+  }
+  if (areas.includes("people")) {
+    tools.person_detail = tool({
+      description: "One person by name (or 'me'): role, team, task load, and attendance (exec or self only).",
+      inputSchema: z.object({ name: z.string() }),
+      toModelOutput,
+      execute: ({ name }) => runPersonDetail(deps, name, getOrgTodayDateString()),
+    });
+    tools.alumni = tool({
+      description: "Graduated alumni: where they work now and which projects they did. Optional text filter.",
+      inputSchema: z.object({ query: z.string().optional() }),
+      toModelOutput,
+      execute: ({ query }) => runAlumni(deps, query),
+    });
+  }
+  if (areas.includes("attendance")) {
+    tools.project_attendance = tool({
+      description: "A team's logged attendance sessions (date, who logged, excused/unexcused/tardy counts).",
+      inputSchema: z.object({ project: z.string() }),
+      toModelOutput,
+      execute: ({ project }) => runProjectAttendance(deps, project),
+    });
+    tools.team_attendance_status = tool({
+      description: "Exec only: which teams have not logged attendance for meeting days so far.",
+      inputSchema: empty,
+      toModelOutput,
+      execute: () => runTeamAttendanceStatus(deps, getOrgTodayDateString()),
+    });
+  }
+  if (areas.includes("scheduling")) {
+    tools.scheduling = tool({
+      description: "Exec only: upcoming coffee chat, interview and client-meeting bookings.",
+      inputSchema: z.object({ kind: z.enum(["coffee_chat", "interview", "client_meeting"]).optional() }),
+      toModelOutput,
+      execute: ({ kind }) => runScheduling(deps, getOrgTodayDateString(), kind),
+    });
+  }
+  if (areas.includes("admin")) {
+    tools.quarters = tool({
+      description: "Exec only: all quarters with dates and which is active.",
+      inputSchema: empty,
+      toModelOutput,
+      execute: () => runQuarters(deps),
+    });
+    tools.clients = tool({
+      description: "Exec only: client records (contact, project count, last quarter). Optional name filter.",
+      inputSchema: z.object({ query: z.string().optional() }),
+      toModelOutput,
+      execute: ({ query }) => runClients(deps, query),
+    });
+    tools.team_plans = tool({
+      description: "Exec only: Team Builder drafts for this quarter and whether each is finalized.",
+      inputSchema: empty,
+      toModelOutput,
+      execute: () => runTeamPlans(deps),
+    });
+  }
+  if (areas.includes("guide")) {
+    tools.my_next_steps = tool({
+      description:
+        "For 'what should I do now / next steps / where do I start': the user's projects with stage, nearest tasks and the Resources guide passage for that stage.",
+      inputSchema: empty,
+      toModelOutput,
+      execute: () => runNextSteps(deps, getOrgTodayDateString()),
     });
   }
   return tools;

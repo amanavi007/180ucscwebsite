@@ -266,6 +266,25 @@ function ProjectDetailCard({ r }: { r: ProjectDetail }) {
   );
 }
 
+function NoteCard({ r, title }: { r: Record<string, unknown>; title: string }) {
+  if (typeof r.note === "string") {
+    return <div className="w-full max-w-xl rounded-lg border bg-card p-3 text-sm text-muted-foreground">{r.note}</div>;
+  }
+  const { name, ...rest } = r;
+  return (
+    <div className="w-full max-w-xl space-y-1 rounded-lg border bg-card p-3">
+      <p className="text-sm font-semibold">{String(name ?? title)}</p>
+      {Object.entries(rest)
+        .filter(([, v]) => v !== null && v !== undefined && v !== "")
+        .map(([k, v]) => (
+          <p key={k} className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">{humanize(k)}:</span> {String(v)}
+          </p>
+        ))}
+    </div>
+  );
+}
+
 /** Draws a read tool's structured result. Returns null for tools without a card (e.g. write proposals). */
 export function ToolCard({ toolName, output }: { toolName: string; output: unknown }): ReactNode {
   switch (toolName) {
@@ -296,7 +315,7 @@ export function ToolCard({ toolName, output }: { toolName: string; output: unkno
           <p className="mt-1 whitespace-pre-line text-xs text-muted-foreground">{str((output as { content?: string }).content)}</p>
         </div>
       ) : (
-        <ListCard r={output as Result<Record<string, unknown>>} title="Resources" row={(i) => ({ primary: String(i.title), secondary: str(i.summary), badge: str(i.section), href: safeHref(i.href) })} />
+        <ListCard r={output as Result<Record<string, unknown>>} title="From Resources" row={(i) => ({ primary: String(i.title), secondary: str(i.excerpt)?.slice(0, 140) ?? null, badge: str(i.section), href: safeHref(i.href) })} />
       );
     case "quick_links":
       return <ListCard r={output as Result<Record<string, unknown>>} title="Quick links" row={(i) => ({ primary: String(i.title), secondary: str(i.description) ?? str(i.url), badge: str(i.category), href: /^https?:\/\//i.test(String(i.url)) ? String(i.url) : null })} />;
@@ -310,6 +329,30 @@ export function ToolCard({ toolName, output }: { toolName: string; output: unkno
       return <ListCard r={output as Result<Record<string, unknown>>} title="Recent activity" row={(i) => ({ primary: `${i.who}: ${String(i.action).replace(/[._]/g, " ")}`, secondary: [i.target, i.detail].filter(Boolean).join(" · "), badge: str(i.when) })} />;
     case "needs_attention":
       return <ListCard r={output as Result<Record<string, unknown>>} title="Needs attention" row={(i) => ({ primary: String(i.label), href: safeHref(i.href) })} />;
+    case "my_next_steps":
+      return <ListCard r={output as Result<Record<string, unknown>>} title="Your next steps" row={(i) => ({ primary: String(i.project), secondary: `${i.stage} · next: ${i.nextTasks}`, badge: Number(i.overdue) > 0 ? `${i.overdue} overdue` : str(i.health), href: safeHref(i.guideHref) })} />;
+    case "meeting_dates":
+      return <ListCard r={output as Result<Record<string, unknown>>} title="Meeting days" row={(i) => ({ primary: (() => { const d = formatDateParts(String(i.date)); return `${d.weekday}, ${d.month} ${d.day}`; })() })} />;
+    case "applicant_detail":
+      return <NoteCard r={output as Record<string, unknown>} title="Applicant" />;
+    case "person_detail":
+      return <NoteCard r={output as Record<string, unknown>} title="Person" />;
+    case "recruit_setup":
+      return <ListCard r={output as Result<Record<string, unknown>>} title="Recruitment setup" row={(i) => ({ primary: String(i.name), secondary: str(i.detail), badge: str(i.kind) })} />;
+    case "quarters":
+      return <ListCard r={output as Result<Record<string, unknown>>} title="Quarters" row={(i) => ({ primary: String(i.name), secondary: `${i.start} → ${i.end}`, badge: i.active ? "active" : null })} />;
+    case "clients":
+      return <ListCard r={output as Result<Record<string, unknown>>} title="Clients" row={(i) => ({ primary: String(i.client), secondary: `${i.projects} projects${i.lastQuarter ? ` · last ${i.lastQuarter}` : ""}`, badge: i.current ? "current" : null })} />;
+    case "alumni":
+      return <ListCard r={output as Result<Record<string, unknown>>} title="Alumni" row={(i) => ({ primary: String(i.name), secondary: [i.title, i.company].filter(Boolean).join(" at ") || str(i.projects) })} />;
+    case "scheduling":
+      return <ListCard r={output as Result<Record<string, unknown>>} title="Upcoming bookings" row={(i) => ({ primary: `${i.who}`, secondary: `${i.when}${i.execs ? ` · ${i.execs}` : ""}`, badge: str(i.type) })} />;
+    case "team_plans":
+      return <ListCard r={output as Result<Record<string, unknown>>} title="Team plans" row={(i) => ({ primary: String(i.plan), badge: str(i.status) })} />;
+    case "project_attendance":
+      return <ListCard r={output as Result<Record<string, unknown>>} title="Attendance sessions" row={(i) => ({ primary: String(i.date), secondary: `${i.unexcused} unexcused · ${i.tardy} tardy · ${i.excused} excused`, badge: str(i.takenBy) })} />;
+    case "team_attendance_status":
+      return <ListCard r={output as Result<Record<string, unknown>>} title="Teams behind on attendance" row={(i) => ({ primary: String(i.team), secondary: str(i.missingDates) ? `Missing: ${i.missingDates}` : "Not logged today" })} />;
     default:
       return null;
   }

@@ -3,6 +3,8 @@ import { z } from "zod";
 /** Pure definition of an assistant write: what it accepts, who may ask, how it reads on the approve card. */
 export interface ProposalAction<A = unknown> {
   requiresExec: boolean;
+  /** Present for irreversible or far-reaching actions: the card then asks "are you sure?" with this text. */
+  warning?: string;
   schema: z.ZodType<A>;
   preview(args: A): string;
   execute(args: A, ctx: { userId: string }): Promise<void>;

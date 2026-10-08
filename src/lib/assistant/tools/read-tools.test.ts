@@ -8,12 +8,13 @@ import {
   runProjectDetail,
   runQuarterProjects,
   runTasks,
+  runNextSteps,
   runWiki,
   runMemberStats,
   runTopApplicants,
   runUpcomingEvents,
 } from "./read-tools";
-import type { DataAccess, ToolDeps } from "./types";
+import type { DataAccess, ReadResult, ToolDeps } from "./types";
 
 const base: DataAccess = {
   activeQuarter: async () => ({ id: "q1", name: "Fall 2026" }),
@@ -35,6 +36,17 @@ const base: DataAccess = {
   memberStats: async () => [],
   activityLog: async () => [],
   attentionItems: async () => [],
+  calendarItems: async () => [],
+  applicants: async () => [],
+  recruitSetup: async () => ({ categories: [], events: [] }),
+  quarters: async () => [],
+  clients: async () => [],
+  alumni: async () => [],
+  bookings: async () => [],
+  meetingDates: async () => [],
+  teamPlans: async () => [],
+  attendanceHistory: async () => [],
+  teamAttendance: async () => [],
 };
 const deps = (over: Partial<DataAccess> = {}, role: ToolDeps["profile"]["role"] = "consultant", rowCap = 3): ToolDeps => ({
   profile: { id: "u1", name: "Sam", role },
@@ -227,7 +239,7 @@ describe("runProjectDetail", () => {
       deps({
         quarterProjects: async () => qp,
         tasks: async () => [task({ id: "1", due_date: "2026-10-01" }), task({ id: "2", status: "done" })],
-        projectDetail: async () => ({ id: "p1", client_name: "Acme Corp", status: "issue_tree", health: "at_risk", deadline: null, pm: "Pat", sc: "Sue", members: [{ name: "Pat", team_role: "pm" }, { name: "Ann", team_role: "member" }] }),
+        projectDetail: async () => ({ id: "p1", client_name: "Acme Corp", status: "issue_tree", health: "at_risk", deadline: null, pm: "Pat", sc: "Sue", members: [{ id: "m1", name: "Pat", team_role: "pm" }, { id: "m2", name: "Ann", team_role: "member" }] }),
       }),
       "acme",
       "2026-10-07",
@@ -241,8 +253,8 @@ describe("runProjectDetail", () => {
 
 describe("runWiki", () => {
   const pages = [
-    { title: "Onboarding", slug: "onboarding", section: "consultant", body: "Welcome to **180**", updated_at: "2026-09-01T00:00:00Z" },
-    { title: "PM Playbook", slug: "pm", section: "pm", body: "How to run a project", updated_at: "2026-09-02T00:00:00Z" },
+    { id: "w1", parent_id: null, title: "Onboarding", slug: "onboarding", section: "consultant", body: "Welcome to **180**", updated_at: "2026-09-01T00:00:00Z" },
+    { id: "w2", parent_id: null, title: "PM Playbook", slug: "pm", section: "pm", body: "How to run a project", updated_at: "2026-09-02T00:00:00Z" },
   ];
   it("asks the data layer for PM pages only for elevated roles", async () => {
     const asked: boolean[] = [];
@@ -251,14 +263,40 @@ describe("runWiki", () => {
     await runWiki(deps({ wikiPages }, "project_manager"), "x", false);
     expect(asked).toEqual([false, true]);
   });
-  it("returns page text when asked to read, with markdown stripped", async () => {
-    const r = (await runWiki(deps({ wikiPages: async () => pages }), "onboarding", true)) as { content: string };
-    expect(r.content).toBe("Welcome to 180");
+  it("returns the page text when asked to read", async () => {
+    const r = (await runWiki(deps({ wikiPages: async () => pages }), "onboarding", true)) as { content: string; href: string };
+    expect(r.content).toBe("Welcome to **180**");
+    expect(r.href).toBe("/portal/resources?section=consultant&page=onboarding");
+  });
+  it("answers a question with the matching passage and a link, and says so when nothing matches", async () => {
+    const hit = (await runWiki(deps({ wikiPages: async () => pages }), "how do I run a project", false)) as ReadResult<{ title: string }>;
+    expect(hit.items[0]).toMatchObject({ title: "PM Playbook" });
+    const miss = (await runWiki(deps({ wikiPages: async () => pages }), "tax filing", false)) as ReadResult<unknown>;
+    expect(miss.note).toMatch(/do not invent/i);
   });
 });
 
 describe("runMemberStats", () => {
   it("is exec only", async () => {
     expect((await runMemberStats(deps({}), "overdue")).note).toMatch(/only available to execs/i);
+  });
+});
+
+describe("runNextSteps", () => {
+  it("pairs each project's stage with its nearest tasks and the guide passage for that stage", async () => {
+    const r = await runNextSteps(
+      deps({
+        myProjects: async () => [{ id: "p1", client_name: "Acme", status: "issue_tree", health: "on_track", deadline: null }],
+        myOpenTasks: async () => [
+          { id: "t1", task_name: "Build tree", due_date: "2026-10-01", status: "in_progress", priority: "high", project: { client_name: "Acme" } },
+        ],
+        wikiPages: async () => [
+          { id: "w", parent_id: null, title: "Issue Trees", slug: "issue-trees", section: "consultant", body: "Split the problem into branches.", updated_at: "2026-09-01T00:00:00Z" },
+        ],
+      }),
+      "2026-10-07",
+    );
+    expect(r.items[0]).toMatchObject({ project: "Acme", stage: "issue tree", overdue: 1, guideHref: "/portal/resources?section=consultant&page=issue-trees" });
+    expect(String(r.items[0].guide)).toMatch(/Issue Trees/);
   });
 });
