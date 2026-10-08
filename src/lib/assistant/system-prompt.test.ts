@@ -16,6 +16,11 @@ describe("buildInstructions", () => {
     expect(text).toMatch(/untrusted/i);
     expect(text).toMatch(/approve/i);
   });
+  it("points chapter, org and method questions at the knowledge tool and portal how-tos at resources", () => {
+    expect(text).toMatch(/"knowledge"/);
+    expect(text).toMatch(/"resources"/);
+    expect(text).toMatch(/portal data wins/i);
+  });
   it("puts the per-user line last so the static prefix is identical across requests", () => {
     expect(text.endsWith("Today: 2026-10-07.")).toBe(true);
     expect(text.indexOf("Sam Lee")).toBeGreaterThan(text.indexOf("approve"));
