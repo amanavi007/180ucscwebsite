@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LogoMarquee } from "@/components/marketing/logo-marquee";
 import { CLIENTS } from "@/lib/clients";
@@ -8,8 +8,6 @@ import { ProjectTimeline } from "@/components/marketing/project-timeline";
 import { ServiceSpotlight } from "@/components/marketing/service-spotlight";
 
 export const metadata: Metadata = { title: "Our Services" };
-
-const CLIENT_FORM_URL = "https://calendly.com/d/d34j-2dp-7c7/ucsc-180-degrees-consulting-client-outreach-intro-call";
 
 // Contiguous chunks (not an interleaved i % 3 split) so that related/adjacent
 // entries -- e.g. the three separate Habitat for Humanity chapters -- land in
@@ -51,20 +49,11 @@ export default function ServicesPage() {
             <Button
               nativeButton={false}
               size="lg"
-              className="gap-1.5 rounded-full"
-              render={<a href={CLIENT_FORM_URL} target="_blank" rel="noopener noreferrer" />}
-            >
-              Become a Client
-              <ArrowUpRight className="size-4" />
-            </Button>
-            <Button
-              nativeButton={false}
-              size="lg"
-              variant="outline"
-              className="rounded-full"
+              className="h-14 gap-2 rounded-full px-8 text-lg font-bold shadow-lg shadow-primary/30"
               render={<Link href="/services/book" />}
             >
               Book an intro call
+              <ArrowRight className="size-5" />
             </Button>
           </div>
         </div>
@@ -130,26 +119,17 @@ export default function ServicesPage() {
             <h2 className="font-brand text-2xl font-bold tracking-wide uppercase sm:text-3xl">Think we could help?</h2>
             <p className="mt-2 max-w-md text-white/80">
               Tell us about your organization and what you&apos;re working
-              through. We review client applications every quarter.
+              through. Book an intro call and pick a time that works for you.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Button
                 nativeButton={false}
                 size="lg"
-                className="gap-1.5 rounded-full bg-white text-deep hover:bg-white/90"
-                render={<a href={CLIENT_FORM_URL} target="_blank" rel="noopener noreferrer" />}
-              >
-                Become a Client
-                <ArrowUpRight className="size-4" />
-              </Button>
-              <Button
-                nativeButton={false}
-                size="lg"
-                variant="outline"
-                className="rounded-full border-white/60 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                className="h-14 gap-2 rounded-full bg-white px-8 text-lg font-bold text-deep shadow-lg hover:bg-white/90"
                 render={<Link href="/services/book" />}
               >
                 Book an intro call
+                <ArrowRight className="size-5" />
               </Button>
             </div>
           </div>
