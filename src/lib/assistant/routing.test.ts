@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { matchShortcut, selectAreas } from "./routing";
 
 describe("selectAreas", () => {
-  const READS = ["projects", "tasks", "events", "recruitment", "attendance", "people", "wiki", "guide", "scheduling", "links", "notifications", "admin", "search"];
+  const READS = ["projects", "tasks", "events", "recruitment", "attendance", "people", "wiki", "guide", "knowledge", "scheduling", "links", "notifications", "admin", "search"];
   it("always offers every read tool, whatever the wording", () => {
     for (const q of ["hello there", "", "what other things should i pay attention to when formatting my slides", "who is my PM", "how many people applied", "what about tomorrow"]) {
       expect(selectAreas(q)).toEqual(expect.arrayContaining(READS));

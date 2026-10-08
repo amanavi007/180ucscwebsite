@@ -8,6 +8,7 @@ export type Area =
   | "actions"
   | "wiki"
   | "guide"
+  | "knowledge"
   | "scheduling"
   | "links"
   | "notifications"
@@ -29,7 +30,7 @@ export type Shortcut =
  * so offering them is safe; the cost is a few hundred more cached prompt tokens.
  */
 const READ_AREAS: Area[] = [
-  "projects", "tasks", "events", "recruitment", "attendance", "people", "wiki", "guide",
+  "projects", "tasks", "events", "recruitment", "attendance", "people", "wiki", "guide", "knowledge",
   "scheduling", "links", "notifications", "admin", "search",
 ];
 

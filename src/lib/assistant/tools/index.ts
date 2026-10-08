@@ -37,6 +37,7 @@ import {
 } from "./read-tools-more";
 import type { Actor, ProposalStore } from "../proposals";
 import { buildWriteTools } from "./write-tools";
+import { runKnowledge } from "./knowledge-tool";
 import { compactForModel } from "./compact";
 import type { ToolDeps } from "./types";
 
@@ -146,6 +147,15 @@ export function buildReadTools(areas: Area[], deps: ToolDeps): ToolSet {
       inputSchema: z.object({ query: z.string(), read: z.boolean().optional() }),
       toModelOutput,
       execute: ({ query, read }) => runWiki(deps, query, !!read),
+    });
+  }
+  if (areas.includes("knowledge")) {
+    tools.knowledge = tool({
+      description:
+        "Chapter knowledge base: what 180DC and UCSC are, org structure and roles, recruitment and onboarding, how a client project runs, consulting methods (issue trees, MECE…), deliverable standards, PM resources, past projects, FAQ. Use for chapter/org/method questions; use `resources` for portal how-tos and templates. Returns the best 2 passages.",
+      inputSchema: z.object({ query: z.string() }),
+      toModelOutput,
+      execute: ({ query }) => runKnowledge(deps, query),
     });
   }
   if (areas.includes("links")) {

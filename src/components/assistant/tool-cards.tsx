@@ -332,6 +332,8 @@ export function ToolCard({ toolName, output }: { toolName: string; output: unkno
       ) : (
         <ListCard r={output as Result<Record<string, unknown>>} title="From Resources" row={(i) => ({ primary: String(i.title), secondary: str(i.excerpt)?.slice(0, 140) ?? null, badge: str(i.section), href: safeHref(i.href) })} />
       );
+    case "knowledge":
+      return <ListCard r={output as Result<Record<string, unknown>>} title="From the knowledge base" row={(i) => ({ primary: String(i.title), secondary: str(i.excerpt)?.slice(0, 140) ?? null, badge: str(i.section)?.slice(0, 28) ?? null })} />;
     case "quick_links":
       return <ListCard r={output as Result<Record<string, unknown>>} title="Quick links" row={(i) => ({ primary: String(i.title), secondary: str(i.description) ?? str(i.url), badge: str(i.category), href: /^https?:\/\//i.test(String(i.url)) ? String(i.url) : null })} />;
     case "notifications":
