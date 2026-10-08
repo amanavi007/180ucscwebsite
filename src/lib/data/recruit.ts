@@ -14,6 +14,8 @@ export interface RecruitCategory {
   defaultPoints: number;
   sortOrder: number;
   archived: boolean;
+  /** Set for categories the app uses automatically (e.g. coffee chat points); these can't be archived. */
+  systemKey: string | null;
 }
 
 export interface RecruitEvent {
@@ -47,6 +49,7 @@ export interface ApplicantRow {
   major: string | null;
   year: string | null;
   notes: string;
+  applicationLink: string | null;
   hasPrevious: boolean;
   previousQuarterName: string | null;
   aliases: string[];
@@ -78,6 +81,7 @@ export async function getRecruitCategories(): Promise<RecruitCategory[]> {
     defaultPoints: Number(c.default_points),
     sortOrder: c.sort_order,
     archived: c.archived_at !== null,
+    systemKey: c.system_key,
   }));
 }
 
@@ -205,6 +209,7 @@ export async function getApplicantRows(quarterId: string): Promise<ApplicantRow[
       major: a.major,
       year: a.year,
       notes: a.notes,
+      applicationLink: a.application_link,
       hasPrevious: a.previous_applicant_id !== null,
       previousQuarterName: a.previous_applicant_id ? (previousQuarterById.get(a.previous_applicant_id) ?? null) : null,
       aliases: aliasesByApplicant.get(a.id) ?? [],

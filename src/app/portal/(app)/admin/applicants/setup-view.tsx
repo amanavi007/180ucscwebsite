@@ -6,6 +6,9 @@ import { toast } from "sonner";
 import { ArrowDown, ArrowUp, Archive, ArchiveRestore, Pencil, Plus, Trash2 } from "lucide-react";
 import { deleteEventAction, reorderCategoriesAction, setCategoryArchivedAction } from "@/actions/recruit";
 import type { RecruitCategory, RecruitEvent } from "@/lib/data/recruit";
+import type { RubricRow } from "@/lib/data/recruit-scoring";
+import type { RecruitSettings } from "@/lib/recruit-settings";
+import type { Stage } from "@/lib/recruit-scoring";
 import { RECRUIT_SECTIONS, formatPoints } from "@/lib/recruit";
 import { formatDateLong } from "@/lib/date";
 import { Badge } from "@/components/ui/badge";
@@ -13,15 +16,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CategoryDialog } from "./category-dialog";
 import { EventDialog } from "./event-dialog";
+import { RubricEditor, ScoringSettingsCard } from "./rubric-editor";
 
 export function SetupView({
   quarterId,
   categories,
   events,
+  rubrics,
+  settings,
 }: {
   quarterId: string;
   categories: RecruitCategory[];
   events: RecruitEvent[];
+  rubrics: Record<Stage, RubricRow>;
+  settings: RecruitSettings;
 }) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -95,15 +103,21 @@ export function SetupView({
                     </Button>
                   }
                 />
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  aria-label={`Archive ${c.name}`}
-                  disabled={isPending}
-                  onClick={() => run(() => setCategoryArchivedAction(c.id, true), `${c.name} archived.`)}
-                >
-                  <Archive />
-                </Button>
+                {c.systemKey ? (
+                  <Badge variant="outline" title="The portal uses this category automatically, so it can be renamed but not archived.">
+                    Used automatically
+                  </Badge>
+                ) : (
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label={`Archive ${c.name}`}
+                    disabled={isPending}
+                    onClick={() => run(() => setCategoryArchivedAction(c.id, true), `${c.name} archived.`)}
+                  >
+                    <Archive />
+                  </Button>
+                )}
               </li>
             ))}
             {active.length === 0 && <li className="p-3 text-sm text-muted-foreground">No categories yet. Add the first one.</li>}
@@ -178,6 +192,9 @@ export function SetupView({
           )}
         </CardContent>
       </Card>
+      <RubricEditor rubric={rubrics.resume} />
+      <RubricEditor rubric={rubrics.interview} />
+      <ScoringSettingsCard settings={settings} />
     </div>
   );
 }

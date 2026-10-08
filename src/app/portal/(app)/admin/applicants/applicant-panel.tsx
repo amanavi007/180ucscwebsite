@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { updateApplicantAction, voidPointsAction } from "@/actions/recruit";
 import type { ApplicantRow } from "@/lib/data/recruit";
 import { formatPoints } from "@/lib/recruit";
+import type { StageSummary } from "@/lib/recruit-scoring";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,27 +17,50 @@ export function ApplicantPanel({
   applicant,
   onClose,
   onGivePoints,
+  summaries,
+  disagreementThreshold,
 }: {
   applicant: ApplicantRow | null;
   onClose: () => void;
   onGivePoints: () => void;
+  summaries: { resume?: StageSummary; interview?: StageSummary };
+  disagreementThreshold: number;
 }) {
   return (
     <Sheet open={!!applicant} onOpenChange={(open) => !open && onClose()}>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
         {/* Keyed by applicant so switching people resets the edit drafts without effects. */}
-        {applicant && <PanelBody key={applicant.id} applicant={applicant} onGivePoints={onGivePoints} />}
+        {applicant && (
+          <PanelBody
+            key={applicant.id}
+            applicant={applicant}
+            onGivePoints={onGivePoints}
+            summaries={summaries}
+            disagreementThreshold={disagreementThreshold}
+          />
+        )}
       </SheetContent>
     </Sheet>
   );
 }
 
-function PanelBody({ applicant, onGivePoints }: { applicant: ApplicantRow; onGivePoints: () => void }) {
+function PanelBody({
+  applicant,
+  onGivePoints,
+  summaries,
+  disagreementThreshold,
+}: {
+  applicant: ApplicantRow;
+  onGivePoints: () => void;
+  summaries: { resume?: StageSummary; interview?: StageSummary };
+  disagreementThreshold: number;
+}) {
   const [name, setName] = useState(applicant.name);
   const [email, setEmail] = useState(applicant.email ?? "");
   const [major, setMajor] = useState(applicant.major ?? "");
   const [year, setYear] = useState(applicant.year ?? "");
   const [notes, setNotes] = useState(applicant.notes);
+  const [applicationLink, setApplicationLink] = useState(applicant.applicationLink ?? "");
   const [voidingId, setVoidingId] = useState<string | null>(null);
   const [voidReason, setVoidReason] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -47,11 +71,12 @@ function PanelBody({ applicant, onGivePoints }: { applicant: ApplicantRow; onGiv
     email !== (applicant.email ?? "") ||
     major !== (applicant.major ?? "") ||
     year !== (applicant.year ?? "") ||
-    notes !== applicant.notes;
+    notes !== applicant.notes ||
+    applicationLink !== (applicant.applicationLink ?? "");
 
   function save() {
     startTransition(async () => {
-      const result = await updateApplicantAction(applicant.id, { name, email, major, year, notes });
+      const result = await updateApplicantAction(applicant.id, { name, email, major, year, notes, applicationLink });
       if (result.error) {
         toast.error(result.error);
         return;
@@ -104,9 +129,36 @@ function PanelBody({ applicant, onGivePoints }: { applicant: ApplicantRow; onGiv
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
+          <Input
+            aria-label="Application link"
+            placeholder="Link to their application (Google Doc, Drive, etc.)"
+            value={applicationLink}
+            onChange={(e) => setApplicationLink(e.target.value)}
+          />
           <Button variant="outline" size="sm" disabled={!dirty || isPending} onClick={save}>
             Save changes
           </Button>
+        </section>
+
+        <section className="space-y-2">
+          <h3 className="text-sm font-medium">Scores</h3>
+          {(["resume", "interview"] as const).map((s) => {
+            const summary = summaries[s];
+            return (
+              <div key={s} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-2.5 text-sm">
+                <span className="capitalize">{s}</span>
+                {summary ? (
+                  <span className="flex items-center gap-2 tabular-nums">
+                    raw {summary.raw.toFixed(2)} · adjusted {summary.normalized.toFixed(2)} · {summary.count} review
+                    {summary.count === 1 ? "" : "s"}
+                    {summary.count >= 2 && summary.spread >= disagreementThreshold && <Badge variant="destructive">disagree</Badge>}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">not scored yet</span>
+                )}
+              </div>
+            );
+          })}
         </section>
 
         <section className="space-y-2">

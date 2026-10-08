@@ -749,6 +749,8 @@ export interface Database {
           previous_applicant_id: string | null;
           merged_into_id: string | null;
           archived_at: string | null;
+          created_by_batch_id: string | null;
+          application_link: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -760,6 +762,8 @@ export interface Database {
           major?: string | null;
           year?: string | null;
           notes?: string;
+          created_by_batch_id?: string | null;
+          application_link?: string | null;
           previous_applicant_id?: string | null;
           merged_into_id?: string | null;
           archived_at?: string | null;
@@ -783,6 +787,7 @@ export interface Database {
           default_points: number;
           sort_order: number;
           archived_at: string | null;
+          system_key: string | null;
           created_at: string;
         };
         Insert: {
@@ -792,9 +797,100 @@ export interface Database {
           default_points?: number;
           sort_order?: number;
           archived_at?: string | null;
+          system_key?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["recruit_categories"]["Insert"]>;
+        Relationships: [];
+      };
+      recruit_rubrics: {
+        Row: { id: string; stage: "resume" | "interview"; scale_min: number; scale_max: number; updated_at: string };
+        Insert: { id?: string; stage: "resume" | "interview"; scale_min?: number; scale_max?: number; updated_at?: string };
+        Update: Partial<Database["public"]["Tables"]["recruit_rubrics"]["Insert"]>;
+        Relationships: [];
+      };
+      recruit_rubric_criteria: {
+        Row: {
+          id: string;
+          rubric_id: string;
+          name: string;
+          description: string;
+          weight: number;
+          sort_order: number;
+          archived_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          rubric_id: string;
+          name: string;
+          description?: string;
+          weight?: number;
+          sort_order?: number;
+          archived_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["recruit_rubric_criteria"]["Insert"]>;
+        Relationships: [];
+      };
+      recruit_reviews: {
+        Row: {
+          id: string;
+          applicant_id: string;
+          stage: "resume" | "interview";
+          reviewer_id: string;
+          comment: string;
+          submitted_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          applicant_id: string;
+          stage: "resume" | "interview";
+          reviewer_id: string;
+          comment?: string;
+          submitted_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["recruit_reviews"]["Insert"]>;
+        Relationships: [];
+      };
+      recruit_review_scores: {
+        Row: { id: string; review_id: string; criterion_id: string; score: number };
+        Insert: { id?: string; review_id: string; criterion_id: string; score: number };
+        Update: Partial<Database["public"]["Tables"]["recruit_review_scores"]["Insert"]>;
+        Relationships: [];
+      };
+      recruit_ignored_names: {
+        Row: { id: string; quarter_id: string; name: string; created_at: string };
+        Insert: { id?: string; quarter_id: string; name: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["recruit_ignored_names"]["Insert"]>;
+        Relationships: [];
+      };
+      recruit_booking_links: {
+        Row: {
+          id: string;
+          booking_kind: "coffee_chat" | "interview";
+          booking_id: string;
+          applicant_id: string;
+          status: "attended" | "no_show" | "excused";
+          points_id: string | null;
+          marked_by: string | null;
+          marked_at: string;
+        };
+        Insert: {
+          id?: string;
+          booking_kind: "coffee_chat" | "interview";
+          booking_id: string;
+          applicant_id: string;
+          status: "attended" | "no_show" | "excused";
+          points_id?: string | null;
+          marked_by?: string | null;
+          marked_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["recruit_booking_links"]["Insert"]>;
         Relationships: [];
       };
       recruit_events: {
@@ -850,6 +946,7 @@ export interface Database {
           absorbed_id: string;
           moved_point_ids: string[];
           moved_alias_ids: string[];
+          moved_link_ids: string[];
           added_alias_id: string | null;
           survivor_before: Record<string, string | null>;
           created_at: string;
@@ -861,6 +958,7 @@ export interface Database {
           absorbed_id: string;
           moved_point_ids?: string[];
           moved_alias_ids?: string[];
+          moved_link_ids?: string[];
           added_alias_id?: string | null;
           survivor_before: Record<string, string | null>;
           created_at?: string;
@@ -1061,6 +1159,30 @@ export interface Database {
       get_chat_usage_today: {
         Args: Record<string, never>;
         Returns: { user_messages: number; global_messages: number }[];
+      };
+      commit_recruit_import: {
+        Args: { p_quarter: string; p_event: string | null; p_category: string; p_points: number; p_rows: unknown };
+        Returns: unknown;
+      };
+      undo_recruit_import: {
+        Args: { p_batch: string };
+        Returns: number;
+      };
+      mark_recruit_booking: {
+        Args: {
+          p_kind: string;
+          p_booking: string;
+          p_applicant: string;
+          p_status: string;
+          p_category: string | null;
+          p_points: number | null;
+          p_reason: string | null;
+        };
+        Returns: string;
+      };
+      clear_recruit_booking_mark: {
+        Args: { p_kind: string; p_booking: string };
+        Returns: unknown;
       };
     };
   };
