@@ -56,7 +56,7 @@ const VALID: Fields = {
   contactName: "x",
   businessName: "x",
   email: "a@b.co",
-  phone: "",
+  phone: "x",
   needs: "x",
 };
 
@@ -478,7 +478,7 @@ export function ClientMeetingBookingForm({
                   htmlFor="phone"
                   className="mb-1.5 block text-sm font-semibold"
                 >
-                  Phone (optional)
+                  Phone
                 </label>
                 <Input
                   id="phone"
