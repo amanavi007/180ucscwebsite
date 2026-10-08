@@ -57,6 +57,14 @@ describe("searchKnowledge", () => {
     ];
     expect(searchKnowledge(corpus, "apply consulting degrees")[0].id).toBe("kb-b");
   });
+  it("drops a chunk that matches only one incidental word of a longer question", () => {
+    const corpus = [chunk("kb-a", "Mileage", "Remember filing your receipts."), chunk("kb-b", "Other", "Nothing relevant here.")];
+    expect(searchKnowledge(corpus, "quarterly tax filing")).toEqual([]);
+  });
+  it("keeps a chunk that matches at least half of the question", () => {
+    const corpus = [chunk("kb-a", "Taxes", "Tax filing happens in April."), chunk("kb-b", "Other", "Nothing relevant here.")];
+    expect(searchKnowledge(corpus, "tax filing deadlines").map((h) => h.id)).toEqual(["kb-a"]);
+  });
   it("breaks score ties by id order", () => {
     const tie = [chunk("kb-b", "Alpha", "alpha"), chunk("kb-a", "Alpha", "alpha")];
     expect(searchKnowledge(tie, "alpha").map((h) => h.id)).toEqual(["kb-a", "kb-b"]);

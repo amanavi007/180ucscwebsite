@@ -24,6 +24,9 @@ export function cleanKbText(text: string): string {
     .trim();
 }
 
+/** Share of the question (by term rarity) a chunk must match to be returned at all. */
+const MIN_COVERAGE = 0.4;
+
 const count = (hay: string[], needle: string) => hay.reduce((n, w) => n + (w === needle ? 1 : 0), 0);
 
 function trimTo(text: string, max: number): string {
@@ -37,7 +40,9 @@ function trimTo(text: string, max: number): string {
  * Keyword-ranked chunks. Each query term is weighted by how rare it is across the chunks (idf), so words that sit in
  * nearly every chunk ("consulting", "degrees") cannot outvote the word that actually asks the question ("apply").
  * Title matches weigh most, then the section name, then body occurrences (capped per term so one repeated word cannot
- * win). A chunk only qualifies if its title or body matched: a section match alone never does.
+ * win). A chunk only qualifies if its title or body matched terms carrying at least MIN_COVERAGE of the question's
+ * idf weight: a section match alone never does, and one incidental word of a longer question ("filing" in "quarterly
+ * tax filing") must not pull in an unrelated chunk.
  */
 export function searchKnowledge(
   chunks: KbChunk[],
@@ -57,17 +62,18 @@ export function searchKnowledge(
       return [t, Math.log(1 + docs.length / Math.max(df, 1))] as const;
     }),
   );
+  const totalWeight = [...idf.values()].reduce((a, b) => a + b, 0);
   const scored: { chunk: KbChunk; score: number; body: string }[] = [];
   for (const d of docs) {
-    let matched = 0;
+    let matchedWeight = 0;
     let score = 0;
     for (const t of q) {
       const inTitle = d.title.includes(t);
       const inBody = Math.min(3, count(d.words, t));
-      if (inTitle || inBody > 0) matched += 1;
+      if (inTitle || inBody > 0) matchedWeight += idf.get(t) ?? 0;
       score += (idf.get(t) ?? 0) * ((inTitle ? 6 : 0) + inBody + (d.section.includes(t) ? 2 : 0));
     }
-    if (matched > 0) scored.push({ chunk: d.chunk, score, body: d.body });
+    if (matchedWeight > 0 && matchedWeight / totalWeight >= MIN_COVERAGE) scored.push({ chunk: d.chunk, score, body: d.body });
   }
   return scored
     .sort((a, b) => b.score - a.score || a.chunk.id.localeCompare(b.chunk.id))
