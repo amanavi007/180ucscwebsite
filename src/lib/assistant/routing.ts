@@ -23,28 +23,27 @@ export type Shortcut =
   | "my_attendance"
   | "top_applicants";
 
-const DEFAULT_AREAS: Area[] = ["projects", "tasks", "events", "search", "wiki"];
-
-const AREA_PATTERNS: [Area, RegExp][] = [
-  ["recruitment", /\b(applicants?|recruit\w*|points?|coffee chats?|interviews?|info sessions?|candidates?)\b/i],
-  ["attendance", /\b(attendance|absent|absences?|tardy|tardies|late|present|no-?shows?|miss(ed|es|ing)?)\b/i],
-  ["people", /\b(who|members?|roster|directory|pm|project managers?|consultants?|execs?|president|directors?|alumni|alum|contact|reach|email|phone|dm|message|get in touch)\b/i],
-  ["projects", /\b(projects?|clients?|deliverables?|deadlines?|health|team)\b/i],
-  ["tasks", /\b(tasks?|to-?dos?|due|overdue|assigned|working on|workload)\b/i],
-  ["events", /\b(events?|calendar|meetings?|meeting days?|schedule|upcoming)\b/i],
-  ["guide", /\b(what should i (do|work|focus)|next steps?|stuck|where (do|should) i (start|begin)|what'?s next|walk me through|get started)\b/i],
-  ["scheduling", /\b(coffee chats?|interviews?|bookings?|booked|client meetings?|slots?)\b/i],
-  ["wiki", /\b(wiki|resources?|guides?|handbook|docs?|documentation|policy|policies|template|onboarding|process|procedure|best practices?|how (do|to|can|should))\b/i],
-  ["links", /\b(links?|urls?|drive|folder|form)\b/i],
-  ["notifications", /\b(notifications?|alerts?|inbox|unread|what('s| did) i miss)\b/i],
-  ["admin", /\b(stats?|statistics|activity|audit|log|attention|recent(ly)?|what did .* (change|do|edit)|overdue|completion|rollup|quality|quarters?|clients?|plans?|team builder)\b/i],
-  ["actions", /\b(add|create|make|new|remind|schedule|mark|complete|finish|done|reopen|change|update|set|move|assign|reassign|unassign|delete|remove|reschedule|rename|push|put|cancel|archive|restore|give|award|log|record|submit|publish|generate|finalize|finalise|apply|approve|open|close|reset|merge|void)\b/i],
+/**
+ * Every read tool is always offered. Gating them by keyword hid the right tool whenever the wording was unusual
+ * ("pay attention" hid the wiki, "my PM" hid the project tools). Read tools only return data the caller may see,
+ * so offering them is safe; the cost is a few hundred more cached prompt tokens.
+ */
+const READ_AREAS: Area[] = [
+  "projects", "tasks", "events", "recruitment", "attendance", "people", "wiki", "guide",
+  "scheduling", "links", "notifications", "admin", "search",
 ];
 
-/** Keyword routing: no extra model call. Only the matched areas' tools are sent. */
-export function selectAreas(text: string): Area[] {
-  const matched = AREA_PATTERNS.filter(([, re]) => re.test(text)).map(([area]) => area);
-  return matched.length > 0 ? matched : [...DEFAULT_AREAS];
+const ACTION_WORDS = /\b(add|create|make|new|remind|schedule|mark|complete|finish|done|reopen|change|update|set|move|assign|reassign|unassign|delete|remove|reschedule|rename|push|put|cancel|archive|restore|give|award|log|record|submit|publish|generate|finalize|finalise|apply|approve|open|close|reset|merge|void|promote|demote|swap|switch|bump|extend|drop|kick|invite|send)\b/i;
+/** A short reply to an assistant that was mid-change ("yes", "the Acme one", "friday") must keep the write tools. */
+const SHORT_REPLY = /^.{0,40}$/;
+
+/**
+ * Keyword routing now only decides whether write (propose_*) tools are offered. `recentWrite` is true when the
+ * previous turns already used a propose_* tool, so a clarifying answer isn't stranded without them.
+ */
+export function selectAreas(text: string, opts: { recentWrite?: boolean } = {}): Area[] {
+  const wantsActions = ACTION_WORDS.test(text) || (!!opts.recentWrite && SHORT_REPLY.test(text.trim()));
+  return wantsActions ? [...READ_AREAS, "actions"] : [...READ_AREAS];
 }
 
 const SHORTCUTS: [Shortcut, RegExp][] = [

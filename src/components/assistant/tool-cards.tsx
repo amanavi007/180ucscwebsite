@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { HealthBadge } from "@/components/health-badge";
 import { Badge } from "@/components/ui/badge";
 import { attendanceTone, barPercent, deadlineLabel, humanize, type Tone } from "@/lib/assistant/card-format";
@@ -13,6 +14,22 @@ type Result<T> = { items?: T[]; total?: number; truncated?: boolean; note?: stri
 const TONE_BAR: Record<Tone, string> = { good: "bg-primary", warn: "bg-amber-500", bad: "bg-destructive" };
 const TONE_TEXT: Record<Tone, string> = { good: "text-primary", warn: "text-amber-600 dark:text-amber-400", bad: "text-destructive" };
 
+/** Tool results start collapsed: the reply text carries the answer, the card is the detail behind a small arrow. */
+function Collapsible({ title, meta, children }: { title: string; meta?: ReactNode; children: ReactNode }) {
+  return (
+    <details className="group w-full max-w-xl rounded-lg border bg-card text-sm">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+        <span className="flex items-center gap-1.5">
+          <ChevronRight className="size-3.5 shrink-0 transition-transform group-open:rotate-90" aria-hidden />
+          <span className="text-xs font-medium">{title}</span>
+        </span>
+        {meta !== undefined && <span className="text-xs">{meta}</span>}
+      </summary>
+      <div className="border-t px-3 pb-2">{children}</div>
+    </details>
+  );
+}
+
 function Shell({
   title,
   result,
@@ -23,14 +40,13 @@ function Shell({
   children: ReactNode;
 }) {
   const count = result.items?.length ?? 0;
+  if (count === 0) {
+    return <div className="w-full max-w-xl rounded-lg border bg-card px-3 py-2 text-xs text-muted-foreground">{result.note ?? "Nothing to show."}</div>;
+  }
   return (
-    <div className="w-full max-w-xl rounded-lg border bg-card p-3">
-      <div className="mb-2 flex items-baseline justify-between gap-2">
-        <p className="text-sm font-semibold">{title}</p>
-        {count > 0 && <p className="text-xs text-muted-foreground">{result.truncated ? `${count} of ${result.total}` : count}</p>}
-      </div>
-      {count === 0 ? <p className="py-2 text-sm text-muted-foreground">{result.note ?? "Nothing to show."}</p> : <div className="divide-y">{children}</div>}
-    </div>
+    <Collapsible title={title} meta={result.truncated ? `${count} of ${result.total}` : count}>
+      <div className="divide-y">{children}</div>
+    </Collapsible>
   );
 }
 
@@ -310,10 +326,9 @@ export function ToolCard({ toolName, output }: { toolName: string; output: unkno
       return <ProjectDetailCard r={output as ProjectDetail} />;
     case "resources":
       return (output as { content?: string }).content !== undefined ? (
-        <div className="w-full max-w-xl rounded-lg border bg-card p-3">
-          <p className="text-sm font-semibold">{str((output as { title?: string }).title)}</p>
-          <p className="mt-1 whitespace-pre-line text-xs text-muted-foreground">{str((output as { content?: string }).content)}</p>
-        </div>
+        <Collapsible title={str((output as { title?: string }).title) ?? "Resources page"}>
+          <p className="mt-2 whitespace-pre-line text-xs text-muted-foreground">{str((output as { content?: string }).content)}</p>
+        </Collapsible>
       ) : (
         <ListCard r={output as Result<Record<string, unknown>>} title="From Resources" row={(i) => ({ primary: String(i.title), secondary: str(i.excerpt)?.slice(0, 140) ?? null, badge: str(i.section), href: safeHref(i.href) })} />
       );

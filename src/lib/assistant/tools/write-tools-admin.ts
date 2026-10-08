@@ -338,7 +338,7 @@ export function buildAdminWriteTools(_actor: Actor, deps: ToolDeps, propose: Pro
       execute: (a) => propose("create_member", a),
     }),
     propose_member_change: tool({
-      description: `Propose a change to a member: change role, reset password, archive (graduated/left), or restore an alumnus. Exec only.${note}`,
+      description: `Propose a change to a member (organization-wide role such as "make Priya a project manager"; no project needed): change role, reset password, archive (graduated/left), or restore an alumnus. Exec only.${note}`,
       inputSchema: z.object({
         person: z.string(),
         action: z.enum(["change_role", "reset_password", "archive", "restore"]),

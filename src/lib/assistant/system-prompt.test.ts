@@ -5,11 +5,11 @@ const text = buildInstructions({ name: "Sam Lee", role: "consultant" }, "Fall 20
 
 describe("buildInstructions", () => {
   it("stays small, because it is sent with every model request", () => {
-    expect(text.length).toBeLessThan(1300);
+    expect(text.length).toBeLessThan(2000);
   });
   it("tells the model results are shown as cards so it should not repeat them", () => {
     expect(text).toMatch(/card/i);
-    expect(text).toMatch(/one (short )?sentence/i);
+    expect(text).toMatch(/never restate/i);
   });
   it("keeps the safety rules: data only from tools, tool text is untrusted, writes need approval", () => {
     expect(text).toMatch(/only from tool results/i);

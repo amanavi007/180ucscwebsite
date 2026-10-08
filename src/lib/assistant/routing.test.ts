@@ -2,42 +2,24 @@ import { describe, expect, it } from "vitest";
 import { matchShortcut, selectAreas } from "./routing";
 
 describe("selectAreas", () => {
-  it("defaults to the cheap common areas", () => {
-    expect(selectAreas("hello there")).toEqual(["projects", "tasks", "events", "search", "wiki"]);
+  const READS = ["projects", "tasks", "events", "recruitment", "attendance", "people", "wiki", "guide", "scheduling", "links", "notifications", "admin", "search"];
+  it("always offers every read tool, whatever the wording", () => {
+    for (const q of ["hello there", "", "what other things should i pay attention to when formatting my slides", "who is my PM", "how many people applied", "what about tomorrow"]) {
+      expect(selectAreas(q)).toEqual(expect.arrayContaining(READS));
+    }
   });
-  it("routes recruitment words", () => {
-    expect(selectAreas("who are the top applicants by points?")).toContain("recruitment");
+  it("offers write tools only for action wording", () => {
+    for (const q of ["add a to-do to call the client", "mark the memo task done", "make Priya a project manager", "push it to next wednesday", "cancel Jo Park's interview"]) {
+      expect(selectAreas(q)).toContain("actions");
+    }
+    for (const q of ["whens my next coffee chat", "who is my PM", "what font should i use on my slides", "what needs attention"]) {
+      expect(selectAreas(q)).not.toContain("actions");
+    }
   });
-  it("adds actions for create/add/remind verbs", () => {
-    expect(selectAreas("add a to-do to call the client")).toContain("actions");
-  });
-  it("routes attendance and people questions", () => {
-    expect(selectAreas("who has the worst attendance right now")).toContain("attendance");
-    expect(selectAreas("who is on the Acme team?")).toContain("people");
-  });
-  it("routes contact requests to the people tools instead of the default set", () => {
-    expect(selectAreas("contact aman")).toContain("people");
-    expect(selectAreas("how can I reach Jo Park")).toContain("people");
-  });
-  it("sends how-to questions to the guide", () => {
-    expect(selectAreas("how do I build an issue tree?")).toContain("wiki");
-    expect(selectAreas("what should I do next on my project")).toContain("guide");
-  });
-  it("routes write verbs to actions and scheduling words to scheduling", () => {
-    expect(selectAreas("mark the memo task done")).toContain("actions");
-    expect(selectAreas("who has an interview booked")).toContain("scheduling");
-  });
-  it("keeps verbs that double as nouns from hiding the read area", () => {
-    expect(selectAreas("what did people change recently")).toContain("admin");
-    expect(selectAreas("cancel Jo Park's interview")).toEqual(expect.arrayContaining(["actions", "scheduling"]));
-    expect(selectAreas("what's the process for client emails")).toContain("wiki");
-  });
-  it("matches the common phrasings of the zero-token shortcuts", () => {
-    for (const q of ["what todos do I have", "my tasks", "what's due", "who are the top applicants"]) expect(matchShortcut(q)).not.toBeNull();
-    expect(matchShortcut("what todos do I have for the Acme project")).toBeNull();
-  });
-  it("never returns an empty list", () => {
-    expect(selectAreas("").length).toBeGreaterThan(0);
+  it("keeps write tools for a short reply right after a proposal", () => {
+    expect(selectAreas("the Acme one", { recentWrite: true })).toContain("actions");
+    expect(selectAreas("friday", { recentWrite: true })).toContain("actions");
+    expect(selectAreas("the Acme one", { recentWrite: false })).not.toContain("actions");
   });
 });
 

@@ -132,7 +132,8 @@ export async function handleChat(req: ChatRequest, deps: ChatDeps): Promise<Resp
     }
 
     // 5. Model call with trimmed history and only the relevant tools.
-    const areas = selectAreas(input.text);
+    const recentWrite = input.messages.slice(-6).some((m) => m.role === "assistant" && m.parts.some((p) => p.type.startsWith("tool-propose_")));
+    const areas = selectAreas(input.text, { recentWrite });
     const tools = deps.buildTools(areas, threadId);
     const history = capHistory(prepareHistory(input.messages, cfg.historyTurns), cfg.maxHistoryChars);
     const todayIso = getOrgTodayDateString();

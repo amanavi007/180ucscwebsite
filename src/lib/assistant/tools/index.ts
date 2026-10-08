@@ -51,7 +51,7 @@ export function buildReadTools(areas: Area[], deps: ToolDeps): ToolSet {
   const empty = z.object({});
   if (areas.includes("projects")) {
     tools.my_projects = tool({
-      description: "List the user's projects this quarter (client, status, health, deadline).",
+      description: "List the user's own projects this quarter (client, status, health, deadline). Start here for 'my project/team/PM/deadline'.",
       inputSchema: empty,
       toModelOutput,
       execute: () => runMyProjects(deps),
@@ -111,7 +111,7 @@ export function buildReadTools(areas: Area[], deps: ToolDeps): ToolSet {
   }
   if (areas.includes("recruitment")) {
     tools.top_applicants = tool({
-      description: "Exec only: ranked recruitment applicants by total points.",
+      description: "Exec only: ranked recruitment applicants by total points. The result total is the applicant count: use it for 'how many applied/applicants'.",
       inputSchema: empty,
       toModelOutput,
       execute: () => runTopApplicants(deps),
@@ -119,7 +119,7 @@ export function buildReadTools(areas: Area[], deps: ToolDeps): ToolSet {
   }
   if (areas.includes("projects")) {
     tools.project_detail = tool({
-      description: "Everything about ONE project by client name: status, health, deadline, PM/SC, team, task counts, overdue and next tasks.",
+      description: "Everything about ONE project by client name: status, health, deadline, PM/SC, team, task counts, overdue and next tasks. For 'my PM/SC/team', call my_projects first to get the project name, then this.",
       inputSchema: z.object({ project: z.string().describe("Client/project name") }),
       toModelOutput,
       execute: ({ project }) => runProjectDetail(deps, project, getOrgTodayDateString()),
@@ -142,7 +142,7 @@ export function buildReadTools(areas: Area[], deps: ToolDeps): ToolSet {
   if (areas.includes("wiki") || areas.includes("guide")) {
     tools.resources = tool({
       description:
-        "The consultant guide: search the Resources wiki (how-tos, templates, policies, process). Returns the best passages with page links; set read=true to get one whole page. Use it for ANY 'how do I / what is the process' question.",
+        "The consultant guide: search the Resources wiki (how-tos, templates, policies, process). Returns the best passages with page links; set read=true ONLY when the user asks for the full page. Use it for ANY 'how do I / what is the process' question.",
       inputSchema: z.object({ query: z.string(), read: z.boolean().optional() }),
       toModelOutput,
       execute: ({ query, read }) => runWiki(deps, query, !!read),
@@ -186,7 +186,7 @@ export function buildReadTools(areas: Area[], deps: ToolDeps): ToolSet {
       execute: () => runActivityLog(deps),
     });
     tools.needs_attention = tool({
-      description: "Exec only: items needing attention (low attendance, unfinalized team plan, pending team-page submissions).",
+      description: "Exec only: items needing attention (low attendance, unfinalized team plan, pending team-page submissions). Use for 'anything I should look at / what needs attention / what is pending'.",
       inputSchema: empty,
       toModelOutput,
       execute: () => runNeedsAttention(deps),
@@ -208,7 +208,7 @@ export function buildReadTools(areas: Area[], deps: ToolDeps): ToolSet {
   }
   if (areas.includes("people")) {
     tools.person_detail = tool({
-      description: "One person by name (or 'me'): role, team, task load, and attendance (exec or self only).",
+      description: "One person by name (or 'me'): role, team, task load, and attendance (exec or self only). Use for 'who is X'. Not for someone's PM or project; use project_detail.",
       inputSchema: z.object({ name: z.string() }),
       toModelOutput,
       execute: ({ name }) => runPersonDetail(deps, name, getOrgTodayDateString()),
@@ -236,10 +236,19 @@ export function buildReadTools(areas: Area[], deps: ToolDeps): ToolSet {
   }
   if (areas.includes("scheduling")) {
     tools.scheduling = tool({
-      description: "Exec only: upcoming coffee chat, interview and client-meeting bookings.",
-      inputSchema: z.object({ kind: z.enum(["coffee_chat", "interview", "client_meeting"]).optional() }),
+      description:
+        "Exec only: upcoming coffee chat, interview and client-meeting bookings. ALWAYS narrow to what was asked: mine=true for 'my'/'I have'; limit=1 for 'next'/'when is'; kind for coffee chat/interview/client meeting; person for a named applicant or exec; date for a day. Never fetch the full list to answer a single-item question.",
+      inputSchema: z.object({
+        kind: z.enum(["coffee_chat", "interview", "client_meeting"]).optional(),
+        mine: z.boolean().optional().describe("Only bookings the user is hosting/on the panel for"),
+        person: z.string().optional().describe("Applicant, contact or exec name"),
+        date: z.string().optional().describe("YYYY-MM-DD"),
+        limit: z.number().int().positive().max(50).optional().describe("Soonest N only; 1 for 'next'"),
+        after: z.string().optional().describe("HH:MM, start time at or after (afternoon = 12:00)"),
+        before: z.string().optional().describe("HH:MM, start time before (afternoon ends 17:00)"),
+      }),
       toModelOutput,
-      execute: ({ kind }) => runScheduling(deps, getOrgTodayDateString(), kind),
+      execute: (a) => runScheduling(deps, getOrgTodayDateString(), a),
     });
   }
   if (areas.includes("admin")) {
