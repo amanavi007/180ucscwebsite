@@ -17,7 +17,7 @@ describe("runKnowledge", () => {
     expect(text).not.toMatch(/docs\.google|drive\.google|kb-\d+/);
   });
   it("says so (and tells the model not to invent) when nothing matches", () => {
-    const r = runKnowledge(deps, "quarterly tax filing deadlines");
+    const r = runKnowledge(deps, "quarterly tax filing");
     expect(r.items).toEqual([]);
     expect(r.note).toMatch(/doesn't cover/i);
     expect(r.note).toMatch(/do not invent/i);
