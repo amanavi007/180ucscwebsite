@@ -10,7 +10,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UrlTabs } from "@/components/url-tabs";
 import { ROLE_LABELS, compareByRole } from "@/lib/auth/roles";
 import { ListSearch } from "@/components/list-search";
 import { useFilteredList } from "@/lib/use-filtered-list";
@@ -117,7 +118,7 @@ export function MembersPanel({
         <BulkAddDialog defaultPassword={defaultPassword} defaultOpen={action === "bulk-add"} />
       </div>
 
-      <Tabs defaultValue="active">
+      <UrlTabs values={["active", "archived"]} fallback="active">
         <TabsList>
           <TabsTrigger value="active">Active {members.length}</TabsTrigger>
           <TabsTrigger value="archived">Archived {archivedMembers.length}</TabsTrigger>
@@ -181,7 +182,7 @@ export function MembersPanel({
         <TabsContent value="archived" className="pt-4">
           <ArchivedSection archivedMembers={archivedMembers} />
         </TabsContent>
-      </Tabs>
+      </UrlTabs>
     </div>
   );
 }

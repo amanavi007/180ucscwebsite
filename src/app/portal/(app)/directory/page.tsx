@@ -7,7 +7,8 @@ import { getQuarterAttendanceRates } from "@/lib/data/attendance";
 import { getAttendanceAlertThreshold } from "@/lib/data/org-settings";
 import type { AttendanceRateResult } from "@/lib/attendance";
 import { isExec } from "@/lib/auth/roles";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UrlTabs } from "@/components/url-tabs";
 import { DirectoryView } from "./directory-view";
 import { AlumniView } from "./alumni-view";
 
@@ -36,7 +37,7 @@ export default async function DirectoryPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="roster">
+      <UrlTabs values={["roster", "alumni"]} fallback="roster">
         <TabsList>
           <TabsTrigger value="roster">Roster</TabsTrigger>
           <TabsTrigger value="alumni">Alumni ({alumni.length})</TabsTrigger>
@@ -47,7 +48,7 @@ export default async function DirectoryPage() {
         <TabsContent value="alumni">
           <AlumniView alumni={alumni} />
         </TabsContent>
-      </Tabs>
+      </UrlTabs>
     </div>
   );
 }

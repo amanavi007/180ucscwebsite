@@ -2,18 +2,14 @@ import type { Metadata } from "next";
 import { getAllAvailability, getAllBookings, getAllSlots } from "@/lib/data/coffee-chat";
 import { calendarFeedPath } from "@/lib/calendar-feed";
 import { getCurrentProfile } from "@/lib/data/profile";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UrlTabs } from "@/components/url-tabs";
 import { AvailabilityView } from "./availability-view";
 import { ScheduleView } from "./schedule-view";
 
 export const metadata: Metadata = { title: "Admin · Coffee Chats" };
 
-export default async function CoffeeChatsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ tab?: string }>;
-}) {
-  const { tab } = await searchParams;
+export default async function CoffeeChatsPage() {
   const [availability, slots, bookings, profile] = await Promise.all([
     getAllAvailability(),
     getAllSlots(),
@@ -30,7 +26,7 @@ export default async function CoffeeChatsPage({
         </p>
       </div>
 
-      <Tabs defaultValue={tab === "schedule" ? "schedule" : "availability"}>
+      <UrlTabs values={["availability", "schedule"]} fallback="availability">
         <TabsList>
           <TabsTrigger value="availability">Availability</TabsTrigger>
           <TabsTrigger value="schedule">Schedule</TabsTrigger>
@@ -46,7 +42,7 @@ export default async function CoffeeChatsPage({
             feedUrl={`${process.env.NEXT_PUBLIC_SITE_URL}${calendarFeedPath(profile.id)}`}
           />
         </TabsContent>
-      </Tabs>
+      </UrlTabs>
     </div>
   );
 }

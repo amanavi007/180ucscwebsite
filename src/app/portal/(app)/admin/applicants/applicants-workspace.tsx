@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useUrlTab } from "@/components/url-tabs";
 import { ChevronDown, FileSpreadsheet, FileUp, UserPlus } from "lucide-react";
 import type { ApplicantRow, MergeLogRow, RecruitCategory, RecruitEvent } from "@/lib/data/recruit";
 import type { AttendanceData } from "@/lib/data/recruit-import";
@@ -43,7 +44,7 @@ export function ApplicantsWorkspace({
   attendance: AttendanceData;
   scoring: ScoringBundle;
 }) {
-  const [tab, setTab] = useState("applicants");
+  const [tab, setTab] = useUrlTab(["applicants", "reviews", "attendance", "settings", "duplicates"], "applicants");
   const [addOpen, setAddOpen] = useState(false);
   const [importApplicationsOpen, setImportApplicationsOpen] = useState(false);
   const [importAttendanceOpen, setImportAttendanceOpen] = useState(false);

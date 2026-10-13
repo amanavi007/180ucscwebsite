@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UrlTabs } from "@/components/url-tabs";
 import {
   Select,
   SelectContent,
@@ -36,7 +37,7 @@ export function AttendanceView({
   return (
     <div className="space-y-4">
       {selectedProjectId && (
-        <Tabs defaultValue={canSubmit ? "entry" : "history"}>
+        <UrlTabs values={canSubmit ? ["entry", "history"] : ["history"]} fallback={canSubmit ? "entry" : "history"}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             {projects.length > 1 ? (
               <Select
@@ -77,7 +78,7 @@ export function AttendanceView({
           <TabsContent value="history">
             <HistoryList history={history} />
           </TabsContent>
-        </Tabs>
+        </UrlTabs>
       )}
     </div>
   );

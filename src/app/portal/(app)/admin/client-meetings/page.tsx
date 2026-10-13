@@ -9,7 +9,8 @@ import {
 import { PANEL_SIZE } from "@/lib/client-meeting";
 import { calendarFeedPath } from "@/lib/calendar-feed";
 import { getCurrentProfile } from "@/lib/data/profile";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UrlTabs } from "@/components/url-tabs";
 import { BookingToggle } from "./booking-toggle";
 import { PanelView } from "./panel-view";
 import { AvailabilityView } from "./availability-view";
@@ -18,8 +19,7 @@ import { BookingsView } from "./bookings-view";
 
 export const metadata: Metadata = { title: "Admin · Client Meetings" };
 
-export default async function ClientMeetingsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  const { tab } = await searchParams;
+export default async function ClientMeetingsPage() {
   const [settings, execOptions, availability, slots, bookings, profile] = await Promise.all([
     getClientMeetingSettings(),
     getClientMeetingExecOptions(),
@@ -30,7 +30,6 @@ export default async function ClientMeetingsPage({ searchParams }: { searchParam
   ]);
 
   const openSlotCount = slots.filter((s) => s.published && s.bookingStatus === "open").length;
-  const defaultTab = tab === "availability" || tab === "slots" || tab === "bookings" ? tab : "panel";
   const panelIncomplete = settings.panelExecIds.length !== PANEL_SIZE;
 
   return (
@@ -51,7 +50,7 @@ export default async function ClientMeetingsPage({ searchParams }: { searchParam
         </p>
       )}
 
-      <Tabs defaultValue={defaultTab}>
+      <UrlTabs values={["panel", "availability", "slots", "bookings"]} fallback="panel">
         <TabsList>
           <TabsTrigger value="panel">Panel</TabsTrigger>
           <TabsTrigger value="availability">Availability</TabsTrigger>
@@ -74,7 +73,7 @@ export default async function ClientMeetingsPage({ searchParams }: { searchParam
         <TabsContent value="bookings">
           <BookingsView bookings={bookings} />
         </TabsContent>
-      </Tabs>
+      </UrlTabs>
     </div>
   );
 }

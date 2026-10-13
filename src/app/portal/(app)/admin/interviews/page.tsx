@@ -8,7 +8,8 @@ import {
 } from "@/lib/data/interview";
 import { calendarFeedPath } from "@/lib/calendar-feed";
 import { getCurrentProfile } from "@/lib/data/profile";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UrlTabs } from "@/components/url-tabs";
 import { BookingToggle } from "./booking-toggle";
 import { InviteesView } from "./invitees-view";
 import { AvailabilityView } from "./availability-view";
@@ -16,8 +17,7 @@ import { ScheduleView } from "./schedule-view";
 
 export const metadata: Metadata = { title: "Admin · Interviews" };
 
-export default async function InterviewsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  const { tab } = await searchParams;
+export default async function InterviewsPage() {
   const [invitees, availability, slots, bookings, settings, profile] = await Promise.all([
     getInvitees(),
     getInterviewAvailability(),
@@ -28,7 +28,6 @@ export default async function InterviewsPage({ searchParams }: { searchParams: P
   ]);
 
   const openSlotCount = slots.filter((s) => s.published && s.bookingStatus === "open").length;
-  const defaultTab = tab === "schedule" || tab === "availability" ? tab : "invitees";
 
   return (
     <div className="space-y-6">
@@ -42,7 +41,7 @@ export default async function InterviewsPage({ searchParams }: { searchParams: P
         <BookingToggle open={settings.bookingOpen} />
       </div>
 
-      <Tabs defaultValue={defaultTab}>
+      <UrlTabs values={["invitees", "availability", "schedule"]} fallback="invitees">
         <TabsList>
           <TabsTrigger value="invitees">Invitees</TabsTrigger>
           <TabsTrigger value="availability">Availability</TabsTrigger>
@@ -62,7 +61,7 @@ export default async function InterviewsPage({ searchParams }: { searchParams: P
             feedUrl={`${process.env.NEXT_PUBLIC_SITE_URL}${calendarFeedPath(profile.id)}`}
           />
         </TabsContent>
-      </Tabs>
+      </UrlTabs>
     </div>
   );
 }
