@@ -134,7 +134,7 @@ export function ScoreForm({
                           aria-pressed={scores[c.id] === o}
                           aria-label={meaning.get(o) ? `${o}: ${meaning.get(o)}` : String(o)}
                           onClick={() => setScore(c.id, o)}
-                          className="h-11 min-w-11 flex-1 rounded-lg border bg-card text-[15px] font-medium transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:font-semibold aria-pressed:text-background"
+                          className="h-12 min-w-11 flex-1 rounded-xl border-[1.5px] border-border-strong bg-card text-[1.0625rem] font-bold transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-(--primary-border) aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:shadow-[0_3px_0_var(--primary-edge)]"
                         >
                           {o}
                         </button>

@@ -27,8 +27,8 @@ const MARK_LABELS: Record<AttendanceMark, string> = {
 
 const MARK_BADGE_CLASS: Record<AttendanceMark, string> = {
   excused: "bg-muted text-muted-foreground border-transparent",
-  unexcused: "bg-destructive/10 text-destructive border-transparent",
-  tardy: "bg-warning/10 text-warning border-transparent",
+  unexcused: "bg-status-bad text-status-bad-foreground border-transparent",
+  tardy: "bg-status-warn text-status-warn-foreground border-transparent",
 };
 
 function marksFromSession(session: SessionWithMarks | null): Record<string, AttendanceMark> {

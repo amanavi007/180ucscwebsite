@@ -27,10 +27,10 @@ import { ProjectEventFormDialog, type ProjectEventFormValues } from "./project-e
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const TYPE_STYLE: Record<CalendarEvent["type"], { dot: string; chip: string }> = {
-  meeting: { dot: "bg-link", chip: "bg-accent text-accent-foreground" },
-  deadline: { dot: "bg-destructive", chip: "bg-destructive/10 text-destructive" },
-  event: { dot: "bg-warning", chip: "bg-warning/10 text-warning" },
-  project: { dot: "bg-foreground/60", chip: "bg-foreground/10 text-foreground/70" },
+  meeting: { dot: "bg-link", chip: "bg-primary text-primary-foreground" },
+  deadline: { dot: "bg-status-bad-foreground", chip: "bg-status-bad text-status-bad-foreground" },
+  event: { dot: "bg-status-warn-foreground", chip: "bg-status-warn text-status-warn-foreground" },
+  project: { dot: "bg-status-info-foreground", chip: "bg-status-info text-status-info-foreground" },
 };
 
 const TYPE_LABEL: Record<CalendarEvent["type"], string> = {

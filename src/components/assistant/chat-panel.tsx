@@ -217,7 +217,7 @@ export function ChatPanel({
                 </div>
               )}
               {error && (
-                <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm">
+                <div className="rounded-md border border-status-bad-foreground/30 bg-status-bad px-3 py-2 text-sm">
                   <p>{error.message || "Something went wrong."}</p>
                   {!capReached && (
                     <Button size="sm" variant="outline" className="mt-2" onClick={() => regenerate()}>

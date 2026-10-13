@@ -147,7 +147,7 @@ export function ConsultantStatsView({
                     className={cn(
                       "border-transparent",
                       row.attendanceRate < attendanceThreshold
-                        ? "bg-destructive/10 text-destructive"
+                        ? "bg-status-bad text-status-bad-foreground"
                         : "bg-muted text-muted-foreground",
                     )}
                   >
@@ -163,7 +163,7 @@ export function ConsultantStatsView({
               </TableCell>
               <TableCell>
                 {row.overdueTasks > 0 ? (
-                  <Badge variant="outline" className="border-transparent bg-destructive/10 text-destructive">
+                  <Badge variant="outline" className="border-transparent bg-status-bad text-status-bad-foreground">
                     {row.overdueTasks}
                   </Badge>
                 ) : (

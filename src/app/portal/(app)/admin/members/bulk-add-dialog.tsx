@@ -127,7 +127,7 @@ export function BulkAddDialog({
                           ) : (
                             <Badge
                               variant="outline"
-                              className="border-transparent bg-destructive/10 text-destructive"
+                              className="border-transparent bg-status-bad text-status-bad-foreground"
                             >
                               {r.message ?? "Failed"}
                             </Badge>

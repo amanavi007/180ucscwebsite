@@ -192,7 +192,7 @@ export function DirectoryView({
                           variant="outline"
                           className={
                             result.rate < attendanceThreshold
-                              ? "border-transparent bg-destructive/10 text-destructive"
+                              ? "border-transparent bg-status-bad text-status-bad-foreground"
                               : "border-transparent bg-accent text-accent-foreground"
                           }
                         >

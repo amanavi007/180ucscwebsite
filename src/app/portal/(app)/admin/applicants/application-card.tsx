@@ -133,7 +133,7 @@ export function ApplicationCard({
             type="button"
             onClick={() => jump(o.key)}
             aria-current={current === o.key}
-            className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-left text-[13px] text-muted-foreground transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring aria-[current=true]:bg-muted aria-[current=true]:text-foreground"
+            className="flex items-center gap-2 rounded-full px-3.5 py-1.5 text-left text-[13px] text-muted-foreground transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring aria-[current=true]:bg-foreground aria-[current=true]:text-primary"
           >
             <span className="font-medium">{o.label}</span>
             <span className="text-xs tabular-nums">{o.meta}</span>
