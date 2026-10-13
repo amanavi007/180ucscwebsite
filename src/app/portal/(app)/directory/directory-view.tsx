@@ -9,35 +9,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { PersonAvatar } from "@/components/person-avatar";
+import { FilterChip } from "@/components/filter-chip";
+import { ListSearch } from "@/components/list-search";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Download } from "lucide-react";
-import { roleLabel, ROLE_LABELS } from "@/lib/auth/roles";
+import { roleLabel, ROLE_LABELS, compareByRole, isExec } from "@/lib/auth/roles";
 import { toCsv, downloadCsv } from "@/lib/csv";
 import type { DirectoryRow } from "@/lib/data/directory";
 import type { AttendanceRateResult } from "@/lib/attendance";
 
 const ALL = "__all__";
+const EXEC = "__exec__";
 const NO_TEAM = "__no_team__";
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((p) => p[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
 
 export function DirectoryView({
   rows,
@@ -49,6 +34,7 @@ export function DirectoryView({
   attendanceThreshold?: number;
 }) {
   const [roleFilter, setRoleFilter] = useState(ALL);
+  const [query, setQuery] = useState("");
   const [teamFilter, setTeamFilter] = useState(ALL);
 
   const teams = useMemo(() => {
@@ -64,12 +50,16 @@ export function DirectoryView({
     return [...set];
   }, [rows]);
 
-  const filtered = rows.filter((r) => {
+  const filtered = rows
+    .filter((r) => {
+    if (query.trim() && !`${r.name} ${r.email}`.toLowerCase().includes(query.trim().toLowerCase())) return false;
+    if (roleFilter === EXEC) return isExec(r.role);
     if (roleFilter !== ALL && r.role !== roleFilter) return false;
     if (teamFilter === NO_TEAM && r.project_id) return false;
     if (teamFilter !== ALL && teamFilter !== NO_TEAM && r.project_id !== teamFilter) return false;
     return true;
-  });
+    })
+    .sort(compareByRole);
 
   function onExport() {
     const headers = rates
@@ -93,24 +83,28 @@ export function DirectoryView({
     downloadCsv(`directory-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(headers, csvRows));
   }
 
+  const nonExecRoles = rolesPresent.filter((r) => !isExec(r)).sort((a, b) => compareByRole({ role: a, name: "" }, { role: b, name: "" }));
+  const execCount = rows.filter((r) => isExec(r.role)).length;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-3">
-        <Select value={roleFilter} onValueChange={(v) => v && setRoleFilter(v)}>
-          <SelectTrigger size="sm" className="w-48">
-            <SelectValue placeholder="All roles">
-              {(value: string) => (value === ALL ? "All roles" : roleLabel(value as never))}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>All roles</SelectItem>
-            {rolesPresent.map((r) => (
-              <SelectItem key={r} value={r}>
-                {ROLE_LABELS[r]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <ListSearch value={query} onChange={setQuery} placeholder="Search by name or email" className="w-64" />
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by role">
+          <FilterChip selected={roleFilter === ALL} onClick={() => setRoleFilter(ALL)} count={rows.length}>
+            Everyone
+          </FilterChip>
+          {execCount > 0 && (
+            <FilterChip selected={roleFilter === EXEC} onClick={() => setRoleFilter(EXEC)} count={execCount}>
+              Exec board
+            </FilterChip>
+          )}
+          {nonExecRoles.map((r) => (
+            <FilterChip key={r} selected={roleFilter === r} onClick={() => setRoleFilter(r)} count={rows.filter((x) => x.role === r).length}>
+              {ROLE_LABELS[r]}
+            </FilterChip>
+          ))}
+        </div>
 
         <Select value={teamFilter} onValueChange={(v) => v && setTeamFilter(v)}>
           <SelectTrigger size="sm" className="w-48">
@@ -139,64 +133,53 @@ export function DirectoryView({
         </Button>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Team</TableHead>
-            {rates && <TableHead>Attendance</TableHead>}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filtered.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={rates ? 5 : 4} className="text-center text-muted-foreground">
-                No members match these filters.
-              </TableCell>
-            </TableRow>
-          )}
+      {filtered.length === 0 ? (
+        <p className="rounded-[22px] border bg-card py-14 text-center text-sm text-muted-foreground">No one matches that.</p>
+      ) : (
+        <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {filtered.map((r) => {
             const result = rates?.[r.user_id];
             return (
-              <TableRow key={r.user_id}>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Avatar className="size-7">
-                      <AvatarFallback className="text-xs">{initials(r.name)}</AvatarFallback>
-                    </Avatar>
-                    <span className="font-medium">{r.name}</span>
+              <li key={r.user_id} className="flex flex-col gap-4 rounded-[22px] border bg-card p-5">
+                <div className="flex items-center gap-3.5">
+                  <PersonAvatar name={r.name} className="size-14 text-lg" />
+                  <div className="min-w-0">
+                    <h3 className="truncate font-heading text-lg leading-tight font-bold">{r.name}</h3>
+                    <Badge variant={isExec(r.role) ? "info" : "muted"} className="mt-1">
+                      {roleLabel(r.role)}
+                    </Badge>
                   </div>
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  <a href={`mailto:${r.email}`} className="hover:underline">
-                    {r.email}
-                  </a>
-                </TableCell>
-                <TableCell className="text-muted-foreground">{roleLabel(r.role)}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  {r.project_id && r.client_name ? (
-                    <Link href={`/portal/projects/${r.project_id}`} className="hover:underline">
-                      {r.client_name}
-                    </Link>
-                  ) : (
-                    "No team"
-                  )}
-                </TableCell>
+                </div>
+
+                <dl className="space-y-1.5 text-sm">
+                  <div className="flex gap-2">
+                    <dt className="w-12 shrink-0 text-muted-foreground">Team</dt>
+                    <dd className="min-w-0 truncate font-semibold">
+                      {r.project_id && r.client_name ? (
+                        <Link href={`/portal/projects/${r.project_id}`} className="hover:underline">
+                          {r.client_name}
+                        </Link>
+                      ) : (
+                        <span className="font-normal text-muted-foreground">No team yet</span>
+                      )}
+                    </dd>
+                  </div>
+                  <div className="flex gap-2">
+                    <dt className="w-12 shrink-0 text-muted-foreground">Email</dt>
+                    <dd className="min-w-0 truncate">
+                      <a href={`mailto:${r.email}`} className="text-link hover:underline">
+                        {r.email}
+                      </a>
+                    </dd>
+                  </div>
+                </dl>
+
                 {rates && (
-                  <TableCell>
+                  <div className="mt-auto flex flex-wrap items-center gap-2 border-t pt-3">
                     {result && result.rate !== null ? (
-                      <div className="flex items-center gap-1.5">
-                        <Badge
-                          variant="outline"
-                          className={
-                            result.rate < attendanceThreshold
-                              ? "border-transparent bg-status-bad text-status-bad-foreground"
-                              : "border-transparent bg-accent text-accent-foreground"
-                          }
-                        >
-                          {Math.round(result.rate * 100)}%
+                      <>
+                        <Badge variant={result.rate < attendanceThreshold ? "bad" : "ok"}>
+                          {Math.round(result.rate * 100)}% attendance
                         </Badge>
                         <span className="text-xs text-muted-foreground">
                           {result.excusedCount}E / {result.unexcusedCount}U / {result.tardyCount}T
@@ -207,17 +190,17 @@ export function DirectoryView({
                             aria-label={`Team hasn't logged ${result.missingSessionDates.length} session(s) other teams logged this quarter`}
                           />
                         )}
-                      </div>
+                      </>
                     ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
+                      <span className="text-xs text-muted-foreground">No attendance yet</span>
                     )}
-                  </TableCell>
+                  </div>
                 )}
-              </TableRow>
+              </li>
             );
           })}
-        </TableBody>
-      </Table>
+        </ul>
+      )}
     </div>
   );
 }
