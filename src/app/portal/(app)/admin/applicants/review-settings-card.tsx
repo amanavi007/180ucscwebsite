@@ -60,7 +60,7 @@ export function ReviewSettingsCard({ setup }: { setup: ScoringBundle["reviewSetu
               min="1"
               max="10"
               step="1"
-              className="w-28"
+              className="w-28 max-w-28"
               value={perApplicant}
               onChange={(e) => setPerApplicant(e.target.value)}
             />

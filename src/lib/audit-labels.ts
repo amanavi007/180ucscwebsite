@@ -12,6 +12,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "quarter.deactivated": "Set quarter inactive",
   "settings.attendance_threshold_changed": "Changed attendance threshold",
   "settings.default_password_changed": "Changed default account password",
+  "settings.meeting_time_changed": "Changed the meeting time",
   "project.created": "Created project",
   "team_plan.created": "Created team draft",
   "team_plan.deleted": "Deleted team draft",

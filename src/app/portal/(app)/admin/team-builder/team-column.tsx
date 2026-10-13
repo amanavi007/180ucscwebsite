@@ -124,7 +124,7 @@ export function TeamColumn({
 
   return (
     <Card className="w-80 shrink-0 gap-4 py-5">
-      <CardHeader className="flex-row items-center gap-2.5 space-y-0">
+      <CardHeader className="flex flex-row items-center gap-2.5 space-y-0">
         <button
           type="button"
           onClick={onOpenLogoDialog}

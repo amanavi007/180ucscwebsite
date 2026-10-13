@@ -5,6 +5,8 @@ import { getAttendanceData } from "@/lib/data/recruit-import";
 import { getScoringBundle } from "@/lib/data/recruit-scoring";
 import { getInterviewSlots, getInvitees } from "@/lib/data/interview";
 import { getCurrentProfile } from "@/lib/data/profile";
+import { getMeetingTime } from "@/lib/data/meeting-time";
+import { formatMeetingTime } from "@/lib/meeting-time";
 import { getMeetingDatesForQuarter } from "@/lib/data/meeting-dates";
 import { defaultQuarterId, resolveQuarterId } from "@/lib/admin-nav";
 import { AttentionList } from "./hub/attention-list";
@@ -28,12 +30,13 @@ export default async function AdminHubPage({
   const profile = await getCurrentProfile();
 
   // Each source is optional: a failing one is left out instead of breaking the page.
-  const [attendance, scoring, invitees, slots, dates] = await Promise.all([
+  const [attendance, scoring, invitees, slots, dates, meetingTime] = await Promise.all([
     selectedId ? getAttendanceData(selectedId).catch(() => null) : Promise.resolve(null),
     selectedId ? getScoringBundle(selectedId, profile.id).catch(() => null) : Promise.resolve(null),
     getInvitees().catch(() => null),
     getInterviewSlots().catch(() => null),
     selectedId ? getMeetingDatesForQuarter(selectedId).catch(() => []) : Promise.resolve([] as string[]),
+    getMeetingTime(),
   ]);
 
   const waiting = invitees ? invitees.filter((i) => !i.booking).length : null;
@@ -71,7 +74,7 @@ export default async function AdminHubPage({
           )}
           <QuickActions quarterId={selectedId} />
         </div>
-        <ComingUp dates={upcoming} />
+        <ComingUp dates={upcoming} timeLabel={formatMeetingTime(meetingTime)} />
       </div>
     </div>
   );

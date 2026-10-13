@@ -1,5 +1,5 @@
 /** The next few meeting days for the quarter, each a date block and a plain label. */
-export function ComingUp({ dates }: { dates: string[] }) {
+export function ComingUp({ dates, timeLabel }: { dates: string[]; timeLabel?: string | null }) {
   return (
     <aside aria-labelledby="coming-up-heading" className="space-y-3">
       <div>
@@ -28,6 +28,7 @@ export function ComingUp({ dates }: { dates: string[] }) {
                   <div className="text-[0.9375rem] font-semibold">Meeting day</div>
                   <div className="text-sm text-muted-foreground">
                     {date.toLocaleDateString("en-US", { month: "long", day: "numeric" })}
+                    {timeLabel ? ` · ${timeLabel}` : ""}
                   </div>
                 </div>
               </li>

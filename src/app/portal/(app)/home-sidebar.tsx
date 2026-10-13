@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getOrgTodayDateString, parseLocalDate } from "@/lib/date";
 import { getMeetingDatesForQuarter } from "@/lib/data/meeting-dates";
+import { getMeetingTime } from "@/lib/data/meeting-time";
+import { formatMeetingTime } from "@/lib/meeting-time";
 import { getVisibleTasks } from "@/lib/data/tasks";
 import { getMyProjects } from "@/lib/data/projects";
 
@@ -27,11 +29,13 @@ async function safe<T>(promise: Promise<T>, fallback: T): Promise<T> {
 /** The "what do I do today" column beside the assistant: next meeting, your open tasks, your projects. */
 export async function HomeSidebar({ userId, quarterId }: { userId: string; quarterId: string }) {
   const today = getOrgTodayDateString();
-  const [dates, tasks, projects] = await Promise.all([
+  const [dates, tasks, projects, meetingTime] = await Promise.all([
     safe(getMeetingDatesForQuarter(quarterId), [] as string[]),
     safe(getVisibleTasks({ assigneeId: userId, quarterId }), []),
     safe(getMyProjects(userId, quarterId), []),
+    getMeetingTime(),
   ]);
+  const timeLabel = formatMeetingTime(meetingTime);
 
   const nextMeeting = dates.find((d) => d >= today) ?? null;
   const open = tasks.filter((t) => t.status !== "done").slice(0, 5);
@@ -46,6 +50,7 @@ export async function HomeSidebar({ userId, quarterId }: { userId: string; quart
             <h2 className="mt-1.5 text-2xl leading-tight">
               {meeting.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
             </h2>
+            {timeLabel && <p className="mt-1 text-sm font-semibold">{timeLabel}</p>}
             <Button
               variant="outline"
               className="mt-4 border-(--primary-border) bg-foreground text-primary hover:bg-foreground/90 dark:bg-card"

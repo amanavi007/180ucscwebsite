@@ -252,13 +252,13 @@ export function SetupView({
         )}
 
         {section === "reviewers" && (
-          <div className="max-w-2xl">
+          <div>
             <ReviewSettingsCard setup={reviewSetup} />
           </div>
         )}
 
         {section === "rubric" && (
-          <div className="max-w-2xl space-y-4">
+          <div className="space-y-4">
             <Segmented
               label="Rubric"
               value={rubricStage}
@@ -273,7 +273,7 @@ export function SetupView({
         )}
 
         {section === "adjustment" && (
-          <div className="max-w-2xl">
+          <div>
             <ScoringSettingsCard settings={settings} />
           </div>
         )}
