@@ -19,8 +19,25 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 
-export function AddApplicantDialog({ quarterId, trigger }: { quarterId: string; trigger?: React.ReactElement }) {
-  const [open, setOpen] = useState(false);
+export function AddApplicantDialog({
+  quarterId,
+  trigger,
+  open: controlledOpen,
+  onOpenChange,
+}: {
+  quarterId: string;
+  trigger?: React.ReactElement;
+  /** Pass `open` to control the dialog from outside (for example from a menu); it then renders no trigger of its own. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const [innerOpen, setInnerOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : innerOpen;
+  const setOpen = (next: boolean) => {
+    if (!controlled) setInnerOpen(next);
+    onOpenChange?.(next);
+  };
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [major, setMajor] = useState("");
@@ -96,16 +113,18 @@ export function AddApplicantDialog({ quarterId, trigger }: { quarterId: string; 
         if (!next) reset();
       }}
     >
-      <DialogTrigger
-        render={
-          trigger ?? (
-            <Button size="sm">
-              <UserPlus />
-              Add applicant
-            </Button>
-          )
-        }
-      />
+      {!controlled && (
+        <DialogTrigger
+          render={
+            trigger ?? (
+              <Button size="sm">
+                <UserPlus />
+                Add applicant
+              </Button>
+            )
+          }
+        />
+      )}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add applicant</DialogTitle>

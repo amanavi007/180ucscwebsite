@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isDisagreement,
+  maskReviewerInsights,
   mean,
   normalizeReviews,
   populationSd,
@@ -198,5 +199,21 @@ describe("visibleReviews", () => {
   });
   it("shows nothing when you have no review and others do", () => {
     expect(visibleReviews("me", [otherSubmitted])).toEqual([]);
+  });
+});
+
+describe("maskReviewerInsights", () => {
+  const insights = [
+    { reviewerId: "me", n: 1, mean: 4, sd: 0, normalized: false },
+    { reviewerId: "x", n: 1, mean: 2, sd: 0, normalized: false },
+    { reviewerId: "y", n: 8, mean: 3.1, sd: 0.7, normalized: true },
+  ];
+  it("always shows my own stats", () => {
+    expect(maskReviewerInsights(insights, "me", 8)[0]).toMatchObject({ reviewerId: "me", mean: 4, sd: 0 });
+  });
+  it("hides another reviewer's average and spread until they have enough scores to not reveal one applicant", () => {
+    const [, x, y] = maskReviewerInsights(insights, "me", 8);
+    expect(x).toMatchObject({ reviewerId: "x", n: 1, mean: null, sd: null });
+    expect(y).toMatchObject({ reviewerId: "y", n: 8, mean: 3.1, sd: 0.7 });
   });
 });

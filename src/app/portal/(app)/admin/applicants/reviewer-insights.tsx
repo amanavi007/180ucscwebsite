@@ -12,7 +12,7 @@ export function ReviewerInsights({ reviewers, minN }: { reviewers: ReviewerInsig
           <li key={r.reviewerId} className="flex flex-wrap items-center justify-between gap-2 p-2.5 text-sm">
             <span className="font-medium">{r.name}</span>
             <span className="text-xs text-muted-foreground">
-              {r.n} scored · average {r.mean.toFixed(2)} · spread {r.sd.toFixed(2)}
+              {r.n} scored{r.mean !== null && r.sd !== null ? ` · average ${r.mean.toFixed(2)} · spread ${r.sd.toFixed(2)}` : " · average shown after more scores"}
             </span>
             {r.normalized ? (
               <Badge variant="secondary">evened out</Badge>

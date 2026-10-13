@@ -679,6 +679,17 @@ export async function saveReviewAction(input: {
     if ((count ?? 0) === 0) return { error: "Only applicants marked as having attended their interview can be scored." };
   }
 
+  if (input.stage === "resume") {
+    const { count, error: assignError } = await supabase
+      .from("recruit_review_assignments")
+      .select("id", { count: "exact", head: true })
+      .eq("applicant_id", input.applicantId)
+      .eq("reviewer_id", profile.id)
+      .eq("stage", "resume");
+    if (assignError) return { error: assignError.message };
+    if ((count ?? 0) === 0) return { error: "That applicant isn't assigned to you." };
+  }
+
   const { data: rubric, error: rubricError } = await supabase
     .from("recruit_rubrics")
     .select("id, scale_min, scale_max")

@@ -2,15 +2,20 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllPages } from "@/lib/paginate";
 import { getRecruitSettings } from "@/lib/data/recruit-settings";
+import { getReviewContext, type ApplicationAnswers, type ReviewerProfile } from "@/lib/data/recruit-review";
+import { resumeVisibility, reviewState } from "@/lib/recruit-assignment";
+import { buildReviewDashboard, type ReviewDashboard } from "@/lib/recruit-review-dashboard";
+import type { ReviewSettings } from "@/lib/recruit-review-settings";
 import type { RecruitSettings } from "@/lib/recruit-settings";
 import {
   isDisagreement,
+  maskReviewerInsights,
   normalizeReviews,
   reviewerInsights,
   reviewScore,
   summarizeApplicants,
   visibleReviews,
-  type ReviewerInsight,
+  type MaskedReviewerInsight,
   type ReviewInput,
   type Stage,
   type StageSummary,
@@ -89,12 +94,15 @@ export interface ScoringApplicant {
   applicationLink: string | null;
   mine: ReviewView | null;
   others: ReviewView[];
-  /** Aggregate shown only after the viewer has submitted their own review (blind scoring). */
+  /** Aggregate shown only once the applicant is unlocked for this viewer (blind scoring). */
   visibleSummary: StageSummary | null;
   disagree: boolean;
+  application: ApplicationAnswers | null;
+  /** True when the viewer may see other reviewers' scores for this applicant. */
+  unlocked: boolean;
 }
 
-export interface ReviewerInsightRow extends ReviewerInsight {
+export interface ReviewerInsightRow extends MaskedReviewerInsight {
   name: string;
 }
 
@@ -110,6 +118,14 @@ export interface ScoringBundle {
   /** Un-blinded aggregates for the decision view and the side panel. */
   summaries: Record<Stage, Record<string, StageSummary>>;
   settings: RecruitSettings;
+  dashboard: ReviewDashboard;
+  reviewSetup: {
+    settings: ReviewSettings;
+    /** Every active exec; `pool` is the subset currently allowed to review. */
+    execs: ReviewerProfile[];
+    pool: ReviewerProfile[];
+    detail: Record<string, { assigned: string[]; conflicts: string[] }>;
+  };
 }
 
 const CHUNK = 100;
@@ -155,6 +171,7 @@ export async function getScoringBundle(quarterId: string, viewerId: string): Pro
 
   const applicantIds = applicants.map((a) => a.id);
   const interviewed = new Set(links.map((l) => l.applicant_id));
+  const review = await getReviewContext(applicantIds);
 
   const reviews = await chunked(applicantIds, (chunk) =>
     fetchAllPages((from, to) =>
@@ -168,7 +185,21 @@ export async function getScoringBundle(quarterId: string, viewerId: string): Pro
         supabase.from("recruit_review_scores").select("*").in("review_id", chunk).order("id").range(from, to),
       ),
   );
-  const names = await profileNames(supabase, [...new Set(reviews.map((r) => r.reviewer_id))]);
+  const names = await profileNames(supabase, [
+    ...new Set([...reviews.map((r) => r.reviewer_id), ...review.pool.map((p) => p.id), ...review.assignments.map((a) => a.reviewerId)]),
+  ]);
+
+  const submittedResume = new Map<string, Set<string>>();
+  for (const r of reviews) {
+    if (r.stage !== "resume" || r.submitted_at === null) continue;
+    submittedResume.set(r.applicant_id, (submittedResume.get(r.applicant_id) ?? new Set()).add(r.reviewer_id));
+  }
+  const stateOf = (applicantId: string) =>
+    reviewState(
+      review.assignedByApplicant.get(applicantId) ?? [],
+      [...(submittedResume.get(applicantId) ?? [])],
+      review.revealed.has(applicantId),
+    );
 
   const scoresByReview = new Map<string, { criterionId: string; score: number }[]>();
   for (const s of scoreRows) {
@@ -214,38 +245,80 @@ export async function getScoringBundle(quarterId: string, viewerId: string): Pro
       };
     };
 
-    const eligible = stage === "interview" ? applicants.filter((a) => interviewed.has(a.id)) : applicants;
+    const eligible =
+      stage === "interview"
+        ? applicants.filter((a) => interviewed.has(a.id))
+        : applicants.filter((a) => (review.assignedByApplicant.get(a.id) ?? []).includes(viewerId));
 
     const rows: ScoringApplicant[] = eligible.map((a) => {
       const views = stageReviews.filter((r) => r.applicant_id === a.id).map(toView);
-      const visible = visibleReviews(viewerId, views);
-      const iSubmitted = views.some((v) => v.mine && v.submitted);
       const aggregate = summary[a.id] ?? null;
-      return {
+      const base = {
         id: a.id,
         name: a.name,
         email: a.email,
         applicationLink: a.application_link,
-        mine: visible.find((v) => v.mine) ?? null,
-        others: visible.filter((v) => !v.mine),
-        visibleSummary: iSubmitted ? aggregate : null,
-        disagree: iSubmitted && aggregate ? isDisagreement(aggregate, settings.disagreementThreshold) : false,
+        application: review.answers.get(a.id) ?? null,
+      };
+      if (stage === "interview") {
+        const visible = visibleReviews(viewerId, views);
+        const iSubmitted = views.some((v) => v.mine && v.submitted);
+        return {
+          ...base,
+          mine: visible.find((v) => v.mine) ?? null,
+          others: visible.filter((v) => !v.mine),
+          visibleSummary: iSubmitted ? aggregate : null,
+          disagree: iSubmitted && aggregate ? isDisagreement(aggregate, settings.disagreementThreshold) : false,
+          unlocked: iSubmitted,
+        };
+      }
+      // Blind resume scoring: nothing about other reviewers until every assigned reviewer has submitted.
+      const unlocked = stateOf(a.id).unlocked;
+      const { mine, others } = resumeVisibility(viewerId, views, unlocked);
+      return {
+        ...base,
+        mine,
+        others,
+        visibleSummary: unlocked ? aggregate : null,
+        disagree: unlocked && aggregate ? isDisagreement(aggregate, settings.disagreementThreshold) : false,
+        unlocked,
       };
     });
 
-    const reviewers = reviewerInsights(submittedInputs, settings.normalizeMinN).map((i) => ({
-      ...i,
-      name: names.get(i.reviewerId) ?? "Unknown",
-    }));
+    const insights = reviewerInsights(submittedInputs, settings.normalizeMinN);
+    // Resume scoring is blind, so other reviewers' averages stay hidden until they have enough scores.
+    const shown: MaskedReviewerInsight[] =
+      stage === "resume" ? maskReviewerInsights(insights, viewerId, settings.normalizeMinN) : insights;
+    const reviewers = shown.map((i) => ({ ...i, name: names.get(i.reviewerId) ?? "Unknown" }));
 
     return { data: { stage, rubric, applicants: rows, reviewers }, summary };
   };
 
   const resume = build("resume");
   const interview = build("interview");
+
+  // The decision view and side panel only ever see unlocked resume applicants.
+  const unlockedResume = Object.fromEntries(
+    Object.entries(resume.summary).filter(([applicantId]) => stateOf(applicantId).unlocked),
+  );
+
+  const detail: Record<string, { assigned: string[]; conflicts: string[] }> = {};
+  for (const a of applicants) detail[a.id] = { assigned: review.assignedByApplicant.get(a.id) ?? [], conflicts: [] };
+  for (const e of review.exclusions) detail[e.applicantId]?.conflicts.push(e.reviewerId);
+
   return {
     stages: { resume: resume.data, interview: interview.data },
-    summaries: { resume: resume.summary, interview: interview.summary },
+    summaries: { resume: unlockedResume, interview: interview.summary },
     settings,
+    dashboard: buildReviewDashboard({
+      applicants: applicants.map((a) => ({ id: a.id, name: a.name, email: a.email })),
+      reviewerNames: names,
+      assignments: review.assignments,
+      submitted: submittedResume,
+      revealed: review.revealed,
+      summaries: resume.summary,
+      disagreementThreshold: settings.disagreementThreshold,
+    }),
+    reviewSetup: { settings: review.settings, execs: review.execs, pool: review.pool, detail },
   };
 }
