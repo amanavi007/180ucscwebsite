@@ -42,6 +42,7 @@ import { Field, FieldGroup, FieldLabel, FieldError } from "@/components/ui/field
 import { parseLocalDate } from "@/lib/date";
 import { HEALTH_LABELS } from "@/lib/project-labels";
 import type { ProjectHealth } from "@/lib/supabase/database.types";
+import { pmNames } from "@/lib/project-leads";
 import type { ProjectWithQuarter } from "@/lib/data/types";
 
 const NONE = "__none__";
@@ -327,7 +328,9 @@ export function ProjectHeader({
       </AlertDialog>
 
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
-        <span>PM: {project.project_manager?.name ?? "Unassigned"}</span>
+        <span>
+          {pmNames(project).length > 1 ? "PMs" : "PM"}: {pmNames(project).join(", ") || "Unassigned"}
+        </span>
         <span>SC: {project.senior_consultant?.name ?? "Unassigned"}</span>
         {project.start_date && (
           <span>Started {format(parseLocalDate(project.start_date), "MMM d, yyyy")}</span>

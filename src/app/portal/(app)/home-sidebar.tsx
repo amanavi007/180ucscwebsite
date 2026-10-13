@@ -9,6 +9,7 @@ import { getVisibleTasks } from "@/lib/data/tasks";
 import { getMyProjects } from "@/lib/data/projects";
 import { getMyAttendanceSummary } from "@/lib/data/attendance";
 import { DEFAULT_ATTENDANCE_ALERT_THRESHOLD, getAttendanceAlertThreshold } from "@/lib/data/org-settings";
+import { pmNames } from "@/lib/project-leads";
 import { HomeAttendanceCard } from "./home-attendance-card";
 
 function dueChip(due: string | null, today: string): { label: string; variant: "bad" | "warn" | "muted" } {
@@ -112,14 +113,21 @@ export async function HomeSidebar({ userId, quarterId, isExec }: { userId: strin
           <p className="mt-2 text-sm text-muted-foreground">You aren&apos;t on a project this quarter yet.</p>
         ) : (
           <ul className="mt-3 space-y-2.5">
-            {projects.map((p) => (
+            {projects.map((p) => {
+              const pms = pmNames(p);
+              return (
               <li key={p.id}>
                 <Link href={`/portal/projects/${p.id}`} className="block rounded-xl bg-muted px-4 py-3 hover:bg-muted/70">
                   <span className="block text-[0.9375rem] font-semibold">{p.client_name}</span>
-                  {p.project_manager && <span className="block text-sm text-muted-foreground">PM: {p.project_manager.name}</span>}
+                  {pms.length > 0 && (
+                    <span className="block text-sm text-muted-foreground">
+                      {pms.length > 1 ? "PMs" : "PM"}: {pms.join(", ")}
+                    </span>
+                  )}
                 </Link>
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </section>

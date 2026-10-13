@@ -23,6 +23,7 @@ import { ProjectStatusSelect } from "./project-status-select";
 import { PROJECT_STATUSES, statusLabel } from "@/lib/project-labels";
 import { parseLocalDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
+import { pmNames } from "@/lib/project-leads";
 import { format } from "date-fns";
 import type { ProjectWithRelations } from "@/lib/data/types";
 import type { ProjectStatus } from "@/lib/supabase/database.types";
@@ -54,9 +55,7 @@ function ProjectCard({
   mine?: boolean;
   dragging?: boolean;
 }) {
-  const pmNames = (
-    project.project_managers ?? (project.project_manager ? [project.project_manager] : [])
-  ).map((pm) => pm.name);
+  const pms = pmNames(project);
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: project.id,
     data: project,
@@ -91,9 +90,9 @@ function ProjectCard({
       </CardHeader>
       <CardContent className="space-y-2 px-3">
         <HealthBadge health={project.health} />
-        {pmNames.length > 0 && (
+        {pms.length > 0 && (
           <p className="text-xs text-muted-foreground">
-            {pmNames.length > 1 ? "PMs" : "PM"}: {pmNames.join(", ")}
+            {pms.length > 1 ? "PMs" : "PM"}: {pms.join(", ")}
           </p>
         )}
         {project.deadline && (

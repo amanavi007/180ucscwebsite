@@ -130,7 +130,8 @@ export const getProject = cache(async function getProject(id: string): Promise<P
     .single();
 
   if (error) throw error;
-  return data as unknown as ProjectWithQuarter;
+  const [withLeads] = await withLeadIds(supabase, [data as unknown as ProjectWithQuarter]);
+  return withLeads;
 });
 
 /** Projects this member is on (via memberships, which PM/SC are auto-added to) for a quarter. */
@@ -151,7 +152,16 @@ export async function getMyProjects(
   const projects = (data as unknown as { project: ProjectWithRelations }[]).map(
     (row) => row.project,
   );
-  return withComputedHealth(supabase, projects);
+  const [withHealth, withLeads] = await Promise.all([
+    withComputedHealth(supabase, projects),
+    withLeadIds(supabase, projects),
+  ]);
+  const leadsById = new Map(withLeads.map((p) => [p.id, p]));
+  return withHealth.map((p) => ({
+    ...p,
+    lead_ids: leadsById.get(p.id)?.lead_ids ?? [],
+    project_managers: leadsById.get(p.id)?.project_managers ?? [],
+  }));
 }
 
 export async function getProjectMembers(projectId: string): Promise<MembershipWithProfile[]> {

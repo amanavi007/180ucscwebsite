@@ -25,6 +25,7 @@ import { getMeetingDatesForQuarter } from "@/lib/data/meeting-dates";
 import { getPlansForQuarter } from "@/lib/data/team-builder";
 import { getAttendanceHistory, getTeamAttendanceStatus } from "@/lib/data/attendance";
 import { roleLabel } from "@/lib/auth/roles";
+import { pmNames } from "@/lib/project-leads";
 import type { DataAccess } from "./types";
 
 export function realDataAccess(): DataAccess {
@@ -144,7 +145,7 @@ export function realDataAccess(): DataAccess {
         status: p.status,
         health: p.health,
         deadline: p.deadline,
-        pm: p.project_manager?.name ?? null,
+        pm: pmNames(p).join(", ") || null,
         sc: p.senior_consultant?.name ?? null,
       })),
     directory: async (quarterId) =>
@@ -175,7 +176,7 @@ export function realDataAccess(): DataAccess {
         status: p.status,
         health: p.health,
         deadline: p.deadline,
-        pm: p.project_manager?.name ?? null,
+        pm: pmNames(p).join(", ") || null,
         sc: p.senior_consultant?.name ?? null,
         members: members.map((m) => ({ id: m.user_id, name: m.profile?.name ?? "Unknown", team_role: m.team_role })),
       };
