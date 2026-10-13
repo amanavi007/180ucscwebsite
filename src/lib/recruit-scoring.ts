@@ -140,3 +140,18 @@ export function visibleReviews<T extends { reviewerId: string; submitted: boolea
   const iSubmitted = reviews.some((r) => r.reviewerId === viewerId && r.submitted);
   return reviews.filter((r) => r.reviewerId === viewerId || (iSubmitted && r.submitted));
 }
+
+export interface MaskedReviewerInsight extends Omit<ReviewerInsight, "mean" | "sd"> {
+  mean: number | null;
+  sd: number | null;
+}
+
+/**
+ * Blind scoring: a reviewer with only a few scores has an average that is (nearly) one applicant's score.
+ * Hide other reviewers' average and spread until they have `minN` scores; your own stats are always shown.
+ */
+export function maskReviewerInsights(insights: ReviewerInsight[], viewerId: string, minN: number): MaskedReviewerInsight[] {
+  return insights.map((i) =>
+    i.reviewerId === viewerId || i.n >= minN ? i : { ...i, mean: null, sd: null },
+  );
+}

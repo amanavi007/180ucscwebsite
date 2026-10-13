@@ -9,12 +9,13 @@ import type { ReviewSettings } from "@/lib/recruit-review-settings";
 import type { RecruitSettings } from "@/lib/recruit-settings";
 import {
   isDisagreement,
+  maskReviewerInsights,
   normalizeReviews,
   reviewerInsights,
   reviewScore,
   summarizeApplicants,
   visibleReviews,
-  type ReviewerInsight,
+  type MaskedReviewerInsight,
   type ReviewInput,
   type Stage,
   type StageSummary,
@@ -101,7 +102,7 @@ export interface ScoringApplicant {
   unlocked: boolean;
 }
 
-export interface ReviewerInsightRow extends ReviewerInsight {
+export interface ReviewerInsightRow extends MaskedReviewerInsight {
   name: string;
 }
 
@@ -284,10 +285,11 @@ export async function getScoringBundle(quarterId: string, viewerId: string): Pro
       };
     });
 
-    const reviewers = reviewerInsights(submittedInputs, settings.normalizeMinN).map((i) => ({
-      ...i,
-      name: names.get(i.reviewerId) ?? "Unknown",
-    }));
+    const insights = reviewerInsights(submittedInputs, settings.normalizeMinN);
+    // Resume scoring is blind, so other reviewers' averages stay hidden until they have enough scores.
+    const shown: MaskedReviewerInsight[] =
+      stage === "resume" ? maskReviewerInsights(insights, viewerId, settings.normalizeMinN) : insights;
+    const reviewers = shown.map((i) => ({ ...i, name: names.get(i.reviewerId) ?? "Unknown" }));
 
     return { data: { stage, rubric, applicants: rows, reviewers }, summary };
   };
