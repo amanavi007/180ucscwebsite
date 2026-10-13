@@ -1,4 +1,5 @@
 import { isPlausibleEmail } from "@/lib/recruit";
+import { findMatches, type MatchableApplicant, type MatchClass } from "@/lib/recruit-matching";
 
 export interface ParsedApplication {
   rowNumber: number;
@@ -119,4 +120,85 @@ export function driveEmbedUrl(url: string | null): string | null {
   const m =
     url.match(/drive\.google\.com\/file\/d\/([\w-]+)/) ?? url.match(/drive\.google\.com\/(?:open|uc)\?(?:.*&)?id=([\w-]+)/);
   return m ? `https://drive.google.com/file/d/${m[1]}/preview` : null;
+}
+
+export type PreviewGroup = "new" | "update" | "needs-look";
+
+export interface PreviewRow {
+  application: ParsedApplication;
+  group: PreviewGroup;
+  matchId: string | null;
+  candidates: { id: string; name: string; kind: MatchClass }[];
+}
+
+export function classifyApplications(apps: ParsedApplication[], existing: MatchableApplicant[]): PreviewRow[] {
+  const nameOf = new Map(existing.map((e) => [e.id, e.name]));
+  return apps.map((application) => {
+    const matches = findMatches({ name: application.name, email: application.email }, existing);
+    const best = matches[0];
+    if (!best) return { application, group: "new", matchId: null, candidates: [] };
+    if (best.kind === "duplicate") return { application, group: "update", matchId: best.applicantId, candidates: [] };
+    return {
+      application,
+      group: "needs-look",
+      matchId: null,
+      candidates: matches.slice(0, 3).map((m) => ({ id: m.applicantId, name: nameOf.get(m.applicantId) ?? "Unknown", kind: m.kind })),
+    };
+  });
+}
+
+export type ApplicationChoice = { kind: "new" } | { kind: "update"; applicantId: string } | { kind: "skip" };
+
+/** Needs-look rows get no default: a person has to decide them. */
+export function defaultChoices(rows: PreviewRow[]): Record<number, ApplicationChoice> {
+  const out: Record<number, ApplicationChoice> = {};
+  for (const r of rows) {
+    if (r.group === "new") out[r.application.rowNumber] = { kind: "new" };
+    else if (r.group === "update" && r.matchId) out[r.application.rowNumber] = { kind: "update", applicantId: r.matchId };
+  }
+  return out;
+}
+
+export interface ApplicationCommitRow {
+  kind: "new" | "update";
+  applicantId?: string;
+  name: string;
+  email: string;
+  major: string | null;
+  year: string | null;
+  answers: {
+    submittedAt: string | null;
+    graduationTerm: string | null;
+    howHeard: string | null;
+    essayWhy: string | null;
+    essayTeamwork: string | null;
+    essayBring: string | null;
+    resumeUrl: string | null;
+  };
+}
+
+export function buildApplicationCommitRows(rows: PreviewRow[], choices: Record<number, ApplicationChoice>): ApplicationCommitRow[] {
+  const out: ApplicationCommitRow[] = [];
+  for (const { application: a } of rows) {
+    const choice = choices[a.rowNumber];
+    if (!choice || choice.kind === "skip") continue;
+    out.push({
+      kind: choice.kind,
+      ...(choice.kind === "update" ? { applicantId: choice.applicantId } : {}),
+      name: a.name,
+      email: a.email,
+      major: a.major,
+      year: a.graduationTerm,
+      answers: {
+        submittedAt: a.submittedAt,
+        graduationTerm: a.graduationTerm,
+        howHeard: a.howHeard,
+        essayWhy: a.essayWhy,
+        essayTeamwork: a.essayTeamwork,
+        essayBring: a.essayBring,
+        resumeUrl: a.resumeUrl,
+      },
+    });
+  }
+  return out;
 }

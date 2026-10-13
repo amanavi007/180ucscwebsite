@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { cleanApplicantName, driveEmbedUrl, parseApplicationSheet } from "./recruit-applications";
+import {
+  buildApplicationCommitRows,
+  classifyApplications,
+  cleanApplicantName,
+  defaultChoices,
+  driveEmbedUrl,
+  parseApplicationSheet,
+  type ParsedApplication,
+} from "./recruit-applications";
 
 const HEADER = [
   "Timestamp",
@@ -107,5 +115,53 @@ describe("driveEmbedUrl", () => {
   it("returns null for anything else", () => {
     expect(driveEmbedUrl("https://example.com/resume.pdf")).toBeNull();
     expect(driveEmbedUrl(null)).toBeNull();
+  });
+});
+
+const app = (over: Partial<ParsedApplication> = {}): ParsedApplication => ({
+  rowNumber: 2, name: "Lucia Lim", email: "lumlim@ucsc.edu", submittedAt: null, graduationTerm: "Spring 2029",
+  major: "BME", howHeard: null, essayWhy: "w", essayTeamwork: "t", essayBring: "b",
+  resumeUrl: "https://drive.google.com/file/d/X/view", ...over,
+});
+
+describe("classifyApplications", () => {
+  const existing = [
+    { id: "e1", name: "Lucia Lim", email: "lumlim@ucsc.edu", aliases: [] },
+    { id: "e2", name: "Jessica Kim", email: null, aliases: [] },
+  ];
+  it("same email means update", () => {
+    const [r] = classifyApplications([app()], existing);
+    expect(r).toMatchObject({ group: "update", matchId: "e1" });
+  });
+  it("same name but different email needs a look", () => {
+    const [r] = classifyApplications([app({ email: "other@ucsc.edu" })], existing);
+    expect(r.group).toBe("needs-look");
+    expect(r.candidates[0]).toMatchObject({ id: "e1" });
+  });
+  it("no match is new, and Jessica Kim does not match Jessica Kimball", () => {
+    const [r] = classifyApplications([app({ name: "Jessica Kimball", email: "jk@ucsc.edu" })], existing);
+    expect(r.group).toBe("new");
+  });
+});
+
+describe("buildApplicationCommitRows", () => {
+  const rows = classifyApplications(
+    [app(), app({ rowNumber: 3, name: "New Person", email: "np@ucsc.edu" }), app({ rowNumber: 4, name: "Lucia Lim", email: "x@ucsc.edu" })],
+    [{ id: "e1", name: "Lucia Lim", email: "lumlim@ucsc.edu", aliases: [] }],
+  );
+  it("defaults: update for matches, new for new, nothing for needs-look", () => {
+    expect(defaultChoices(rows)).toEqual({ 2: { kind: "update", applicantId: "e1" }, 3: { kind: "new" } });
+  });
+  it("builds commit rows from choices and drops skips and undecided rows", () => {
+    const out = buildApplicationCommitRows(rows, { ...defaultChoices(rows), 4: { kind: "skip" } });
+    expect(out.map((r) => [r.kind, r.applicantId ?? null, r.email])).toEqual([
+      ["update", "e1", "lumlim@ucsc.edu"],
+      ["new", null, "np@ucsc.edu"],
+    ]);
+    expect(out[0]).toMatchObject({ year: "Spring 2029", major: "BME", answers: { essayWhy: "w", resumeUrl: "https://drive.google.com/file/d/X/view" } });
+  });
+  it("leaves out needs-look rows that were never decided", () => {
+    const out = buildApplicationCommitRows(rows, defaultChoices(rows));
+    expect(out.map((r) => r.email)).toEqual(["lumlim@ucsc.edu", "np@ucsc.edu"]);
   });
 });
