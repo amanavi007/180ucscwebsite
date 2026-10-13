@@ -7,6 +7,9 @@ import { isExec } from "@/lib/auth/roles";
 import { logAudit } from "@/lib/audit";
 import { getMatchableApplicants } from "@/lib/data/recruit";
 import { getReviewerPool } from "@/lib/data/recruit-review";
+import { getScoringBundle } from "@/lib/data/recruit-scoring";
+import { sendEmail } from "@/lib/email/send";
+import { buildReviewNudgeEmail } from "@/lib/email/review-nudge";
 import {
   classifyApplications,
   type ApplicationCommitRow,
@@ -185,5 +188,34 @@ export async function updateReviewSettingsAction(partial: Partial<ReviewSettings
   if (upsertError) return { error: upsertError.message };
   await logAudit(profile.id, "recruit.settings_changed", null, rows.map((r) => `${r.key}=${r.value}`).join(", "));
   revalidateAll();
+  return {};
+}
+
+/** Emails a reviewer who still has applications to score. The count is worked out here, never trusted from the page. */
+export async function nudgeReviewerAction(input: { quarterId: string; reviewerId: string }): Promise<ActionResult> {
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error: error ?? "Only exec can do that." };
+
+  const bundle = await getScoringBundle(input.quarterId, profile.id);
+  const reviewer = bundle.dashboard.reviewers.find((r) => r.id === input.reviewerId);
+  if (!reviewer) return { error: "That person isn't a reviewer this quarter." };
+  const left = reviewer.assigned - reviewer.done;
+  if (left <= 0) return { error: `${reviewer.name} has already finished.` };
+
+  const supabase = await createClient();
+  const { data, error: lookupError } = await supabase.from("profiles").select("name, email").eq("id", input.reviewerId).single();
+  if (lookupError || !data?.email) return { error: "Couldn't find their email address." };
+
+  try {
+    const email = buildReviewNudgeEmail({
+      firstName: data.name.split(" ")[0],
+      left,
+      siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "",
+    });
+    await sendEmail({ to: data.email, ...email });
+  } catch (err) {
+    console.error("Review nudge failed:", err);
+    return { error: "The email didn't send. Try again in a minute." };
+  }
   return {};
 }

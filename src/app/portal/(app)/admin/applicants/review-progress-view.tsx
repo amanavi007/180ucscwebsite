@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Check, Download, Users } from "lucide-react";
-import { assignReviewersAction, setApplicantReviewersAction, setRevealAction } from "@/actions/recruit-review";
+import { assignReviewersAction, nudgeReviewerAction, setApplicantReviewersAction, setRevealAction } from "@/actions/recruit-review";
 import type { ReviewerInsightRow, ScoringBundle } from "@/lib/data/recruit-scoring";
 import {
   dashboardCsv,
@@ -15,6 +15,7 @@ import {
 } from "@/lib/recruit-review-dashboard";
 import { downloadCsv, toCsv } from "@/lib/csv";
 import { Badge } from "@/components/ui/badge";
+import { PersonAvatar } from "@/components/person-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -83,6 +84,14 @@ export function ReviewProgressView({
     });
   }
 
+  function nudge(reviewerId: string, name: string) {
+    startTransition(async () => {
+      const out = await nudgeReviewerAction({ quarterId, reviewerId });
+      if (out.error) toast.error(out.error);
+      else toast.success(`Reminder sent to ${name}.`);
+    });
+  }
+
   function reveal(applicantId: string, revealed: boolean) {
     startTransition(async () => {
       const out = await setRevealAction({ applicantId, revealed });
@@ -110,21 +119,10 @@ export function ReviewProgressView({
 
   return (
     <div className="mt-6 space-y-8">
-      <section className="flex flex-wrap items-end justify-between gap-4">
-        <dl className="grid grid-cols-3 gap-8 text-sm">
-          <div>
-            <dt className="text-muted-foreground">Applicants</dt>
-            <dd className="text-2xl font-semibold tabular-nums">{dashboard.totals.applicants}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Fully reviewed</dt>
-            <dd className="text-2xl font-semibold tabular-nums">{dashboard.totals.complete}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Need reviewers</dt>
-            <dd className="text-2xl font-semibold tabular-nums">{dashboard.totals.unassigned}</dd>
-          </div>
-        </dl>
+      <section className="flex flex-wrap items-center justify-between gap-4">
+        <p className="text-sm text-muted-foreground">
+          Scores stay hidden from other reviewers until everyone assigned has submitted.
+        </p>
         <div className="flex gap-2">
           <Button variant="outline" onClick={exportCsv}>
             <Download />
@@ -137,33 +135,87 @@ export function ReviewProgressView({
         </div>
       </section>
 
-      {dashboard.reviewers.length > 0 && (
-        <section className="space-y-3">
-          <h3 className="font-medium">Reviewers</h3>
-          <ul className="grid gap-x-10 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-            {dashboard.reviewers.map((r) => (
-              <li key={r.id} className="space-y-1.5">
-                <div className="flex items-baseline justify-between text-sm">
-                  <span>{r.name}</span>
-                  <span className="tabular-nums text-muted-foreground">
-                    {r.done} of {r.assigned}
-                  </span>
-                </div>
-                <div
-                  className="h-1.5 overflow-hidden rounded-full bg-muted"
-                  role="progressbar"
-                  aria-label={`${r.name} progress`}
-                  aria-valuemin={0}
-                  aria-valuemax={r.assigned}
-                  aria-valuenow={r.done}
-                >
-                  <div className="h-full bg-foreground" style={{ width: `${r.assigned ? (r.done / r.assigned) * 100 : 0}%` }} />
-                </div>
-              </li>
-            ))}
-          </ul>
+      <section aria-label="Totals" className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
+        {[
+          { n: dashboard.totals.complete, label: "Fully reviewed", tone: "bg-sidebar text-sidebar-primary" },
+          {
+            n: Math.max(0, dashboard.totals.applicants - dashboard.totals.complete - dashboard.totals.unassigned),
+            label: "In progress",
+            tone: "bg-status-warn text-status-warn-foreground",
+          },
+          { n: dashboard.totals.applicants, label: "Applicants", tone: "bg-status-info text-status-info-foreground" },
+          { n: dashboard.totals.unassigned, label: "No reviewer yet", tone: "bg-status-bad text-status-bad-foreground" },
+        ].map((t) => (
+          <div key={t.label} className={`rounded-[22px] p-5 ${t.tone}`}>
+            <div className="font-heading text-5xl leading-none font-extrabold tracking-tight tabular-nums">{t.n}</div>
+            <div className="mt-2 text-sm font-semibold">{t.label}</div>
+          </div>
+        ))}
+      </section>
+
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        {dashboard.reviewers.length > 0 && (
+          <section aria-labelledby="reviewers-heading" className="rounded-[22px] border bg-card">
+            <h3 id="reviewers-heading" className="px-5 pt-5 pb-3 font-heading text-lg font-bold">
+              Reviewers
+            </h3>
+            <ul>
+              {dashboard.reviewers.map((r) => {
+                const left = r.assigned - r.done;
+                return (
+                  <li key={r.id} className="grid grid-cols-[2.25rem_minmax(0,1fr)_minmax(0,1.4fr)_auto] items-center gap-4 border-t px-5 py-3">
+                    <PersonAvatar name={r.name} />
+                    <span className="truncate text-[0.9375rem] font-semibold">{r.name}</span>
+                    <div>
+                      <div
+                        className="h-2.5 overflow-hidden rounded-full bg-muted"
+                        role="progressbar"
+                        aria-label={`${r.name} progress`}
+                        aria-valuemin={0}
+                        aria-valuemax={r.assigned}
+                        aria-valuenow={r.done}
+                      >
+                        <div className="h-full rounded-full bg-foreground" style={{ width: `${r.assigned ? (r.done / r.assigned) * 100 : 0}%` }} />
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground tabular-nums">
+                        {r.done} of {r.assigned}
+                      </div>
+                    </div>
+                    {left <= 0 ? (
+                      <Badge variant="ok">Done</Badge>
+                    ) : (
+                      <Button size="sm" variant="outline" disabled={isPending} onClick={() => nudge(r.id, r.name)}>
+                        Nudge
+                      </Button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
+
+        <section aria-labelledby="disagree-heading" className="rounded-[22px] border bg-card px-5 pb-3">
+          <h3 id="disagree-heading" className="pt-5 font-heading text-lg font-bold">
+            Reviewers disagree
+          </h3>
+          <p className="mt-1 mb-2 text-sm text-muted-foreground">Worth a second look before decisions.</p>
+          {dashboard.applicants.filter((a) => a.disagree).length === 0 ? (
+            <p className="border-t py-4 text-sm text-muted-foreground">No big gaps between reviewers so far.</p>
+          ) : (
+            <ul>
+              {dashboard.applicants
+                .filter((a) => a.disagree)
+                .map((a) => (
+                  <li key={a.id} className="flex items-center justify-between gap-3 border-t py-3">
+                    <span className="min-w-0 truncate text-[0.9375rem] font-semibold">{a.name}</span>
+                    <Badge variant="bad">Scores far apart</Badge>
+                  </li>
+                ))}
+            </ul>
+          )}
         </section>
-      )}
+      </div>
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
