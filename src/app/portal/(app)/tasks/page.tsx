@@ -6,6 +6,8 @@ import { getQuarters, getActiveQuarter } from "@/lib/data/quarters";
 import { isExec, isElevatedOrAbove } from "@/lib/auth/roles";
 import { QuarterSelect } from "@/components/quarter-select";
 import { TasksView } from "./tasks-view";
+import { LinkSwitch } from "@/components/link-switch";
+import { PageHeader } from "@/components/page-header";
 
 export const metadata: Metadata = { title: "Tasks" };
 
@@ -49,12 +51,16 @@ export default async function TasksPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-4xl leading-tight">Tasks</h1>
-          <p className="text-sm text-muted-foreground">
-            Every task you can see, across projects.
-          </p>
-        </div>
+        <PageHeader title="Tasks" description="Every task you can see, across projects.">
+          <LinkSwitch
+            className="mt-4"
+            label="Projects views"
+            items={[
+              { href: "/portal/projects", label: "Projects", active: false },
+              { href: "/portal/tasks", label: "My tasks", active: true },
+            ]}
+          />
+        </PageHeader>
         {quarters.length > 0 && (
           <QuarterSelect
             quarters={quarters}

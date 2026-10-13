@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getQuickLinks } from "@/lib/data/quick-links";
 import { isExec } from "@/lib/auth/roles";
+import { LinkSwitch } from "@/components/link-switch";
+import { PageHeader } from "@/components/page-header";
 import { QuickLinksView } from "./quick-links-view";
 
 export const metadata: Metadata = { title: "Quick Links" };
@@ -12,12 +14,16 @@ export default async function QuickLinksPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-4xl leading-tight">Quick Links</h1>
-        <p className="text-sm text-muted-foreground">
-          Fast access to shared docs, Drive folders, and other outside resources.
-        </p>
-      </div>
+      <PageHeader title="Quick links" description="Fast access to shared docs, Drive folders, and other outside resources.">
+        <LinkSwitch
+          className="mt-4"
+          label="Resources views"
+          items={[
+            { href: "/portal/resources", label: "Wiki", active: false },
+            { href: "/portal/quick-links", label: "Quick links", active: true },
+          ]}
+        />
+      </PageHeader>
 
       <QuickLinksView links={links} canEdit={isExec(profile.role)} />
     </div>

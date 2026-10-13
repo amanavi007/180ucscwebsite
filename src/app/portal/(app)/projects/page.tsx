@@ -4,6 +4,8 @@ import { getProjects } from "@/lib/data/projects";
 import { getQuarters, getActiveQuarter } from "@/lib/data/quarters";
 import { getAllProfiles } from "@/lib/data/members";
 import { isExec } from "@/lib/auth/roles";
+import { LinkSwitch } from "@/components/link-switch";
+import { PageHeader } from "@/components/page-header";
 import { ProjectsView } from "./projects-view";
 
 export const metadata: Metadata = { title: "Projects" };
@@ -29,12 +31,16 @@ export default async function ProjectsPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-4xl leading-tight">Projects</h1>
-        <p className="text-sm text-muted-foreground">
-          Client projects for the selected quarter.
-        </p>
-      </div>
+      <PageHeader title="Projects" description="Client projects for the selected quarter.">
+        <LinkSwitch
+          className="mt-4"
+          label="Projects views"
+          items={[
+            { href: "/portal/projects", label: "Projects", active: true },
+            { href: "/portal/tasks", label: "My tasks", active: false },
+          ]}
+        />
+      </PageHeader>
 
       <ProjectsView
         projects={projects}
