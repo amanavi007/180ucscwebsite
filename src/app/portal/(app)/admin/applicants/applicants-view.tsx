@@ -16,7 +16,8 @@ type Sort = "points" | "name";
 
 const GRID = "grid-cols-[3rem_minmax(0,1.7fr)_9.5rem_minmax(0,1.3fr)_9.5rem]";
 
-function reviewLabel(state: ApplicantReviewState | undefined): { text: string; dot: string } {
+function reviewLabel(state: ApplicantReviewState | undefined, hasApplication: boolean): { text: string; dot: string } {
+  if (!hasApplication) return { text: "Not reviewed", dot: "bg-status-warn-foreground" };
   if (!state || state.status === "unassigned") return { text: "Not assigned", dot: "bg-muted-foreground/50" };
   if (state.status === "not-started") return { text: "Not started", dot: "bg-muted-foreground/50" };
   if (state.status === "revealed") return { text: "Revealed", dot: "bg-primary" };
@@ -150,7 +151,7 @@ export function ApplicantsView({
           <ul>
             {visible.map((r) => {
               const came = [...new Set(r.entries.filter((e) => !e.voidedAt).map((e) => e.categoryName))];
-              const review = reviewLabel(reviewStatus[r.id]);
+              const review = reviewLabel(reviewStatus[r.id], r.hasApplication);
               return (
                 <li key={r.id} className="border-b last:border-b-0">
                   <button
@@ -164,6 +165,9 @@ export function ApplicantsView({
                         <span className="text-sm font-medium">{r.name}</span>
                         {r.hasPrevious && <Badge variant="secondary">Previously applied</Badge>}
                         {!r.email && <Badge variant="outline">No email yet</Badge>}
+                        {!r.hasApplication && (
+                          <Badge className="bg-status-warn text-status-warn-foreground">No application submitted</Badge>
+                        )}
                       </span>
                       <span className="block truncate text-[13px] text-muted-foreground">{r.email}</span>
                     </span>

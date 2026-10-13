@@ -21,6 +21,7 @@ import {
 } from "@/lib/recruit-applications";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DuplicateSubmissions } from "./duplicate-submissions";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 type Step = "upload" | "review" | "done";
@@ -54,7 +55,7 @@ export function ImportApplicationsDialog({
           }
         />
       )}
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
         {/* Remounted on every open so each import starts from a clean state. */}
         {open && <Flow quarterId={quarterId} onClose={() => setOpen(false)} />}
       </DialogContent>
@@ -70,7 +71,8 @@ function choiceMatches(a: ApplicationChoice | undefined, b: ApplicationChoice): 
 function Flow({ quarterId, onClose }: { quarterId: string; onClose: () => void }) {
   const [step, setStep] = useState<Step>("upload");
   const [parsed, setParsed] = useState<ParseResult | null>(null);
-  const [rows, setRows] = useState<PreviewRow[]>([]);
+  const [baseRows, setRows] = useState<PreviewRow[]>([]);
+  const [picks, setPicks] = useState<Record<string, number>>({});
   const [choices, setChoices] = useState<Record<number, ApplicationChoice>>({});
   const [result, setResult] = useState<{ batchId: string; created: number; updated: number; skipped: number } | null>(null);
   const [assigned, setAssigned] = useState<number | null>(null);
@@ -78,6 +80,13 @@ function Flow({ quarterId, onClose }: { quarterId: string; onClose: () => void }
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
+  // A picked submission replaces the default one under the same row key, so choices made on that row still apply.
+  const rows = baseRows.map((r) => {
+    const picked = picks[r.application.email];
+    if (picked === undefined || picked === r.application.rowNumber) return r;
+    const chosen = parsed?.duplicateGroups.find((g) => g.email === r.application.email)?.submissions.find((s) => s.rowNumber === picked);
+    return chosen ? { ...r, application: { ...chosen, rowNumber: r.application.rowNumber } } : r;
+  });
   const needsLook = rows.filter((r) => r.group === "needs-look");
   const undecided = needsLook.filter((r) => !choices[r.application.rowNumber]);
   const importing = buildApplicationCommitRows(rows, choices);
@@ -196,11 +205,6 @@ function Flow({ quarterId, onClose }: { quarterId: string; onClose: () => void }
         </dl>
 
         <div className="space-y-1 text-sm text-muted-foreground">
-          {parsed.duplicatesInFile > 0 && (
-            <p>
-              {parsed.duplicatesInFile} {parsed.duplicatesInFile === 1 ? "person" : "people"} submitted twice. We kept their latest.
-            </p>
-          )}
           {parsed.unmapped.length > 0 && <p>Ignored columns: {parsed.unmapped.join(", ")}.</p>}
           {parsed.skipped.length > 0 && (
             <details>
@@ -215,6 +219,14 @@ function Flow({ quarterId, onClose }: { quarterId: string; onClose: () => void }
             </details>
           )}
         </div>
+
+        {parsed.duplicateGroups.length > 0 && (
+          <DuplicateSubmissions
+            groups={parsed.duplicateGroups}
+            picks={picks}
+            onPick={(email, rowNumber) => setPicks((prev) => ({ ...prev, [email]: rowNumber }))}
+          />
+        )}
 
         {needsLook.length > 0 && (
           <section className="space-y-3">

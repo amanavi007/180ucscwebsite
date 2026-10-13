@@ -15,8 +15,33 @@ export interface ParsedApplication {
   resumeUrl: string | null;
 }
 
+export type CompareField = "name" | "graduationTerm" | "major" | "howHeard" | "essayWhy" | "essayTeamwork" | "essayBring" | "resumeUrl";
+
+export const COMPARE_FIELDS: { key: CompareField; label: string; long?: boolean }[] = [
+  { key: "name", label: "Name" },
+  { key: "graduationTerm", label: "Graduation" },
+  { key: "major", label: "Major" },
+  { key: "howHeard", label: "How they heard" },
+  { key: "resumeUrl", label: "Resume link" },
+  { key: "essayWhy", label: "Why they want to join", long: true },
+  { key: "essayTeamwork", label: "A time they worked on a team", long: true },
+  { key: "essayBring", label: "What they would bring", long: true },
+];
+
+/** Everyone who submitted the form more than once, with every submission kept so a person can compare them. */
+export interface DuplicateGroup {
+  email: string;
+  /** In sheet order. */
+  submissions: ParsedApplication[];
+  /** Row number of the submission the import uses unless someone picks another. */
+  keptRow: number;
+  /** Fields whose answers aren't the same across submissions (timestamps always differ and don't count). */
+  differing: CompareField[];
+}
+
 export interface ParseResult {
   applications: ParsedApplication[];
+  duplicateGroups: DuplicateGroup[];
   skipped: { rowNumber: number; reason: string }[];
   unmapped: string[];
   duplicatesInFile: number;
@@ -60,8 +85,51 @@ function toIso(v: unknown): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
+/** Whitespace and blank-vs-missing never count as a difference. */
+function comparable(v: string | null): string {
+  return (v ?? "").replace(/\s+/g, " ").trim();
+}
+
+export interface DiffSegment {
+  text: string;
+  changed: boolean;
+}
+
+/** Word-level diff of `text` against `other`: words that don't appear in the same place in `other` are marked changed. */
+export function diffAgainst(text: string | null, other: string | null): DiffSegment[] {
+  const a = comparable(text).split(" ").filter(Boolean);
+  const b = comparable(other).split(" ").filter(Boolean);
+  // Longest common subsequence table; essays are a few hundred words so this stays small.
+  const lcs = Array.from({ length: a.length + 1 }, () => new Array<number>(b.length + 1).fill(0));
+  for (let i = a.length - 1; i >= 0; i--) {
+    for (let j = b.length - 1; j >= 0; j--) {
+      lcs[i][j] = a[i] === b[j] ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+    }
+  }
+  const out: DiffSegment[] = [];
+  const push = (word: string, changed: boolean) => {
+    const last = out[out.length - 1];
+    if (last && last.changed === changed) last.text += ` ${word}`;
+    else out.push({ text: word, changed });
+  };
+  let i = 0;
+  let j = 0;
+  while (i < a.length) {
+    if (j < b.length && a[i] === b[j]) {
+      push(a[i], false);
+      i++;
+      j++;
+    } else if (j < b.length && lcs[i][j + 1] >= lcs[i + 1][j]) j++;
+    else {
+      push(a[i], true);
+      i++;
+    }
+  }
+  return out;
+}
+
 export function parseApplicationSheet(rows: unknown[][]): ParseResult {
-  const empty: ParseResult = { applications: [], skipped: [], unmapped: [], duplicatesInFile: 0, missingRequired: [] };
+  const empty: ParseResult = { applications: [], duplicateGroups: [], skipped: [], unmapped: [], duplicatesInFile: 0, missingRequired: [] };
   const [header, ...body] = rows;
   if (!header) return { ...empty, missingRequired: ["name", "email"] };
 
@@ -81,6 +149,7 @@ export function parseApplicationSheet(rows: unknown[][]): ParseResult {
 
   const get = (r: unknown[], f: Field) => (columns.has(f) ? cellText(r[columns.get(f)!]) : null);
   const byEmail = new Map<string, ParsedApplication>();
+  const submissionsByEmail = new Map<string, ParsedApplication[]>();
   const skipped: ParseResult["skipped"] = [];
   let duplicatesInFile = 0;
 
@@ -105,6 +174,7 @@ export function parseApplicationSheet(rows: unknown[][]): ParseResult {
       essayBring: get(r, "essayBring"),
       resumeUrl: get(r, "resumeUrl"),
     };
+    submissionsByEmail.set(email, [...(submissionsByEmail.get(email) ?? []), app]);
     const prev = byEmail.get(email);
     if (prev) {
       duplicatesInFile++;
@@ -112,7 +182,18 @@ export function parseApplicationSheet(rows: unknown[][]): ParseResult {
     } else byEmail.set(email, app);
   });
 
-  return { applications: [...byEmail.values()], skipped, unmapped, duplicatesInFile, missingRequired: [] };
+  const duplicateGroups: DuplicateGroup[] = [];
+  for (const [email, submissions] of submissionsByEmail) {
+    if (submissions.length < 2) continue;
+    duplicateGroups.push({
+      email,
+      submissions,
+      keptRow: byEmail.get(email)!.rowNumber,
+      differing: COMPARE_FIELDS.map((f) => f.key).filter((key) => new Set(submissions.map((a) => comparable(a[key]))).size > 1),
+    });
+  }
+
+  return { applications: [...byEmail.values()], duplicateGroups, skipped, unmapped, duplicatesInFile, missingRequired: [] };
 }
 
 export function driveEmbedUrl(url: string | null): string | null {

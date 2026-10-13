@@ -50,6 +50,8 @@ export interface ApplicantRow {
   year: string | null;
   notes: string;
   applicationLink: string | null;
+  /** True when they came in through the application form import; only these are reviewed. */
+  hasApplication: boolean;
   hasPrevious: boolean;
   previousQuarterName: string | null;
   aliases: string[];
@@ -155,6 +157,15 @@ export async function getApplicantRows(quarterId: string): Promise<ApplicantRow[
     );
   }
 
+  const withApplication = new Set<string>();
+  for (let i = 0; i < ids.length; i += ID_CHUNK) {
+    const chunk = ids.slice(i, i + ID_CHUNK);
+    const answers = await fetchAllPages((from, to) =>
+      supabase.from("recruit_applicant_answers").select("applicant_id").in("applicant_id", chunk).order("applicant_id").range(from, to),
+    );
+    for (const a of answers) withApplication.add(a.applicant_id);
+  }
+
   const awarderNames = await lookupProfileNames(
     supabase,
     [...new Set(pointRows.map((p) => p.awarded_by).filter((x): x is string => !!x))],
@@ -210,6 +221,7 @@ export async function getApplicantRows(quarterId: string): Promise<ApplicantRow[
       year: a.year,
       notes: a.notes,
       applicationLink: a.application_link,
+      hasApplication: withApplication.has(a.id),
       hasPrevious: a.previous_applicant_id !== null,
       previousQuarterName: a.previous_applicant_id ? (previousQuarterById.get(a.previous_applicant_id) ?? null) : null,
       aliases: aliasesByApplicant.get(a.id) ?? [],

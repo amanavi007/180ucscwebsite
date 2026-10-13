@@ -4,6 +4,7 @@ import {
   classifyApplications,
   cleanApplicantName,
   defaultChoices,
+  diffAgainst,
   driveEmbedUrl,
   parseApplicationSheet,
   type ParsedApplication,
@@ -94,6 +95,31 @@ describe("parseApplicationSheet", () => {
     expect(r.duplicatesInFile).toBe(1);
   });
 
+  it("reports a double submission with identical answers as identical", () => {
+    const r = parseApplicationSheet([
+      HEADER,
+      row({ 0: "2026-10-01T10:00:00Z", 6: "Same  text" }),
+      row({ 0: "2026-10-02T10:00:00Z", 6: "Same text " }),
+    ]);
+    expect(r.duplicateGroups).toHaveLength(1);
+    expect(r.duplicateGroups[0].submissions).toHaveLength(2);
+    expect(r.duplicateGroups[0].differing).toEqual([]);
+    expect(r.duplicateGroups[0].keptRow).toBe(3);
+  });
+
+  it("lists which fields differ between a person's submissions", () => {
+    const r = parseApplicationSheet([
+      HEADER,
+      row({ 0: "2026-10-01T10:00:00Z", 4: "Math", 6: "old essay" }),
+      row({ 0: "2026-10-02T10:00:00Z", 4: "Economics", 6: "old essay" }),
+    ]);
+    expect(r.duplicateGroups[0].differing).toEqual(["major"]);
+  });
+
+  it("has no duplicate groups when everyone submitted once", () => {
+    expect(parseApplicationSheet([HEADER, row(), row({ 1: "b@ucsc.edu" })]).duplicateGroups).toEqual([]);
+  });
+
   it("keeps multi-line essays intact", () => {
     const r = parseApplicationSheet([HEADER, row({ 6: "line1\r\nline2 " })]);
     expect(r.applications[0].essayWhy).toBe("line1\nline2");
@@ -163,5 +189,26 @@ describe("buildApplicationCommitRows", () => {
   it("leaves out needs-look rows that were never decided", () => {
     const out = buildApplicationCommitRows(rows, defaultChoices(rows));
     expect(out.map((r) => r.email)).toEqual(["lumlim@ucsc.edu", "np@ucsc.edu"]);
+  });
+});
+
+describe("diffAgainst", () => {
+  it("marks nothing when the text is the same, ignoring spacing", () => {
+    expect(diffAgainst("a  b c", "a b c ")).toEqual([{ text: "a b c", changed: false }]);
+  });
+  it("marks only the words that differ", () => {
+    expect(diffAgainst("we love data science", "we like data science")).toEqual([
+      { text: "we", changed: false },
+      { text: "love", changed: true },
+      { text: "data science", changed: false },
+    ]);
+  });
+  it("marks added words and treats a missing other as all changed", () => {
+    expect(diffAgainst("a b c", "a c")).toEqual([
+      { text: "a", changed: false },
+      { text: "b", changed: true },
+      { text: "c", changed: false },
+    ]);
+    expect(diffAgainst("a b", null)).toEqual([{ text: "a b", changed: true }]);
   });
 });

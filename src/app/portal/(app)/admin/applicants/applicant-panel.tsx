@@ -112,6 +112,11 @@ function PanelBody({
       </SheetHeader>
 
       <div className="space-y-5 px-4 pb-6">
+        {!applicant.hasApplication && (
+          <p className="rounded-lg bg-status-warn px-3 py-2 text-sm text-status-warn-foreground">
+            No application submitted. They aren&apos;t part of reviews or reviewer assignment.
+          </p>
+        )}
         <Button onClick={onGivePoints}>Give points</Button>
 
         <section className="space-y-2">
