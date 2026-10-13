@@ -55,13 +55,16 @@ export function ApplicantsWorkspace({
 
   const reviewStatus = Object.fromEntries(scoring.dashboard.applicants.map((a) => [a.id, a.state]));
 
+  const withoutApplication = rows.filter((r) => !r.hasApplication).length;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-[1.75rem] leading-tight font-semibold tracking-tight">Applicants</h1>
           <p className="mt-1.5 flex items-center gap-1 text-sm text-muted-foreground">
-            {quarterName} · {rows.length} applicant{rows.length === 1 ? "" : "s"}
+            {quarterName} · {rows.length - withoutApplication} applicant{rows.length - withoutApplication === 1 ? "" : "s"}
+            {withoutApplication > 0 && ` · ${withoutApplication} without an application`}
             <HowItWorks />
           </p>
         </div>
