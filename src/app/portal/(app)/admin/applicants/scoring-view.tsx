@@ -101,9 +101,9 @@ function StagePanel({ data }: { data: StageData }) {
   const mineCount = data.applicants.length - todo.length;
 
   return (
-    <div className="grid items-start gap-8 2xl:grid-cols-[14.5rem_minmax(0,1fr)]">
+    <div className="grid items-start gap-8 xl:grid-cols-[14.5rem_minmax(0,1fr)]">
       {/* Wide screens: the queue is a list on the left. */}
-      <aside aria-label="Your queue" className="hidden space-y-3 2xl:block">
+      <aside aria-label="Your queue" className="hidden space-y-3 xl:block">
         <QueueFilter filter={filter} onChange={setFilter} todo={todo.length} all={data.applicants.length} />
         {list.length === 0 ? (
           <p className="text-sm text-muted-foreground">You&apos;ve scored everyone. Nice work!</p>
@@ -135,7 +135,7 @@ function StagePanel({ data }: { data: StageData }) {
 
       <div className="min-w-0 space-y-5">
         {/* Narrower screens: a compact picker keeps the application and score panel side by side. */}
-        <div className="flex flex-wrap items-center gap-3 2xl:hidden">
+        <div className="flex flex-wrap items-center gap-3 xl:hidden">
           <QueueFilter filter={filter} onChange={setFilter} todo={todo.length} all={data.applicants.length} />
           {list.length > 0 && selected && (
             <Select value={selected.id} onValueChange={(v) => v && setSelectedId(v)}>
