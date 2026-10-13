@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchAllPages } from "@/lib/paginate";
 import { getRecruitSettings } from "@/lib/data/recruit-settings";
 import { getReviewContext, type ApplicationAnswers, type ReviewerProfile } from "@/lib/data/recruit-review";
+import type { AnswerKey } from "@/lib/recruit-rubric-levels";
 import { resumeVisibility, reviewState } from "@/lib/recruit-assignment";
 import { buildReviewDashboard, type ReviewDashboard } from "@/lib/recruit-review-dashboard";
 import type { ReviewSettings } from "@/lib/recruit-review-settings";
@@ -28,6 +29,7 @@ export interface CriterionRow {
   stage: Stage;
   name: string;
   description: string;
+  answerKey: AnswerKey | null;
   weight: number;
   sortOrder: number;
   archived: boolean;
@@ -65,6 +67,7 @@ export async function getRubrics(): Promise<Record<Stage, RubricRow>> {
           stage,
           name: c.name,
           description: c.description,
+          answerKey: c.answer_key,
           weight: Number(c.weight),
           sortOrder: c.sort_order,
           archived: c.archived_at !== null,

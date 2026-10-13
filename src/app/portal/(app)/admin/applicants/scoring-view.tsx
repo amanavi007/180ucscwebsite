@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import type { ScoringApplicant, StageData } from "@/lib/data/recruit-scoring";
 import { STAGES, type Stage } from "@/lib/recruit-scoring";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ApplicationCard } from "./application-card";
-import { ScoreForm } from "./score-form";
+import type { AnswerKey } from "@/lib/recruit-rubric-levels";
+import { ApplicationCard, SECTION_SELECTOR } from "./application-card";
+import { isTypingTarget, ScoreForm } from "./score-form";
 import { Segmented } from "./segmented";
 
 const fmt = (n: number | null) => (n === null ? "–" : n.toFixed(2));
@@ -79,6 +80,48 @@ function StagePanel({ data }: { data: StageData }) {
   const todo = data.applicants.filter((a) => !scored(a));
   const list = filter === "todo" ? todo : data.applicants;
   const selected = data.applicants.find((a) => a.id === selectedId) ?? todo[0] ?? data.applicants[0] ?? null;
+  const [scoredAnswers, setScoredAnswers] = useState<AnswerKey[]>([]);
+  const onScoredAnswers = useCallback((keys: AnswerKey[]) => setScoredAnswers(keys), []);
+  const scoredIn: Partial<Record<AnswerKey, string>> = {};
+  for (const c of data.rubric.criteria) if (!c.archived && c.answerKey && !scoredIn[c.answerKey]) scoredIn[c.answerKey] = c.name;
+  const topRef = useRef<HTMLDivElement>(null);
+  const lastSelected = useRef<string | null>(selected?.id ?? null);
+
+  // Opening a different applicant starts at the top of their application.
+  useEffect(() => {
+    if (!selected || lastSelected.current === selected.id) return;
+    lastSelected.current = selected.id;
+    topRef.current?.scrollIntoView({ block: "start" });
+  }, [selected]);
+
+  // J and K walk the answers, [ and ] walk the queue.
+  const onShortcut = useEffectEvent((e: KeyboardEvent) => {
+    if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
+    const key = e.key.toLowerCase();
+    if (key === "j" || key === "k") {
+      if (data.stage !== "resume") return;
+      const sections = [...document.querySelectorAll<HTMLElement>(SECTION_SELECTOR)];
+      if (sections.length === 0) return;
+      const target =
+        key === "j"
+          ? sections.find((el) => el.getBoundingClientRect().top > 24)
+          : [...sections].reverse().find((el) => el.getBoundingClientRect().top < -24) ?? sections[0];
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+      e.preventDefault();
+    } else if (key === "[" || key === "]") {
+      const at = list.findIndex((a) => a.id === selected?.id);
+      const to = list[at + (key === "]" ? 1 : -1)];
+      if (to) {
+        setSelectedId(to.id);
+        e.preventDefault();
+      }
+    }
+  });
+  useEffect(() => {
+    const listener = (e: KeyboardEvent) => onShortcut(e);
+    window.addEventListener("keydown", listener);
+    return () => window.removeEventListener("keydown", listener);
+  }, []);
 
   function next() {
     const after = data.applicants.filter((a) => !scored(a) && a.id !== selected?.id);
@@ -158,23 +201,32 @@ function StagePanel({ data }: { data: StageData }) {
         </div>
 
         {selected && data.stage === "resume" ? (
-          <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
-            <div className="max-w-[40rem]">
+          <div ref={topRef} className="grid scroll-mt-4 items-start gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
+            <div className="max-w-[50rem]">
               <ApplicationCard
                 key={selected.id}
                 name={selected.name}
                 email={selected.email}
                 application={selected.application}
                 applicationLink={selected.applicationLink}
+                scoredAnswers={scoredAnswers}
+                scoredIn={scoredIn}
               />
             </div>
             <div className="space-y-4 xl:sticky xl:top-4">
-              <ScoreForm key={`${data.stage}:${selected.id}`} stage={data.stage} rubric={data.rubric} applicant={selected} onSubmitted={next} />
+              <ScoreForm
+                key={`${data.stage}:${selected.id}`}
+                stage={data.stage}
+                rubric={data.rubric}
+                applicant={selected}
+                onSubmitted={next}
+                onScoredAnswers={onScoredAnswers}
+              />
               <OthersPanel applicant={selected} disagreeing={selected.disagree} stage={data.stage} />
             </div>
           </div>
         ) : selected ? (
-          <div className="max-w-xl space-y-4">
+          <div ref={topRef} className="max-w-xl scroll-mt-4 space-y-4">
             <ScoreForm key={`${data.stage}:${selected.id}`} stage={data.stage} rubric={data.rubric} applicant={selected} onSubmitted={next} />
             <OthersPanel applicant={selected} disagreeing={selected.disagree} stage={data.stage} />
           </div>

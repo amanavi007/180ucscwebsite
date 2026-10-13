@@ -15,6 +15,8 @@ import {
 import type { CriterionRow, RubricRow } from "@/lib/data/recruit-scoring";
 import type { RecruitSettings } from "@/lib/recruit-settings";
 import { STAGES } from "@/lib/recruit-scoring";
+import { ANSWER_KEYS, ANSWER_LABELS, isAnswerKey, type AnswerKey } from "@/lib/recruit-rubric-levels";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,12 +31,13 @@ function CriterionDialog({ rubric, criterion, trigger }: { rubric: RubricRow; cr
   const [name, setName] = useState(criterion?.name ?? "");
   const [description, setDescription] = useState(criterion?.description ?? "");
   const [weight, setWeight] = useState(String(criterion?.weight ?? 1));
+  const [answerKey, setAnswerKey] = useState<AnswerKey | "none">(criterion?.answerKey ?? "none");
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
   function submit() {
     startTransition(async () => {
-      const input = { name, description, weight: Number(weight) };
+      const input = { name, description, answerKey: answerKey === "none" ? null : answerKey, weight: Number(weight) };
       const result = isEdit
         ? await updateCriterionAction(criterion.id, input)
         : await createCriterionAction({ stage: rubric.stage, ...input });
@@ -47,6 +50,7 @@ function CriterionDialog({ rubric, criterion, trigger }: { rubric: RubricRow; cr
       if (!isEdit) {
         setName("");
         setDescription("");
+        setAnswerKey("none");
         setWeight("1");
       }
       router.refresh();
@@ -69,16 +73,35 @@ function CriterionDialog({ rubric, criterion, trigger }: { rubric: RubricRow; cr
             <Input id="criterion-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Problem solving" />
           </Field>
           <Field>
-            <FieldLabel htmlFor="criterion-description">What a low and high score look like</FieldLabel>
+            <FieldLabel htmlFor="criterion-description">What each score means</FieldLabel>
             <Textarea
               id="criterion-description"
-              rows={3}
+              rows={Math.max(4, Math.floor(rubric.scaleMax - rubric.scaleMin) + 1)}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder={`${rubric.scaleMin} = …, ${rubric.scaleMax} = …`}
+              placeholder={Array.from({ length: Math.floor(rubric.scaleMax - rubric.scaleMin) + 1 }, (_, i) => `${rubric.scaleMin + i} = …`).join("\n")}
             />
-            <FieldDescription>Shown to reviewers under the criterion so everyone grades the same way.</FieldDescription>
+            <FieldDescription>One line per score, like &ldquo;3 = Readable, reasoning is partly clear&rdquo;. Reviewers see a line when they hover that number.</FieldDescription>
           </Field>
+          {rubric.stage === "resume" && (
+            <Field>
+              <FieldLabel htmlFor="criterion-answer">Scores this part of the application</FieldLabel>
+              <Select value={answerKey} onValueChange={(v) => v && setAnswerKey(isAnswerKey(v) ? v : "none")}>
+                <SelectTrigger id="criterion-answer" className="w-full">
+                  <SelectValue>{(value: string) => (isAnswerKey(value) ? ANSWER_LABELS[value] : "Overall (no single answer)")}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Overall (no single answer)</SelectItem>
+                  {ANSWER_KEYS.map((k) => (
+                    <SelectItem key={k} value={k}>
+                      {ANSWER_LABELS[k]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldDescription>Reviewers see a tick next to that answer once they score this line.</FieldDescription>
+            </Field>
+          )}
           <Field>
             <FieldLabel htmlFor="criterion-weight">Weight</FieldLabel>
             <Input id="criterion-weight" type="number" min="0" step="0.5" value={weight} onChange={(e) => setWeight(e.target.value)} />
@@ -156,7 +179,7 @@ export function RubricEditor({ rubric }: { rubric: RubricRow }) {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="font-medium">{c.name}</div>
-                {c.description && <div className="text-xs text-muted-foreground">{c.description}</div>}
+                {c.description && <div className="line-clamp-2 text-xs whitespace-pre-line text-muted-foreground">{c.description}</div>}
               </div>
               <Badge variant="secondary">weight {c.weight}</Badge>
               <CriterionDialog

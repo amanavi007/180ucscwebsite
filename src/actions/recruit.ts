@@ -16,6 +16,7 @@ import {
 } from "@/lib/recruit";
 import { findMatches, normalizeName, pairKey, type MatchClass } from "@/lib/recruit-matching";
 import { cleanDisplayName, parseAttendeeInput, reviewImport, type CommitRow, type ReviewRow } from "@/lib/recruit-import";
+import type { AnswerKey } from "@/lib/recruit-rubric-levels";
 import { validateScore, type Stage } from "@/lib/recruit-scoring";
 import { RECRUIT_SETTING_KEYS, validateRecruitSettings, type RecruitSettings } from "@/lib/recruit-settings";
 import { NO_SHOW_DEFAULT_REASON, systemKeyFor, type AttendanceStatus, type BookingKind } from "@/lib/recruit-attendance";
@@ -753,6 +754,7 @@ export async function createCriterionAction(input: {
   stage: Stage;
   name: string;
   description: string;
+  answerKey?: AnswerKey | null;
   weight: number;
 }): Promise<ActionResult> {
   const { error } = await requireExec();
@@ -774,6 +776,7 @@ export async function createCriterionAction(input: {
     rubric_id: rubric.id,
     name: input.name.trim(),
     description: input.description.trim(),
+    answer_key: input.answerKey ?? null,
     weight: input.weight,
     sort_order: (last?.[0]?.sort_order ?? 0) + 10,
   });
@@ -784,7 +787,7 @@ export async function createCriterionAction(input: {
 
 export async function updateCriterionAction(
   id: string,
-  input: { name: string; description: string; weight: number },
+  input: { name: string; description: string; answerKey?: AnswerKey | null; weight: number },
 ): Promise<ActionResult> {
   const { error } = await requireExec();
   if (error) return { error };
@@ -794,7 +797,7 @@ export async function updateCriterionAction(
   const supabase = await createClient();
   const { error: updateError } = await supabase
     .from("recruit_rubric_criteria")
-    .update({ name: input.name.trim(), description: input.description.trim(), weight: input.weight })
+    .update({ name: input.name.trim(), description: input.description.trim(), answer_key: input.answerKey ?? null, weight: input.weight })
     .eq("id", id);
   if (updateError) return { error: updateError.message };
   revalidateAll();

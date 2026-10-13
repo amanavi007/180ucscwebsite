@@ -818,6 +818,7 @@ export interface Database {
           weight: number;
           sort_order: number;
           archived_at: string | null;
+          answer_key: "why" | "teamwork" | "bring" | "resume" | null;
           created_at: string;
         };
         Insert: {
@@ -828,6 +829,7 @@ export interface Database {
           weight?: number;
           sort_order?: number;
           archived_at?: string | null;
+          answer_key?: "why" | "teamwork" | "bring" | "resume" | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["recruit_rubric_criteria"]["Insert"]>;
