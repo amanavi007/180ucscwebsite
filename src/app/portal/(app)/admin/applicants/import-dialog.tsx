@@ -32,22 +32,35 @@ export function ImportDialog({
   quarterId,
   categories,
   events,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   quarterId: string;
   categories: RecruitCategory[];
   events: RecruitEvent[];
+  /** Pass `open` to control the dialog from outside (for example from a menu); it then renders no trigger of its own. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [innerOpen, setInnerOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : innerOpen;
+  const setOpen = (next: boolean) => {
+    if (!controlled) setInnerOpen(next);
+    onOpenChange?.(next);
+  };
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={
-          <Button size="sm" variant="outline">
-            <FileUp />
-            Import attendance
-          </Button>
-        }
-      />
+      {!controlled && (
+        <DialogTrigger
+          render={
+            <Button size="sm" variant="outline">
+              <FileUp />
+              Import attendance
+            </Button>
+          }
+        />
+      )}
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         {/* Remounted on every open so each import starts from a clean state. */}
         {open && <ImportFlow quarterId={quarterId} categories={categories} events={events} onClose={() => setOpen(false)} />}

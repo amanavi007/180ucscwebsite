@@ -25,18 +25,35 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 
 type Step = "upload" | "review" | "done";
 
-export function ImportApplicationsDialog({ quarterId }: { quarterId: string }) {
-  const [open, setOpen] = useState(false);
+export function ImportApplicationsDialog({
+  quarterId,
+  open: controlledOpen,
+  onOpenChange,
+}: {
+  quarterId: string;
+  /** Pass `open` to control the dialog from outside (for example from a menu); it then renders no trigger of its own. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const [innerOpen, setInnerOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : innerOpen;
+  const setOpen = (next: boolean) => {
+    if (!controlled) setInnerOpen(next);
+    onOpenChange?.(next);
+  };
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={
-          <Button size="sm">
-            <FileSpreadsheet />
-            Import applications
-          </Button>
-        }
-      />
+      {!controlled && (
+        <DialogTrigger
+          render={
+            <Button size="sm">
+              <FileSpreadsheet />
+              Import applications
+            </Button>
+          }
+        />
+      )}
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         {/* Remounted on every open so each import starts from a clean state. */}
         {open && <Flow quarterId={quarterId} onClose={() => setOpen(false)} />}

@@ -3,15 +3,26 @@
 import { useMemo, useState } from "react";
 import { Search, UserPlus } from "lucide-react";
 import type { ApplicantRow, RecruitCategory, RecruitEvent } from "@/lib/data/recruit";
-import { rankByTotal, ringFraction } from "@/lib/recruit";
+import type { ApplicantReviewState } from "@/lib/recruit-assignment";
+import { rankByTotal } from "@/lib/recruit";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ScoreRing } from "./score-ring";
+import { Segmented } from "./segmented";
 
 type Filter = "all" | "engaged" | "none";
 type Sort = "points" | "name";
+
+const GRID = "grid-cols-[3rem_minmax(0,1.7fr)_9.5rem_minmax(0,1.3fr)_9.5rem]";
+
+function reviewLabel(state: ApplicantReviewState | undefined): { text: string; dot: string } {
+  if (!state || state.status === "unassigned") return { text: "Not assigned", dot: "bg-muted-foreground/50" };
+  if (state.status === "not-started") return { text: "Not started", dot: "bg-muted-foreground/50" };
+  if (state.status === "revealed") return { text: "Revealed", dot: "bg-primary" };
+  const text = `${state.submitted} of ${state.assigned} done`;
+  return { text, dot: state.status === "complete" ? "bg-primary" : "bg-warning" };
+}
 
 export function ApplicantsView({
   rows,
@@ -20,7 +31,8 @@ export function ApplicantsView({
   onReviewDuplicates,
   onReviewAttendance,
   onSelect,
-  addButton,
+  reviewStatus,
+  onAdd,
 }: {
   quarterId: string;
   rows: ApplicantRow[];
@@ -31,15 +43,14 @@ export function ApplicantsView({
   onReviewDuplicates: () => void;
   onReviewAttendance: () => void;
   onSelect: (id: string) => void;
-  addButton: React.ReactNode;
+  reviewStatus: Record<string, ApplicantReviewState>;
+  onAdd: () => void;
 }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("points");
 
-  const engagedCount = rows.filter((r) => r.entries.some((e) => !e.voidedAt && e.points > 0)).length;
-  const counts: Record<Filter, number> = { all: rows.length, engaged: engagedCount, none: rows.length - engagedCount };
-  const max = Math.max(0, ...rows.map((r) => r.total));
+  const max = Math.max(1, ...rows.map((r) => r.total));
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -57,114 +68,129 @@ export function ApplicantsView({
 
   if (rows.length === 0) {
     return (
-      <Card className="mt-4">
-        <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-          <UserPlus className="size-8 text-muted-foreground" />
-          <div>
-            <p className="font-medium">No applicants yet this quarter</p>
-            <p className="text-sm text-muted-foreground">
-              Add the first one by hand. Applicants are also created automatically as you give points or import lists.
-            </p>
-          </div>
-          {addButton}
-        </CardContent>
-      </Card>
+      <div className="flex flex-col items-center gap-3 py-16 text-center">
+        <UserPlus className="size-8 text-muted-foreground" />
+        <div>
+          <p className="font-medium">No applicants yet this quarter</p>
+          <p className="text-sm text-muted-foreground">
+            Import the application spreadsheet, or add the first person by hand. Applicants are also created as you give points.
+          </p>
+        </div>
+        <Button onClick={onAdd}>Add one person</Button>
+      </div>
     );
   }
 
-  const funnel: { key: Filter; label: string }[] = [
-    { key: "all", label: "All applicants" },
-    { key: "engaged", label: "Engaged" },
-    { key: "none", label: "No points yet" },
-  ];
+  const needsYou = [
+    toMarkCount > 0 && { label: `${toMarkCount} booking${toMarkCount === 1 ? "" : "s"} to mark`, onClick: onReviewAttendance },
+    duplicateCount > 0 && { label: `${duplicateCount} possible duplicate${duplicateCount === 1 ? "" : "s"}`, onClick: onReviewDuplicates },
+  ].filter((x): x is { label: string; onClick: () => void } => !!x);
 
   return (
-    <div className="mt-4 space-y-4">
-      <div className="grid grid-cols-3 gap-2">
-        {funnel.map((f) => (
-          <button
-            key={f.key}
-            type="button"
-            onClick={() => setFilter(f.key)}
-            className={`rounded-xl border p-3 text-left transition-colors ${
-              filter === f.key ? "border-foreground" : "border-border hover:bg-muted/50"
-            }`}
-          >
-            <div className="text-xl font-semibold tabular-nums">{counts[f.key]}</div>
-            <div className="text-xs text-muted-foreground">{f.label}</div>
-          </button>
-        ))}
-      </div>
-
-      {(duplicateCount > 0 || toMarkCount > 0) && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm dark:border-amber-500/40 dark:bg-amber-500/10">
-          <b>To do:</b>
-          {toMarkCount > 0 && (
-            <button type="button" className="underline-offset-2 hover:underline" onClick={onReviewAttendance}>
-              {toMarkCount} booking{toMarkCount === 1 ? "" : "s"} to mark →
-            </button>
-          )}
-          {duplicateCount > 0 && (
-            <button type="button" className="underline-offset-2 hover:underline" onClick={onReviewDuplicates}>
-              {duplicateCount} possible duplicate{duplicateCount === 1 ? "" : "s"} →
-            </button>
-          )}
-        </div>
-      )}
-
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-48 flex-1">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            aria-label="Search applicants"
-            placeholder="Search name or email"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
+    <section aria-label="Applicant list" className="mt-6 space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              aria-label="Search applicants"
+              placeholder="Search name or email"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-10 w-72 pl-9"
+            />
+          </div>
+          <Segmented
+            label="Filter applicants"
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { value: "all", label: "All" },
+              { value: "engaged", label: "Has points" },
+              { value: "none", label: "No points yet" },
+            ]}
           />
+          <Select value={sort} onValueChange={(v) => v && setSort(v as Sort)}>
+            <SelectTrigger size="sm" className="w-40">
+              <SelectValue>{(value: string) => (value === "name" ? "Name A–Z" : "Most points")}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="points">Most points</SelectItem>
+              <SelectItem value="name">Name A–Z</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <Select value={sort} onValueChange={(v) => v && setSort(v as Sort)}>
-          <SelectTrigger size="sm" className="w-44">
-            <SelectValue>{(value: string) => (value === "name" ? "Sort: Name A–Z" : "Sort: Most points")}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="points">Sort: Most points</SelectItem>
-            <SelectItem value="name">Sort: Name A–Z</SelectItem>
-          </SelectContent>
-        </Select>
+        {needsYou.length > 0 && (
+          <p className="text-sm text-muted-foreground">
+            Needs you:{" "}
+            {needsYou.map((n, i) => (
+              <span key={n.label}>
+                {i > 0 && <span aria-hidden="true"> · </span>}
+                <button type="button" onClick={n.onClick} className="font-medium text-primary underline-offset-2 hover:underline">
+                  {n.label}
+                </button>
+              </span>
+            ))}
+          </p>
+        )}
       </div>
 
       {visible.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">No one matches that search.</p>
+        <p className="py-10 text-center text-sm text-muted-foreground">No one matches that.</p>
       ) : (
-        <ul className="divide-y rounded-xl border">
-          {visible.map((r) => {
-            const categoriesSeen = [...new Set(r.entries.filter((e) => !e.voidedAt).map((e) => e.categoryName))];
-            return (
-              <li key={r.id}>
-                <button
-                  type="button"
-                  onClick={() => onSelect(r.id)}
-                  className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/50"
-                >
-                  <span className="w-6 text-sm tabular-nums text-muted-foreground">{sort === "points" ? r.rank : ""}</span>
-                  <ScoreRing value={r.total} fraction={ringFraction(r.total, max)} />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex flex-wrap items-center gap-1.5">
-                      <span className="font-medium">{r.name}</span>
-                      {r.hasPrevious && <Badge variant="secondary">Previously applied</Badge>}
-                      {!r.email && <Badge variant="outline">No email yet</Badge>}
+        <div className="overflow-hidden rounded-xl border bg-card">
+          <div className={`grid ${GRID} items-center gap-4 border-b px-5 py-3 text-[13px] font-medium text-muted-foreground`}>
+            <span>#</span>
+            <span>Applicant</span>
+            <span>Points</span>
+            <span>Came to</span>
+            <span>Reviews</span>
+          </div>
+          <ul>
+            {visible.map((r) => {
+              const came = [...new Set(r.entries.filter((e) => !e.voidedAt).map((e) => e.categoryName))];
+              const review = reviewLabel(reviewStatus[r.id]);
+              return (
+                <li key={r.id} className="border-b last:border-b-0">
+                  <button
+                    type="button"
+                    onClick={() => onSelect(r.id)}
+                    className={`grid w-full ${GRID} items-center gap-4 px-5 py-3 text-left transition-colors outline-none hover:bg-muted/50 focus-visible:bg-muted/50`}
+                  >
+                    <span className="text-sm text-muted-foreground tabular-nums">{sort === "points" ? r.rank : ""}</span>
+                    <span className="min-w-0">
+                      <span className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-sm font-medium">{r.name}</span>
+                        {r.hasPrevious && <Badge variant="secondary">Previously applied</Badge>}
+                        {!r.email && <Badge variant="outline">No email yet</Badge>}
+                      </span>
+                      <span className="block truncate text-[13px] text-muted-foreground">{r.email}</span>
                     </span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {categoriesSeen.length > 0 ? categoriesSeen.join(" · ") : "No points yet"}
+                    <span className="flex items-center gap-2.5">
+                      <span className="w-6 text-sm font-semibold tabular-nums">{r.total}</span>
+                      <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                        <span
+                          className="block h-full bg-primary"
+                          style={{ width: `${Math.max(0, Math.min(100, (r.total / max) * 100))}%` }}
+                        />
+                      </span>
                     </span>
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+                    <span className="truncate text-[13px] text-foreground/80">{came.length > 0 ? came.join(", ") : "Nothing yet"}</span>
+                    <span className="flex items-center gap-2 text-[13px] text-foreground/80">
+                      <span className={`size-2 rounded-full ${review.dot}`} aria-hidden="true" />
+                      {review.text}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
-    </div>
+      <p className="text-[13px] text-muted-foreground">
+        Showing {visible.length} of {rows.length}. Select a row to see their application, points and notes.
+      </p>
+    </section>
   );
 }
