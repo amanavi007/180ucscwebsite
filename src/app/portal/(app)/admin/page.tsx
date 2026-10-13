@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import { getQuarters } from "@/lib/data/quarters";
 import { getAdminAttentionItems } from "@/lib/data/admin-attention";
-import { getPendingTeamSubmissionCount } from "@/lib/data/team-page";
+import { getApplicantRows } from "@/lib/data/recruit";
+import { getMeetingDatesForQuarter } from "@/lib/data/meeting-dates";
 import { defaultQuarterId, resolveQuarterId } from "@/lib/admin-nav";
-import { HubHeader } from "./hub/hub-header";
 import { AttentionList } from "./hub/attention-list";
 import { QuickActions } from "./hub/quick-actions";
-import { AreaCards } from "./hub/area-cards";
+import { PipelineTiles } from "./hub/pipeline-tiles";
+import { ComingUp } from "./hub/coming-up";
 
-export const metadata: Metadata = { title: "Admin" };
+export const metadata: Metadata = { title: "Today" };
 
 export default async function AdminHubPage({
   searchParams,
@@ -20,21 +21,36 @@ export default async function AdminHubPage({
   const selectedId = resolveQuarterId(quarter, quarters, defaultQuarterId(quarters));
   const selected = quarters.find((q) => q.id === selectedId) ?? null;
 
-  const [items, pendingTeamCount] = await Promise.all([
+  // Each source is optional: a failing one is left out instead of breaking the page.
+  const [items, rows, dates] = await Promise.all([
     getAdminAttentionItems(selectedId),
-    getPendingTeamSubmissionCount().catch(() => 0),
+    selectedId ? getApplicantRows(selectedId).catch(() => null) : Promise.resolve(null),
+    selectedId ? getMeetingDatesForQuarter(selectedId).catch(() => []) : Promise.resolve([] as string[]),
   ]);
 
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+  const upcoming = dates.filter((d) => d >= today).slice(0, 4);
+  const applicants = rows ? rows.filter((r) => r.hasApplication).length : 0;
+  const withoutApplication = rows ? rows.filter((r) => !r.hasApplication).length : 0;
+
   return (
-    <div className="space-y-8">
-      <HubHeader
-        quarters={quarters.map((q) => ({ id: q.id, name: q.name, is_active: q.is_active }))}
-        selectedId={selectedId}
-        subtitle={selected ? selected.name : "No quarter yet. Create one in Quarters."}
-      />
-      <AttentionList items={items} />
-      <QuickActions quarterId={selectedId} />
-      <AreaCards quarterId={selectedId} pendingTeamCount={pendingTeamCount} />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-4xl leading-tight">Today</h1>
+        <p className="mt-1.5 text-base text-muted-foreground">
+          {selected ? selected.name : "No quarter yet. Create one in Setup."}
+          {items.length > 0 ? ` · ${items.length} ${items.length === 1 ? "thing needs" : "things need"} you` : ""}
+        </p>
+      </div>
+
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0 space-y-6">
+          <AttentionList items={items} />
+          {rows && <PipelineTiles quarterId={selectedId} applicants={applicants} withoutApplication={withoutApplication} />}
+          <QuickActions quarterId={selectedId} />
+        </div>
+        <ComingUp dates={upcoming} />
+      </div>
     </div>
   );
 }
