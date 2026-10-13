@@ -22,7 +22,6 @@ import { NotificationBell } from "./notification-bell";
 import { CommandPalette } from "./command-palette";
 import { OnboardingTour, type TourStep } from "./onboarding-tour";
 import { NAV_LINKS } from "./nav-links";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { logout } from "@/actions/auth";
 import { roleLabel } from "@/lib/auth/roles";
 import type { UserRole } from "@/lib/supabase/database.types";
@@ -215,7 +214,6 @@ export function AppShell({
               <Search className="size-4.5" />
             </Button>
             <NotificationBell />
-            <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={

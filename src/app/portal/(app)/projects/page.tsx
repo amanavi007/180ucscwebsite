@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getCurrentProfile } from "@/lib/data/profile";
-import { getProjects } from "@/lib/data/projects";
+import { getMyProjects, getProjects } from "@/lib/data/projects";
 import { getQuarters, getActiveQuarter } from "@/lib/data/quarters";
 import { getAllProfiles } from "@/lib/data/members";
 import { isExec } from "@/lib/auth/roles";
@@ -24,9 +24,11 @@ export default async function ProjectsPage({
   ]);
 
   const selectedQuarterId = quarter || activeQuarter?.id;
-  const [projects, members] = await Promise.all([
+  const [projects, members, mine] = await Promise.all([
     selectedQuarterId ? getProjects(selectedQuarterId) : Promise.resolve([]),
     isExec(profile.role) ? getAllProfiles() : Promise.resolve([]),
+    // The projects you are on, so the board can point at them. Nice to have: never blocks the page.
+    selectedQuarterId ? getMyProjects(profile.id, selectedQuarterId).catch(() => []) : Promise.resolve([]),
   ]);
 
   return (
@@ -49,6 +51,7 @@ export default async function ProjectsPage({
         members={members}
         canCreate={isExec(profile.role)}
         currentUserId={profile.id}
+        myProjectIds={mine.map((p) => p.id)}
         isExec={isExec(profile.role)}
         view={selectedView}
       />

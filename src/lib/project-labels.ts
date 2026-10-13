@@ -100,9 +100,9 @@ export const HEALTH_LABELS: Record<ProjectHealth, string> = {
 };
 
 export const HEALTH_BADGE_CLASS: Record<ProjectHealth, string> = {
-  on_track: "bg-primary/10 text-primary border-transparent",
-  at_risk: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-transparent",
-  blocked: "bg-destructive/10 text-destructive border-transparent",
+  on_track: "bg-status-ok text-status-ok-foreground border-transparent",
+  at_risk: "bg-status-warn text-status-warn-foreground border-transparent",
+  blocked: "bg-status-bad text-status-bad-foreground border-transparent",
 };
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
@@ -113,8 +113,8 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
 
 export const TASK_STATUS_BADGE_CLASS: Record<TaskStatus, string> = {
   not_started: "bg-muted text-muted-foreground border-transparent",
-  in_progress: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-transparent",
-  done: "bg-primary/10 text-primary border-transparent",
+  in_progress: "bg-status-info text-status-info-foreground border-transparent",
+  done: "bg-status-ok text-status-ok-foreground border-transparent",
 };
 
 export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
@@ -125,6 +125,6 @@ export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
 
 export const TASK_PRIORITY_DOT_CLASS: Record<TaskPriority, string> = {
   low: "bg-muted-foreground/40",
-  medium: "bg-amber-500",
+  medium: "bg-warning",
   high: "bg-destructive",
 };

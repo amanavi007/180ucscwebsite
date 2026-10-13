@@ -43,7 +43,7 @@ Rules:
 - Avatars rotate through the status tints and are always initials, never a colored empty circle.
 - Lime is for: the main button, the active sidebar item, the selected score, the selected pill's text, the "today" marker. Nothing else. Progress fills and meters on light surfaces are forest (`bg-foreground`); lime on a light surface is almost invisible.
 - Never use `text-primary` for text on a light surface. Links and small green text use `text-link`.
-- Dark mode is generated from the same token names in a `.dark` block. Pages never branch on theme. A separate design pass for dark mode is planned; until then dark is "works, not polished".
+- The portal is light only for now: there is no theme toggle and the theme is forced to light. The `.dark` token block is kept so a future dark mode can be built from the same token names (pages never branch on theme), but it is not designed or supported yet.
 
 ## 3. Type
 

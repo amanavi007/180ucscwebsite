@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -10,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ListSearch } from "@/components/list-search";
+import { FilterChip } from "@/components/filter-chip";
 import { useFilteredList } from "@/lib/use-filtered-list";
 import { pmNames } from "@/lib/project-leads";
 import { ProjectBoard } from "./project-board";
@@ -28,6 +30,7 @@ export function ProjectsView({
   members,
   canCreate,
   currentUserId,
+  myProjectIds,
   isExec,
   view,
 }: {
@@ -37,10 +40,14 @@ export function ProjectsView({
   members: Profile[];
   canCreate: boolean;
   currentUserId: string;
+  /** Projects the viewer is a member of. */
+  myProjectIds: string[];
   isExec: boolean;
   view: "board" | "table";
 }) {
   const router = useRouter();
+  const [mineOnly, setMineOnly] = useState(false);
+  const mine = new Set(myProjectIds);
 
   // Quarter and view are independent URL params on the same page -- changing
   // one should carry the other along instead of resetting it.
@@ -58,6 +65,7 @@ export function ProjectsView({
     (p) => pmNames(p).join(" "),
     (p) => p.senior_consultant?.name,
   ]);
+  const shown = mineOnly ? filtered.filter((p) => mine.has(p.id)) : filtered;
 
   return (
     <div className="space-y-4">
@@ -85,6 +93,12 @@ export function ProjectsView({
             </SelectContent>
           </Select>
 
+          {myProjectIds.length > 0 && (
+            <FilterChip selected={mineOnly} onClick={() => setMineOnly((v) => !v)} count={myProjectIds.length}>
+              My projects
+            </FilterChip>
+          )}
+
           <ListSearch
             value={query}
             onChange={setQuery}
@@ -108,10 +122,10 @@ export function ProjectsView({
           <TabsTrigger value="table">Table</TabsTrigger>
         </TabsList>
         <TabsContent value="board">
-          <ProjectBoard projects={filtered} currentUserId={currentUserId} isExec={isExec} />
+          <ProjectBoard key={shown.map((p) => p.id).join(",")} projects={shown} currentUserId={currentUserId} myProjectIds={myProjectIds} isExec={isExec} />
         </TabsContent>
         <TabsContent value="table">
-          <ProjectTable projects={filtered} />
+          <ProjectTable projects={shown} />
         </TabsContent>
       </Tabs>
     </div>
