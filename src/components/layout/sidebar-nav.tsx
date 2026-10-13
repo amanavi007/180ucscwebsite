@@ -70,15 +70,22 @@ export function SidebarNav({
         aria-current={item.active ? "page" : undefined}
         className={cn(
           "flex items-center gap-2.5 py-2 text-sm font-semibold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
-          collapsed ? "mx-auto size-11 justify-center rounded-[14px] px-0" : "rounded-xl px-3",
-          item.active
-            ? "bg-sidebar-primary text-sidebar-primary-foreground"
-            : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-          item.outlined && !item.active && "border-[1.5px] border-sidebar-border",
+          // The mode switch (Admin / Back to portal) is a filled lime-edged button with its name always showing, so it can't be missed.
+          item.outlined
+            ? cn(
+                "border-[1.5px] border-sidebar-primary/60 bg-sidebar-accent text-sidebar-primary hover:bg-sidebar-primary hover:text-sidebar-primary-foreground",
+                collapsed ? "mx-auto h-14 w-[3.75rem] flex-col justify-center gap-0.5 rounded-2xl px-0 py-0 text-xs" : "rounded-xl px-3",
+              )
+            : cn(
+                collapsed ? "mx-auto size-11 justify-center rounded-[14px] px-0" : "rounded-xl px-3",
+                item.active
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+              ),
         )}
       >
-        <Icon className={cn("shrink-0", collapsed ? "size-[22px]" : "size-4")} />
-        {!collapsed && item.label}
+        <Icon className={cn("shrink-0", collapsed && !item.outlined ? "size-[22px]" : item.outlined && collapsed ? "size-5" : "size-4")} />
+        {item.outlined && collapsed ? <span className="leading-none">{item.label === "Back to portal" ? "Portal" : item.label}</span> : !collapsed && item.label}
       </Link>
     );
     return (
