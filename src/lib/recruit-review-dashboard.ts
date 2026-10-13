@@ -80,3 +80,44 @@ export function buildReviewDashboard(input: DashboardInput): ReviewDashboard {
     },
   };
 }
+
+export type DashboardFilter = "all" | "needs" | "in-progress" | "complete";
+
+export const STATUS_LABELS: Record<ApplicantReviewState["status"], string> = {
+  unassigned: "Needs reviewers",
+  "not-started": "Not started",
+  "in-progress": "In progress",
+  complete: "Complete",
+  revealed: "Revealed",
+};
+
+const FILTER_STATUSES: Record<Exclude<DashboardFilter, "all">, ApplicantReviewState["status"][]> = {
+  needs: ["unassigned"],
+  "in-progress": ["not-started", "in-progress"],
+  complete: ["complete", "revealed"],
+};
+
+export function filterDashboardApplicants(applicants: DashboardApplicant[], filter: DashboardFilter, query: string): DashboardApplicant[] {
+  const q = query.trim().toLowerCase();
+  return applicants.filter((a) => {
+    if (filter !== "all" && !FILTER_STATUSES[filter].includes(a.state.status)) return false;
+    return !q || a.name.toLowerCase().includes(q) || (a.email ?? "").toLowerCase().includes(q);
+  });
+}
+
+/** Scores are only on the applicant when unlocked, so a locked applicant exports blank score cells. */
+export function dashboardCsv(applicants: DashboardApplicant[]): { headers: string[]; rows: (string | number)[][] } {
+  return {
+    headers: ["Applicant", "Email", "Status", "Reviewers submitted", "Reviewers assigned", "Raw", "Adjusted", "Disagree"],
+    rows: applicants.map((a) => [
+      a.name,
+      a.email ?? "",
+      STATUS_LABELS[a.state.status],
+      a.state.submitted,
+      a.state.assigned,
+      a.raw === null ? "" : a.raw.toFixed(2),
+      a.normalized === null ? "" : a.normalized.toFixed(2),
+      a.disagree ? "yes" : "no",
+    ]),
+  };
+}

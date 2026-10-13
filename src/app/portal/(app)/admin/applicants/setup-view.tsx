@@ -16,7 +16,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CategoryDialog } from "./category-dialog";
 import { EventDialog } from "./event-dialog";
+import { ReviewSettingsCard } from "./review-settings-card";
 import { RubricEditor, ScoringSettingsCard } from "./rubric-editor";
+import type { ScoringBundle } from "@/lib/data/recruit-scoring";
 
 export function SetupView({
   quarterId,
@@ -24,12 +26,14 @@ export function SetupView({
   events,
   rubrics,
   settings,
+  reviewSetup,
 }: {
   quarterId: string;
   categories: RecruitCategory[];
   events: RecruitEvent[];
   rubrics: Record<Stage, RubricRow>;
   settings: RecruitSettings;
+  reviewSetup: ScoringBundle["reviewSetup"];
 }) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -192,6 +196,7 @@ export function SetupView({
           )}
         </CardContent>
       </Card>
+      <ReviewSettingsCard setup={reviewSetup} />
       <RubricEditor rubric={rubrics.resume} />
       <RubricEditor rubric={rubrics.interview} />
       <ScoringSettingsCard settings={settings} />

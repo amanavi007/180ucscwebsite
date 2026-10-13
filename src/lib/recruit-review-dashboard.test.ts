@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildReviewDashboard } from "./recruit-review-dashboard";
+import { buildReviewDashboard, dashboardCsv, filterDashboardApplicants } from "./recruit-review-dashboard";
 
 const summary = { raw: 4, normalized: 3.8, count: 2, spread: 2, anyNormalized: true };
 const base = {
@@ -38,5 +38,29 @@ describe("buildReviewDashboard", () => {
   it("force reveal exposes scores early", () => {
     const d = buildReviewDashboard({ ...base, revealed: new Set(["a2"]) });
     expect(d.applicants.find((a) => a.id === "a2")).toMatchObject({ raw: 4, state: { status: "revealed" } });
+  });
+});
+
+describe("filterDashboardApplicants", () => {
+  const { applicants } = buildReviewDashboard(base);
+  it("filters by status group", () => {
+    expect(filterDashboardApplicants(applicants, "needs", "").map((a) => a.id)).toEqual(["a3"]);
+    expect(filterDashboardApplicants(applicants, "in-progress", "").map((a) => a.id)).toEqual(["a2"]);
+    expect(filterDashboardApplicants(applicants, "complete", "").map((a) => a.id)).toEqual(["a1"]);
+    expect(filterDashboardApplicants(applicants, "all", "")).toHaveLength(3);
+  });
+  it("searches names and emails case-insensitively", () => {
+    expect(filterDashboardApplicants(applicants, "all", "  BO ").map((a) => a.id)).toEqual(["a2"]);
+  });
+});
+
+describe("dashboardCsv", () => {
+  it("never writes scores for locked applicants", () => {
+    const { applicants } = buildReviewDashboard(base);
+    const { headers, rows } = dashboardCsv(applicants);
+    expect(headers).toEqual(["Applicant", "Email", "Status", "Reviewers submitted", "Reviewers assigned", "Raw", "Adjusted", "Disagree"]);
+    expect(rows[0]).toEqual(["Ann", "", "Complete", 2, 2, "4.00", "3.80", "yes"]);
+    expect(rows[1]).toEqual(["Bo", "", "In progress", 1, 2, "", "", "no"]);
+    expect(rows[2]).toEqual(["Cy", "", "Needs reviewers", 0, 0, "", "", "no"]);
   });
 });

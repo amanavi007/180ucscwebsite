@@ -120,6 +120,8 @@ export interface ScoringBundle {
   dashboard: ReviewDashboard;
   reviewSetup: {
     settings: ReviewSettings;
+    /** Every active exec; `pool` is the subset currently allowed to review. */
+    execs: ReviewerProfile[];
     pool: ReviewerProfile[];
     detail: Record<string, { assigned: string[]; conflicts: string[] }>;
   };
@@ -315,6 +317,6 @@ export async function getScoringBundle(quarterId: string, viewerId: string): Pro
       summaries: resume.summary,
       disagreementThreshold: settings.disagreementThreshold,
     }),
-    reviewSetup: { settings: review.settings, pool: review.pool, detail },
+    reviewSetup: { settings: review.settings, execs: review.execs, pool: review.pool, detail },
   };
 }

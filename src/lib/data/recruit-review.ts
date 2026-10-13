@@ -23,6 +23,7 @@ export interface ApplicationAnswers {
 
 export interface ReviewContext {
   settings: ReviewSettings;
+  execs: ReviewerProfile[];
   pool: ReviewerProfile[];
   assignments: Assignment[];
   assignedByApplicant: Map<string, string[]>;
@@ -49,7 +50,8 @@ export async function getReviewSettings(): Promise<ReviewSettings> {
   return parseReviewSettings(data ?? []);
 }
 
-export async function getReviewerPool(settings: ReviewSettings): Promise<ReviewerProfile[]> {
+/** Every active exec, whether or not they are in the reviewer pool. */
+export async function getAllExecs(): Promise<ReviewerProfile[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("profiles")
@@ -58,15 +60,22 @@ export async function getReviewerPool(settings: ReviewSettings): Promise<Reviewe
     .is("archived_at", null)
     .order("name");
   if (error) throw error;
-  const all = data ?? [];
-  return settings.pool.length === 0 ? all : all.filter((p) => settings.pool.includes(p.id));
+  return data ?? [];
+}
+
+export function poolFrom(execs: ReviewerProfile[], settings: ReviewSettings): ReviewerProfile[] {
+  return settings.pool.length === 0 ? execs : execs.filter((p) => settings.pool.includes(p.id));
+}
+
+export async function getReviewerPool(settings: ReviewSettings): Promise<ReviewerProfile[]> {
+  return poolFrom(await getAllExecs(), settings);
 }
 
 export async function getReviewContext(applicantIds: string[]): Promise<ReviewContext> {
   const supabase = await createClient();
   const settings = await getReviewSettings();
-  const [pool, assignmentRows, exclusionRows, revealRows, answerRows] = await Promise.all([
-    getReviewerPool(settings),
+  const [execs, assignmentRows, exclusionRows, revealRows, answerRows] = await Promise.all([
+    getAllExecs(),
     chunked(applicantIds, (c) =>
       fetchAllPages((from, to) =>
         supabase
@@ -113,7 +122,8 @@ export async function getReviewContext(applicantIds: string[]): Promise<ReviewCo
   }
   return {
     settings,
-    pool,
+    execs,
+    pool: poolFrom(execs, settings),
     assignments: assignmentRows.map((a) => ({ applicantId: a.applicant_id, reviewerId: a.reviewer_id })),
     assignedByApplicant,
     exclusions: exclusionRows.map((e) => ({ applicantId: e.applicant_id, reviewerId: e.reviewer_id })),

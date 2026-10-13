@@ -16,6 +16,7 @@ import { GivePointsDialog } from "./give-points-dialog";
 import { HowItWorks } from "./how-it-works";
 import { ImportApplicationsDialog } from "./import-applications-dialog";
 import { ImportDialog } from "./import-dialog";
+import { ReviewProgressView } from "./review-progress-view";
 import { ScoringView } from "./scoring-view";
 import { SetupView } from "./setup-view";
 
@@ -73,6 +74,10 @@ export function ApplicantsWorkspace({
             {attendance.toMark.length > 0 && <Badge variant="secondary">{attendance.toMark.length}</Badge>}
           </TabsTrigger>
           <TabsTrigger value="scoring">Scoring</TabsTrigger>
+          <TabsTrigger value="review">
+            Review progress
+            {scoring.dashboard.totals.unassigned > 0 && <Badge variant="secondary">{scoring.dashboard.totals.unassigned}</Badge>}
+          </TabsTrigger>
           <TabsTrigger value="setup">Setup</TabsTrigger>
           <TabsTrigger value="duplicates">
             Duplicates
@@ -99,8 +104,11 @@ export function ApplicantsWorkspace({
         <TabsContent value="scoring">
           <ScoringView stages={scoring.stages} settings={scoring.settings} />
         </TabsContent>
+        <TabsContent value="review">
+          <ReviewProgressView quarterId={quarterId} dashboard={scoring.dashboard} setup={scoring.reviewSetup} />
+        </TabsContent>
         <TabsContent value="setup">
-          <SetupView quarterId={quarterId} categories={categories} events={events} rubrics={{ resume: scoring.stages.resume.rubric, interview: scoring.stages.interview.rubric }} settings={scoring.settings} />
+          <SetupView quarterId={quarterId} categories={categories} events={events} rubrics={{ resume: scoring.stages.resume.rubric, interview: scoring.stages.interview.rubric }} settings={scoring.settings} reviewSetup={scoring.reviewSetup} />
         </TabsContent>
         <TabsContent value="duplicates">
           <DuplicatesView rows={rows} pairs={pairs} merges={merges} />
