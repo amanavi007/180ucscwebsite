@@ -64,7 +64,6 @@ export function ApplicantsWorkspace({
           <h1 className="text-[1.75rem] leading-tight font-semibold tracking-tight">Applicants</h1>
           <p className="mt-1.5 flex items-center gap-1 text-sm text-muted-foreground">
             {quarterName} · {rows.length - withoutApplication} applicant{rows.length - withoutApplication === 1 ? "" : "s"}
-            {withoutApplication > 0 && ` · ${withoutApplication} without an application`}
             <HowItWorks />
           </p>
         </div>

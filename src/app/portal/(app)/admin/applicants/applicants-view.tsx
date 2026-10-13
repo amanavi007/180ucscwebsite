@@ -53,19 +53,63 @@ export function ApplicantsView({
 
   const max = Math.max(1, ...rows.map((r) => r.total));
 
-  const visible = useMemo(() => {
+  const { visible, noApplication } = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const filtered = rows.filter((r) => {
+    const matches = (r: ApplicantRow) => {
       const engaged = r.entries.some((e) => !e.voidedAt && e.points > 0);
       if (filter === "engaged" && !engaged) return false;
       if (filter === "none" && engaged) return false;
       if (!q) return true;
       return r.name.toLowerCase().includes(q) || (r.email ?? "").includes(q) || r.aliases.some((a) => a.includes(q));
-    });
-    return sort === "points"
-      ? rankByTotal(filtered)
-      : [...filtered].sort((a, b) => a.name.localeCompare(b.name)).map((r) => ({ ...r, rank: 0 }));
+    };
+    const filtered = rows.filter((r) => r.hasApplication && matches(r));
+    return {
+      visible:
+        sort === "points"
+          ? rankByTotal(filtered)
+          : [...filtered].sort((a, b) => a.name.localeCompare(b.name)).map((r) => ({ ...r, rank: 0 })),
+      noApplication: rows.filter((r) => !r.hasApplication && matches(r)).sort((a, b) => a.name.localeCompare(b.name)),
+    };
   }, [rows, search, filter, sort]);
+  const applicantCount = rows.filter((r) => r.hasApplication).length;
+
+  function renderRow(r: ApplicantRow, rankLabel: string) {
+    const came = [...new Set(r.entries.filter((e) => !e.voidedAt).map((e) => e.categoryName))];
+              const review = reviewLabel(reviewStatus[r.id], r.hasApplication);
+              return (
+    <li key={r.id} className="border-b last:border-b-0">
+      <button
+        type="button"
+        onClick={() => onSelect(r.id)}
+        className={`grid w-full ${GRID} items-center gap-4 px-5 py-3 text-left transition-colors outline-none hover:bg-muted/50 focus-visible:bg-muted/50`}
+      >
+        <span className="text-sm text-muted-foreground tabular-nums">{rankLabel}</span>
+        <span className="min-w-0">
+          <span className="flex flex-wrap items-center gap-1.5">
+            <span className="text-sm font-medium">{r.name}</span>
+            {r.hasPrevious && <Badge variant="secondary">Previously applied</Badge>}
+            {!r.email && <Badge variant="outline">No email yet</Badge>}
+          </span>
+          <span className="block truncate text-[13px] text-muted-foreground">{r.email}</span>
+        </span>
+        <span className="flex items-center gap-2.5">
+          <span className="w-6 text-sm font-semibold tabular-nums">{r.total}</span>
+          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+            <span
+              className="block h-full bg-primary"
+              style={{ width: `${Math.max(0, Math.min(100, (r.total / max) * 100))}%` }}
+            />
+          </span>
+        </span>
+        <span className="truncate text-[13px] text-foreground/80">{came.length > 0 ? came.join(", ") : "Nothing yet"}</span>
+        <span className="flex items-center gap-2 text-[13px] text-foreground/80">
+          <span className={`size-2 rounded-full ${review.dot}`} aria-hidden="true" />
+          {review.text}
+        </span>
+      </button>
+    </li>
+              );
+  }
 
   if (rows.length === 0) {
     return (
@@ -149,52 +193,25 @@ export function ApplicantsView({
             <span>Reviews</span>
           </div>
           <ul>
-            {visible.map((r) => {
-              const came = [...new Set(r.entries.filter((e) => !e.voidedAt).map((e) => e.categoryName))];
-              const review = reviewLabel(reviewStatus[r.id], r.hasApplication);
-              return (
-                <li key={r.id} className="border-b last:border-b-0">
-                  <button
-                    type="button"
-                    onClick={() => onSelect(r.id)}
-                    className={`grid w-full ${GRID} items-center gap-4 px-5 py-3 text-left transition-colors outline-none hover:bg-muted/50 focus-visible:bg-muted/50`}
-                  >
-                    <span className="text-sm text-muted-foreground tabular-nums">{sort === "points" ? r.rank : ""}</span>
-                    <span className="min-w-0">
-                      <span className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-sm font-medium">{r.name}</span>
-                        {r.hasPrevious && <Badge variant="secondary">Previously applied</Badge>}
-                        {!r.email && <Badge variant="outline">No email yet</Badge>}
-                        {!r.hasApplication && (
-                          <Badge className="bg-status-warn text-status-warn-foreground">No application submitted</Badge>
-                        )}
-                      </span>
-                      <span className="block truncate text-[13px] text-muted-foreground">{r.email}</span>
-                    </span>
-                    <span className="flex items-center gap-2.5">
-                      <span className="w-6 text-sm font-semibold tabular-nums">{r.total}</span>
-                      <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted" aria-hidden="true">
-                        <span
-                          className="block h-full bg-primary"
-                          style={{ width: `${Math.max(0, Math.min(100, (r.total / max) * 100))}%` }}
-                        />
-                      </span>
-                    </span>
-                    <span className="truncate text-[13px] text-foreground/80">{came.length > 0 ? came.join(", ") : "Nothing yet"}</span>
-                    <span className="flex items-center gap-2 text-[13px] text-foreground/80">
-                      <span className={`size-2 rounded-full ${review.dot}`} aria-hidden="true" />
-                      {review.text}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
+            {visible.map((r) => renderRow(r, sort === "points" ? String(r.rank) : ""))}
           </ul>
         </div>
       )}
       <p className="text-[13px] text-muted-foreground">
-        Showing {visible.length} of {rows.length}. Select a row to see their application, points and notes.
+        Showing {visible.length} of {applicantCount}. Select a row to see their application, points and notes.
       </p>
+
+      {noApplication.length > 0 && (
+        <details className="overflow-hidden rounded-xl border bg-card">
+          <summary className="cursor-pointer px-5 py-3 text-sm font-medium">
+            No application submitted ({noApplication.length})
+          </summary>
+          <p className="border-t px-5 py-3 text-[13px] text-muted-foreground">
+            These people are in the system from attendance or points but didn&apos;t submit the form. They aren&apos;t applicants and aren&apos;t reviewed.
+          </p>
+          <ul>{noApplication.map((r) => renderRow(r, ""))}</ul>
+        </details>
+      )}
     </section>
   );
 }
