@@ -5,12 +5,13 @@ import { Check, ExternalLink } from "lucide-react";
 import type { ApplicationAnswers } from "@/lib/data/recruit-review";
 import { driveEmbedUrl } from "@/lib/recruit-applications";
 import {
+  leadSentence,
   readingMinutes,
   SHORT_ANSWER_WORDS,
   splitParagraphs,
   wordCount,
-  type AnswerKey,
-} from "@/lib/recruit-rubric-levels";
+} from "@/lib/recruit-answer-text";
+import type { AnswerKey } from "@/lib/recruit-rubric-levels";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -182,18 +183,22 @@ export function ApplicationCard({
                     </span>
                   </div>
                   {text && (
-                    <div className="grid max-w-[62ch] gap-[1.05em] text-base leading-[1.75]">
-                      {splitParagraphs(text).map((p, i) => (
-                        <p
-                          key={i}
-                          className={cn(
-                            "text-pretty",
-                            i === 0 && "font-medium",
-                          )}
-                        >
-                          {p}
-                        </p>
-                      ))}
+                    <div className="grid max-w-[64ch] gap-5 text-[15.5px] leading-[1.75] text-foreground/90">
+                      {splitParagraphs(text).map((p, i) => {
+                        // The opening sentence stands out so a skim of the page still tells you what each answer is about.
+                        const { lead, rest } =
+                          i === 0 ? leadSentence(p) : { lead: "", rest: p };
+                        return (
+                          <p key={i} className="text-pretty">
+                            {lead && (
+                              <span className="font-semibold text-foreground">
+                                {lead}{" "}
+                              </span>
+                            )}
+                            {rest}
+                          </p>
+                        );
+                      })}
                     </div>
                   )}
                   {scoredIn[key] && (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseLevels, readingMinutes, splitParagraphs, wordCount } from "./recruit-rubric-levels";
+import { parseLevels } from "./recruit-rubric-levels";
 
 describe("parseLevels", () => {
   it("reads one score per line", () => {
@@ -13,17 +13,5 @@ describe("parseLevels", () => {
   });
   it("ignores plain text", () => {
     expect(parseLevels("Look for clear writing").size).toBe(0);
-  });
-});
-
-describe("answer helpers", () => {
-  it("splits on blank lines and joins soft line breaks", () => {
-    expect(splitParagraphs("One\nstill one\n\nTwo\r\n\r\nThree")).toEqual(["One still one", "Two", "Three"]);
-  });
-  it("counts words and reading time", () => {
-    expect(wordCount(null)).toBe(0);
-    expect(wordCount(" a  b\nc ")).toBe(3);
-    expect(readingMinutes(10)).toBe(1);
-    expect(readingMinutes(450)).toBe(2);
   });
 });

@@ -27,19 +27,3 @@ export const ANSWER_LABELS: Record<AnswerKey, string> = {
 export function isAnswerKey(v: unknown): v is AnswerKey {
   return typeof v === "string" && (ANSWER_KEYS as readonly string[]).includes(v);
 }
-
-/** Splits a free-text answer into paragraphs so long answers don't read as one block. */
-export function splitParagraphs(text: string): string[] {
-  const paragraphs = text.split(/\n\s*\n/).map((p) => p.replace(/\s*\n\s*/g, " ").trim()).filter(Boolean);
-  return paragraphs.length > 0 ? paragraphs : [];
-}
-
-export const SHORT_ANSWER_WORDS = 80;
-
-export function wordCount(text: string | null): number {
-  return text ? text.trim().split(/\s+/).filter(Boolean).length : 0;
-}
-
-export function readingMinutes(words: number): number {
-  return Math.max(1, Math.round(words / 200));
-}

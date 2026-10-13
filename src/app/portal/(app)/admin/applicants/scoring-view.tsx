@@ -142,8 +142,8 @@ function StagePanel({ data }: { data: StageData }) {
         </div>
 
         {selected && data.stage === "resume" ? (
-          <div ref={topRef} className="grid scroll-mt-4 items-start gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
-            <div className="max-w-[50rem]">
+          <div ref={topRef} className="grid scroll-mt-4 items-start gap-8 xl:grid-cols-[minmax(0,42rem)_22rem] xl:justify-start">
+            <div>
               <ApplicationCard
                 key={selected.id}
                 name={selected.name}
