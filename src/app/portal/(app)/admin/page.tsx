@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { getQuarters } from "@/lib/data/quarters";
 import { getAdminAttentionItems } from "@/lib/data/admin-attention";
-import { getApplicantRows } from "@/lib/data/recruit";
+import { getAttendanceData } from "@/lib/data/recruit-import";
+import { getScoringBundle } from "@/lib/data/recruit-scoring";
+import { getInterviewSlots, getInvitees } from "@/lib/data/interview";
+import { getCurrentProfile } from "@/lib/data/profile";
 import { getMeetingDatesForQuarter } from "@/lib/data/meeting-dates";
 import { defaultQuarterId, resolveQuarterId } from "@/lib/admin-nav";
 import { AttentionList } from "./hub/attention-list";
@@ -21,17 +24,28 @@ export default async function AdminHubPage({
   const selectedId = resolveQuarterId(quarter, quarters, defaultQuarterId(quarters));
   const selected = quarters.find((q) => q.id === selectedId) ?? null;
 
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+  const profile = await getCurrentProfile();
+
   // Each source is optional: a failing one is left out instead of breaking the page.
-  const [items, rows, dates] = await Promise.all([
-    getAdminAttentionItems(selectedId),
-    selectedId ? getApplicantRows(selectedId).catch(() => null) : Promise.resolve(null),
+  const [attendance, scoring, invitees, slots, dates] = await Promise.all([
+    selectedId ? getAttendanceData(selectedId).catch(() => null) : Promise.resolve(null),
+    selectedId ? getScoringBundle(selectedId, profile.id).catch(() => null) : Promise.resolve(null),
+    getInvitees().catch(() => null),
+    getInterviewSlots().catch(() => null),
     selectedId ? getMeetingDatesForQuarter(selectedId).catch(() => []) : Promise.resolve([] as string[]),
   ]);
 
-  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+  const waiting = invitees ? invitees.filter((i) => !i.booking).length : null;
+  const openSlots = slots ? slots.filter((s) => s.published && s.bookingStatus === "open" && s.date >= today).length : null;
+  const items = await getAdminAttentionItems(selectedId, {
+    bookingsToMark: attendance ? attendance.toMark.length : null,
+    applicantsWithoutReviewer: scoring ? scoring.dashboard.totals.unassigned : null,
+    interviewSlotShortfall: waiting !== null && openSlots !== null ? Math.max(0, waiting - openSlots) : null,
+  });
+
   const upcoming = dates.filter((d) => d >= today).slice(0, 4);
-  const applicants = rows ? rows.filter((r) => r.hasApplication).length : 0;
-  const withoutApplication = rows ? rows.filter((r) => !r.hasApplication).length : 0;
+  const totals = scoring?.dashboard.totals ?? null;
 
   return (
     <div className="space-y-6">
@@ -46,7 +60,15 @@ export default async function AdminHubPage({
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0 space-y-6">
           <AttentionList items={items} />
-          {rows && <PipelineTiles quarterId={selectedId} applicants={applicants} withoutApplication={withoutApplication} />}
+          {totals && totals.applicants > 0 && (
+            <PipelineTiles
+              quarterId={selectedId}
+              complete={totals.complete}
+              inProgress={Math.max(0, totals.applicants - totals.complete - totals.unassigned)}
+              applicants={totals.applicants}
+              unassigned={totals.unassigned}
+            />
+          )}
           <QuickActions quarterId={selectedId} />
         </div>
         <ComingUp dates={upcoming} />

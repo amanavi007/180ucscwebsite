@@ -1,6 +1,6 @@
 import { withQuarterParam } from "./admin-nav";
 
-export type AttentionKind = "attendance" | "draft" | "team-page";
+export type AttentionKind = "marks" | "reviewers" | "interview-slots" | "attendance" | "draft" | "team-page";
 
 export interface AttentionItem {
   kind: AttentionKind;
@@ -15,6 +15,12 @@ export interface AttentionCounts {
   lowAttendance: number | null;
   draftUnfinalized: boolean | null;
   pendingTeamSubmissions: number | null;
+  /** Recruiting bookings (coffee chats, interviews) that have happened but are not marked yet. */
+  bookingsToMark?: number | null;
+  /** Applicants who have no reviewer assigned. */
+  applicantsWithoutReviewer?: number | null;
+  /** Invitees still waiting to book, minus open interview slots. Only positive when slots are short. */
+  interviewSlotShortfall?: number | null;
 }
 
 export function countBelowThreshold(rows: { attendanceRate: number | null }[], threshold: number): number {
@@ -31,6 +37,31 @@ function plural(n: number, one: string, many: string): string {
 
 export function buildAttentionItems(counts: AttentionCounts): AttentionItem[] {
   const items: AttentionItem[] = [];
+
+  if (counts.bookingsToMark && counts.bookingsToMark > 0) {
+    items.push({
+      kind: "marks",
+      label: `${plural(counts.bookingsToMark, "recruiting booking still needs", "recruiting bookings still need")} to be marked`,
+      actionLabel: "Mark attendance",
+      href: withQuarterParam("/portal/admin/applicants?tab=attendance", counts.quarterId),
+    });
+  }
+  if (counts.applicantsWithoutReviewer && counts.applicantsWithoutReviewer > 0) {
+    items.push({
+      kind: "reviewers",
+      label: `${plural(counts.applicantsWithoutReviewer, "applicant has", "applicants have")} no reviewer yet`,
+      actionLabel: "Assign reviewers",
+      href: withQuarterParam("/portal/admin/applicants?tab=progress", counts.quarterId),
+    });
+  }
+  if (counts.interviewSlotShortfall && counts.interviewSlotShortfall > 0) {
+    items.push({
+      kind: "interview-slots",
+      label: `Add ${plural(counts.interviewSlotShortfall, "more interview slot", "more interview slots")} so everyone invited can book`,
+      actionLabel: "Add availability",
+      href: "/portal/admin/scheduling",
+    });
+  }
 
   if (counts.lowAttendance && counts.lowAttendance > 0) {
     items.push({
