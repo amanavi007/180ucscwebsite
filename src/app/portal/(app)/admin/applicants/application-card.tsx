@@ -62,7 +62,8 @@ export function ApplicationCard({
   /** Criterion names by answer, for the "Scored in …" line. */
   scoredIn?: Partial<Record<AnswerKey, string>>;
 }) {
-  const [showResume, setShowResume] = useState(false);
+  // The resume opens by default: reading it is part of every review.
+  const [showResume, setShowResume] = useState(true);
   const [current, setCurrent] = useState<AnswerKey>("why");
   const resumeUrl = application?.resumeUrl ?? applicationLink;
   const embed = driveEmbedUrl(resumeUrl);
@@ -182,7 +183,7 @@ export function ApplicationCard({
                     </span>
                   </div>
                   {text && (
-                    <div className="grid max-w-[64ch] gap-5 text-[15.5px] leading-[1.75] text-foreground/90">
+                    <div className="grid max-w-[100ch] gap-5 text-[16px] leading-[1.75] text-foreground/90">
                       {splitParagraphs(text).map((p, i) => {
                         // The opening sentence stands out so a skim of the page still tells you what each answer is about.
                         const { lead, rest } =

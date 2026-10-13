@@ -9,6 +9,7 @@ import type { AnswerKey } from "@/lib/recruit-rubric-levels";
 import { ApplicationCard } from "./application-card";
 import { ScoreForm } from "./score-form";
 import { FilterChip } from "@/components/filter-chip";
+import { cn } from "@/lib/utils";
 
 const fmt = (n: number | null) => (n === null ? "–" : n.toFixed(2));
 
@@ -82,6 +83,8 @@ function StagePanel({ data }: { data: StageData }) {
   const scoredIn: Partial<Record<AnswerKey, string>> = {};
   for (const c of data.rubric.criteria) if (!c.archived && c.answerKey && !scoredIn[c.answerKey]) scoredIn[c.answerKey] = c.name;
   const topRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [panelFits, setPanelFits] = useState(true);
   const lastSelected = useRef<string | null>(selected?.id ?? null);
 
   // Opening a different applicant starts at the top of their application.
@@ -90,6 +93,20 @@ function StagePanel({ data }: { data: StageData }) {
     lastSelected.current = selected.id;
     topRef.current?.scrollIntoView({ block: "start" });
   }, [selected]);
+
+  useEffect(() => {
+    const el = panelRef.current;
+    if (!el) return;
+    const measure = () => setPanelFits(el.offsetHeight <= window.innerHeight - 96);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [selected?.id]);
 
   function next() {
     const after = data.applicants.filter((a) => !scored(a) && a.id !== selected?.id);
@@ -151,7 +168,9 @@ function StagePanel({ data }: { data: StageData }) {
                 scoredIn={scoredIn}
               />
             </div>
-            <div className="space-y-4 xl:sticky xl:top-4 xl:max-h-[calc(100vh-8rem)] xl:overflow-y-auto xl:pr-1">
+            <div className="space-y-4">
+              {/* The score card stays in view while you read, but only when it fits on screen: it never scrolls on its own. */}
+              <div ref={panelRef} className={cn(panelFits && "xl:sticky xl:top-4")}>
               <ScoreForm
                 key={`${data.stage}:${selected.id}`}
                 stage={data.stage}
@@ -160,6 +179,7 @@ function StagePanel({ data }: { data: StageData }) {
                 onSubmitted={next}
                 onScoredAnswers={onScoredAnswers}
               />
+              </div>
               <OthersPanel applicant={selected} disagreeing={selected.disagree} stage={data.stage} />
             </div>
           </div>

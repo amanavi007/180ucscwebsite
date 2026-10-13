@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CalendarDays, CalendarPlus, ChevronDown, CircleHelp, Eye, RefreshCw } from "lucide-react";
+import { CalendarDays, CalendarPlus, CircleHelp, Eye, MoreHorizontal, Plus, RefreshCw } from "lucide-react";
 import { generateSlotsAction, publishAllSlotsAction } from "@/actions/coffee-chat";
 import { generateInterviewSlotsAction, publishAllInterviewSlotsAction } from "@/actions/interview";
 import { generateClientMeetingSlotsAction, publishAllClientMeetingSlotsAction } from "@/actions/client-meeting";
@@ -32,12 +32,14 @@ import { PageHeader } from "@/components/page-header";
 import { FilterChip } from "@/components/filter-chip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { availabilityKey } from "@/lib/availability-groups";
 import { CalendarHelp } from "../coffee-chats/schedule-view";
 import { SlotPanel } from "./slot-panel";
 import { AvailabilityPanel } from "./availability-panel";
 import { SetupCard } from "./setup-card";
+import { AddAvailabilityDialog } from "./add-availability-dialog";
 
 export interface SchedulingData {
   coffee: { slots: SlotRow[]; bookings: BookingRow[]; availability: AvailabilityRow[] };
@@ -93,8 +95,10 @@ export function SchedulingWorkspace({
   const [isPending, startTransition] = useTransition();
   const [kind, setKind] = useState<AgendaKind | "all">("all");
   const [mineOnly, setMineOnly] = useState(false);
-  const [openOnly, setOpenOnly] = useState(false);
-  const [hiddenOnly, setHiddenOnly] = useState(false);
+  // By default only booked slots show. Open and hidden ones are one click away.
+  const [showOpen, setShowOpen] = useState(false);
+  const [showHidden, setShowHidden] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [showPast, setShowPast] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -111,26 +115,36 @@ export function SchedulingWorkspace({
     [coffee.slots, interviews.slots, clients.slots, currentExecId, clients.panelExecIds],
   );
 
-  const scoped = all.filter((i) => showPast || i.date >= today);
-  const counts: Record<AgendaKind, number> = { coffee: 0, interview: 0, client: 0 };
-  for (const i of scoped) counts[i.kind] += 1;
-  const hiddenCount = scoped.filter((i) => i.state === "hidden").length;
+  const inRange = all.filter((i) => showPast || i.date >= today);
+  const openCount = inRange.filter((i) => i.state === "open").length;
+  const hiddenCount = inRange.filter((i) => i.state === "hidden").length;
 
-  const visible = scoped.filter(
-    (i) =>
-      (kind === "all" || i.kind === kind) &&
-      (!mineOnly || i.mine) &&
-      (!openOnly || i.state === "open") &&
-      (!hiddenOnly || i.state === "hidden"),
+  // What the toggles allow, before the kind filter, so the kind counts match what you see.
+  const allowed = inRange.filter(
+    (i) => (i.state === "booked" || (i.state === "open" && showOpen) || (i.state === "hidden" && showHidden)) && (!mineOnly || i.mine),
   );
+  const counts: Record<AgendaKind, number> = { coffee: 0, interview: 0, client: 0 };
+  for (const i of allowed) counts[i.kind] += 1;
+  const visible = allowed.filter((i) => kind === "all" || i.kind === kind);
   const groups = groupByDate(visible);
   const selected = all.find((i) => i.id === selectedId) ?? null;
 
-  function run<R extends { error?: string }>(action: () => Promise<R>, success: (r: R) => string) {
+  function makeMissingSlots() {
     startTransition(async () => {
-      const result = await action();
-      if (result.error) toast.error(result.error);
-      else toast.success(success(result));
+      const results = await Promise.all([generateSlotsAction(), generateInterviewSlotsAction(), generateClientMeetingSlotsAction()]);
+      const failed = results.find((r) => r.error);
+      if (failed?.error) toast.error(failed.error);
+      else toast.success(`Made ${results.reduce((n, r) => n + (r.createdCount ?? 0), 0)} new slot(s).`);
+      router.refresh();
+    });
+  }
+
+  function publishAllHidden() {
+    startTransition(async () => {
+      const results = await Promise.all([publishAllSlotsAction(), publishAllInterviewSlotsAction(), publishAllClientMeetingSlotsAction()]);
+      const failed = results.find((r) => r.error);
+      if (failed?.error) toast.error(failed.error);
+      else toast.success("Published every hidden slot.");
       router.refresh();
     });
   }
@@ -162,49 +176,26 @@ export function SchedulingWorkspace({
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
-                  <Button size="lg" disabled={isPending}>
-                    Add slots
-                    <ChevronDown />
+                  <Button variant="outline" size="icon" aria-label="More scheduling actions" disabled={isPending}>
+                    <MoreHorizontal />
                   </Button>
                 }
               />
               <DropdownMenuContent align="end" className="w-72">
-                <DropdownMenuItem
-                  onClick={() => run(generateSlotsAction, (r) => `Made ${r.createdCount ?? 0} coffee chat slot(s).`)}
-                >
+                <DropdownMenuItem onClick={makeMissingSlots}>
                   <RefreshCw />
-                  Make coffee chat slots from availability
+                  Make any missing slots
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => run(generateInterviewSlotsAction, (r) => `Made ${r.createdCount ?? 0} interview slot(s).`)}
-                >
-                  <RefreshCw />
-                  Make interview slots from availability
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => run(generateClientMeetingSlotsAction, (r) => `Made ${r.createdCount ?? 0} client call slot(s).`)}
-                >
-                  <RefreshCw />
-                  Make client call slots from availability
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  disabled={hiddenCount === 0}
-                  onClick={() => {
-                    startTransition(async () => {
-                      const results = await Promise.all([publishAllSlotsAction(), publishAllInterviewSlotsAction(), publishAllClientMeetingSlotsAction()]);
-                      const failed = results.find((r) => r.error);
-                      if (failed?.error) toast.error(failed.error);
-                      else toast.success("Published every hidden slot.");
-                      router.refresh();
-                    });
-                  }}
-                >
+                <DropdownMenuItem disabled={hiddenCount === 0} onClick={publishAllHidden}>
                   <Eye />
                   Publish all hidden slots{hiddenCount > 0 ? ` (${hiddenCount})` : ""}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            <Button size="lg" onClick={() => setAddOpen(true)}>
+              <Plus />
+              Add availability
+            </Button>
           </>
         }
       />
@@ -212,7 +203,7 @@ export function SchedulingWorkspace({
       <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_400px]">
         <div className="min-w-0 space-y-5">
           <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter the agenda">
-            <FilterChip selected={kind === "all"} onClick={() => setKind("all")} count={scoped.length}>
+            <FilterChip selected={kind === "all"} onClick={() => setKind("all")} count={allowed.length}>
               All
             </FilterChip>
             <FilterChip selected={kind === "coffee"} onClick={() => setKind("coffee")} count={counts.coffee}>
@@ -228,11 +219,11 @@ export function SchedulingWorkspace({
             <FilterChip selected={mineOnly} onClick={() => setMineOnly((v) => !v)}>
               Mine only
             </FilterChip>
-            <FilterChip selected={openOnly} onClick={() => setOpenOnly((v) => !v)}>
-              Open
+            <FilterChip selected={showOpen} onClick={() => setShowOpen((v) => !v)} count={openCount || undefined}>
+              Show open slots
             </FilterChip>
-            <FilterChip selected={hiddenOnly} onClick={() => setHiddenOnly((v) => !v)} count={hiddenCount || undefined}>
-              Hidden
+            <FilterChip selected={showHidden} onClick={() => setShowHidden((v) => !v)} count={hiddenCount || undefined}>
+              Show hidden
             </FilterChip>
             <FilterChip selected={showPast} onClick={() => setShowPast((v) => !v)}>
               Past
@@ -242,11 +233,11 @@ export function SchedulingWorkspace({
           {groups.length === 0 ? (
             <div className="flex flex-col items-center gap-2 rounded-[22px] border bg-card py-16 text-center">
               <CalendarDays className="size-8 text-muted-foreground" aria-hidden />
-              <p className="font-semibold">Nothing {showPast ? "" : "coming up "}that matches</p>
+              <p className="font-semibold">No bookings {showPast ? "" : "coming up "}yet</p>
               <p className="max-w-sm text-sm text-muted-foreground">
                 {all.length === 0
-                  ? "Add your availability on the right, then use Add slots to turn it into bookable times."
-                  : "Try turning a filter off."}
+                  ? "Add your availability, and slots are made for people to book."
+                  : "Open slots are hidden here. Turn on Show open slots to see the times people can still book."}
               </p>
             </div>
           ) : (
@@ -285,7 +276,7 @@ export function SchedulingWorkspace({
                 coffee={coffee.availability}
                 interviews={interviews.availability}
                 clients={clients.availability}
-                clientPanelExecIds={clients.panelExecIds}
+                onAdd={() => setAddOpen(true)}
               />
               <SetupCard interviews={interviews} clients={clients} />
             </>
@@ -294,6 +285,18 @@ export function SchedulingWorkspace({
       </div>
 
       <CalendarHelp open={helpOpen} onOpenChange={setHelpOpen} />
+      <AddAvailabilityDialog
+        key={addOpen ? "open" : "closed"}
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        today={today}
+        onClientPanel={clients.panelExecIds.includes(currentExecId)}
+        existing={{
+          coffee: new Set(coffee.availability.filter((a) => a.execId === currentExecId).map((a) => availabilityKey(a))),
+          interview: new Set(interviews.availability.filter((a) => a.execId === currentExecId).map((a) => availabilityKey(a))),
+          client: new Set(clients.availability.filter((a) => a.execId === currentExecId).map((a) => availabilityKey(a))),
+        }}
+      />
     </div>
   );
 }
