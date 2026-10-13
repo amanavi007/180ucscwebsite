@@ -423,3 +423,11 @@
     opacity: 1;
   }
 }
+
+/* A table inside a card should not draw a second border and corner inside the card's own.
+   Outside any layer on purpose, so it beats the table's own utility classes. */
+[data-slot="card"] [data-slot="table-container"] {
+  border-width: 0;
+  border-radius: 0;
+  background: transparent;
+}

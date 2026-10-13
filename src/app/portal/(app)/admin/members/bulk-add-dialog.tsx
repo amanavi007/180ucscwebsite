@@ -74,8 +74,8 @@ export function BulkAddDialog({
 
   return (
     <>
-      <Button variant="outline" onClick={() => setOpen(true)}>
-        Bulk add
+      <Button size="lg" onClick={() => setOpen(true)}>
+        Add members
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-2xl">

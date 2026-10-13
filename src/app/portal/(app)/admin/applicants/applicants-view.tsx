@@ -16,13 +16,16 @@ type Sort = "points" | "name";
 
 const GRID = "grid-cols-[3rem_minmax(0,1.7fr)_9.5rem_minmax(0,1.3fr)_9.5rem]";
 
-function reviewLabel(state: ApplicantReviewState | undefined, hasApplication: boolean): { text: string; dot: string } {
-  if (!hasApplication) return { text: "Not reviewed", dot: "bg-status-warn-foreground" };
-  if (!state || state.status === "unassigned") return { text: "Not assigned", dot: "bg-muted-foreground/50" };
-  if (state.status === "not-started") return { text: "Not started", dot: "bg-muted-foreground/50" };
-  if (state.status === "revealed") return { text: "Revealed", dot: "bg-status-ok-foreground" };
-  const text = `${state.submitted} of ${state.assigned} done`;
-  return { text, dot: state.status === "complete" ? "bg-status-ok-foreground" : "bg-warning" };
+type ReviewChip = { text: string; variant: "ok" | "warn" | "bad" | "muted" };
+
+/** How an applicant's reviews are going, as a chip with a word. */
+function reviewLabel(state: ApplicantReviewState | undefined, hasApplication: boolean): ReviewChip {
+  if (!hasApplication) return { text: "Not reviewed", variant: "muted" };
+  if (!state || state.status === "unassigned") return { text: "No reviewer", variant: "bad" };
+  if (state.status === "not-started") return { text: "Not started", variant: "muted" };
+  if (state.status === "revealed") return { text: "Revealed", variant: "ok" };
+  if (state.status === "complete") return { text: "All in", variant: "ok" };
+  return { text: `${state.submitted} of ${state.assigned} in`, variant: "warn" };
 }
 
 export function ApplicantsView({
@@ -103,8 +106,7 @@ export function ApplicantsView({
         </span>
         <span className="truncate text-[13px] text-foreground/80">{came.length > 0 ? came.join(", ") : "Nothing yet"}</span>
         <span className="flex items-center gap-2 text-[13px] text-foreground/80">
-          <span className={`size-2 rounded-full ${review.dot}`} aria-hidden="true" />
-          {review.text}
+          <Badge variant={review.variant}>{review.text}</Badge>
         </span>
       </button>
     </li>
