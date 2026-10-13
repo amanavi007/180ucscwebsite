@@ -13,7 +13,6 @@ import {
 } from "@/lib/recruit-answer-text";
 import type { AnswerKey } from "@/lib/recruit-rubric-levels";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 const ESSAYS: {
   key: Exclude<AnswerKey, "resume">;
@@ -140,7 +139,7 @@ export function ApplicationCard({
             <span className="text-xs tabular-nums">{o.meta}</span>
             {scored.has(o.key) && (
               <Check
-                className="size-3.5 shrink-0 text-primary"
+                className="size-3.5 shrink-0 text-link"
                 aria-label="Scored"
               />
             )}
@@ -236,7 +235,7 @@ export function ApplicationCard({
                       href={resumeUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-sm text-primary underline-offset-4 hover:underline"
+                      className="inline-flex items-center gap-1 text-sm text-link underline-offset-4 hover:underline"
                     >
                       Open resume in a new tab{" "}
                       <ExternalLink className="size-3.5" />

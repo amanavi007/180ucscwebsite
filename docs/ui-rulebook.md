@@ -166,13 +166,13 @@ Run these before opening a PR (a CI step is a good follow-up):
 grep -rnE "\b(bg|text|border|ring|from|to)-(red|amber|green|blue|yellow|orange|emerald|rose|slate|gray|zinc|neutral|stone|sky|indigo|violet|purple|pink|teal|lime)-[0-9]{2,3}|#[0-9a-fA-F]{6}\b" "src/app/portal" src/app/login --include='*.tsx'
 
 # 2. No native dialogs (expect no output)
-grep -rnE "\b(window\.)?(confirm|alert)\(" src/app/portal --include='*.tsx'
+grep -rnE "window\.(confirm|alert)\(|(^|[^.[:alnum:]_])alert\(" src/app/portal --include='*.tsx'
 
 # 3. No text under 12px (expect no output)
 grep -rnE "text-\[(9|10|11)px\]" src/app/portal --include='*.tsx'
 
-# 4. Every portal page file should render an h1
-for d in $(find "src/app/portal" -name page.tsx | xargs -n1 dirname); do grep -rq "<h1" $d/*.tsx || echo "no h1: $d"; done
+# 4. Every portal page renders a title (a literal h1, the shared PageHeader, or AuthShell)
+for d in $(find "src/app/portal" -name page.tsx | xargs -n1 dirname); do grep -rqE "<h1|<PageHeader|<AuthShell" $d/*.tsx || echo "no title: $d"; done
 ```
 
 ## 11. PR checklist

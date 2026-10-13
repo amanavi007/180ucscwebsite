@@ -27,6 +27,7 @@ import { formatTime12h } from "@/lib/coffee-chat";
 import { formatDateLong, getOrgTodayDateString } from "@/lib/date";
 import type { BookingRow, ExecOptions, SlotRow } from "@/lib/data/coffee-chat";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -136,8 +137,8 @@ export function Pill({ active, onClick, children }: { active: boolean; onClick: 
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-full border px-3 py-1 text-sm transition-colors",
-        active ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted",
+        "h-8 rounded-full px-3.5 text-[0.8125rem] font-semibold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        active ? "bg-status-ok text-status-ok-foreground" : "bg-muted text-muted-foreground hover:text-foreground",
       )}
     >
       {children}
@@ -222,6 +223,7 @@ export function ScheduleView({
   const [newestFirst, setNewestFirst] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const router = useRouter();
+  const [confirm, confirmDialog] = useConfirm();
 
   const isMine = (execId1: string | null, execId2: string | null) =>
     execId1 === currentExecId || execId2 === currentExecId;
@@ -253,10 +255,13 @@ export function ScheduleView({
     });
   }
 
-  function handleCancel(booking: BookingRow) {
-    if (!window.confirm(`Cancel ${booking.applicantName}'s coffee chat? The applicant and execs will be notified.`)) {
-      return;
-    }
+  async function handleCancel(booking: BookingRow) {
+    const ok = await confirm({
+      title: `Cancel ${booking.applicantName}'s coffee chat?`,
+      description: "The applicant and execs will be notified.",
+      confirmLabel: "Cancel the chat",
+    });
+    if (!ok) return;
     run(() => cancelBookingAsAdminAction(booking.id), "Booking cancelled.");
   }
 
@@ -309,11 +314,12 @@ export function ScheduleView({
 
   return (
     <div className="mt-4 space-y-5">
+      {confirmDialog}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground">{stats.total}</span> slots ·{" "}
           <span className="font-medium text-foreground">{stats.booked}</span> booked ·{" "}
-          <span className={cn("font-medium", stats.hidden > 0 ? "text-amber-600" : "text-foreground")}>
+          <span className={cn("font-medium", stats.hidden > 0 ? "text-status-warn-foreground" : "text-foreground")}>
             {stats.hidden}
           </span>{" "}
           not published
@@ -390,7 +396,7 @@ export function ScheduleView({
                       key={slot.id}
                       className={cn(
                         "grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 p-3 sm:grid-cols-[7rem_1fr_minmax(0,14rem)_auto]",
-                        !slot.published && "bg-amber-50/60 dark:bg-amber-950/20",
+                        !slot.published && "bg-status-warn/60",
                       )}
                     >
                       <div>
@@ -416,7 +422,7 @@ export function ScheduleView({
                           <Badge variant="secondary">Open</Badge>
                         )}
                         {!slot.published && (
-                          <Badge variant="outline" className="mt-1 border-amber-500 text-amber-700 dark:text-amber-400">
+                          <Badge variant="outline" className="mt-1 border-status-warn-foreground/50 text-status-warn-foreground">
                             Not published
                           </Badge>
                         )}

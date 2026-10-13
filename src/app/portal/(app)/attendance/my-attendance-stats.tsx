@@ -67,7 +67,7 @@ export function MyAttendanceStats({
                     "flex size-24 shrink-0 flex-col items-center justify-center rounded-full border-4",
                     rate < threshold
                       ? "border-destructive/30 text-destructive"
-                      : "border-primary/30 text-primary",
+                      : "border-link/30 text-link",
                   )}
                 >
                   <span className="text-2xl font-semibold">{Math.round(rate * 100)}%</span>

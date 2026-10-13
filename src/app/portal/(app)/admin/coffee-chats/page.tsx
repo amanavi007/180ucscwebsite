@@ -20,7 +20,7 @@ export default async function CoffeeChatsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Coffee Chats</h1>
+        <h1 className="text-4xl leading-tight">Coffee Chats</h1>
         <p className="text-sm text-muted-foreground">
           Set your availability, then manage the coffee chat schedule: who&apos;s on each slot and who&apos;s booked it.
         </p>

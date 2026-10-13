@@ -148,7 +148,7 @@ export function ProjectHeader({
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{project.client_name}</h1>
+          <h1 className="text-4xl leading-tight">{project.client_name}</h1>
           <p className="text-sm text-muted-foreground">
             {project.quarter?.name}
             {project.industry ? ` · ${project.industry}` : ""}
@@ -300,7 +300,7 @@ export function ProjectHeader({
             href={project.deliverable_link}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+            className="inline-flex items-center gap-1 text-sm text-link hover:underline"
           >
             Deliverable <ExternalLink className="size-3.5" />
           </a>

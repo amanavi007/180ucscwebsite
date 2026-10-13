@@ -31,7 +31,7 @@ export default async function DirectoryPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Directory</h1>
+        <h1 className="text-4xl leading-tight">Directory</h1>
         <p className="text-sm text-muted-foreground">
           Every member and their current team{activeQuarter ? ` · ${activeQuarter.name}` : ""}.
         </p>

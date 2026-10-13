@@ -35,7 +35,7 @@ export default async function AttendancePage({
   if (!activeQuarter) {
     return (
       <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Attendance</h1>
+        <h1 className="text-4xl leading-tight">Attendance</h1>
         <p className="text-sm text-muted-foreground">
           No active quarter yet -- an exec needs to set one up first.
         </p>
@@ -53,7 +53,7 @@ export default async function AttendancePage({
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Attendance</h1>
+          <h1 className="text-4xl leading-tight">Attendance</h1>
           <p className="text-sm text-muted-foreground">{activeQuarter.name}</p>
         </div>
         <MyAttendanceStats summary={summary} quarterName={activeQuarter.name} threshold={threshold} />
@@ -88,7 +88,7 @@ export default async function AttendancePage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Attendance</h1>
+        <h1 className="text-4xl leading-tight">Attendance</h1>
         <p className="text-sm text-muted-foreground">{activeQuarter.name}</p>
       </div>
 

@@ -226,7 +226,7 @@ export function TaskList({
             <div key={section.id}>
               <div className="mb-2 flex items-center gap-2.5">
                 <Avatar className="size-6">
-                  <AvatarFallback className="text-[10px]">{initials(section.name)}</AvatarFallback>
+                  <AvatarFallback className="text-xs">{initials(section.name)}</AvatarFallback>
                 </Avatar>
                 <h3 className="text-sm font-medium">{section.name}</h3>
                 {total > 0 && (

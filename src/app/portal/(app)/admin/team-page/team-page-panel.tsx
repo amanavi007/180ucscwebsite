@@ -124,7 +124,7 @@ export function TeamPagePanel({ rows }: { rows: TeamPageAdminRow[] }) {
                   </div>
                 </div>
                 {approvalWouldRelist(row) && (
-                  <p className="text-sm text-amber-700 dark:text-amber-400">
+                  <p className="text-sm text-status-warn-foreground">
                     Currently hidden from the page. Approving will show them again (Approve all skips them).
                   </p>
                 )}

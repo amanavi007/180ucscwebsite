@@ -19,7 +19,7 @@ export default async function AssistantPage() {
   if (!quarter) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Welcome, {profile.name.split(" ")[0]}</h1>
+        <h1 className="text-4xl leading-tight">Welcome, {profile.name.split(" ")[0]}</h1>
         <Card>
           <CardHeader>
             <CardTitle>No active quarter yet</CardTitle>

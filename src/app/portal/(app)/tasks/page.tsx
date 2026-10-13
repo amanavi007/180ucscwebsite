@@ -50,7 +50,7 @@ export default async function TasksPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Tasks</h1>
+          <h1 className="text-4xl leading-tight">Tasks</h1>
           <p className="text-sm text-muted-foreground">
             Every task you can see, across projects.
           </p>

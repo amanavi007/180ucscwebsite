@@ -18,7 +18,7 @@ export default async function CalendarPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Calendar</h1>
+        <h1 className="text-4xl leading-tight">Calendar</h1>
         <p className="text-sm text-muted-foreground">
           Meeting days, project deadlines, org events, and project team items -- everything
           happening this month, in one place.

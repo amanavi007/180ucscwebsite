@@ -9,6 +9,7 @@ import { formatTime12h } from "@/lib/coffee-chat";
 import { formatDateLong, getOrgTodayDateString } from "@/lib/date";
 import type { ClientMeetingBookingRow } from "@/lib/data/client-meeting";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -53,6 +54,7 @@ function rank(b: ClientMeetingBookingRow, today: string): number {
 export function BookingsView({ bookings }: { bookings: ClientMeetingBookingRow[] }) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const [confirm, confirmDialog] = useConfirm();
   const today = getOrgTodayDateString();
 
   const sorted = [...bookings].sort((a, b) => {
@@ -63,8 +65,13 @@ export function BookingsView({ bookings }: { bookings: ClientMeetingBookingRow[]
     return ra === 0 ? cmp : -cmp;
   });
 
-  function handleCancel(b: ClientMeetingBookingRow) {
-    if (!window.confirm(`Cancel ${b.businessName}'s meeting? The client and the panel will be emailed.`)) return;
+  async function handleCancel(b: ClientMeetingBookingRow) {
+    const ok = await confirm({
+      title: `Cancel ${b.businessName}'s meeting?`,
+      description: "The client and the panel will be emailed.",
+      confirmLabel: "Cancel the meeting",
+    });
+    if (!ok) return;
     startTransition(async () => {
       const result = await cancelClientMeetingAsAdminAction(b.id);
       if (result.error) toast.error(result.error);
@@ -83,6 +90,7 @@ export function BookingsView({ bookings }: { bookings: ClientMeetingBookingRow[]
 
   return (
     <div className="mt-4">
+      {confirmDialog}
       <Table>
         <TableHeader>
           <TableRow>
@@ -101,7 +109,7 @@ export function BookingsView({ bookings }: { bookings: ClientMeetingBookingRow[]
             const confirmed = b.status === "confirmed";
             const needsLink = confirmed && !b.meetingUrl;
             return (
-              <TableRow key={b.id} className={cn(needsLink && "bg-amber-50/60 dark:bg-amber-950/20")}>
+              <TableRow key={b.id} className={cn(needsLink && "bg-status-warn/60")}>
                 <TableCell className="font-medium">{b.businessName}</TableCell>
                 <TableCell>
                   <p>{b.contactName}</p>
@@ -128,7 +136,7 @@ export function BookingsView({ bookings }: { bookings: ClientMeetingBookingRow[]
                     {b.status}
                   </Badge>
                   {needsLink && (
-                    <Badge variant="outline" className="ml-1 border-amber-500 text-amber-700 dark:text-amber-400">
+                    <Badge variant="outline" className="ml-1 border-status-warn-foreground/50 text-status-warn-foreground">
                       Link needed
                     </Badge>
                   )}

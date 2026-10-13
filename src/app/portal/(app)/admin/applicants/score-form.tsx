@@ -103,7 +103,7 @@ export function ScoreForm({
               href={applicant.applicationLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 font-medium text-primary underline-offset-4 hover:underline"
+              className="inline-flex items-center gap-1 font-medium text-link underline-offset-4 hover:underline"
             >
               Open application <ExternalLink className="size-3.5" />
             </a>

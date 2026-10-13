@@ -11,6 +11,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHeader } from "@/components/page-header";
+import { FilterChip } from "@/components/filter-chip";
 import { UrlTabs } from "@/components/url-tabs";
 import { ROLE_LABELS, compareByRole } from "@/lib/auth/roles";
 import { ListSearch } from "@/components/list-search";
@@ -108,15 +110,11 @@ export function MembersPanel({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Members</h1>
-          <p className="text-sm text-muted-foreground">
-            {members.length} active · {archivedMembers.length} archived
-          </p>
-        </div>
-        <BulkAddDialog defaultPassword={defaultPassword} defaultOpen={action === "bulk-add"} />
-      </div>
+      <PageHeader
+        title="Members"
+        description={`${members.length} active · ${archivedMembers.length} archived`}
+        actions={<BulkAddDialog defaultPassword={defaultPassword} defaultOpen={action === "bulk-add"} />}
+      />
 
       <UrlTabs values={["active", "archived"]} fallback="active">
         <TabsList>
@@ -134,25 +132,11 @@ export function MembersPanel({
               autoFocus={action === "find"}
             />
             <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by role">
-              {ROLE_CHIPS.map((chip) => {
-                const active = roleFilter === chip.value;
-                return (
-                  <button
-                    key={chip.value}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => setRoleFilter(chip.value)}
-                    className={cn(
-                      "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                      active
-                        ? "border-primary/40 bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {chip.label}
-                  </button>
-                );
-              })}
+              {ROLE_CHIPS.map((chip) => (
+                <FilterChip key={chip.value} selected={roleFilter === chip.value} onClick={() => setRoleFilter(chip.value)}>
+                  {chip.label}
+                </FilterChip>
+              ))}
             </div>
           </div>
           <Table>

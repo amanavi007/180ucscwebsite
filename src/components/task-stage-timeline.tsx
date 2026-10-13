@@ -61,7 +61,7 @@ export function TaskStageTimeline({
               className={cn(
                 "flex size-4 shrink-0 items-center justify-center rounded-full border-2 text-[9px] leading-none font-bold transition-colors",
                 done && "border-primary bg-primary text-primary-foreground",
-                active && "border-primary bg-background text-primary",
+                active && "border-link bg-background text-link",
                 !done && !active && "border-muted-foreground/30 bg-background",
                 editable && !isPending && "cursor-pointer",
                 (!editable || isPending) && "cursor-default",

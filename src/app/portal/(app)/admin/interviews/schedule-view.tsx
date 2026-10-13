@@ -20,6 +20,7 @@ import { canAddToPanel, canRemoveFromPanel } from "@/lib/interview";
 import { formatDateLong, getOrgTodayDateString } from "@/lib/date";
 import type { InterviewBookingRow, InterviewExecOptions, InterviewSlotRow } from "@/lib/data/interview";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -172,6 +173,7 @@ export function ScheduleView({
   const [newestFirst, setNewestFirst] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const router = useRouter();
+  const [confirm, confirmDialog] = useConfirm();
 
   const isMine = (execIds: string[]) => execIds.includes(currentExecId);
 
@@ -202,9 +204,14 @@ export function ScheduleView({
     });
   }
 
-  function handleCancel(slot: InterviewSlotRow) {
+  async function handleCancel(slot: InterviewSlotRow) {
     if (!slot.bookingId) return;
-    if (!window.confirm(`Cancel ${slot.applicantName}'s interview? The applicant and the panel will be emailed.`)) return;
+    const ok = await confirm({
+      title: `Cancel ${slot.applicantName}'s interview?`,
+      description: "The applicant and the panel will be emailed.",
+      confirmLabel: "Cancel the interview",
+    });
+    if (!ok) return;
     run(() => cancelInterviewBookingAsAdminAction(slot.bookingId!), "Booking cancelled.");
   }
 
@@ -252,11 +259,12 @@ export function ScheduleView({
 
   return (
     <div className="mt-4 space-y-5">
+      {confirmDialog}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground">{stats.total}</span> slots ·{" "}
           <span className="font-medium text-foreground">{stats.booked}</span> booked ·{" "}
-          <span className={cn("font-medium", stats.hidden > 0 ? "text-amber-600" : "text-foreground")}>{stats.hidden}</span> not published
+          <span className={cn("font-medium", stats.hidden > 0 ? "text-status-warn-foreground" : "text-foreground")}>{stats.hidden}</span> not published
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" className="gap-1.5" onClick={handleCopyFeed}>
@@ -328,7 +336,7 @@ export function ScheduleView({
                     key={slot.id}
                     className={cn(
                       "grid grid-cols-[1fr_auto] items-start gap-x-3 gap-y-2 p-3 sm:grid-cols-[7rem_minmax(0,16rem)_1fr_auto]",
-                      !slot.published && "bg-amber-50/60 dark:bg-amber-950/20",
+                      !slot.published && "bg-status-warn/60",
                     )}
                   >
                     <div>
@@ -350,7 +358,7 @@ export function ScheduleView({
                         <Badge variant="secondary">Open</Badge>
                       )}
                       {!slot.published && (
-                        <Badge variant="outline" className="mt-1 border-amber-500 text-amber-700 dark:text-amber-400">
+                        <Badge variant="outline" className="mt-1 border-status-warn-foreground/50 text-status-warn-foreground">
                           Not published
                         </Badge>
                       )}

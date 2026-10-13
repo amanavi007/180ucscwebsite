@@ -197,7 +197,7 @@ export function TeamColumn({
         <div>
           <div className="mb-2 flex items-center gap-1.5">
             <span className="size-1.5 rounded-full bg-primary ring-4 ring-primary/15" />
-            <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">PM</span>
+            <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">PM</span>
           </div>
           <DropZone
             id={`team:${team.id}:pm`}
@@ -219,7 +219,7 @@ export function TeamColumn({
         <div>
           <div className="mb-2 flex items-center gap-1.5">
             <span className="size-1.5 rounded-full bg-warm ring-4 ring-warm/15" />
-            <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">SC</span>
+            <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">SC</span>
           </div>
           <DropZone
             id={`team:${team.id}:sc`}
@@ -239,7 +239,7 @@ export function TeamColumn({
         </div>
 
         <div>
-          <p className="mb-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+          <p className="mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
             Members
           </p>
           <DropZone

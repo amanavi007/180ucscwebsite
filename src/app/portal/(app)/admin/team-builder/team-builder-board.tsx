@@ -130,7 +130,7 @@ function AutosaveIndicator({ status }: { status: "idle" | "saving" | "saved" }) 
         </>
       ) : (
         <>
-          <CheckCircle2 className="size-3.5 text-primary" />
+          <CheckCircle2 className="size-3.5 text-link" />
           Saved
         </>
       )}
@@ -315,7 +315,7 @@ export function TeamBuilderBoard({
       {readOnly ? (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <CheckCircle2 className="size-4 text-primary" />
+            <CheckCircle2 className="size-4 text-link" />
             Finalized{plan.finalizedAt ? ` on ${format(new Date(plan.finalizedAt), "MMM d, yyyy")}` : ""} --
             this draft is read-only. Apply writes it to the real team rosters.
           </div>
@@ -399,7 +399,7 @@ export function TeamBuilderBoard({
                     render={
                       <button
                         type="button"
-                        className="flex min-h-[220px] w-80 shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border text-sm font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
+                        className="flex min-h-[220px] w-80 shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border text-sm font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-link"
                       >
                         <Plus className="size-5" />
                         Add team

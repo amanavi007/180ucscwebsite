@@ -149,7 +149,7 @@ export function ChatPanel({
             <h1 className="font-display text-5xl leading-[0.95] tracking-tight sm:text-7xl">
               {greeting},
               <br />
-              <span className="text-primary">{firstName}.</span>
+              <span className="text-link">{firstName}.</span>
             </h1>
             <p className="mx-auto max-w-sm text-sm text-muted-foreground">
               Ask about your projects, tasks and events. For changes, I&apos;ll propose them and you approve.

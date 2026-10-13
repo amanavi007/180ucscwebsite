@@ -238,7 +238,7 @@ export function RubricEditor({ rubric }: { rubric: RubricRow }) {
             </Button>
           </div>
           {scaleChanged && (
-            <p className="text-xs text-amber-700 dark:text-amber-400">
+            <p className="text-xs text-status-warn-foreground">
               Heads up: scores already given are kept as they are and will be read on the new scale.
             </p>
           )}

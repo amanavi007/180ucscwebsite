@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 type Result<T> = { items?: T[]; total?: number; truncated?: boolean; note?: string };
 
 const TONE_BAR: Record<Tone, string> = { good: "bg-primary", warn: "bg-amber-500", bad: "bg-destructive" };
-const TONE_TEXT: Record<Tone, string> = { good: "text-primary", warn: "text-amber-600 dark:text-amber-400", bad: "text-destructive" };
+const TONE_TEXT: Record<Tone, string> = { good: "text-link", warn: "text-status-warn-foreground", bad: "text-destructive" };
 
 /** Tool results start collapsed: the reply text carries the answer, the card is the detail behind a small arrow. */
 function Collapsible({ title, meta, children }: { title: string; meta?: ReactNode; children: ReactNode }) {

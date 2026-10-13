@@ -9,7 +9,7 @@ const CIRC = 2 * Math.PI * R;
 /** Exec-only gauge of the team's assistant messages today. Fills as usage grows; hover or focus for numbers. */
 export function UsageRing({ used, cap }: { used: number; cap: number }) {
   const fraction = cap > 0 ? Math.min(used / cap, 1) : 0;
-  const tone = fraction >= 1 ? "text-destructive" : fraction >= 0.8 ? "text-warning" : "text-primary";
+  const tone = fraction >= 1 ? "text-destructive" : fraction >= 0.8 ? "text-warning" : "text-link";
   return (
     <TooltipProvider delay={100}>
       <Tooltip>

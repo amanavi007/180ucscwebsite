@@ -193,7 +193,7 @@ export function DirectoryView({
                           className={
                             result.rate < attendanceThreshold
                               ? "border-transparent bg-destructive/10 text-destructive"
-                              : "border-transparent bg-primary/10 text-primary"
+                              : "border-transparent bg-accent text-accent-foreground"
                           }
                         >
                           {Math.round(result.rate * 100)}%
@@ -203,7 +203,7 @@ export function DirectoryView({
                         </span>
                         {result.missingSessionDates.length > 0 && (
                           <AlertTriangle
-                            className="size-3.5 text-amber-500"
+                            className="size-3.5 text-status-warn-foreground"
                             aria-label={`Team hasn't logged ${result.missingSessionDates.length} session(s) other teams logged this quarter`}
                           />
                         )}

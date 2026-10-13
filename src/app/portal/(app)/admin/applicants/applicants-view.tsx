@@ -172,7 +172,7 @@ export function ApplicantsView({
             {needsYou.map((n, i) => (
               <span key={n.label}>
                 {i > 0 && <span aria-hidden="true"> · </span>}
-                <button type="button" onClick={n.onClick} className="font-medium text-primary underline-offset-2 hover:underline">
+                <button type="button" onClick={n.onClick} className="font-medium text-link underline-offset-2 hover:underline">
                   {n.label}
                 </button>
               </span>

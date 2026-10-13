@@ -36,7 +36,7 @@ export default async function ClientMeetingsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Client Meetings</h1>
+          <h1 className="text-4xl leading-tight">Client Meetings</h1>
           <p className="text-sm text-muted-foreground">
             Pick the 3-exec panel, add availability, publish slots, and manage client bookings. {openSlotCount} open slots.
           </p>
@@ -45,7 +45,7 @@ export default async function ClientMeetingsPage() {
       </div>
 
       {panelIncomplete && (
-        <p className="rounded-xl border border-amber-500/50 bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+        <p className="rounded-xl border border-status-warn-foreground/30 bg-status-warn p-3 text-sm text-status-warn-foreground">
           Pick a panel of exactly 3 execs before generating slots or opening booking.
         </p>
       )}

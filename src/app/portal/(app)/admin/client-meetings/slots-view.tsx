@@ -123,7 +123,7 @@ export function SlotsView({ slots, feedUrl }: { slots: ClientMeetingSlotRow[]; f
                   {slot.published ? (
                     <Badge>Published</Badge>
                   ) : (
-                    <Badge variant="outline" className="border-amber-500 text-amber-700 dark:text-amber-400">
+                    <Badge variant="outline" className="border-status-warn-foreground/50 text-status-warn-foreground">
                       Not published
                     </Badge>
                   )}

@@ -27,7 +27,7 @@ import { ProjectEventFormDialog, type ProjectEventFormValues } from "./project-e
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const TYPE_STYLE: Record<CalendarEvent["type"], { dot: string; chip: string }> = {
-  meeting: { dot: "bg-primary", chip: "bg-primary/10 text-primary" },
+  meeting: { dot: "bg-primary", chip: "bg-accent text-accent-foreground" },
   deadline: { dot: "bg-destructive", chip: "bg-destructive/10 text-destructive" },
   event: { dot: "bg-warning", chip: "bg-warning/10 text-warning" },
   project: { dot: "bg-foreground/60", chip: "bg-foreground/10 text-foreground/70" },
@@ -282,7 +282,7 @@ export function CalendarView({
                         <span
                           key={e.id}
                           className={cn(
-                            "truncate rounded px-1 py-0.5 text-left text-[11px] leading-tight",
+                            "truncate rounded px-1 py-0.5 text-left text-xs leading-tight",
                             TYPE_STYLE[e.type].chip,
                           )}
                         >
@@ -290,7 +290,7 @@ export function CalendarView({
                         </span>
                       ))}
                       {overflow > 0 && (
-                        <span className="px-1 text-[11px] text-muted-foreground">+{overflow} more</span>
+                        <span className="px-1 text-xs text-muted-foreground">+{overflow} more</span>
                       )}
                     </div>
                   </PopoverTrigger>
@@ -338,7 +338,7 @@ export function CalendarView({
                               <div className="min-w-0">
                                 <span
                                   className={cn(
-                                    "mb-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide",
+                                    "mb-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide",
                                     TYPE_STYLE[e.type].chip,
                                   )}
                                 >

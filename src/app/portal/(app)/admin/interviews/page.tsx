@@ -33,7 +33,7 @@ export default async function InterviewsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Interviews</h1>
+          <h1 className="text-4xl leading-tight">Interviews</h1>
           <p className="text-sm text-muted-foreground">
             Invite applicants, set your availability, then manage the interview schedule: who&apos;s on each panel and who&apos;s booked.
           </p>

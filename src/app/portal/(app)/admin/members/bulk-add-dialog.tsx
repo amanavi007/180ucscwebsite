@@ -121,7 +121,7 @@ export function BulkAddDialog({
                         <TableCell className="text-muted-foreground">{r.email || "—"}</TableCell>
                         <TableCell>
                           {r.status === "created" ? (
-                            <Badge className="border-transparent bg-primary/10 text-primary">
+                            <Badge className="border-transparent bg-accent text-accent-foreground">
                               Created
                             </Badge>
                           ) : (

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check } from "lucide-react";
 import type { ScoringApplicant, StageData } from "@/lib/data/recruit-scoring";
 import { STAGES, type Stage } from "@/lib/recruit-scoring";
 import { Badge } from "@/components/ui/badge";
