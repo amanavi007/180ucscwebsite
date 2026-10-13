@@ -22,6 +22,12 @@ describe("resolveModelSpecs", () => {
       { provider: "groq", modelId: "m" },
     ]);
   });
+  it("bayleaf is the fallback ahead of groq, and only two are used", () => {
+    expect(
+      resolveModelSpecs({ GOOGLE_GENERATIVE_AI_API_KEY: "g", BAYLEAF_API_KEY: "b", GROQ_API_KEY: "q" }).map((s) => s.provider),
+    ).toEqual(["google", "bayleaf"]);
+    expect(resolveModelSpecs({ BAYLEAF_API_KEY: "b", GROQ_API_KEY: "q" }).map((s) => s.provider)).toEqual(["bayleaf", "groq"]);
+  });
   it("honours ASSISTANT_MODEL", () => {
     expect(resolveModelSpecs({ GOOGLE_GENERATIVE_AI_API_KEY: "g", ASSISTANT_MODEL: "gemini-x" })[0].modelId).toBe("gemini-x");
   });

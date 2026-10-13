@@ -12,6 +12,7 @@
   "dependencies": {
     "@ai-sdk/google": "^4.0.90",
     "@ai-sdk/groq": "^4.0.57",
+    "@ai-sdk/openai-compatible": "^3.0.68",
     "@ai-sdk/provider": "^4.0.24",
     "@ai-sdk/react": "^4.0.134",
     "@base-ui/react": "^1.6.0",

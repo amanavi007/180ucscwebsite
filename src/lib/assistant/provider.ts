@@ -2,10 +2,11 @@ import "server-only";
 import { APICallError, wrapLanguageModel, type LanguageModel } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createGroq } from "@ai-sdk/groq";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModelV4, LanguageModelV4Middleware } from "@ai-sdk/provider";
 
 export interface ModelSpec {
-  provider: "google" | "groq";
+  provider: "google" | "bayleaf" | "groq";
   modelId: string;
 }
 
@@ -17,10 +18,16 @@ export function resolveModelSpecs(env: Env = process.env): ModelSpec[] {
   if (env.GOOGLE_GENERATIVE_AI_API_KEY) {
     specs.push({ provider: "google", modelId: env.ASSISTANT_MODEL || "gemini-flash-lite-latest" });
   }
+  // BayLeaf (UCSC, free, zero data retention) sits ahead of Groq; only the first two entries are used.
+  if (env.BAYLEAF_API_KEY) {
+    specs.push({ provider: "bayleaf", modelId: env.BAYLEAF_MODEL || "openrouter:z-ai/glm-5.3-flash" });
+  }
   if (env.GROQ_API_KEY) {
     specs.push({ provider: "groq", modelId: env.ASSISTANT_FALLBACK_MODEL || "openai/gpt-oss-120b" });
   }
-  return specs;
+  // ASSISTANT_PRIMARY=bayleaf puts BayLeaf first (to try it, or to spare the Gemini quota).
+  if (env.ASSISTANT_PRIMARY === "bayleaf") specs.sort((x, y) => Number(y.provider === "bayleaf") - Number(x.provider === "bayleaf"));
+  return specs.slice(0, 2);
 }
 
 export function isFallbackError(err: unknown): boolean {
@@ -32,6 +39,13 @@ export function isFallbackError(err: unknown): boolean {
 function createModel(spec: ModelSpec, env: Env): LanguageModelV4 {
   if (spec.provider === "google") {
     return createGoogleGenerativeAI({ apiKey: env.GOOGLE_GENERATIVE_AI_API_KEY })(spec.modelId) as LanguageModelV4;
+  }
+  if (spec.provider === "bayleaf") {
+    return createOpenAICompatible({
+      name: "bayleaf",
+      baseURL: "https://api.bayleaf.dev/v1",
+      apiKey: env.BAYLEAF_API_KEY,
+    })(spec.modelId) as LanguageModelV4;
   }
   return createGroq({ apiKey: env.GROQ_API_KEY })(spec.modelId) as LanguageModelV4;
 }
