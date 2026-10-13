@@ -142,7 +142,7 @@ function StagePanel({ data }: { data: StageData }) {
         </div>
 
         {selected && data.stage === "resume" ? (
-          <div ref={topRef} className="grid scroll-mt-4 items-start gap-8 xl:grid-cols-[minmax(0,42rem)_22rem] xl:justify-start">
+          <div ref={topRef} className="mx-auto grid max-w-[104rem] scroll-mt-4 items-start gap-8 xl:grid-cols-[minmax(0,1fr)_clamp(26rem,34vw,34rem)]">
             <div>
               <ApplicationCard
                 key={selected.id}
@@ -154,7 +154,7 @@ function StagePanel({ data }: { data: StageData }) {
                 scoredIn={scoredIn}
               />
             </div>
-            <div className="space-y-4 xl:sticky xl:top-4">
+            <div className="space-y-4 xl:sticky xl:top-4 xl:max-h-[calc(100vh-8rem)] xl:overflow-y-auto xl:pr-1">
               <ScoreForm
                 key={`${data.stage}:${selected.id}`}
                 stage={data.stage}
@@ -167,7 +167,7 @@ function StagePanel({ data }: { data: StageData }) {
             </div>
           </div>
         ) : selected ? (
-          <div ref={topRef} className="max-w-xl scroll-mt-4 space-y-4">
+          <div ref={topRef} className="mx-auto max-w-2xl scroll-mt-4 space-y-4">
             <ScoreForm key={`${data.stage}:${selected.id}`} stage={data.stage} rubric={data.rubric} applicant={selected} onSubmitted={next} />
             <OthersPanel applicant={selected} disagreeing={selected.disagree} stage={data.stage} />
           </div>

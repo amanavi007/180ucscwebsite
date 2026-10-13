@@ -246,7 +246,7 @@ export function ApplicationCard({
                     <iframe
                       src={embed}
                       title={`${name} resume`}
-                      className="h-[32rem] w-full rounded-lg border"
+                      className="h-[min(48rem,80vh)] w-full rounded-lg border"
                     />
                   )}
                 </div>

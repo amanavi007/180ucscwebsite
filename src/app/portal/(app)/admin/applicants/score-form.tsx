@@ -134,7 +134,7 @@ export function ScoreForm({
                           aria-pressed={scores[c.id] === o}
                           aria-label={meaning.get(o) ? `${o}: ${meaning.get(o)}` : String(o)}
                           onClick={() => setScore(c.id, o)}
-                          className="size-11 rounded-lg border bg-card text-[15px] font-medium transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:font-semibold aria-pressed:text-background"
+                          className="h-11 min-w-11 flex-1 rounded-lg border bg-card text-[15px] font-medium transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:font-semibold aria-pressed:text-background"
                         >
                           {o}
                         </button>
@@ -148,12 +148,12 @@ export function ScoreForm({
                           </TooltipContent>
                         </Tooltip>
                       ) : (
-                        <span key={o}>{button}</span>
+                        <span key={o} className="flex flex-1">{button}</span>
                       );
                     })}
                   </div>
                   {meaning.size > 0 && (
-                    <div className="mt-1.5 flex justify-between text-xs text-muted-foreground" style={{ maxWidth: `${options.length * 2.75 + (options.length - 1) * 0.375}rem` }}>
+                    <div className="mt-1.5 flex justify-between text-xs text-muted-foreground" >
                       <span>Weak</span>
                       <span>Strong</span>
                     </div>
