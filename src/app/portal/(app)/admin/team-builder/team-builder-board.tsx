@@ -293,7 +293,7 @@ export function TeamBuilderBoard({
         setApplyOpen(false);
         return;
       }
-      toast.success("Applied -- live rosters updated.");
+      toast.success("Applied. Live rosters updated.");
       setApplyOpen(false);
       router.refresh();
     });
@@ -306,7 +306,7 @@ export function TeamBuilderBoard({
         toast.error(result.error);
         return;
       }
-      toast.success("Draft unlocked -- editable again.");
+      toast.success("Draft unlocked. Editable again.");
       router.refresh();
     });
   }

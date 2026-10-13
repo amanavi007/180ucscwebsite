@@ -257,7 +257,7 @@ export async function deleteTask(taskId: string, projectId: string): Promise<Act
       return { error: "You can only delete your own tasks." };
     }
     if (task.is_default_task) {
-      return { error: "The default tracked tasks can't be deleted -- ask your PM/SC." };
+      return { error: "The default tracked tasks can't be deleted. Ask your PM/SC." };
     }
   }
 

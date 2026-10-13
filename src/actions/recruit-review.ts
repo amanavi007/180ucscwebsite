@@ -52,7 +52,7 @@ export async function commitApplicationImportAction(input: {
 > {
   const { profile, error } = await requireExec();
   if (error || !profile) return { error };
-  if (input.rows.length === 0) return { error: "Nothing to import — every row was skipped." };
+  if (input.rows.length === 0) return { error: "Nothing to import. Every row was skipped." };
 
   const supabase = await createClient();
   const { data, error: rpcError } = await supabase.rpc("commit_application_import", {

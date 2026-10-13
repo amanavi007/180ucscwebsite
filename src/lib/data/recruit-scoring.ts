@@ -54,7 +54,7 @@ export async function getRubrics(): Promise<Record<Stage, RubricRow>> {
 
   const build = (stage: Stage): RubricRow => {
     const rubric = (rubrics ?? []).find((r) => r.stage === stage);
-    if (!rubric) throw new Error(`Missing ${stage} rubric — has the scoring migration been applied?`);
+    if (!rubric) throw new Error(`Missing ${stage} rubric. Has the scoring migration been applied?`);
     return {
       id: rubric.id,
       stage,

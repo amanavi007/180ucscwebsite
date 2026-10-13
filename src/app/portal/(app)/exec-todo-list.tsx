@@ -133,7 +133,7 @@ export function ExecTodoList({
       </div>
 
       {todos.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No to-dos yet -- add one above.</p>
+        <p className="text-sm text-muted-foreground">No to-dos yet. Add one above.</p>
       ) : (
         <div className="space-y-1">
           {open.map((t) => (

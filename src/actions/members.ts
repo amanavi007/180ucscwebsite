@@ -335,7 +335,7 @@ export async function deleteMemberPermanently(userId: string): Promise<ActionRes
   });
   if (historyError) return { error: historyError.message };
   if (hasHistory) {
-    return { error: "Can't permanently delete -- this account has activity history. It stays archived instead." };
+    return { error: "Can't permanently delete. This account has activity history. It stays archived instead." };
   }
 
   const admin = createAdminClient();

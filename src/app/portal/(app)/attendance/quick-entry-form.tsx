@@ -136,10 +136,10 @@ export function QuickEntryForm({
           />
           {readOnly && (
             <Badge variant="outline">
-              {date > today ? "Read-only -- future date" : "Read-only -- already logged"}
+              {date > today ? "Read-only: future date" : "Read-only: already logged"}
             </Badge>
           )}
-          {isBackfill && <Badge variant="outline">Backfill -- not logged yet</Badge>}
+          {isBackfill && <Badge variant="outline">Backfill: not logged yet</Badge>}
         </div>
 
         <p className="text-sm text-muted-foreground">

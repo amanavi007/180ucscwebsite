@@ -264,7 +264,7 @@ export function TeamColumn({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {team.clientName}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes the team from this draft only -- it doesn&apos;t touch any real team or
+              This removes the team from this draft only. It doesn&apos;t touch any real team or
               data. This can&apos;t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -92,7 +92,7 @@ export const NAV_LINKS: NavLink[] = [
     label: "Resources",
     icon: BookOpen,
     group: "reference",
-    tourDescription: "The chapter wiki -- training docs, templates, and guides.",
+    tourDescription: "The chapter wiki: training docs, templates, and guides.",
   },
   {
     href: "/portal/quick-links",

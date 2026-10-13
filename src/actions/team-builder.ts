@@ -141,7 +141,7 @@ export async function deletePlan(planId: string): Promise<ActionResult> {
     .eq("id", planId)
     .single();
   if (plan?.is_finalized) {
-    return { error: "Finalized drafts can't be deleted -- they're the record of what was applied." };
+    return { error: "Finalized drafts can't be deleted. They're the record of what was applied." };
   }
 
   const { error } = await supabase.from("team_plans").delete().eq("id", planId);

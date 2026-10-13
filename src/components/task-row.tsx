@@ -209,7 +209,7 @@ export function TaskRow({
         />
       ) : (
         <span className="text-sm text-muted-foreground">
-          {task.due_date ? format(parseLocalDate(task.due_date), "MMM d") : "—"}
+          {task.due_date ? format(parseLocalDate(task.due_date), "MMM d") : "-"}
         </span>
       )}
 

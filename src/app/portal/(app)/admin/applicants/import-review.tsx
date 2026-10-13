@@ -138,7 +138,7 @@ export function ImportReview({
         ))}
       </Group>
 
-      <Group title="Matched" count={of("matched").length} tone="bg-status-ok text-status-ok-foreground" defaultOpen={false} hint="Exact matches — will get points">
+      <Group title="Matched" count={of("matched").length} tone="bg-status-ok text-status-ok-foreground" defaultOpen={false} hint="Exact matches, will get points">
         {of("matched").map((row) => (
           <div key={row.key} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
             <Name row={row} />

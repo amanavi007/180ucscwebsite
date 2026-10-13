@@ -134,13 +134,13 @@ export function ProjectTable({ projects }: { projects: ProjectWithRelations[] })
               <HealthBadge health={project.health} />
             </TableCell>
             <TableCell className="text-muted-foreground">
-              {pmNames(project).join(", ") || "—"}
+              {pmNames(project).join(", ") || "-"}
             </TableCell>
             <TableCell className="text-muted-foreground">
-              {project.senior_consultant?.name ?? "—"}
+              {project.senior_consultant?.name ?? "-"}
             </TableCell>
             <TableCell className="text-muted-foreground">
-              {project.deadline ? format(parseLocalDate(project.deadline), "MMM d, yyyy") : "—"}
+              {project.deadline ? format(parseLocalDate(project.deadline), "MMM d, yyyy") : "-"}
             </TableCell>
           </TableRow>
         ))}

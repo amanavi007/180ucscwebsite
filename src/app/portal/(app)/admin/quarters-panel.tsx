@@ -333,7 +333,7 @@ function QuarterRow({ quarter: q, projectCount }: { quarter: Quarter; projectCou
               <AlertDialogTitle>Delete {q.name}?</AlertDialogTitle>
               <AlertDialogDescription>
                 {requiresTypedConfirm
-                  ? `This permanently deletes ${q.name} and its ${projectCount} project${projectCount === 1 ? "" : "s"} -- along with every task and attendance record tied to ${projectCount === 1 ? "it" : "them"}. This can't be undone.`
+                  ? `This permanently deletes ${q.name} and its ${projectCount} project${projectCount === 1 ? "" : "s"}, along with every task and attendance record tied to ${projectCount === 1 ? "it" : "them"}. This can't be undone.`
                   : "This can't be undone."}
               </AlertDialogDescription>
             </AlertDialogHeader>

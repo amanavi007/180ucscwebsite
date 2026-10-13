@@ -92,7 +92,7 @@ export function TeamPagePanel({ rows }: { rows: TeamPageAdminRow[] }) {
                   }
                   toast.success(
                     result.skipped
-                      ? `Approved. ${result.skipped} hidden member(s) skipped -- approve them individually.`
+                      ? `Approved. ${result.skipped} hidden member(s) skipped. Approve them individually.`
                       : "Approved all.",
                   );
                   router.refresh();

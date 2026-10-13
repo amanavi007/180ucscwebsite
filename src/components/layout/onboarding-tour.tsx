@@ -118,7 +118,7 @@ export function OnboardingTour({
       />
       <div
         role="dialog"
-        aria-label={`${step.label} -- step ${stepIndex + 1} of ${steps.length}`}
+        aria-label={`${step.label}, step ${stepIndex + 1} of ${steps.length}`}
         className="fixed z-50 rounded-lg border bg-popover p-4 text-popover-foreground shadow-lg transition-all duration-200"
         style={{ top: calloutTop, left: calloutLeft, width: CALLOUT_WIDTH }}
       >

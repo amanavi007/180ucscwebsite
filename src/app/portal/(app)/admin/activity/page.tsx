@@ -79,10 +79,10 @@ export default async function AdminActivityPage({
                   <TableCell className="font-medium">{e.actorName}</TableCell>
                   <TableCell>{auditActionLabel(e.action)}</TableCell>
                   <TableCell className="text-muted-foreground">
-                    {e.targetLabel ?? "—"}
+                    {e.targetLabel ?? "-"}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {e.detail ?? "—"}
+                    {e.detail ?? "-"}
                   </TableCell>
                 </TableRow>
               ))}

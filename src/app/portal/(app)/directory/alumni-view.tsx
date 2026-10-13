@@ -21,7 +21,7 @@ export function AlumniView({ alumni }: { alumni: AlumniProfile[] }) {
   if (alumni.length === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
-        No alumni yet -- graduated members show up here once they&apos;re archived.
+        No alumni yet. Graduated members show up here once they&apos;re archived.
       </p>
     );
   }

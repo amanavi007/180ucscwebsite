@@ -36,7 +36,7 @@ export function ArchivedSection({ archivedMembers }: { archivedMembers: Archived
   return (
     <div>
       <p className="mb-3 text-sm text-muted-foreground">
-        Former members -- restore them or delete permanently.
+        Former members. Restore them or delete permanently.
       </p>
       <Table>
         <TableHeader>
@@ -122,7 +122,7 @@ function ArchivedMemberRow({ member }: { member: ArchivedMember }) {
               <AlertDialogTitle>Permanently delete {member.name}?</AlertDialogTitle>
               <AlertDialogDescription>
                 This can&apos;t be undone. It only works if this account has no activity anywhere
-                (no attendance, tasks, projects, meeting notes, etc.) -- if it has any history,
+                (no attendance, tasks, projects, meeting notes, etc.), and if it has any history,
                 you&apos;ll get an error and it stays archived instead.
               </AlertDialogDescription>
             </AlertDialogHeader>

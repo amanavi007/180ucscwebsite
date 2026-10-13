@@ -37,7 +37,7 @@ export default async function AttendancePage({
       <div className="space-y-2">
         <h1 className="text-4xl leading-tight">Attendance</h1>
         <p className="text-sm text-muted-foreground">
-          No active quarter yet -- an exec needs to set one up first.
+          No active quarter yet. An exec needs to set one up first.
         </p>
       </div>
     );
@@ -96,7 +96,7 @@ export default async function AttendancePage({
         <Alert>
           <AlertTriangle />
           <span>
-            {selectedProject.client_name} hasn&apos;t logged today&apos;s attendance yet -- it&apos;s
+            {selectedProject.client_name}{" "}hasn&apos;t logged today&apos;s attendance yet. It&apos;s
             a meeting day.
           </span>
         </Alert>

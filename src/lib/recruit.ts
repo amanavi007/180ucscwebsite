@@ -54,7 +54,7 @@ export function resolveMerge(
 ): { ok: true; merged: MergeSide } | { ok: false; error: string } {
   let email = survivor.email ?? absorbed.email;
   if (needsEmailChoice(survivor, absorbed)) {
-    if (!keepEmail) return { ok: false, error: "Both applicants have different emails — choose which one to keep." };
+    if (!keepEmail) return { ok: false, error: "Both applicants have different emails. Choose which one to keep." };
     if (keepEmail !== survivor.email && keepEmail !== absorbed.email) {
       return { ok: false, error: "The email to keep must be one of the two records' emails." };
     }

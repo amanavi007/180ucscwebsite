@@ -25,7 +25,7 @@ export function EmptyPlanState({ quarterId }: { quarterId: string }) {
   return (
     <div className="flex flex-col items-start gap-3 rounded-md border border-dashed p-8">
       <p className="text-sm text-muted-foreground">
-        No drafts for this quarter yet -- start one to begin placing members onto teams.
+        No drafts for this quarter yet. Start one to begin placing members onto teams.
       </p>
       <Button onClick={onCreate} disabled={isPending} className="gap-1.5">
         <Plus className="size-4" />

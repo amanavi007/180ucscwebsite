@@ -62,7 +62,7 @@ function PairCard({ a, b, pair }: { a: ApplicantRow; b: ApplicantRow; pair: Dupl
         toast.error(result.error);
         return;
       }
-      toast.success("Got it — they won't be suggested again.");
+      toast.success("Got it. They won't be suggested again.");
       router.refresh();
     });
   }
@@ -81,7 +81,7 @@ function PairCard({ a, b, pair }: { a: ApplicantRow; b: ApplicantRow; pair: Dupl
 
         {emailChoice && (
           <fieldset className="space-y-1 text-sm">
-            <legend className="font-medium">They have different emails — which one should the merged record keep?</legend>
+            <legend className="font-medium">They have different emails. Which one should the merged record keep?</legend>
             {[a.email, b.email].map((email) => (
               <label key={email} className="flex items-center gap-2">
                 <input type="radio" name={`email-${a.id}-${b.id}`} checked={keepEmail === email} onChange={() => setKeepEmail(email)} />

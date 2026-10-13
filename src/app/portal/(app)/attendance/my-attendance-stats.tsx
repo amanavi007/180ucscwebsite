@@ -48,12 +48,12 @@ export function MyAttendanceStats({
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Your attendance -- {quarterName}</CardTitle>
+          <CardTitle className="text-base">Your attendance, {quarterName}</CardTitle>
         </CardHeader>
         <CardContent>
           {!summary.projectName ? (
             <p className="text-sm text-muted-foreground">
-              You&apos;re not on a team this quarter yet -- nothing to track.
+              You&apos;re not on a team this quarter yet. Nothing to track.
             </p>
           ) : rate === null ? (
             <p className="text-sm text-muted-foreground">
@@ -94,7 +94,7 @@ export function MyAttendanceStats({
           {summary.missingSessionDates.length > 0 && (
             <p className="mt-4 rounded-md border border-dashed p-3 text-xs text-muted-foreground">
               Your team hasn&apos;t logged {summary.missingSessionDates.length} session(s) that
-              other teams recorded this quarter -- check with your PM/SC if this looks wrong.
+              other teams recorded this quarter. Check with your PM/SC if this looks wrong.
             </p>
           )}
         </CardContent>

@@ -68,7 +68,7 @@ export function BulkAddDialog({
         toast.success(`${created} account${created === 1 ? "" : "s"} created.`);
         setBulkText("");
       }
-      if (failed > 0) toast.error(`${failed} row${failed === 1 ? "" : "s"} failed -- see details below.`);
+      if (failed > 0) toast.error(`${failed} row${failed === 1 ? "" : "s"} failed. See details below.`);
     });
   }
 
@@ -117,8 +117,8 @@ export function BulkAddDialog({
                   <TableBody>
                     {results.map((r, i) => (
                       <TableRow key={`${r.email}-${i}`}>
-                        <TableCell>{r.name || "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">{r.email || "—"}</TableCell>
+                        <TableCell>{r.name || "-"}</TableCell>
+                        <TableCell className="text-muted-foreground">{r.email || "-"}</TableCell>
                         <TableCell>
                           {r.status === "created" ? (
                             <Badge className="border-transparent bg-accent text-accent-foreground">

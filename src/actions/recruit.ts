@@ -187,7 +187,7 @@ export async function awardPointsAction(input: {
     .maybeSingle();
   if (categoryError) return { error: categoryError.message };
   if (!category) return { error: "That category no longer exists." };
-  if (category.archived_at) return { error: "That category is archived — pick another one." };
+  if (category.archived_at) return { error: "That category is archived. Pick another one." };
 
   const { error: insertError } = await supabase.from("recruit_points").insert({
     applicant_id: input.applicantId,
@@ -230,7 +230,7 @@ export async function voidPointsAction(entryId: string, reason: string): Promise
     .select("name")
     .eq("id", entry.applicant_id)
     .maybeSingle();
-  await logAudit(profile.id, "recruit.points_voided", applicant?.name ?? null, `${entry.points} pts — ${reason.trim()}`);
+  await logAudit(profile.id, "recruit.points_voided", applicant?.name ?? null, `${entry.points} pts: ${reason.trim()}`);
 
   revalidateAll();
   return {};
@@ -490,7 +490,7 @@ export async function commitImportAction(input: {
   const { profile, error } = await requireExec();
   if (error || !profile) return { error };
   if (!Number.isFinite(input.points)) return { error: "Enter the points as a number." };
-  if (input.rows.length === 0) return { error: "Nothing to import — every row was skipped." };
+  if (input.rows.length === 0) return { error: "Nothing to import. Every row was skipped." };
 
   const supabase = await createClient();
   const { data: category, error: categoryError } = await supabase
@@ -499,7 +499,7 @@ export async function commitImportAction(input: {
     .eq("id", input.categoryId)
     .maybeSingle();
   if (categoryError) return { error: categoryError.message };
-  if (!category || category.archived_at) return { error: "That category is archived — pick another one." };
+  if (!category || category.archived_at) return { error: "That category is archived. Pick another one." };
 
   const { data, error: rpcError } = await supabase.rpc("commit_recruit_import", {
     p_quarter: input.quarterId,
@@ -612,7 +612,7 @@ export async function markBookingAction(input: {
       .eq("system_key", key)
       .maybeSingle();
     if (categoryError) return { error: categoryError.message };
-    if (!category) return { error: "The automatic points category is missing — check the Setup tab." };
+    if (!category) return { error: "The automatic points category is missing. Check the Setup tab." };
     categoryId = category.id;
     points = Number(category.default_points);
     reason = input.status === "no_show" ? NO_SHOW_DEFAULT_REASON : null;
@@ -666,7 +666,7 @@ export async function saveReviewAction(input: {
     .maybeSingle();
   if (applicantError) return { error: applicantError.message };
   if (!applicant || applicant.archived_at) {
-    return { error: "That applicant was merged or removed — refresh the page." };
+    return { error: "That applicant was merged or removed. Refresh the page." };
   }
 
   if (input.stage === "interview") {
@@ -708,7 +708,7 @@ export async function saveReviewAction(input: {
 
   const entries = Object.entries(input.scores);
   for (const [criterionId, score] of entries) {
-    if (!active.has(criterionId)) return { error: "One of those criteria was archived or removed — refresh the page." };
+    if (!active.has(criterionId)) return { error: "One of those criteria was archived or removed. Refresh the page." };
     const problem = validateScore(score, Number(rubric.scale_min), Number(rubric.scale_max));
     if (problem) return { error: problem };
   }

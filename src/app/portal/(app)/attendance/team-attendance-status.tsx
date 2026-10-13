@@ -18,7 +18,7 @@ export function TeamAttendanceStatusCard({
         <CardTitle className="text-base">Team check-in status</CardTitle>
         <CardDescription>
           {todayIsMeetingDay
-            ? "Today's a meeting day -- who's logged attendance so far."
+            ? "Today's a meeting day. Here is who has logged attendance so far."
             : "Not a meeting day today. Showing any gaps from this quarter's meeting days so far."}
         </CardDescription>
       </CardHeader>

@@ -178,7 +178,7 @@ function ImportFlow({
         toast.error(outcome.error);
         return;
       }
-      toast.success(`Import undone — ${outcome.voided ?? 0} entries voided.`);
+      toast.success(`Import undone. ${outcome.voided ?? 0} entries voided.`);
       router.refresh();
       onClose();
     });
@@ -218,7 +218,7 @@ function ImportFlow({
         <DialogHeader>
           <DialogTitle>Check before giving points</DialogTitle>
           <DialogDescription>
-            {rows.length} names from your list. Only the ones that need you are open — nothing is saved until you confirm.
+            {rows.length} names from your list. Only the ones that need you are open, and nothing is saved until you confirm.
           </DialogDescription>
         </DialogHeader>
         <ImportReview

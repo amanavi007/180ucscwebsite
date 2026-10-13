@@ -185,7 +185,7 @@ export function EventFormDialog({
                     </Button>
                   </div>
                   <FieldDescription>
-                    Type a sentence and review the fields below before saving -- the parser is a
+                    Type a sentence and review the fields below before saving. The parser is a
                     best guess, not gospel.
                   </FieldDescription>
                 </Field>

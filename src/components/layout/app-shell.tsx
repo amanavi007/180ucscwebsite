@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { SidebarNav } from "./sidebar-nav";
 import { NotificationBell } from "./notification-bell";
 import { CommandPalette } from "./command-palette";
+import { AttendanceMovedDialog } from "./attendance-moved-dialog";
 import { OnboardingTour, type TourStep } from "./onboarding-tour";
 import { NAV_LINKS } from "./nav-links";
 import { logout } from "@/actions/auth";
@@ -41,7 +42,7 @@ function SidebarBody({
         <Link
           href="/"
           prefetch={false}
-          aria-label="180 Degrees Consulting — view public site"
+          aria-label="180 Degrees Consulting, view public site"
           className="flex items-center gap-2 transition-opacity hover:opacity-75"
         >
           {collapsed ? (
@@ -78,12 +79,14 @@ export function AppShell({
   role,
   isExec,
   showOnboarding,
+  showAttendanceNotice,
   children,
 }: {
   name: string;
   role: UserRole;
   isExec: boolean;
   showOnboarding: boolean;
+  showAttendanceNotice: boolean;
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -170,7 +173,7 @@ export function AppShell({
           <Link
             href="/"
             prefetch={false}
-            aria-label="180 Degrees Consulting — view public site"
+            aria-label="180 Degrees Consulting, view public site"
             className="flex items-center md:hidden"
           >
             <Image
@@ -268,6 +271,7 @@ export function AppShell({
 
       <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} isExec={isExec} />
       <OnboardingTour steps={tourSteps} run={tourRun} onFinish={finishTour} />
+      <AttendanceMovedDialog show={showAttendanceNotice && !tourRun} />
     </div>
   );
 }

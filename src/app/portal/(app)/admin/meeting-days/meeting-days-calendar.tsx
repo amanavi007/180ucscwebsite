@@ -63,7 +63,7 @@ export function MeetingDaysCalendar({
         <CardTitle className="text-base">Meeting days</CardTitle>
         <CardDescription>
           Click a date to add or remove it as a meeting day. Auto-generated with every
-          Tuesday/Thursday in the quarter -- adjust for dead week, holidays, or extra sessions.
+          Tuesday/Thursday in the quarter. Adjust for dead week, holidays, or extra sessions.
           {timeLabel ? ` Every meeting day runs ${timeLabel}.` : ""}
         </CardDescription>
       </CardHeader>

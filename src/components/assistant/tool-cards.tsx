@@ -275,7 +275,7 @@ function ProjectDetailCard({ r }: { r: ProjectDetail }) {
         </div>
         {r.health && <HealthBadge health={r.health as ProjectHealth} />}
       </div>
-      <p className="text-xs text-muted-foreground">PM {r.pm ?? "—"} · SC {r.sc ?? "—"}</p>
+      <p className="text-xs text-muted-foreground">PM {r.pm ?? "-"} · SC {r.sc ?? "-"}</p>
       <p className="text-xs"><span className="font-medium">{r.tasksOpen ?? 0}</span> open · <span className="font-medium">{r.tasksDone ?? 0}</span> done{(r.tasksOverdue ?? 0) > 0 && <span className="font-medium text-destructive"> · {r.tasksOverdue} overdue</span>}</p>
       {r.team && <p className="text-xs text-muted-foreground">Team: {r.team}</p>}
     </div>
@@ -341,7 +341,7 @@ export function ToolCard({ toolName, output }: { toolName: string; output: unkno
     case "search":
       return <ListCard r={output as Result<Record<string, unknown>>} title="Search results" row={(i) => ({ primary: String(i.title), secondary: str(i.subtitle), badge: str(i.type), href: safeHref(i.href) })} />;
     case "member_stats":
-      return <ListCard r={output as Result<Record<string, unknown>>} title="Member stats" row={(i) => ({ primary: String(i.name), secondary: `${i.team ?? "No team"} · ${i.done}/${i.total} tasks done${Number(i.overdue) > 0 ? ` · ${i.overdue} overdue` : ""}`, badge: i.attendancePct === null ? "—" : `${i.attendancePct}%` })} />;
+      return <ListCard r={output as Result<Record<string, unknown>>} title="Member stats" row={(i) => ({ primary: String(i.name), secondary: `${i.team ?? "No team"} · ${i.done}/${i.total} tasks done${Number(i.overdue) > 0 ? ` · ${i.overdue} overdue` : ""}`, badge: i.attendancePct === null ? "-" : `${i.attendancePct}%` })} />;
     case "activity_log":
       return <ListCard r={output as Result<Record<string, unknown>>} title="Recent activity" row={(i) => ({ primary: `${i.who}: ${String(i.action).replace(/[._]/g, " ")}`, secondary: [i.target, i.detail].filter(Boolean).join(" · "), badge: str(i.when) })} />;
     case "needs_attention":

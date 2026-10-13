@@ -45,7 +45,7 @@ function CriterionDialog({ rubric, criterion, trigger }: { rubric: RubricRow; cr
         toast.error(result.error);
         return;
       }
-      toast.success(isEdit ? "Criterion updated — scores recalculated." : "Criterion added.");
+      toast.success(isEdit ? "Criterion updated. Scores recalculated." : "Criterion added.");
       setOpen(false);
       if (!isEdit) {
         setName("");
@@ -196,7 +196,7 @@ export function RubricEditor({ rubric }: { rubric: RubricRow }) {
                 variant="ghost"
                 aria-label={`Archive ${c.name}`}
                 disabled={isPending}
-                onClick={() => run(() => setCriterionArchivedAction(c.id, true), `${c.name} archived — old scores still count.`)}
+                onClick={() => run(() => setCriterionArchivedAction(c.id, true), `${c.name} archived. Old scores still count.`)}
               >
                 <Archive />
               </Button>
