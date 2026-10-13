@@ -94,8 +94,8 @@ export function ChatPanel({
     >
       <div
         className={cn(
-          "flex items-end gap-2 border bg-card shadow-lg shadow-black/5 transition-shadow focus-within:ring-4 focus-within:ring-primary/15",
-          started ? "rounded-3xl p-1.5 pl-4" : "rounded-3xl p-2.5 pl-5 ring-4 ring-primary/10",
+          "flex items-end gap-2 border bg-card shadow-lg shadow-black/5 transition-shadow focus-within:ring-4 focus-within:ring-link/15",
+          started ? "rounded-3xl p-1.5 pl-4" : "rounded-3xl p-2.5 pl-5 ring-4 ring-link/10",
         )}
       >
         <Textarea

@@ -94,7 +94,7 @@ export function MemberChip({
         "group flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors",
         readOnly ? "cursor-default" : "cursor-grab hover:bg-foreground/[0.03] active:cursor-grabbing",
         (isDragging || dragging) && "opacity-50",
-        highlighted && "bg-primary/5 ring-2 ring-primary/50",
+        highlighted && "bg-accent ring-2 ring-link/50",
       )}
     >
       <Avatar className="size-7 shrink-0">

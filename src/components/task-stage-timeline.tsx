@@ -60,7 +60,7 @@ export function TaskStageTimeline({
               aria-label={TASK_STAGE_STEP_LABELS[step]}
               className={cn(
                 "flex size-4 shrink-0 items-center justify-center rounded-full border-2 text-[9px] leading-none font-bold transition-colors",
-                done && "border-primary bg-primary text-primary-foreground",
+                done && "border-(--primary-border) bg-primary text-primary-foreground",
                 active && "border-link bg-background text-link",
                 !done && !active && "border-muted-foreground/30 bg-background",
                 editable && !isPending && "cursor-pointer",

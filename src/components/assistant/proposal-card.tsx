@@ -45,7 +45,7 @@ export function ProposalCard({ proposalId, preview, warning }: { proposalId: str
 
   const busy = state.kind === "busy";
   return (
-    <Card className={cn("my-2", warning ? "border-destructive/40 bg-destructive/5" : "border-primary/30 bg-accent")}>
+    <Card className={cn("my-2", warning ? "border-destructive/40 bg-destructive/5" : "border-link/30 bg-accent")}>
       <CardContent className="space-y-3 py-3">
         <div className="flex items-start gap-2">
           {warning && <TriangleAlert className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden />}

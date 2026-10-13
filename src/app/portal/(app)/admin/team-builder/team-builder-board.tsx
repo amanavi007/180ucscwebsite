@@ -399,7 +399,7 @@ export function TeamBuilderBoard({
                     render={
                       <button
                         type="button"
-                        className="flex min-h-[220px] w-80 shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border text-sm font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-link"
+                        className="flex min-h-[220px] w-80 shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border text-sm font-medium text-muted-foreground transition-colors hover:border-link/50 hover:bg-accent hover:text-link"
                       >
                         <Plus className="size-5" />
                         Add team

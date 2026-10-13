@@ -21,7 +21,7 @@ export function DropZone({
       ref={setNodeRef}
       className={cn(
         "flex min-h-10 flex-col gap-1.5 rounded-md p-1 transition-colors",
-        isOver && "bg-primary/5 ring-2 ring-primary/30",
+        isOver && "bg-accent ring-2 ring-link/40",
         className,
       )}
     >

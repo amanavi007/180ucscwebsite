@@ -126,7 +126,7 @@ function BoardColumn({
         ref={setNodeRef}
         className={cn(
           "min-h-10 space-y-2 rounded-md p-1 transition-colors",
-          isOver && "bg-primary/5 ring-2 ring-primary/30",
+          isOver && "bg-accent ring-2 ring-link/40",
         )}
       >
         {projects.map((project) => (
