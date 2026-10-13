@@ -28,7 +28,7 @@ export function AuthShell({
         />
         <div
           aria-hidden
-          className={`absolute top-[46%] left-[340px] size-[120px] rounded-full ${accent === "lime" ? "bg-status-warn" : "bg-primary"}`}
+          className={`absolute top-[22%] right-12 size-24 rounded-full ${accent === "lime" ? "bg-status-warn" : "bg-primary"}`}
         />
 
         <Image
