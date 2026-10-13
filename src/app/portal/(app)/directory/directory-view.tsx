@@ -28,10 +28,13 @@ export function DirectoryView({
   rows,
   rates,
   attendanceThreshold = 0.8,
+  photos = {},
 }: {
   rows: DirectoryRow[];
   rates?: Record<string, AttendanceRateResult>;
   attendanceThreshold?: number;
+  /** Approved profile photos by user id. People without one show their initials. */
+  photos?: Record<string, string>;
 }) {
   const [roleFilter, setRoleFilter] = useState(ALL);
   const [query, setQuery] = useState("");
@@ -142,7 +145,7 @@ export function DirectoryView({
             return (
               <li key={r.user_id} className="flex flex-col gap-4 rounded-[22px] border bg-card p-5">
                 <div className="flex items-center gap-3.5">
-                  <PersonAvatar name={r.name} className="size-14 text-lg" />
+                  <PersonAvatar name={r.name} src={photos[r.user_id]} className="size-14 text-lg" />
                   <div className="min-w-0">
                     <h3 className="truncate font-heading text-lg leading-tight font-bold">{r.name}</h3>
                     <Badge variant={isExec(r.role) ? "info" : "muted"} className="mt-1">

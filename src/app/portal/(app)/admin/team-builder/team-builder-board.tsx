@@ -46,6 +46,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DropZone } from "./drop-zone";
+import { PlanChecks } from "./plan-checks";
 import { MemberChip } from "./member-chip";
 import { TeamColumn } from "./team-column";
 import { useAutosaveStatus } from "./use-autosave-status";
@@ -428,6 +429,8 @@ export function TeamBuilderBoard({
               )}
             </div>
           </div>
+
+          <PlanChecks board={board} />
         </div>
 
         <DragOverlay>{activeProfile && <MemberChip profile={activeProfile} dragging />}</DragOverlay>

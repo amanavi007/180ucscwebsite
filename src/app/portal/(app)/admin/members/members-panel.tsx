@@ -63,6 +63,7 @@ export function MembersPanel({
   stats,
   attendanceThreshold,
   quarterName,
+  photos,
 }: {
   members: Member[];
   archivedMembers: ArchivedMember[];
@@ -71,6 +72,7 @@ export function MembersPanel({
   stats: Record<string, MemberStats>;
   attendanceThreshold: number;
   quarterName: string | null;
+  photos: Record<string, string>;
 }) {
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [sortKey, setSortKey] = useState<MemberSortKey | null>(null);
@@ -187,6 +189,7 @@ export function MembersPanel({
                       key={m.id}
                       member={m}
                       stats={stats[m.id]}
+                      photo={photos[m.id]}
                       threshold={attendanceThreshold}
                       selected={m.id === selectedId}
                       onSelect={() => setSelectedId(m.id)}
@@ -204,6 +207,7 @@ export function MembersPanel({
                 key={selectedMember.id}
                 member={selectedMember}
                 stats={stats[selectedMember.id]}
+                photo={photos[selectedMember.id]}
                 defaultPassword={defaultPassword}
                 onClose={() => setSelectedId(null)}
               />

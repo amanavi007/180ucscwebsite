@@ -10,12 +10,14 @@ import { memberStatus, type Member, type MemberStats } from "./member-types";
 export function MemberRow({
   member,
   stats,
+  photo,
   threshold,
   selected,
   onSelect,
 }: {
   member: Member;
   stats: MemberStats | undefined;
+  photo?: string;
   threshold: number;
   selected: boolean;
   onSelect: () => void;
@@ -39,7 +41,7 @@ export function MemberRow({
     >
       <TableCell>
         <span className="flex items-center gap-3">
-          <PersonAvatar name={member.name} />
+          <PersonAvatar name={member.name} src={photo} />
           <span className="min-w-0">
             <span className="block font-semibold">{member.name}</span>
             <span className="block text-sm text-muted-foreground">{member.email}</span>

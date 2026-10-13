@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getDirectory } from "@/lib/data/directory";
 import { getAlumni } from "@/lib/data/alumni";
+import { getApprovedPhotoUrls } from "@/lib/data/team-page";
 import { getActiveQuarter } from "@/lib/data/quarters";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getQuarterAttendanceRates } from "@/lib/data/attendance";
@@ -16,7 +17,7 @@ export const metadata: Metadata = { title: "Directory" };
 
 export default async function DirectoryPage() {
   const [profile, activeQuarter] = await Promise.all([getCurrentProfile(), getActiveQuarter()]);
-  const [rows, alumni] = await Promise.all([getDirectory(activeQuarter?.id ?? null), getAlumni()]);
+  const [rows, alumni, photos] = await Promise.all([getDirectory(activeQuarter?.id ?? null), getAlumni(), getApprovedPhotoUrls()]);
   const exec = isExec(profile.role);
 
   // Attendance rate is Exec-only, per the org's permission model.
@@ -43,7 +44,7 @@ export default async function DirectoryPage() {
           <TabsTrigger value="alumni">Alumni ({alumni.length})</TabsTrigger>
         </TabsList>
         <TabsContent value="roster">
-          <DirectoryView rows={rows} rates={rates} attendanceThreshold={attendanceThreshold} />
+          <DirectoryView rows={rows} rates={rates} attendanceThreshold={attendanceThreshold} photos={photos} />
         </TabsContent>
         <TabsContent value="alumni">
           <AlumniView alumni={alumni} />

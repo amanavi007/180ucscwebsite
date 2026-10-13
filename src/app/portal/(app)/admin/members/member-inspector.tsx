@@ -35,11 +35,13 @@ import { MaskedSecret } from "./masked-secret";
 export function MemberInspector({
   member,
   stats,
+  photo,
   defaultPassword,
   onClose,
 }: {
   member: Member;
   stats: MemberStats | undefined;
+  photo?: string;
   defaultPassword: string;
   onClose: () => void;
 }) {
@@ -93,7 +95,7 @@ export function MemberInspector({
     <aside aria-label={member.name} className="space-y-6 rounded-[22px] border bg-card p-6 xl:sticky xl:top-0">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3.5">
-          <PersonAvatar name={member.name} className="size-14 text-lg" />
+          <PersonAvatar name={member.name} src={photo} className="size-14 text-lg" />
           <div className="min-w-0">
             <h2 className="truncate text-xl">{member.name}</h2>
             <Badge variant="muted" className="mt-1">
