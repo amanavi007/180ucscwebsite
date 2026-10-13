@@ -145,7 +145,7 @@ async function profileNames(supabase: Supabase, ids: string[]): Promise<Map<stri
 
 export async function getScoringBundle(quarterId: string, viewerId: string): Promise<ScoringBundle> {
   const supabase = await createClient();
-  const [rubrics, settings, applicants, links] = await Promise.all([
+  const [rubrics, settings, everyone, links] = await Promise.all([
     getRubrics(),
     getRecruitSettings(),
     fetchAllPages((from, to) =>
@@ -169,9 +169,11 @@ export async function getScoringBundle(quarterId: string, viewerId: string): Pro
     ),
   ]);
 
+  const review = await getReviewContext(everyone.map((a) => a.id));
+  // Only people who submitted the application form are reviewed; anyone else (event imports, manual adds) is left out.
+  const applicants = everyone.filter((a) => review.answers.has(a.id));
   const applicantIds = applicants.map((a) => a.id);
   const interviewed = new Set(links.map((l) => l.applicant_id));
-  const review = await getReviewContext(applicantIds);
 
   const reviews = await chunked(applicantIds, (chunk) =>
     fetchAllPages((from, to) =>

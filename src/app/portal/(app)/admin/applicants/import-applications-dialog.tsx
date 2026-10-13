@@ -74,6 +74,7 @@ function Flow({ quarterId, onClose }: { quarterId: string; onClose: () => void }
   const [choices, setChoices] = useState<Record<number, ApplicationChoice>>({});
   const [result, setResult] = useState<{ batchId: string; created: number; updated: number; skipped: number } | null>(null);
   const [assigned, setAssigned] = useState<number | null>(null);
+  const [assignError, setAssignError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -117,6 +118,8 @@ function Flow({ quarterId, onClose }: { quarterId: string; onClose: () => void }
         return;
       }
       setResult({ batchId: out.batchId, created: out.created ?? 0, updated: out.updated ?? 0, skipped: out.skipped ?? 0 });
+      setAssigned(out.assignError ? null : (out.assigned ?? 0));
+      setAssignError(out.assignError ?? null);
       setStep("done");
       router.refresh();
     });
@@ -282,11 +285,12 @@ function Flow({ quarterId, onClose }: { quarterId: string; onClose: () => void }
       </DialogHeader>
       {assigned === null ? (
         <p className="text-sm text-muted-foreground">
-          Next, give every applicant their reviewers. Each reviewer will only see the applicants assigned to them.
+          {assignError ? `Reviewers couldn't be assigned automatically: ${assignError}` : "Give every applicant their reviewers."}{" "}
+          Each reviewer will only see the applicants assigned to them.
         </p>
       ) : (
         <p className="text-sm">
-          {assigned === 0 ? "Everyone already had their reviewers." : `${assigned} assignments made.`} Reviewers can start scoring.
+          {assigned === 0 ? "Everyone already had their reviewers." : `${assigned} reviewer assignments made automatically.`} Reviewers can start scoring.
         </p>
       )}
       <DialogFooter className="items-center">
@@ -296,7 +300,7 @@ function Flow({ quarterId, onClose }: { quarterId: string; onClose: () => void }
         </Button>
         {assigned === null ? (
           <Button onClick={assign} disabled={isPending}>
-            Assign reviewers
+            {assignError ? "Try again" : "Assign reviewers"}
           </Button>
         ) : (
           <Button onClick={onClose}>Close</Button>

@@ -5,16 +5,15 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { isExec } from "@/lib/auth/roles";
 import { logAudit } from "@/lib/audit";
-import { fetchAllPages } from "@/lib/paginate";
 import { getMatchableApplicants } from "@/lib/data/recruit";
-import { getReviewContext, getReviewerPool } from "@/lib/data/recruit-review";
+import { getReviewerPool } from "@/lib/data/recruit-review";
 import {
   classifyApplications,
   type ApplicationCommitRow,
   type ParsedApplication,
   type PreviewRow,
 } from "@/lib/recruit-applications";
-import { assignReviewers, exclusionKey, selfExclusions } from "@/lib/recruit-assignment";
+import { assignReviewersForQuarter } from "@/lib/recruit-assign-reviewers";
 import { REVIEW_SETTING_KEYS, validateReviewSettings, type ReviewSettings } from "@/lib/recruit-review-settings";
 
 export interface ActionResult {
@@ -31,19 +30,6 @@ function revalidateAll() {
   revalidatePath("/portal/admin/applicants");
 }
 
-async function liveApplicants(quarterId: string) {
-  const supabase = await createClient();
-  return fetchAllPages((from, to) =>
-    supabase
-      .from("recruit_applicants")
-      .select("id, name, email")
-      .eq("quarter_id", quarterId)
-      .is("archived_at", null)
-      .order("id")
-      .range(from, to),
-  );
-}
-
 export async function previewApplicationImportAction(input: {
   quarterId: string;
   applications: ParsedApplication[];
@@ -58,7 +44,9 @@ export async function previewApplicationImportAction(input: {
 export async function commitApplicationImportAction(input: {
   quarterId: string;
   rows: ApplicationCommitRow[];
-}): Promise<ActionResult & { batchId?: string; created?: number; updated?: number; skipped?: number }> {
+}): Promise<
+  ActionResult & { batchId?: string; created?: number; updated?: number; skipped?: number; assigned?: number; assignError?: string }
+> {
   const { profile, error } = await requireExec();
   if (error || !profile) return { error };
   if (input.rows.length === 0) return { error: "Nothing to import — every row was skipped." };
@@ -77,8 +65,9 @@ export async function commitApplicationImportAction(input: {
     null,
     `${result.created} new, ${result.updated} updated, ${result.skipped} skipped`,
   );
+  const assignment = await assignReviewersForQuarter(input.quarterId, profile.id);
   revalidateAll();
-  return result;
+  return { ...result, assigned: assignment.added, assignError: assignment.error };
 }
 
 export async function undoApplicationImportAction(batchId: string): Promise<ActionResult & { archived?: number }> {
@@ -95,72 +84,9 @@ export async function undoApplicationImportAction(batchId: string): Promise<Acti
 export async function assignReviewersAction(input: { quarterId: string }): Promise<ActionResult & { added?: number }> {
   const { profile, error } = await requireExec();
   if (error || !profile) return { error };
-
-  const applicants = await liveApplicants(input.quarterId);
-  const ctx = await getReviewContext(applicants.map((a) => a.id));
-  const poolIds = ctx.pool.map((p) => p.id);
-  if (poolIds.length === 0) return { error: "There are no reviewers in the pool. Check Setup → Reviewers." };
-
-  const supabase = await createClient();
-
-  // Reviewers who left the pool lose their unfinished assignments; submitted reviews stay.
-  const stale = ctx.assignments.filter((a) => !poolIds.includes(a.reviewerId));
-  let kept = ctx.assignments;
-  if (stale.length > 0) {
-    const submitted = new Set<string>();
-    const rows = await fetchAllPages((from, to) =>
-      supabase
-        .from("recruit_reviews")
-        .select("applicant_id, reviewer_id")
-        .eq("stage", "resume")
-        .not("submitted_at", "is", null)
-        .in("reviewer_id", [...new Set(stale.map((s) => s.reviewerId))])
-        .order("id")
-        .range(from, to),
-    );
-    for (const r of rows) submitted.add(exclusionKey(r.applicant_id, r.reviewer_id));
-    const removable = stale.filter((s) => !submitted.has(exclusionKey(s.applicantId, s.reviewerId)));
-    for (const r of removable) {
-      const { error: delError } = await supabase
-        .from("recruit_review_assignments")
-        .delete()
-        .eq("applicant_id", r.applicantId)
-        .eq("reviewer_id", r.reviewerId)
-        .eq("stage", "resume");
-      if (delError) return { error: delError.message };
-    }
-    const gone = new Set(removable.map((r) => exclusionKey(r.applicantId, r.reviewerId)));
-    kept = ctx.assignments.filter((a) => !gone.has(exclusionKey(a.applicantId, a.reviewerId)));
-  }
-
-  const excluded = new Set([
-    ...ctx.exclusions.map((e) => exclusionKey(e.applicantId, e.reviewerId)),
-    ...selfExclusions(applicants, ctx.pool),
-  ]);
-  const result = assignReviewers({
-    applicantIds: applicants.map((a) => a.id),
-    pool: poolIds,
-    perApplicant: ctx.settings.perApplicant,
-    excluded,
-    existing: kept,
-    seed: Math.floor(Math.random() * 2 ** 31),
-  });
-  if (!result.ok) {
-    const name = applicants.find((a) => a.id === result.applicantId)?.name ?? "an applicant";
-    return {
-      error: `Couldn't assign ${name}: ${result.need} more reviewer${result.need === 1 ? "" : "s"} needed but only ${result.eligible} eligible. Add reviewers to the pool or lower reviewers per applicant.`,
-    };
-  }
-  if (result.added.length > 0) {
-    const { error: insertError } = await supabase.from("recruit_review_assignments").insert(
-      result.added.map((a) => ({ applicant_id: a.applicantId, reviewer_id: a.reviewerId, stage: "resume" as const })),
-    );
-    if (insertError) return { error: insertError.message };
-  }
-
-  await logAudit(profile.id, "recruit.reviewers_assigned", null, `${result.added.length} assignments added`);
-  revalidateAll();
-  return { added: result.added.length };
+  const out = await assignReviewersForQuarter(input.quarterId, profile.id);
+  if (!out.error) revalidateAll();
+  return out;
 }
 
 export async function setApplicantReviewersAction(input: {
