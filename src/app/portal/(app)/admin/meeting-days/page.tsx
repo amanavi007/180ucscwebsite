@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { getQuarters } from "@/lib/data/quarters";
 import { getMeetingDatesForQuarter } from "@/lib/data/meeting-dates";
+import { PageHeader } from "@/components/page-header";
+import { getMeetingTime } from "@/lib/data/meeting-time";
+import { formatMeetingTime } from "@/lib/meeting-time";
+import { MeetingTimeCard } from "./meeting-time-card";
 import { MeetingDaysCalendar } from "./meeting-days-calendar";
 
 export const metadata: Metadata = { title: "Admin · Meeting Days" };
@@ -16,7 +20,7 @@ export default async function MeetingDaysPage({
   if (quarters.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        No quarters yet -- create one in the Quarters tab first.
+        No quarters yet. Create one in Setup first.
       </p>
     );
   }
@@ -24,13 +28,13 @@ export default async function MeetingDaysPage({
   const selectedQuarter =
     quarters.find((q) => q.id === quarter) ?? quarters.find((q) => q.is_active) ?? quarters[0];
 
-  const initialDates = await getMeetingDatesForQuarter(selectedQuarter.id);
+  const [initialDates, meetingTime] = await Promise.all([getMeetingDatesForQuarter(selectedQuarter.id), getMeetingTime()]);
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-muted-foreground">
-        Which days count as a meeting day for attendance tracking.
-      </p>
+      <PageHeader title="Meeting days" description={`${selectedQuarter.name} · the days that count as a meeting for attendance.`} />
+
+      <MeetingTimeCard time={meetingTime} />
 
       <MeetingDaysCalendar
         key={selectedQuarter.id}
@@ -38,6 +42,7 @@ export default async function MeetingDaysPage({
         quarterStartDate={selectedQuarter.start_date}
         quarterEndDate={selectedQuarter.end_date}
         initialDates={initialDates}
+        timeLabel={formatMeetingTime(meetingTime)}
       />
     </div>
   );

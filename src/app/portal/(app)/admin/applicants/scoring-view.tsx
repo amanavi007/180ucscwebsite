@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check } from "lucide-react";
 import type { ScoringApplicant, StageData } from "@/lib/data/recruit-scoring";
 import { STAGES, type Stage } from "@/lib/recruit-scoring";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { AnswerKey } from "@/lib/recruit-rubric-levels";
 import { ApplicationCard } from "./application-card";
 import { ScoreForm } from "./score-form";
-import { Segmented } from "./segmented";
+import { FilterChip } from "@/components/filter-chip";
+import { cn } from "@/lib/utils";
 
 const fmt = (n: number | null) => (n === null ? "–" : n.toFixed(2));
 
@@ -59,16 +59,14 @@ function OthersPanel({ applicant, disagreeing, stage }: { applicant: ScoringAppl
 
 function QueueFilter({ filter, onChange, todo, all }: { filter: "todo" | "all"; onChange: (f: "todo" | "all") => void; todo: number; all: number }) {
   return (
-    <Segmented
-      size="sm"
-      label="Queue filter"
-      value={filter}
-      onChange={onChange}
-      options={[
-        { value: "todo", label: `To score · ${todo}` },
-        { value: "all", label: `All · ${all}` },
-      ]}
-    />
+    <div role="group" aria-label="Queue filter" className="flex gap-1.5">
+      <FilterChip selected={filter === "todo"} onClick={() => onChange("todo")} count={todo}>
+        To score
+      </FilterChip>
+      <FilterChip selected={filter === "all"} onClick={() => onChange("all")} count={all}>
+        All
+      </FilterChip>
+    </div>
   );
 }
 
@@ -85,6 +83,8 @@ function StagePanel({ data }: { data: StageData }) {
   const scoredIn: Partial<Record<AnswerKey, string>> = {};
   for (const c of data.rubric.criteria) if (!c.archived && c.answerKey && !scoredIn[c.answerKey]) scoredIn[c.answerKey] = c.name;
   const topRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [panelFits, setPanelFits] = useState(true);
   const lastSelected = useRef<string | null>(selected?.id ?? null);
 
   // Opening a different applicant starts at the top of their application.
@@ -93,6 +93,20 @@ function StagePanel({ data }: { data: StageData }) {
     lastSelected.current = selected.id;
     topRef.current?.scrollIntoView({ block: "start" });
   }, [selected]);
+
+  useEffect(() => {
+    const el = panelRef.current;
+    if (!el) return;
+    const measure = () => setPanelFits(el.offsetHeight <= window.innerHeight - 96);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [selected?.id]);
 
   function next() {
     const after = data.applicants.filter((a) => !scored(a) && a.id !== selected?.id);
@@ -154,7 +168,8 @@ function StagePanel({ data }: { data: StageData }) {
                 scoredIn={scoredIn}
               />
             </div>
-            <div className="space-y-4 xl:sticky xl:top-4 xl:max-h-[calc(100vh-8rem)] xl:overflow-y-auto xl:pr-1">
+            {/* The whole right column stays in view while you read, but only when it fits on screen: it never scrolls on its own. */}
+            <div ref={panelRef} className={cn("space-y-4", panelFits && "xl:sticky xl:top-4")}>
               <ScoreForm
                 key={`${data.stage}:${selected.id}`}
                 stage={data.stage}
@@ -183,13 +198,13 @@ export function ScoringView({ stages }: { stages: Record<Stage, StageData> }) {
   const [stage, setStage] = useState<Stage>("resume");
   return (
     <div className="space-y-5">
-      <Segmented
-        size="sm"
-        label="Stage"
-        value={stage}
-        onChange={setStage}
-        options={STAGES.map((s) => ({ value: s.value, label: s.label === "Resume" ? "Applications" : "Interviews" }))}
-      />
+      <div role="group" aria-label="Stage" className="flex gap-1.5">
+        {STAGES.map((s) => (
+          <FilterChip key={s.value} selected={stage === s.value} onClick={() => setStage(s.value)}>
+            {s.label === "Resume" ? "Applications" : "Interviews"}
+          </FilterChip>
+        ))}
+      </div>
       {/* Keyed by stage so each stage keeps its own selection and filter. */}
       <StagePanel key={stage} data={stages[stage]} />
     </div>

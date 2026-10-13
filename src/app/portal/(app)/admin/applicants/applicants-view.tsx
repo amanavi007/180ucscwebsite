@@ -16,13 +16,16 @@ type Sort = "points" | "name";
 
 const GRID = "grid-cols-[3rem_minmax(0,1.7fr)_9.5rem_minmax(0,1.3fr)_9.5rem]";
 
-function reviewLabel(state: ApplicantReviewState | undefined, hasApplication: boolean): { text: string; dot: string } {
-  if (!hasApplication) return { text: "Not reviewed", dot: "bg-status-warn-foreground" };
-  if (!state || state.status === "unassigned") return { text: "Not assigned", dot: "bg-muted-foreground/50" };
-  if (state.status === "not-started") return { text: "Not started", dot: "bg-muted-foreground/50" };
-  if (state.status === "revealed") return { text: "Revealed", dot: "bg-primary" };
-  const text = `${state.submitted} of ${state.assigned} done`;
-  return { text, dot: state.status === "complete" ? "bg-primary" : "bg-warning" };
+type ReviewChip = { text: string; variant: "ok" | "warn" | "bad" | "muted" };
+
+/** How an applicant's reviews are going, as a chip with a word. */
+function reviewLabel(state: ApplicantReviewState | undefined, hasApplication: boolean): ReviewChip {
+  if (!hasApplication) return { text: "Not reviewed", variant: "muted" };
+  if (!state || state.status === "unassigned") return { text: "No reviewer", variant: "bad" };
+  if (state.status === "not-started") return { text: "Not started", variant: "muted" };
+  if (state.status === "revealed") return { text: "Revealed", variant: "ok" };
+  if (state.status === "complete") return { text: "All in", variant: "ok" };
+  return { text: `${state.submitted} of ${state.assigned} in`, variant: "warn" };
 }
 
 export function ApplicantsView({
@@ -96,15 +99,14 @@ export function ApplicantsView({
           <span className="w-6 text-sm font-semibold tabular-nums">{r.total}</span>
           <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted" aria-hidden="true">
             <span
-              className="block h-full bg-primary"
+              className="block h-full bg-foreground"
               style={{ width: `${Math.max(0, Math.min(100, (r.total / max) * 100))}%` }}
             />
           </span>
         </span>
         <span className="truncate text-[13px] text-foreground/80">{came.length > 0 ? came.join(", ") : "Nothing yet"}</span>
         <span className="flex items-center gap-2 text-[13px] text-foreground/80">
-          <span className={`size-2 rounded-full ${review.dot}`} aria-hidden="true" />
-          {review.text}
+          <Badge variant={review.variant}>{review.text}</Badge>
         </span>
       </button>
     </li>
@@ -172,7 +174,7 @@ export function ApplicantsView({
             {needsYou.map((n, i) => (
               <span key={n.label}>
                 {i > 0 && <span aria-hidden="true"> · </span>}
-                <button type="button" onClick={n.onClick} className="font-medium text-primary underline-offset-2 hover:underline">
+                <button type="button" onClick={n.onClick} className="font-medium text-link underline-offset-2 hover:underline">
                   {n.label}
                 </button>
               </span>

@@ -14,12 +14,13 @@ import {
   History,
   Link2,
   BarChart3,
-  CalendarHeart,
   Camera,
-  Handshake,
   ListOrdered,
-  Sparkles,
+  House,
+  UserSearch,
 } from "lucide-react";
+
+export type AdminGroup = "admin-today" | "admin-recruiting" | "admin-scheduling" | "admin-people" | "admin-setup";
 
 export interface NavLink {
   href: string;
@@ -31,7 +32,11 @@ export interface NavLink {
   /** Admin pages whose data depends on `?quarter=`; the breadcrumb bar shows the quarter picker for these. */
   quarterScoped?: boolean;
   /** Sidebar grouping only -- unset means "ungrouped" (rendered on its own). */
-  group?: "work" | "people" | "reference" | "admin-people" | "admin-quarter-setup" | "admin-system" | "admin-recruitment";
+  group?: "work" | "people" | "reference" | AdminGroup;
+  /** False for pages that are reached from another page or search, not from the sidebar rail. */
+  rail?: boolean;
+  /** Short name for this page when it is shown as a view inside its place (the pill switch). Defaults to `label`. */
+  viewLabel?: string;
   /** One-sentence explanation shown for this page in the first-time sidebar tour. */
   tourDescription?: string;
 }
@@ -39,9 +44,9 @@ export interface NavLink {
 export const NAV_LINKS: NavLink[] = [
   {
     href: "/portal",
-    label: "Assistant",
-    icon: Sparkles,
-    keywords: "ai chat ask help home",
+    label: "Home",
+    icon: House,
+    keywords: "assistant ai chat ask help home",
     tourDescription: "Ask anything about your projects, tasks and events, or have the assistant draft changes for you to approve.",
   },
   {
@@ -56,6 +61,7 @@ export const NAV_LINKS: NavLink[] = [
     label: "Tasks",
     icon: ListTodo,
     group: "work",
+    rail: false,
     tourDescription: "All your tasks across every project, in one list.",
   },
   {
@@ -78,6 +84,7 @@ export const NAV_LINKS: NavLink[] = [
     label: "Attendance",
     icon: ClipboardCheck,
     group: "people",
+    rail: false,
     tourDescription: "Check in for meetings and see your attendance rate.",
   },
   {
@@ -93,6 +100,7 @@ export const NAV_LINKS: NavLink[] = [
     icon: Link2,
     keywords: "drive docs slack outside resources",
     group: "reference",
+    rail: false,
     tourDescription: "Fast access to shared docs, Drive folders, and other outside resources.",
   },
   {
@@ -104,51 +112,33 @@ export const NAV_LINKS: NavLink[] = [
   },
 ];
 
-/** Admin sub-pages -- shared between the Admin tab bar and the command palette. */
+/** The five places on the admin rail. `href` is where the place opens. */
+export const ADMIN_PLACES: { key: AdminGroup; label: string; href: string; icon: LucideIcon }[] = [
+  { key: "admin-today", label: "Today", href: "/portal/admin", icon: House },
+  { key: "admin-recruiting", label: "Recruiting", href: "/portal/admin/applicants", icon: UserSearch },
+  { key: "admin-scheduling", label: "Scheduling", href: "/portal/admin/scheduling", icon: CalendarDays },
+  { key: "admin-people", label: "People", href: "/portal/admin/members", icon: Users2 },
+  { key: "admin-setup", label: "Setup", href: "/portal/admin/quarters", icon: SlidersHorizontal },
+];
+
+/** Admin pages -- each belongs to one place. Order within a place is the order of its view switch. */
 export const ADMIN_NAV_LINKS: NavLink[] = [
   {
-    href: "/portal/admin/members",
-    label: "Members",
-    icon: Users,
+    href: "/portal/admin",
+    label: "Today",
+    icon: House,
     execOnly: true,
-    keywords: "bulk create accounts reset password",
-    group: "admin-people",
-  },
-  {
-    href: "/portal/admin/team-builder",
-    label: "Team Builder",
-    icon: Users2,
-    execOnly: true,
-    keywords: "drag drop roster draft plan pm sc",
     quarterScoped: true,
-    group: "admin-people",
+    keywords: "admin home hub needs attention",
+    group: "admin-today",
   },
   {
-    href: "/portal/admin/stats",
-    label: "Consultant Stats",
-    icon: BarChart3,
+    href: "/portal/admin/activity",
+    label: "Activity",
+    icon: History,
     execOnly: true,
-    keywords: "attendance tasks deadlines rollup rankings",
-    quarterScoped: true,
-    group: "admin-people",
-  },
-  {
-    href: "/portal/admin/team-page",
-    label: "Team Page",
-    icon: Camera,
-    execOnly: true,
-    keywords: "public photos bios approve pending members",
-    group: "admin-people",
-  },
-  { href: "/portal/admin/quarters", label: "Quarters", icon: CalendarRange, execOnly: true, group: "admin-quarter-setup" },
-  {
-    href: "/portal/admin/meeting-days",
-    label: "Meeting Days",
-    icon: CalendarClock,
-    execOnly: true,
-    keywords: "calendar schedule",
-    quarterScoped: true,
-    group: "admin-quarter-setup",
+    keywords: "audit log",
+    group: "admin-today",
   },
   {
     href: "/portal/admin/applicants",
@@ -156,40 +146,76 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     icon: ListOrdered,
     execOnly: true,
     quarterScoped: true,
-    keywords: "recruitment applicants points leaderboard ranking scores attendance info session",
-    group: "admin-recruitment",
+    keywords: "recruitment recruiting applicants reviews points leaderboard ranking scores attendance info session",
+    group: "admin-recruiting",
   },
   {
-    href: "/portal/admin/coffee-chats",
-    label: "Coffee Chats",
-    icon: CalendarHeart,
+    href: "/portal/admin/scheduling",
+    label: "Scheduling",
+    icon: CalendarDays,
     execOnly: true,
-    keywords: "recruitment applicants scheduling booking availability",
-    group: "admin-recruitment",
+    keywords: "agenda slots bookings availability coffee chats interviews invitees client calls clients meetings panel calendar feed",
+    group: "admin-scheduling",
   },
   {
-    href: "/portal/admin/interviews",
-    label: "Interviews",
-    icon: ClipboardCheck,
+    href: "/portal/admin/members",
+    label: "Members",
+    viewLabel: "Roster",
+    icon: Users,
     execOnly: true,
-    keywords: "recruitment applicants interview invitees booking availability",
-    group: "admin-recruitment",
+    quarterScoped: true,
+    keywords: "people bulk create accounts reset password",
+    group: "admin-people",
   },
   {
-    href: "/portal/admin/client-meetings",
-    label: "Client Meetings",
-    icon: Handshake,
+    href: "/portal/admin/team-builder",
+    label: "Team Builder",
+    viewLabel: "Teams",
+    icon: Users2,
     execOnly: true,
-    keywords: "clients consulting booking availability panel services",
-    group: "admin-recruitment",
+    keywords: "people drag drop roster draft plan pm sc",
+    quarterScoped: true,
+    group: "admin-people",
   },
-  { href: "/portal/admin/settings", label: "Settings", icon: SlidersHorizontal, execOnly: true, group: "admin-system" },
   {
-    href: "/portal/admin/activity",
-    label: "Activity",
-    icon: History,
+    href: "/portal/admin/stats",
+    label: "Consultant Stats",
+    viewLabel: "Stats",
+    icon: BarChart3,
     execOnly: true,
-    keywords: "audit log",
-    group: "admin-system",
+    keywords: "people attendance tasks deadlines rollup rankings",
+    quarterScoped: true,
+    group: "admin-people",
   },
+  {
+    href: "/portal/admin/team-page",
+    label: "Team Page",
+    viewLabel: "Team page",
+    icon: Camera,
+    execOnly: true,
+    keywords: "people public photos bios approve pending members",
+    group: "admin-people",
+  },
+  { href: "/portal/admin/quarters", label: "Quarters", icon: CalendarRange, execOnly: true, group: "admin-setup" },
+  {
+    href: "/portal/admin/recruiting-setup",
+    label: "Recruiting Setup",
+    viewLabel: "Recruiting",
+    icon: ListOrdered,
+    execOnly: true,
+    quarterScoped: true,
+    keywords: "rubric rubrics categories events points review settings scoring",
+    group: "admin-setup",
+  },
+  {
+    href: "/portal/admin/meeting-days",
+    label: "Meeting Days",
+    viewLabel: "Meeting days",
+    icon: CalendarClock,
+    execOnly: true,
+    keywords: "calendar schedule attendance",
+    quarterScoped: true,
+    group: "admin-setup",
+  },
+  { href: "/portal/admin/settings", label: "Settings", icon: SlidersHorizontal, execOnly: true, group: "admin-setup" },
 ];

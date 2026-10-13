@@ -143,7 +143,7 @@ export function PlanSelect({
         </Select>
       )}
       {selectedPlan?.isFinalized && (
-        <Badge variant="outline" className="border-transparent bg-primary/10 text-primary">
+        <Badge variant="outline" className="border-transparent bg-accent text-accent-foreground">
           Finalized
         </Badge>
       )}

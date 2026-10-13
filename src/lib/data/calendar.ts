@@ -2,6 +2,8 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { isExec } from "@/lib/auth/roles";
+import { getMeetingTime } from "@/lib/data/meeting-time";
+import { formatMeetingTime } from "@/lib/meeting-time";
 
 export interface CalendarEvent {
   /** Prefixed with the source type so ids stay unique across merged sources. */
@@ -105,6 +107,7 @@ export async function getCalendarEvents(): Promise<CalendarEvent[]> {
   const ledProjectIds = new Set((leadRows.data ?? []).map((r) => r.project_id));
 
   const result: CalendarEvent[] = [];
+  const meetingTime = formatMeetingTime(await getMeetingTime());
 
   for (const m of (meetings.data ?? []) as unknown as {
     id: string;
@@ -118,7 +121,7 @@ export async function getCalendarEvents(): Promise<CalendarEvent[]> {
       title: "Meeting day",
       type: "meeting",
       subtitle: m.quarter?.name ?? null,
-      time: null,
+      time: meetingTime,
       location: null,
       description: null,
       href: null,

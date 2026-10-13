@@ -22,11 +22,14 @@ export function MeetingDaysCalendar({
   quarterStartDate,
   quarterEndDate,
   initialDates,
+  timeLabel,
 }: {
   quarterId: string;
   quarterStartDate: string;
   quarterEndDate: string;
   initialDates: string[];
+  /** The time each meeting day runs, when one is set. */
+  timeLabel?: string | null;
 }) {
   const start = parseLocalDate(quarterStartDate);
   const end = parseLocalDate(quarterEndDate);
@@ -61,6 +64,7 @@ export function MeetingDaysCalendar({
         <CardDescription>
           Click a date to add or remove it as a meeting day. Auto-generated with every
           Tuesday/Thursday in the quarter -- adjust for dead week, holidays, or extra sessions.
+          {timeLabel ? ` Every meeting day runs ${timeLabel}.` : ""}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

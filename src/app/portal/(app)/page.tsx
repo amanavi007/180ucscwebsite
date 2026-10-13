@@ -9,8 +9,9 @@ import { isExec } from "@/lib/auth/roles";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getActiveQuarter } from "@/lib/data/quarters";
 import { createClient } from "@/lib/supabase/server";
+import { HomeSidebar } from "./home-sidebar";
 
-export const metadata: Metadata = { title: "Assistant" };
+export const metadata: Metadata = { title: "Home" };
 
 export default async function AssistantPage() {
   const [profile, quarter] = await Promise.all([getCurrentProfile(), getActiveQuarter()]);
@@ -19,19 +20,19 @@ export default async function AssistantPage() {
   if (!quarter) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Welcome, {profile.name.split(" ")[0]}</h1>
+        <h1 className="text-4xl leading-tight">Welcome, {profile.name.split(" ")[0]}</h1>
         <Card>
           <CardHeader>
             <CardTitle>No active quarter yet</CardTitle>
             <CardDescription>
               {exec
-                ? "Projects and attendance are scoped to a quarter. Create one in Admin first."
+                ? "Projects and attendance are scoped to a quarter. Create one in Setup first."
                 : "An exec needs to set up this quarter before projects and attendance are available."}
             </CardDescription>
           </CardHeader>
           {exec && (
             <div className="px-6 pb-6">
-              <Button nativeButton={false} render={<Link href="/portal/admin">Go to Admin</Link>} />
+              <Button nativeButton={false} render={<Link href="/portal/admin/quarters">Go to Setup</Link>} />
             </div>
           )}
         </Card>
@@ -48,12 +49,17 @@ export default async function AssistantPage() {
   const globalUsed = usageRes?.data?.[0]?.global_messages ?? 0;
 
   return (
-    <div className="flex h-[calc(100dvh-9rem)] min-h-96 flex-col">
-      <ChatPanel
-        greeting={greetingForHour(currentOrgHour())}
-        firstName={profile.name.split(" ")[0]}
-        execUsage={exec ? { used: globalUsed, cap: cfg.globalDailyCap } : null}
-      />
+    <div className="grid h-[calc(100dvh-9rem)] min-h-96 gap-8 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="flex min-h-0 min-w-0 flex-col">
+        <ChatPanel
+          greeting={greetingForHour(currentOrgHour())}
+          firstName={profile.name.split(" ")[0]}
+          execUsage={exec ? { used: globalUsed, cap: cfg.globalDailyCap } : null}
+        />
+      </div>
+      <div className="hidden min-h-0 xl:flex xl:flex-col">
+        <HomeSidebar userId={profile.id} quarterId={quarter.id} />
+      </div>
     </div>
   );
 }

@@ -74,8 +74,8 @@ export function BulkAddDialog({
 
   return (
     <>
-      <Button variant="outline" onClick={() => setOpen(true)}>
-        Bulk add
+      <Button size="lg" onClick={() => setOpen(true)}>
+        Add members
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-2xl">
@@ -121,13 +121,13 @@ export function BulkAddDialog({
                         <TableCell className="text-muted-foreground">{r.email || "—"}</TableCell>
                         <TableCell>
                           {r.status === "created" ? (
-                            <Badge className="border-transparent bg-primary/10 text-primary">
+                            <Badge className="border-transparent bg-accent text-accent-foreground">
                               Created
                             </Badge>
                           ) : (
                             <Badge
                               variant="outline"
-                              className="border-transparent bg-destructive/10 text-destructive"
+                              className="border-transparent bg-status-bad text-status-bad-foreground"
                             >
                               {r.message ?? "Failed"}
                             </Badge>

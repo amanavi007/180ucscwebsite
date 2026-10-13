@@ -3,6 +3,8 @@ import { getCurrentProfile } from "@/lib/data/profile";
 import { getWikiPages } from "@/lib/data/wiki";
 import { isElevatedOrAbove, isExec } from "@/lib/auth/roles";
 import type { WikiSection } from "@/lib/supabase/database.types";
+import { LinkSwitch } from "@/components/link-switch";
+import { PageHeader } from "@/components/page-header";
 import { ResourcesView } from "./resources-view";
 
 export const metadata: Metadata = { title: "Resources" };
@@ -21,12 +23,16 @@ export default async function ResourcesPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Resources</h1>
-        <p className="text-sm text-muted-foreground">
-          Guides and reference material for the chapter.
-        </p>
-      </div>
+      <PageHeader title="Resources" description="Guides and reference material for the chapter.">
+        <LinkSwitch
+          className="mt-4"
+          label="Resources views"
+          items={[
+            { href: "/portal/resources", label: "Wiki", active: true },
+            { href: "/portal/quick-links", label: "Quick links", active: false },
+          ]}
+        />
+      </PageHeader>
 
       <ResourcesView
         section={section}

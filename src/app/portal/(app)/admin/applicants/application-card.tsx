@@ -13,7 +13,6 @@ import {
 } from "@/lib/recruit-answer-text";
 import type { AnswerKey } from "@/lib/recruit-rubric-levels";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 const ESSAYS: {
   key: Exclude<AnswerKey, "resume">;
@@ -63,7 +62,8 @@ export function ApplicationCard({
   /** Criterion names by answer, for the "Scored in …" line. */
   scoredIn?: Partial<Record<AnswerKey, string>>;
 }) {
-  const [showResume, setShowResume] = useState(false);
+  // The resume opens by default: reading it is part of every review.
+  const [showResume, setShowResume] = useState(true);
   const [current, setCurrent] = useState<AnswerKey>("why");
   const resumeUrl = application?.resumeUrl ?? applicationLink;
   const embed = driveEmbedUrl(resumeUrl);
@@ -134,13 +134,13 @@ export function ApplicationCard({
             type="button"
             onClick={() => jump(o.key)}
             aria-current={current === o.key}
-            className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-left text-[13px] text-muted-foreground transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring aria-[current=true]:bg-muted aria-[current=true]:text-foreground"
+            className="flex items-center gap-2 rounded-full px-3.5 py-1.5 text-left text-[13px] text-muted-foreground transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring aria-[current=true]:bg-foreground aria-[current=true]:text-primary"
           >
             <span className="font-medium">{o.label}</span>
             <span className="text-xs tabular-nums">{o.meta}</span>
             {scored.has(o.key) && (
               <Check
-                className="size-3.5 shrink-0 text-primary"
+                className="size-3.5 shrink-0 text-link"
                 aria-label="Scored"
               />
             )}
@@ -183,7 +183,7 @@ export function ApplicationCard({
                     </span>
                   </div>
                   {text && (
-                    <div className="grid max-w-[64ch] gap-5 text-[15.5px] leading-[1.75] text-foreground/90">
+                    <div className="grid max-w-[100ch] gap-5 text-[16px] leading-[1.75] text-foreground/90">
                       {splitParagraphs(text).map((p, i) => {
                         // The opening sentence stands out so a skim of the page still tells you what each answer is about.
                         const { lead, rest } =
@@ -236,7 +236,7 @@ export function ApplicationCard({
                       href={resumeUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-sm text-primary underline-offset-4 hover:underline"
+                      className="inline-flex items-center gap-1 text-sm text-link underline-offset-4 hover:underline"
                     >
                       Open resume in a new tab{" "}
                       <ExternalLink className="size-3.5" />

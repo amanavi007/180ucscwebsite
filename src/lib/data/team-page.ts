@@ -49,6 +49,24 @@ export async function getPublicTeamMembers(): Promise<PublicTeamMember[]> {
   }
 }
 
+/**
+ * Approved profile photos for the signed-in portal, by profile id. Only photos an exec has already approved are
+ * included, never ones still waiting for review. Uses the service-role client because the table is only readable by
+ * its owner and execs, and returns nothing on failure: a missing photo just falls back to initials.
+ */
+export async function getApprovedPhotoUrls(): Promise<Record<string, string>> {
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin.from("team_profiles").select("profile_id, photo_path").not("photo_path", "is", null);
+    if (error) throw error;
+    const base = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    return Object.fromEntries(data.map((r) => [r.profile_id, teamPhotoUrl(base, r.photo_path!)]));
+  } catch (err) {
+    console.error("getApprovedPhotoUrls failed:", err);
+    return {};
+  }
+}
+
 export async function getMyTeamProfileRow(profileId: string): Promise<TeamProfileRow | null> {
   const supabase = await createClient();
   const { data, error } = await supabase

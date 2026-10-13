@@ -18,7 +18,7 @@ export default async function MyPublicProfilePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">My Profile</h1>
+        <h1 className="text-4xl leading-tight">My Profile</h1>
         <p className="text-sm text-muted-foreground">
           What appears on the public Our Team page. Your name and title come from your account:{" "}
           <span className="font-medium text-foreground">{profile.name}</span>, {roleLabel(profile.role)}.

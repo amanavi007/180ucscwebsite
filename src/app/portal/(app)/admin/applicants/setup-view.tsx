@@ -164,7 +164,7 @@ export function SetupView({
                       <CategoryDialog
                         category={c}
                         trigger={
-                          <button type="button" aria-label={`Edit ${c.name}`} className={`${textButton} text-primary`}>
+                          <button type="button" aria-label={`Edit ${c.name}`} className={`${textButton} text-link`}>
                             Edit
                           </button>
                         }
@@ -177,7 +177,7 @@ export function SetupView({
 
             {archived.length > 0 && (
               <details className="mt-4">
-                <summary className="cursor-pointer text-sm font-medium text-primary">
+                <summary className="cursor-pointer text-sm font-medium text-link">
                   Show {archived.length} archived categor{archived.length === 1 ? "y" : "ies"}
                 </summary>
                 <ul className="mt-3 overflow-hidden rounded-xl border bg-card">
@@ -188,7 +188,7 @@ export function SetupView({
                         type="button"
                         disabled={isPending}
                         onClick={() => run(() => setCategoryArchivedAction(c.id, false), `${c.name} restored.`)}
-                        className={`${textButton} text-primary`}
+                        className={`${textButton} text-link`}
                       >
                         Restore
                       </button>
@@ -252,13 +252,13 @@ export function SetupView({
         )}
 
         {section === "reviewers" && (
-          <div className="max-w-2xl">
+          <div>
             <ReviewSettingsCard setup={reviewSetup} />
           </div>
         )}
 
         {section === "rubric" && (
-          <div className="max-w-2xl space-y-4">
+          <div className="space-y-4">
             <Segmented
               label="Rubric"
               value={rubricStage}
@@ -273,7 +273,7 @@ export function SetupView({
         )}
 
         {section === "adjustment" && (
-          <div className="max-w-2xl">
+          <div>
             <ScoringSettingsCard settings={settings} />
           </div>
         )}

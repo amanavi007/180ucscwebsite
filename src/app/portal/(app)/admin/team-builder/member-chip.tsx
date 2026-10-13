@@ -49,7 +49,7 @@ function CandidateToggle({
       onPointerDown={(e) => e.stopPropagation()}
       onClick={onClick}
       className={cn(
-        "flex h-5 shrink-0 items-center justify-center overflow-hidden rounded-full text-[10px] font-semibold transition-all",
+        "flex h-5 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-semibold transition-all",
         active
           ? cn("border px-1.5", activeClassName)
           : "w-0 border border-transparent px-0 text-muted-foreground/60 opacity-0 group-hover:w-5 group-hover:px-1.5 group-hover:opacity-100 focus-visible:w-5 focus-visible:px-1.5 focus-visible:opacity-100 hover:bg-muted hover:text-foreground",
@@ -94,17 +94,17 @@ export function MemberChip({
         "group flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors",
         readOnly ? "cursor-default" : "cursor-grab hover:bg-foreground/[0.03] active:cursor-grabbing",
         (isDragging || dragging) && "opacity-50",
-        highlighted && "bg-primary/5 ring-2 ring-primary/50",
+        highlighted && "bg-accent ring-2 ring-link/50",
       )}
     >
       <Avatar className="size-7 shrink-0">
-        <AvatarFallback className={cn("text-[10px] font-medium", AVATAR_TINT[variant])}>
+        <AvatarFallback className={cn("text-xs font-medium", AVATAR_TINT[variant])}>
           {initials(profile.name)}
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
         <p className="leading-snug font-medium break-words">{profile.name}</p>
-        <p className="text-[11px] leading-snug break-words text-muted-foreground">
+        <p className="text-xs leading-snug break-words text-muted-foreground">
           {roleLabel(profile.role)}
         </p>
       </div>
@@ -114,14 +114,14 @@ export function MemberChip({
             label="P"
             title="Mark as PM candidate for next quarter (Team Builder only)"
             active={profile.candidateRoles.includes("pm")}
-            activeClassName="border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/15 dark:text-blue-300"
+            activeClassName="border-status-info-foreground/25 bg-status-info text-status-info-foreground"
             onClick={() => onSetCandidate("pm", !profile.candidateRoles.includes("pm"))}
           />
           <CandidateToggle
             label="S"
             title="Mark as SC candidate for next quarter (Team Builder only)"
             active={profile.candidateRoles.includes("sc")}
-            activeClassName="border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/15 dark:text-violet-300"
+            activeClassName="border-status-ok-foreground/25 bg-status-ok text-status-ok-foreground"
             onClick={() => onSetCandidate("sc", !profile.candidateRoles.includes("sc"))}
           />
         </div>

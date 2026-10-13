@@ -131,11 +131,8 @@ export function QuartersPanel({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Quarters</CardTitle>
-        <CardDescription>
-          Projects and attendance are scoped to a quarter. Start a new one
-          when teams roll over.
-        </CardDescription>
+        <CardTitle>Start a quarter</CardTitle>
+        <CardDescription>Set the name and dates. You can make it the active one afterwards.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <form onSubmit={handleSubmit(onSubmit)} noValidate>

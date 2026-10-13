@@ -60,8 +60,8 @@ export function TaskStageTimeline({
               aria-label={TASK_STAGE_STEP_LABELS[step]}
               className={cn(
                 "flex size-4 shrink-0 items-center justify-center rounded-full border-2 text-[9px] leading-none font-bold transition-colors",
-                done && "border-primary bg-primary text-primary-foreground",
-                active && "border-primary bg-background text-primary",
+                done && "border-(--primary-border) bg-primary text-primary-foreground",
+                active && "border-link bg-background text-link",
                 !done && !active && "border-muted-foreground/30 bg-background",
                 editable && !isPending && "cursor-pointer",
                 (!editable || isPending) && "cursor-default",
@@ -73,7 +73,7 @@ export function TaskStageTimeline({
               <div
                 className={cn(
                   "h-0.5 w-3 shrink-0 sm:w-4",
-                  i < currentIndex ? "bg-primary" : "bg-muted-foreground/30",
+                  i < currentIndex ? "bg-foreground" : "bg-muted-foreground/30",
                 )}
               />
             )}

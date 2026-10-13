@@ -18,6 +18,7 @@ import {
 import { updateProjectStatus } from "@/actions/projects";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HealthBadge } from "@/components/health-badge";
+import { Badge } from "@/components/ui/badge";
 import { ProjectStatusSelect } from "./project-status-select";
 import { PROJECT_STATUSES, statusLabel } from "@/lib/project-labels";
 import { parseLocalDate } from "@/lib/date";
@@ -44,10 +45,13 @@ function canEditProject(
 function ProjectCard({
   project,
   canEdit,
+  mine = false,
   dragging = false,
 }: {
   project: ProjectWithRelations;
   canEdit: boolean;
+  /** The viewer is on this project: it gets the outlined, lifted look. */
+  mine?: boolean;
   dragging?: boolean;
 }) {
   const pmNames = (
@@ -65,7 +69,8 @@ function ProjectCard({
       {...listeners}
       {...attributes}
       className={cn(
-        "gap-3 py-3",
+        "gap-3 rounded-[18px] py-3.5",
+        mine && "border-[1.5px] border-(--primary-border) shadow-[0_3px_0_var(--primary-edge)]",
         canEdit && "cursor-grab active:cursor-grabbing",
         (isDragging || dragging) && "opacity-50",
       )}
@@ -76,8 +81,13 @@ function ProjectCard({
           className="hover:underline"
           onPointerDown={(e) => e.stopPropagation()}
         >
-          <CardTitle className="text-sm">{project.client_name}</CardTitle>
+          <CardTitle className="text-base">{project.client_name}</CardTitle>
         </Link>
+        {mine && (
+          <Badge variant="default" className="mt-1">
+            Your project
+          </Badge>
+        )}
       </CardHeader>
       <CardContent className="space-y-2 px-3">
         <HealthBadge health={project.health} />
@@ -107,17 +117,19 @@ function BoardColumn({
   status,
   projects,
   currentUserId,
+  myProjectIds,
   isExec,
 }: {
   status: ProjectStatus;
   projects: ProjectWithRelations[];
   currentUserId: string;
+  myProjectIds: string[];
   isExec: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
   return (
-    <div key={status} className="w-72 shrink-0">
+    <div key={status} className="w-72 shrink-0 rounded-[22px] bg-muted/70 p-3">
       <div className="mb-2 flex items-center gap-2 px-1">
         <h3 className="text-sm font-medium">{statusLabel(status)}</h3>
         <span className="text-xs text-muted-foreground">{projects.length}</span>
@@ -125,17 +137,20 @@ function BoardColumn({
       <div
         ref={setNodeRef}
         className={cn(
-          "min-h-10 space-y-2 rounded-md p-1 transition-colors",
-          isOver && "bg-primary/5 ring-2 ring-primary/30",
+          "min-h-10 space-y-2.5 rounded-2xl p-1 transition-colors",
+          isOver && "bg-accent ring-2 ring-link/40",
         )}
       >
-        {projects.map((project) => (
-          <ProjectCard
-            key={project.id}
-            project={project}
-            canEdit={canEditProject(project, currentUserId, isExec)}
-          />
-        ))}
+        {[...projects]
+          .sort((a, b) => Number(myProjectIds.includes(b.id)) - Number(myProjectIds.includes(a.id)))
+          .map((project) => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              mine={myProjectIds.includes(project.id)}
+              canEdit={canEditProject(project, currentUserId, isExec)}
+            />
+          ))}
         {projects.length === 0 && (
           <p className="px-1 text-xs text-muted-foreground">No projects</p>
         )}
@@ -147,10 +162,12 @@ function BoardColumn({
 export function ProjectBoard({
   projects: initialProjects,
   currentUserId,
+  myProjectIds,
   isExec,
 }: {
   projects: ProjectWithRelations[];
   currentUserId: string;
+  myProjectIds: string[];
   isExec: boolean;
 }) {
   const [projects, setProjects] = useState(initialProjects);
@@ -199,6 +216,7 @@ export function ProjectBoard({
             status={status}
             projects={projects.filter((p) => p.status === status)}
             currentUserId={currentUserId}
+            myProjectIds={myProjectIds}
             isExec={isExec}
           />
         ))}
@@ -208,6 +226,7 @@ export function ProjectBoard({
         {activeProject && (
           <ProjectCard
             project={activeProject}
+            mine={myProjectIds.includes(activeProject.id)}
             canEdit={canEditProject(activeProject, currentUserId, isExec)}
             dragging
           />

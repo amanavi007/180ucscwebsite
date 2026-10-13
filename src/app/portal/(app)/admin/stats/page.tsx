@@ -3,6 +3,7 @@ import { getQuarters } from "@/lib/data/quarters";
 import { getConsultantStatsRollup } from "@/lib/data/consultant-stats";
 import { getAttendanceAlertThreshold } from "@/lib/data/org-settings";
 import { defaultQuarterId, resolveQuarterId } from "@/lib/admin-nav";
+import { PageHeader } from "@/components/page-header";
 import { ConsultantStatsView } from "./consultant-stats-view";
 
 export const metadata: Metadata = { title: "Consultant Stats" };
@@ -24,12 +25,7 @@ export default async function ConsultantStatsPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Consultant Stats</h1>
-        <p className="text-sm text-muted-foreground">
-          Attendance and task completion, rolled up per consultant.
-        </p>
-      </div>
+      <PageHeader title="People" description="Attendance and task completion, rolled up per person for the quarter." />
 
       <ConsultantStatsView rows={rows} attendanceThreshold={attendanceThreshold} />
     </div>

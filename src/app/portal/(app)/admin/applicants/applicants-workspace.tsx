@@ -20,8 +20,8 @@ import { GivePointsDialog } from "./give-points-dialog";
 import { HowItWorks } from "./how-it-works";
 import { ImportApplicationsDialog } from "./import-applications-dialog";
 import { ImportDialog } from "./import-dialog";
-import { ReviewsView } from "./reviews-view";
-import { SetupView } from "./setup-view";
+import { ReviewProgressView } from "./review-progress-view";
+import { ScoringView } from "./scoring-view";
 
 export function ApplicantsWorkspace({
   quarterId,
@@ -44,7 +44,7 @@ export function ApplicantsWorkspace({
   attendance: AttendanceData;
   scoring: ScoringBundle;
 }) {
-  const [tab, setTab] = useUrlTab(["applicants", "reviews", "attendance", "settings", "duplicates"], "applicants");
+  const [tab, setTab] = useUrlTab(["applicants", "queue", "progress", "attendance", "duplicates"], "applicants");
   const [addOpen, setAddOpen] = useState(false);
   const [importApplicationsOpen, setImportApplicationsOpen] = useState(false);
   const [importAttendanceOpen, setImportAttendanceOpen] = useState(false);
@@ -57,12 +57,16 @@ export function ApplicantsWorkspace({
   const reviewStatus = Object.fromEntries(scoring.dashboard.applicants.map((a) => [a.id, a.state]));
 
   const withoutApplication = rows.filter((r) => !r.hasApplication).length;
+  const myToScore = (["resume", "interview"] as const).reduce(
+    (n, stage) => n + scoring.stages[stage].applicants.filter((a) => !a.mine?.submitted).length,
+    0,
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-[1.75rem] leading-tight font-semibold tracking-tight">Applicants</h1>
+          <h1 className="text-4xl leading-tight">Recruiting</h1>
           <p className="mt-1.5 flex items-center gap-1 text-sm text-muted-foreground">
             {quarterName} · {rows.length - withoutApplication} applicant{rows.length - withoutApplication === 1 ? "" : "s"}
             <HowItWorks />
@@ -95,20 +99,16 @@ export function ApplicantsWorkspace({
       </div>
 
       <Tabs value={tab} onValueChange={(v) => v && setTab(String(v))}>
-        <TabsList variant="line" className="h-auto w-full justify-start gap-8 border-b p-0">
+        <TabsList className="self-start">
           {[
             { value: "applicants", label: "Applicants", count: 0 },
-            { value: "reviews", label: "Reviews", count: scoring.dashboard.totals.unassigned },
+            { value: "queue", label: "My reviews", count: myToScore },
+            { value: "progress", label: "Team progress", count: scoring.dashboard.totals.unassigned },
             { value: "attendance", label: "Attendance", count: attendance.toMark.length },
-            { value: "settings", label: "Settings", count: 0 },
           ].map((t) => (
-            <TabsTrigger
-              key={t.value}
-              value={t.value}
-              className="h-auto flex-none gap-2 px-0 py-3 text-sm data-active:font-semibold after:bottom-[-1px] after:bg-primary"
-            >
+            <TabsTrigger key={t.value} value={t.value} className="gap-2">
               {t.label}
-              {t.count > 0 && <Badge className="h-5 min-w-5 rounded-full px-1.5 text-xs">{t.count}</Badge>}
+              {t.count > 0 && <Badge className="h-5 min-w-5 rounded-full px-1.5">{t.count}</Badge>}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -127,21 +127,22 @@ export function ApplicantsWorkspace({
             onAdd={() => setAddOpen(true)}
           />
         </TabsContent>
-        <TabsContent value="reviews">
-          <ReviewsView quarterId={quarterId} scoring={scoring} />
+        <TabsContent value="queue">
+          <div className="mt-6">
+            <ScoringView stages={scoring.stages} />
+          </div>
+        </TabsContent>
+        <TabsContent value="progress">
+          <ReviewProgressView
+            quarterId={quarterId}
+            dashboard={scoring.dashboard}
+            setup={scoring.reviewSetup}
+            insights={scoring.stages.resume.reviewers}
+            minN={scoring.settings.normalizeMinN}
+          />
         </TabsContent>
         <TabsContent value="attendance">
           <AttendanceView quarterId={quarterId} data={attendance} applicantNames={applicantNames} />
-        </TabsContent>
-        <TabsContent value="settings">
-          <SetupView
-            quarterId={quarterId}
-            categories={categories}
-            events={events}
-            rubrics={{ resume: scoring.stages.resume.rubric, interview: scoring.stages.interview.rubric }}
-            settings={scoring.settings}
-            reviewSetup={scoring.reviewSetup}
-          />
         </TabsContent>
         {/* Reached from the "possible duplicates" link on the Applicants tab, so it has no tab of its own. */}
         <TabsContent value="duplicates">

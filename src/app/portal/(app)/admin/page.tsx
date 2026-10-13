@@ -1,14 +1,20 @@
 import type { Metadata } from "next";
 import { getQuarters } from "@/lib/data/quarters";
 import { getAdminAttentionItems } from "@/lib/data/admin-attention";
-import { getPendingTeamSubmissionCount } from "@/lib/data/team-page";
+import { getAttendanceData } from "@/lib/data/recruit-import";
+import { getScoringBundle } from "@/lib/data/recruit-scoring";
+import { getInterviewSlots, getInvitees } from "@/lib/data/interview";
+import { getCurrentProfile } from "@/lib/data/profile";
+import { getMeetingTime } from "@/lib/data/meeting-time";
+import { formatMeetingTime } from "@/lib/meeting-time";
+import { getMeetingDatesForQuarter } from "@/lib/data/meeting-dates";
 import { defaultQuarterId, resolveQuarterId } from "@/lib/admin-nav";
-import { HubHeader } from "./hub/hub-header";
 import { AttentionList } from "./hub/attention-list";
 import { QuickActions } from "./hub/quick-actions";
-import { AreaCards } from "./hub/area-cards";
+import { PipelineTiles } from "./hub/pipeline-tiles";
+import { ComingUp } from "./hub/coming-up";
 
-export const metadata: Metadata = { title: "Admin" };
+export const metadata: Metadata = { title: "Today" };
 
 export default async function AdminHubPage({
   searchParams,
@@ -20,21 +26,56 @@ export default async function AdminHubPage({
   const selectedId = resolveQuarterId(quarter, quarters, defaultQuarterId(quarters));
   const selected = quarters.find((q) => q.id === selectedId) ?? null;
 
-  const [items, pendingTeamCount] = await Promise.all([
-    getAdminAttentionItems(selectedId),
-    getPendingTeamSubmissionCount().catch(() => 0),
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+  const profile = await getCurrentProfile();
+
+  // Each source is optional: a failing one is left out instead of breaking the page.
+  const [attendance, scoring, invitees, slots, dates, meetingTime] = await Promise.all([
+    selectedId ? getAttendanceData(selectedId).catch(() => null) : Promise.resolve(null),
+    selectedId ? getScoringBundle(selectedId, profile.id).catch(() => null) : Promise.resolve(null),
+    getInvitees().catch(() => null),
+    getInterviewSlots().catch(() => null),
+    selectedId ? getMeetingDatesForQuarter(selectedId).catch(() => []) : Promise.resolve([] as string[]),
+    getMeetingTime(),
   ]);
 
+  const waiting = invitees ? invitees.filter((i) => !i.booking).length : null;
+  const openSlots = slots ? slots.filter((s) => s.published && s.bookingStatus === "open" && s.date >= today).length : null;
+  const items = await getAdminAttentionItems(selectedId, {
+    bookingsToMark: attendance ? attendance.toMark.length : null,
+    applicantsWithoutReviewer: scoring ? scoring.dashboard.totals.unassigned : null,
+    interviewSlotShortfall: waiting !== null && openSlots !== null ? Math.max(0, waiting - openSlots) : null,
+  });
+
+  const upcoming = dates.filter((d) => d >= today).slice(0, 4);
+  const totals = scoring?.dashboard.totals ?? null;
+
   return (
-    <div className="space-y-8">
-      <HubHeader
-        quarters={quarters.map((q) => ({ id: q.id, name: q.name, is_active: q.is_active }))}
-        selectedId={selectedId}
-        subtitle={selected ? selected.name : "No quarter yet. Create one in Quarters."}
-      />
-      <AttentionList items={items} />
-      <QuickActions quarterId={selectedId} />
-      <AreaCards quarterId={selectedId} pendingTeamCount={pendingTeamCount} />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-4xl leading-tight">Today</h1>
+        <p className="mt-1.5 text-base text-muted-foreground">
+          {selected ? selected.name : "No quarter yet. Create one in Setup."}
+          {items.length > 0 ? ` · ${items.length} ${items.length === 1 ? "thing needs" : "things need"} you` : ""}
+        </p>
+      </div>
+
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0 space-y-6">
+          <AttentionList items={items} />
+          {totals && totals.applicants > 0 && (
+            <PipelineTiles
+              quarterId={selectedId}
+              complete={totals.complete}
+              inProgress={Math.max(0, totals.applicants - totals.complete - totals.unassigned)}
+              applicants={totals.applicants}
+              unassigned={totals.unassigned}
+            />
+          )}
+          <QuickActions quarterId={selectedId} />
+        </div>
+        <ComingUp dates={upcoming} timeLabel={formatMeetingTime(meetingTime)} />
+      </div>
     </div>
   );
 }

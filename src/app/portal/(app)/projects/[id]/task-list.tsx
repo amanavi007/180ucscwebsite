@@ -151,7 +151,7 @@ export function TaskList({
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
+      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
         <CardTitle className="text-base">Tasks</CardTitle>
         {canManage && (
           <Button type="button" variant={selectMode ? "secondary" : "ghost"} size="sm" onClick={toggleSelectMode}>
@@ -226,14 +226,14 @@ export function TaskList({
             <div key={section.id}>
               <div className="mb-2 flex items-center gap-2.5">
                 <Avatar className="size-6">
-                  <AvatarFallback className="text-[10px]">{initials(section.name)}</AvatarFallback>
+                  <AvatarFallback className="text-xs">{initials(section.name)}</AvatarFallback>
                 </Avatar>
                 <h3 className="text-sm font-medium">{section.name}</h3>
                 {total > 0 && (
                   <>
                     <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
                       <div
-                        className="h-full rounded-full bg-primary transition-all"
+                        className="h-full rounded-full bg-foreground transition-all"
                         style={{ width: `${progressPct}%` }}
                       />
                     </div>

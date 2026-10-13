@@ -26,12 +26,12 @@ function ProfileSnapshot({
   data: { photoPath: string | null; major: string | null; linkedin: string | null; bio: string | null };
   changed?: { photo: boolean; major: boolean; linkedin: boolean; bio: boolean };
 }) {
-  const mark = (on?: boolean) => (on ? "rounded bg-primary/10 px-1" : "");
+  const mark = (on?: boolean) => (on ? "rounded bg-status-warn px-1" : "");
   const src = photo(data.photoPath);
   return (
     <div className="space-y-2">
       <p className="text-xs font-medium text-muted-foreground uppercase">{title}</p>
-      <div className={`aspect-[4/5] w-28 overflow-hidden rounded-lg bg-muted ${changed?.photo ? "ring-2 ring-primary" : ""}`}>
+      <div className={`aspect-[4/5] w-28 overflow-hidden rounded-lg bg-muted ${changed?.photo ? "ring-2 ring-link" : ""}`}>
         {src && (
           // eslint-disable-next-line @next/next/no-img-element -- admin preview
           <img src={src} alt="" className="size-full object-cover" />
@@ -124,7 +124,7 @@ export function TeamPagePanel({ rows }: { rows: TeamPageAdminRow[] }) {
                   </div>
                 </div>
                 {approvalWouldRelist(row) && (
-                  <p className="text-sm text-amber-700 dark:text-amber-400">
+                  <p className="text-sm text-status-warn-foreground">
                     Currently hidden from the page. Approving will show them again (Approve all skips them).
                   </p>
                 )}

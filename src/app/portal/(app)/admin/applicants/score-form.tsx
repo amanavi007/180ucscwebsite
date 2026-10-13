@@ -88,12 +88,12 @@ export function ScoreForm({
 
   return (
     <div
-      className="space-y-5 rounded-xl border bg-card p-6"
+      className="space-y-4 rounded-[22px] border bg-card p-5"
       aria-label={`Score ${applicant.name}`}
     >
       <div>
         <h3 className="text-base font-semibold">{showsApplication ? "Your score" : applicant.name}</h3>
-        <p className="mt-1 text-[13px] text-muted-foreground">Score each line from {options[0]} to {options[options.length - 1]}. Click a number again to clear it.</p>
+        <p className="mt-0.5 text-[13px] text-muted-foreground">Score each line from {options[0]} (weak) to {options[options.length - 1]} (strong). Hover a number to see what it means. Click it again to clear.</p>
       </div>
 
       {!showsApplication && (
@@ -103,7 +103,7 @@ export function ScoreForm({
               href={applicant.applicationLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 font-medium text-primary underline-offset-4 hover:underline"
+              className="inline-flex items-center gap-1 font-medium text-link underline-offset-4 hover:underline"
             >
               Open application <ExternalLink className="size-3.5" />
             </a>
@@ -114,10 +114,10 @@ export function ScoreForm({
       )}
 
       {criteria.length === 0 ? (
-        <p className="text-sm text-muted-foreground">This rubric has no active criteria. Add some in Settings → Rubric.</p>
+        <p className="text-sm text-muted-foreground">This rubric has no active criteria. Add some in Setup → Recruiting.</p>
       ) : (
         <TooltipProvider delay={120}>
-          <ul className="space-y-5">
+          <ul className="space-y-3">
             {criteria.map((c, i) => {
               const meaning = levels[i];
               return (
@@ -134,7 +134,7 @@ export function ScoreForm({
                           aria-pressed={scores[c.id] === o}
                           aria-label={meaning.get(o) ? `${o}: ${meaning.get(o)}` : String(o)}
                           onClick={() => setScore(c.id, o)}
-                          className="h-11 min-w-11 flex-1 rounded-lg border bg-card text-[15px] font-medium transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:font-semibold aria-pressed:text-background"
+                          className="h-9 min-w-9 flex-1 rounded-xl border-[1.5px] border-border-strong bg-card text-[1.0625rem] font-bold transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-(--primary-border) aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:shadow-[0_3px_0_var(--primary-edge)]"
                         >
                           {o}
                         </button>
@@ -152,12 +152,6 @@ export function ScoreForm({
                       );
                     })}
                   </div>
-                  {meaning.size > 0 && (
-                    <div className="mt-1.5 flex justify-between text-xs text-muted-foreground" >
-                      <span>Weak</span>
-                      <span>Strong</span>
-                    </div>
-                  )}
                 </li>
               );
             })}
@@ -173,7 +167,7 @@ export function ScoreForm({
           id={`comment-${applicant.id}`}
           className="mt-2"
           placeholder="Anything the group should know"
-          rows={3}
+          rows={2}
           value={comment}
           onChange={(e) => {
             setComment(e.target.value);

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { changePassword } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AuthShell } from "@/components/auth-shell";
 import {
   Field,
   FieldGroup,
@@ -48,57 +49,63 @@ export default function ForcePasswordResetPage() {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-muted/30 px-4">
-      <div className="w-full max-w-sm space-y-8">
-        <div className="space-y-1 text-center">
-          <div className="text-2xl font-semibold tracking-tight text-primary">
-            Set a new password
-          </div>
-          <p className="text-sm text-muted-foreground">
-            You&apos;re using a temporary password. Set your own before
-            continuing.
-          </p>
-        </div>
+    <AuthShell
+      headline="Almost in. Make it yours."
+      tagline="Your account started with a temporary password, so pick your own before you do anything else."
+      footnote="Step 1 of 1"
+      accent="lilac"
+    >
+      <h2 className="text-4xl font-extrabold tracking-[-0.03em]">Set a new password</h2>
+      <p className="mt-2 mb-8 text-base text-muted-foreground">You&apos;ll use this every time you sign in.</p>
 
-        <form onSubmit={handleSubmit(onSubmit)} noValidate>
-          <FieldGroup>
-            <Field data-invalid={!!errors.password}>
-              <FieldLabel htmlFor="password">New password</FieldLabel>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="new-password"
-                {...register("password")}
-              />
-              <FieldDescription>At least 8 characters.</FieldDescription>
-              <FieldError errors={[errors.password]} />
-            </Field>
+      <form onSubmit={handleSubmit(onSubmit)} noValidate aria-label="Set a new password">
+        <FieldGroup>
+          <Field data-invalid={!!errors.password}>
+            <FieldLabel htmlFor="password" className="text-sm font-semibold">
+              New password
+            </FieldLabel>
+            <Input
+              id="password"
+              type="password"
+              autoComplete="new-password"
+              className="h-12 rounded-[14px] border-border-strong px-4 text-base"
+              {...register("password")}
+            />
+            <FieldDescription>At least 8 characters.</FieldDescription>
+            <FieldError errors={[errors.password]} />
+          </Field>
 
-            <Field data-invalid={!!errors.confirmPassword}>
-              <FieldLabel htmlFor="confirmPassword">
-                Confirm new password
-              </FieldLabel>
-              <Input
-                id="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                {...register("confirmPassword")}
-              />
-              <FieldError errors={[errors.confirmPassword]} />
-            </Field>
+          <Field data-invalid={!!errors.confirmPassword}>
+            <FieldLabel htmlFor="confirmPassword" className="text-sm font-semibold">
+              Type it again
+            </FieldLabel>
+            <Input
+              id="confirmPassword"
+              type="password"
+              autoComplete="new-password"
+              className="h-12 rounded-[14px] border-border-strong px-4 text-base"
+              {...register("confirmPassword")}
+            />
+            <FieldError errors={[errors.confirmPassword]} />
+          </Field>
 
-            {serverError && (
-              <p className="text-sm text-destructive" role="alert">
-                {serverError}
-              </p>
-            )}
+          {serverError && (
+            <div
+              role="alert"
+              className="flex items-start gap-2.5 rounded-[14px] bg-status-bad px-3.5 py-3 text-sm leading-snug text-status-bad-foreground"
+            >
+              <span aria-hidden className="font-extrabold">
+                !
+              </span>
+              <span>{serverError}</span>
+            </div>
+          )}
 
-            <Button type="submit" disabled={submitting} className="w-full">
-              {submitting ? "Saving..." : "Set password and continue"}
-            </Button>
-          </FieldGroup>
-        </form>
-      </div>
-    </div>
+          <Button type="submit" size="lg" disabled={submitting} className="h-12 w-full rounded-[14px] text-base">
+            {submitting ? "Saving..." : "Save and continue"}
+          </Button>
+        </FieldGroup>
+      </form>
+    </AuthShell>
   );
 }

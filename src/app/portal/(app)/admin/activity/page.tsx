@@ -6,7 +6,6 @@ import { auditActionLabel } from "@/lib/audit-labels";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -19,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/page-header";
 
 export const metadata: Metadata = { title: "Admin · Activity" };
 
@@ -38,68 +38,87 @@ export default async function AdminActivityPage({
   const nextOffset = offset + PAGE_SIZE;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Activity</CardTitle>
-        <CardDescription>
-          Consequential admin actions -- account/role changes, quarter lifecycle, org settings,
-          and team-draft finalize/apply. Routine day-to-day usage (task edits, attendance,
-          wiki content) isn&apos;t logged here.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>When</TableHead>
-              <TableHead>Who</TableHead>
-              <TableHead>Action</TableHead>
-              <TableHead>Target</TableHead>
-              <TableHead>Detail</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {entries.length === 0 && (
+    <div className="space-y-6">
+      <PageHeader
+        title="Activity"
+        description="Account and role changes, quarter changes, settings, and team drafts. Everyday use (tasks, attendance, wiki edits) isn't logged here."
+      />
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
-                  {offset > 0 ? "Nothing further back." : "Nothing logged yet."}
-                </TableCell>
+                <TableHead>When</TableHead>
+                <TableHead>Who</TableHead>
+                <TableHead>Action</TableHead>
+                <TableHead>Target</TableHead>
+                <TableHead>Detail</TableHead>
               </TableRow>
-            )}
-            {entries.map((e) => (
-              <TableRow key={e.id}>
-                <TableCell className="whitespace-nowrap text-muted-foreground">
-                  {format(new Date(e.createdAt), "MMM d, yyyy 'at' h:mm a")}
-                </TableCell>
-                <TableCell className="font-medium">{e.actorName}</TableCell>
-                <TableCell>{auditActionLabel(e.action)}</TableCell>
-                <TableCell className="text-muted-foreground">{e.targetLabel ?? "—"}</TableCell>
-                <TableCell className="text-muted-foreground">{e.detail ?? "—"}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {entries.length === 0 && (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="text-center text-muted-foreground"
+                  >
+                    {offset > 0
+                      ? "Nothing further back."
+                      : "Nothing logged yet."}
+                  </TableCell>
+                </TableRow>
+              )}
+              {entries.map((e) => (
+                <TableRow key={e.id}>
+                  <TableCell className="whitespace-nowrap text-muted-foreground">
+                    {format(new Date(e.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                  </TableCell>
+                  <TableCell className="font-medium">{e.actorName}</TableCell>
+                  <TableCell>{auditActionLabel(e.action)}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {e.targetLabel ?? "—"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {e.detail ?? "—"}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
 
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!hasPrev}
-            nativeButton={false}
-            render={<Link href={`/portal/admin/activity?offset=${prevOffset}`}>Newer</Link>}
-          />
-          <p className="text-xs text-muted-foreground">
-            Showing {entries.length === 0 ? 0 : offset + 1}–{offset + entries.length}
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!hasNext}
-            nativeButton={false}
-            render={<Link href={`/portal/admin/activity?offset=${nextOffset}`}>Older / Load more</Link>}
-          />
-        </div>
-      </CardContent>
-    </Card>
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!hasPrev}
+              nativeButton={false}
+              render={
+                <Link href={`/portal/admin/activity?offset=${prevOffset}`}>
+                  Newer
+                </Link>
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              Showing {entries.length === 0 ? 0 : offset + 1}–
+              {offset + entries.length}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!hasNext}
+              nativeButton={false}
+              render={
+                <Link href={`/portal/admin/activity?offset=${nextOffset}`}>
+                  Older / Load more
+                </Link>
+              }
+            />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

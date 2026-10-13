@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getQuarters } from "@/lib/data/quarters";
 import { getPlanBoard, getPlansForQuarter } from "@/lib/data/team-builder";
+import { PageHeader } from "@/components/page-header";
 import { TeamBuilderBoard } from "./team-builder-board";
 import { PlanSelect } from "./plan-select";
 import { EmptyPlanState } from "./empty-plan-state";
@@ -18,7 +19,7 @@ export default async function TeamBuilderPage({
   if (quarters.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        No quarters yet -- create one in the Quarters tab first.
+        No quarters yet. Create one in Setup first.
       </p>
     );
   }
@@ -33,14 +34,15 @@ export default async function TeamBuilderPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          Sketch out roster drafts, then Finalize the one you want to apply.
-        </p>
-        {plans.length > 0 && (
-          <PlanSelect quarterId={selectedQuarter.id} plans={plans} selectedPlan={selectedPlan} />
-        )}
-      </div>
+      <PageHeader
+        title="People"
+        description="Sketch out team drafts, then finalize the one you want to apply."
+        actions={
+          plans.length > 0 ? (
+            <PlanSelect quarterId={selectedQuarter.id} plans={plans} selectedPlan={selectedPlan} />
+          ) : undefined
+        }
+      />
 
       {board && selectedPlan ? (
         <TeamBuilderBoard

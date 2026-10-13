@@ -81,7 +81,7 @@ export function TeamRoster({
               className="flex items-center gap-2 rounded-full border py-1 pr-2 pl-1 text-sm"
             >
               <Avatar className="size-6">
-                <AvatarFallback className="text-[10px]">
+                <AvatarFallback className="text-xs">
                   {m.profile ? initials(m.profile.name) : "?"}
                 </AvatarFallback>
               </Avatar>

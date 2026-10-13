@@ -34,6 +34,21 @@ describe("hasUnfinalizedDraft", () => {
   });
 });
 
+describe("recruiting attention items", () => {
+  const counts = { ...CLEAR, bookingsToMark: 9, applicantsWithoutReviewer: 1, interviewSlotShortfall: 6 };
+
+  it("adds the recruiting items ahead of the others, each with a plain label", () => {
+    const items = buildAttentionItems({ ...counts, lowAttendance: 3 });
+    expect(items.map((i) => i.kind)).toEqual(["marks", "reviewers", "interview-slots", "attendance"]);
+    expect(items[0].label).toBe("9 recruiting bookings still need to be marked");
+    expect(items[1].label).toBe("1 applicant has no reviewer yet");
+    expect(items[2].label).toBe("Add 6 more interview slots so everyone invited can book");
+  });
+  it("leaves them out when zero or unavailable", () => {
+    expect(buildAttentionItems({ ...CLEAR, bookingsToMark: 0, applicantsWithoutReviewer: null })).toEqual([]);
+  });
+});
+
 describe("buildAttentionItems", () => {
   it("returns nothing when everything is clear", () => {
     expect(buildAttentionItems(CLEAR)).toEqual([]);

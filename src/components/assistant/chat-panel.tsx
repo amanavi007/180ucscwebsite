@@ -94,8 +94,8 @@ export function ChatPanel({
     >
       <div
         className={cn(
-          "flex items-end gap-2 border bg-card shadow-lg shadow-black/5 transition-shadow focus-within:ring-4 focus-within:ring-primary/15",
-          started ? "rounded-3xl p-1.5 pl-4" : "rounded-3xl p-2.5 pl-5 ring-4 ring-primary/10",
+          "flex items-end gap-2 border bg-card shadow-lg shadow-black/5 transition-shadow focus-within:ring-4 focus-within:ring-link/15",
+          started ? "rounded-3xl p-1.5 pl-4" : "rounded-3xl p-2.5 pl-5 ring-4 ring-link/10",
         )}
       >
         <Textarea
@@ -149,7 +149,7 @@ export function ChatPanel({
             <h1 className="font-display text-5xl leading-[0.95] tracking-tight sm:text-7xl">
               {greeting},
               <br />
-              <span className="text-primary">{firstName}.</span>
+              <span className="text-link">{firstName}.</span>
             </h1>
             <p className="mx-auto max-w-sm text-sm text-muted-foreground">
               Ask about your projects, tasks and events. For changes, I&apos;ll propose them and you approve.
@@ -217,7 +217,7 @@ export function ChatPanel({
                 </div>
               )}
               {error && (
-                <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm">
+                <div className="rounded-md border border-status-bad-foreground/30 bg-status-bad px-3 py-2 text-sm">
                   <p>{error.message || "Something went wrong."}</p>
                   {!capReached && (
                     <Button size="sm" variant="outline" className="mt-2" onClick={() => regenerate()}>

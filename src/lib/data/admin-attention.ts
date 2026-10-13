@@ -20,7 +20,11 @@ function valueOrNull<T>(result: PromiseSettledResult<T>): T | null {
  * Each source is fetched independently: if one fails it is dropped (and logged)
  * instead of breaking the hub.
  */
-export async function getAdminAttentionItems(quarterId: string | null): Promise<AttentionItem[]> {
+export async function getAdminAttentionItems(
+  quarterId: string | null,
+  /** Recruiting numbers the page has already fetched, so they are not fetched twice. */
+  recruiting: { bookingsToMark?: number | null; applicantsWithoutReviewer?: number | null; interviewSlotShortfall?: number | null } = {},
+): Promise<AttentionItem[]> {
   const [stats, plans, pending] = await Promise.allSettled([
     quarterId
       ? Promise.all([getConsultantStatsRollup(quarterId), getAttendanceAlertThreshold(true)])
@@ -37,5 +41,6 @@ export async function getAdminAttentionItems(quarterId: string | null): Promise<
     lowAttendance: statsValue ? countBelowThreshold(statsValue[0], statsValue[1]) : null,
     draftUnfinalized: plansValue ? hasUnfinalizedDraft(plansValue) : null,
     pendingTeamSubmissions: valueOrNull(pending),
+    ...recruiting,
   });
 }

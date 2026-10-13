@@ -32,7 +32,7 @@ export function TeamAttendanceStatusCard({
             <span className="font-medium">{t.clientName}</span>
             {todayIsMeetingDay &&
               (t.loggedToday ? (
-                <CheckCircle2 className="size-3.5 text-primary" />
+                <CheckCircle2 className="size-3.5 text-link" />
               ) : (
                 <AlertTriangle className="size-3.5 text-destructive" />
               ))}

@@ -9,8 +9,8 @@ const alertVariants = cva(
   {
     variants: {
       tone: {
-        warning: "border-warning/30 bg-warning/10 text-warning [a]:hover:bg-warning/15",
-        primary: "border-primary/30 bg-primary/10 text-primary [a]:hover:bg-primary/15",
+        warning: "border-status-warn-foreground/30 bg-status-warn text-status-warn-foreground [a]:hover:bg-warning/15",
+        primary: "border-link/30 bg-accent text-accent-foreground [a]:hover:bg-accent/80",
       },
     },
     defaultVariants: {

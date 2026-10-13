@@ -182,7 +182,7 @@ function DayGroup({
             type="button"
             disabled={isPending}
             onClick={() => onMarkAll(items)}
-            className="text-sm font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
+            className="text-sm font-medium text-link underline-offset-2 hover:underline disabled:opacity-50"
           >
             Mark all attended
           </button>
@@ -245,7 +245,7 @@ export function AttendanceView({
       {view === "todo" &&
         (data.toMark.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-14 text-center">
-            <CircleCheck className="size-8 text-primary" />
+            <CircleCheck className="size-8 text-link" />
             <p className="font-medium">Nothing to mark right now</p>
             <p className="text-sm text-muted-foreground">
               Coffee chats and interviews show up here once they&apos;ve happened.

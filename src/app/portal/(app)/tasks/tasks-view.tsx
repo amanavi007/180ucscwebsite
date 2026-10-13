@@ -162,7 +162,7 @@ export function TasksView({
         <div className="space-y-4">
           {groupList.map((group) => (
             <Card key={group.id}>
-              <CardHeader className="flex-row items-center justify-between gap-2 space-y-0 border-b py-3">
+              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 border-b py-3">
                 <Link href={`/portal/projects/${group.id}`} className="font-medium hover:underline">
                   {group.name}
                 </Link>

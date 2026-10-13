@@ -150,7 +150,7 @@ export function RubricEditor({ rubric }: { rubric: RubricRow }) {
 
   return (
     <Card>
-      <CardHeader className="flex-row items-start justify-between gap-2">
+      <CardHeader className="flex flex-row items-start justify-between gap-2">
         <div>
           <CardTitle className="text-base">{label} rubric</CardTitle>
           <CardDescription>What reviewers rate for the {label.toLowerCase()} stage. Any exec can change it at any time.</CardDescription>
@@ -238,7 +238,7 @@ export function RubricEditor({ rubric }: { rubric: RubricRow }) {
             </Button>
           </div>
           {scaleChanged && (
-            <p className="text-xs text-amber-700 dark:text-amber-400">
+            <p className="text-xs text-status-warn-foreground">
               Heads up: scores already given are kept as they are and will be read on the new scale.
             </p>
           )}
@@ -277,7 +277,7 @@ export function ScoringSettingsCard({ settings }: { settings: RecruitSettings })
         <FieldGroup>
           <Field>
             <FieldLabel htmlFor="normalize-min">Scores a reviewer needs before they&apos;re evened out</FieldLabel>
-            <Input id="normalize-min" type="number" min="2" step="1" className="w-28" value={minN} onChange={(e) => setMinN(e.target.value)} />
+            <Input id="normalize-min" type="number" min="2" step="1" className="w-28 max-w-28" value={minN} onChange={(e) => setMinN(e.target.value)} />
             <FieldDescription>
               Some reviewers grade everyone high and others low. Once someone has given this many scores, their scores are adjusted
               to the group&apos;s typical range. Below it, their raw scores are used. Raw and adjusted are always both shown.
@@ -285,7 +285,7 @@ export function ScoringSettingsCard({ settings }: { settings: RecruitSettings })
           </Field>
           <Field>
             <FieldLabel htmlFor="disagreement">Flag reviewers who differ by at least</FieldLabel>
-            <Input id="disagreement" type="number" min="0" step="0.5" className="w-28" value={threshold} onChange={(e) => setThreshold(e.target.value)} />
+            <Input id="disagreement" type="number" min="0" step="0.5" className="w-28 max-w-28" value={threshold} onChange={(e) => setThreshold(e.target.value)} />
             <FieldDescription>When two reviewers&apos; raw scores for the same applicant are this far apart, the applicant gets a &ldquo;reviewers disagree&rdquo; flag.</FieldDescription>
           </Field>
         </FieldGroup>

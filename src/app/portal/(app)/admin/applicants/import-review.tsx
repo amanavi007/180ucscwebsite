@@ -69,7 +69,7 @@ export function ImportReview({
 
   return (
     <div className="space-y-3">
-      <Group title="Needs a look" count={of("needs-look").length} tone="bg-amber-100 text-amber-900" defaultOpen hint="Confirm who each of these is">
+      <Group title="Needs a look" count={of("needs-look").length} tone="bg-status-warn text-status-warn-foreground" defaultOpen hint="Confirm who each of these is">
         {of("needs-look").map((row) => {
           const action = actions[row.key];
           return (
@@ -118,7 +118,7 @@ export function ImportReview({
         })}
       </Group>
 
-      <Group title="New people" count={of("new").length} tone="bg-blue-100 text-blue-900" defaultOpen hint="Will be added as applicants">
+      <Group title="New people" count={of("new").length} tone="bg-status-info text-status-info-foreground" defaultOpen hint="Will be added as applicants">
         {of("new").map((row) => (
           <div key={row.key} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
             <Name row={row} />
@@ -138,7 +138,7 @@ export function ImportReview({
         ))}
       </Group>
 
-      <Group title="Matched" count={of("matched").length} tone="bg-green-100 text-green-900" defaultOpen={false} hint="Exact matches — will get points">
+      <Group title="Matched" count={of("matched").length} tone="bg-status-ok text-status-ok-foreground" defaultOpen={false} hint="Exact matches — will get points">
         {of("matched").map((row) => (
           <div key={row.key} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
             <Name row={row} />
@@ -158,7 +158,7 @@ export function ImportReview({
         ))}
       </Group>
 
-      <Group title="Already has points" count={of("already").length} tone="bg-slate-100 text-slate-900" defaultOpen={false} hint="Skipped so nobody is counted twice">
+      <Group title="Already has points" count={of("already").length} tone="bg-muted text-foreground" defaultOpen={false} hint="Skipped so nobody is counted twice">
         {of("already").map((row) => (
           <div key={row.key} className="p-3 text-sm">
             <Name row={row} />
@@ -167,7 +167,7 @@ export function ImportReview({
         ))}
       </Group>
 
-      <Group title="Ignored" count={of("ignored").length} tone="bg-slate-100 text-slate-900" defaultOpen={false} hint="Hosts, short stays, your ignore list">
+      <Group title="Ignored" count={of("ignored").length} tone="bg-muted text-foreground" defaultOpen={false} hint="Hosts, short stays, your ignore list">
         {of("ignored").map((row) => (
           <div key={row.key} className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
             <Name row={row} />

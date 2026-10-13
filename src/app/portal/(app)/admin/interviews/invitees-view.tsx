@@ -72,7 +72,7 @@ export function InviteesView({ invitees, openSlotCount }: { invitees: InviteeRow
             className="mt-3 w-full rounded-lg border border-input bg-background p-3 font-mono text-sm"
           />
           {problems.length > 0 && (
-            <ul className="mt-2 space-y-1 text-sm text-red-700">
+            <ul className="mt-2 space-y-1 text-sm text-status-bad-foreground">
               {problems.map((p) => (
                 <li key={p}>{p}</li>
               ))}

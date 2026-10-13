@@ -9,10 +9,11 @@ export const ADMIN_HUB_HREF = "/portal/admin";
 
 /** Display order matters: the hub's area cards render in this order. */
 export const ADMIN_AREA_LABELS: Record<string, string> = {
+  "admin-today": "Today",
+  "admin-recruiting": "Recruiting",
+  "admin-scheduling": "Scheduling",
   "admin-people": "People",
-  "admin-quarter-setup": "Quarter setup",
-  "admin-recruitment": "Recruitment",
-  "admin-system": "System",
+  "admin-setup": "Setup",
 };
 
 export interface AdminLocation<T extends AdminNavItem> {
@@ -23,7 +24,8 @@ export interface AdminLocation<T extends AdminNavItem> {
 }
 
 export function getAdminLocation<T extends AdminNavItem>(pathname: string, links: T[]): AdminLocation<T> | null {
-  const page = links.find((l) => pathname === l.href || pathname.startsWith(`${l.href}/`));
+  // The hub only matches exactly, otherwise it would match every admin path.
+  const page = links.find((l) => pathname === l.href || (l.href !== ADMIN_HUB_HREF && pathname.startsWith(`${l.href}/`)));
   if (!page || !page.group) return null;
   return {
     areaKey: page.group,

@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { getCurrentProfile } from "@/lib/data/profile";
-import { getProjects } from "@/lib/data/projects";
+import { getMyProjects, getProjects } from "@/lib/data/projects";
 import { getQuarters, getActiveQuarter } from "@/lib/data/quarters";
 import { getAllProfiles } from "@/lib/data/members";
 import { isExec } from "@/lib/auth/roles";
+import { LinkSwitch } from "@/components/link-switch";
+import { PageHeader } from "@/components/page-header";
 import { ProjectsView } from "./projects-view";
 
 export const metadata: Metadata = { title: "Projects" };
@@ -22,19 +24,25 @@ export default async function ProjectsPage({
   ]);
 
   const selectedQuarterId = quarter || activeQuarter?.id;
-  const [projects, members] = await Promise.all([
+  const [projects, members, mine] = await Promise.all([
     selectedQuarterId ? getProjects(selectedQuarterId) : Promise.resolve([]),
     isExec(profile.role) ? getAllProfiles() : Promise.resolve([]),
+    // The projects you are on, so the board can point at them. Nice to have: never blocks the page.
+    selectedQuarterId ? getMyProjects(profile.id, selectedQuarterId).catch(() => []) : Promise.resolve([]),
   ]);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>
-        <p className="text-sm text-muted-foreground">
-          Client projects for the selected quarter.
-        </p>
-      </div>
+      <PageHeader title="Projects" description="Client projects for the selected quarter.">
+        <LinkSwitch
+          className="mt-4"
+          label="Projects views"
+          items={[
+            { href: "/portal/projects", label: "Projects", active: true },
+            { href: "/portal/tasks", label: "My tasks", active: false },
+          ]}
+        />
+      </PageHeader>
 
       <ProjectsView
         projects={projects}
@@ -43,6 +51,7 @@ export default async function ProjectsPage({
         members={members}
         canCreate={isExec(profile.role)}
         currentUserId={profile.id}
+        myProjectIds={mine.map((p) => p.id)}
         isExec={isExec(profile.role)}
         view={selectedView}
       />

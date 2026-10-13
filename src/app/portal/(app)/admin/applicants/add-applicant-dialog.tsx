@@ -158,7 +158,7 @@ export function AddApplicantDialog({
         </FieldGroup>
 
         {hardDuplicate && (
-          <p className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300">
+          <p className="flex items-start gap-2 rounded-lg border border-status-bad-foreground/30 bg-status-bad p-3 text-sm text-status-bad-foreground">
             <TriangleAlert className="mt-0.5 size-4 shrink-0" />
             <span>
               <b>{hardDuplicate.name}</b> already has that email. Open them from the list instead of adding a second record.
@@ -166,7 +166,7 @@ export function AddApplicantDialog({
           </p>
         )}
         {!hardDuplicate && softMatches.length > 0 && (
-          <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-500/40 dark:bg-amber-500/10">
+          <div className="rounded-lg border border-status-warn-foreground/30 bg-status-warn p-3 text-sm text-status-warn-foreground">
             <p className="flex items-center gap-2 font-medium">
               <TriangleAlert className="size-4" /> This might be someone already added:
             </p>
