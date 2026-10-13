@@ -23,57 +23,52 @@ export function AdminBreadcrumb({
   const location = getAdminLocation(pathname, ADMIN_NAV_LINKS);
   const quarterParam = searchParams.get("quarter");
 
-  // The hub (and unknown paths) render their own header.
+  // Unknown paths render their own header.
   if (!location) return null;
 
   const selectedQuarterId = resolveQuarterId(quarterParam, quarters, defaultQuarterId);
   const showPicker = !!location.page.quarterScoped && quarters.length > 0;
 
   return (
-    <div className="space-y-3">
-      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm text-muted-foreground">
-        <Link href={withQuarterParam(ADMIN_HUB_HREF, quarterParam)} className="hover:text-foreground">
-          Admin
-        </Link>
-        <ChevronRight className="size-3.5" />
-        <span>{location.areaLabel}</span>
-        <ChevronRight className="size-3.5" />
-        <span aria-current="page" className="font-medium text-foreground">
-          {location.page.label}
-        </span>
-      </nav>
-
+    <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {location.siblings.length > 1 ? (
-          <div className="inline-flex w-fit items-center gap-[3px] rounded-lg bg-muted p-[3px]">
-            {location.siblings.map((item) => {
-              const active = item.href === location.page.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={withQuarterParam(item.href, item.quarterScoped ? quarterParam : null)}
-                  className={cn(
-                    "rounded-md px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors",
-                    active
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {item.label}
-                  {item.href === "/portal/admin/team-page" && pendingTeamCount > 0 && (
-                    <Badge className="ml-1.5 h-4 min-w-4 px-1 text-[10px]">{pendingTeamCount}</Badge>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-        ) : (
-          <span />
-        )}
+        <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Link href={withQuarterParam(ADMIN_HUB_HREF, quarterParam)} className="hover:text-foreground">
+            Admin
+          </Link>
+          <ChevronRight className="size-3.5" />
+          <span aria-current="page" className="font-semibold text-foreground">
+            {location.areaLabel}
+          </span>
+        </nav>
         {showPicker && (
           <QuarterSelect quarters={quarters} selectedId={selectedQuarterId ?? ""} basePath={pathname} />
         )}
       </div>
+
+      {location.siblings.length > 1 && (
+        <div role="navigation" aria-label={`${location.areaLabel} views`} className="inline-flex w-fit flex-wrap items-center gap-1 rounded-full bg-muted p-1">
+          {location.siblings.map((item) => {
+            const active = item.href === location.page.href;
+            return (
+              <Link
+                key={item.href}
+                href={withQuarterParam(item.href, item.quarterScoped ? quarterParam : null)}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "rounded-full px-4 py-1.5 text-sm font-semibold whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  active ? "bg-foreground font-bold text-primary" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {item.viewLabel ?? item.label}
+                {item.href === "/portal/admin/team-page" && pendingTeamCount > 0 && (
+                  <Badge className="ml-2 h-5 min-w-5 px-1.5">{pendingTeamCount}</Badge>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

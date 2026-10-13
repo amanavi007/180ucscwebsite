@@ -12,8 +12,8 @@ import {
 const LINKS: AdminNavItem[] = [
   { href: "/portal/admin/members", label: "Members", group: "admin-people" },
   { href: "/portal/admin/team-builder", label: "Team Builder", group: "admin-people", quarterScoped: true },
-  { href: "/portal/admin/quarters", label: "Quarters", group: "admin-quarter-setup" },
-  { href: "/portal/admin/coffee-chats", label: "Coffee Chats", group: "admin-recruitment" },
+  { href: "/portal/admin/quarters", label: "Quarters", group: "admin-setup" },
+  { href: "/portal/admin/coffee-chats", label: "Coffee Chats", group: "admin-scheduling" },
 ];
 
 describe("getAdminLocation", () => {

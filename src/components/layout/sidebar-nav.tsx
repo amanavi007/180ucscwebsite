@@ -2,12 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { HelpCircle } from "lucide-react";
+import { ArrowLeft, HelpCircle, ShieldCheck, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { NAV_LINKS } from "./nav-links";
+import { ADMIN_NAV_LINKS, ADMIN_PLACES, NAV_LINKS } from "./nav-links";
+import { getAdminLocation } from "@/lib/admin-nav";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-const GROUP_LABEL: Record<string, string> = { work: "Work", people: "People", reference: "Reference" };
+/** Pages that live under another rail item, so that item stays lit while you are on them. */
+const ALSO_ACTIVE: Record<string, string[]> = {
+  "/portal": ["/portal/attendance"],
+  "/portal/projects": ["/portal/tasks"],
+  "/portal/resources": ["/portal/quick-links"],
+};
+
+type RailItem = { id: string; href: string; label: string; icon: LucideIcon; active: boolean; outlined?: boolean };
 
 export function SidebarNav({
   isExec,
@@ -21,97 +29,111 @@ export function SidebarNav({
   onReplayTour?: () => void;
 }) {
   const pathname = usePathname();
-  const links = NAV_LINKS.filter((link) => !link.execOnly || isExec);
+  const inAdmin = isExec && pathname.startsWith("/portal/admin");
 
-  const items = links.map((link, i) => {
-    const active =
-      link.href === "/portal" ? pathname === "/portal" : pathname.startsWith(link.href);
-    const Icon = link.icon;
-    const lastGroup = links[i - 1]?.group;
-    const groupChanged = link.group !== lastGroup;
-    const showDivider = link.href === "/portal/admin";
-    const showGroupLabel = !collapsed && !!link.group && groupChanged;
-    const showGap = collapsed && groupChanged && !showDivider && (!!link.group || !!lastGroup);
+  let items: RailItem[];
+  let footer: RailItem | null = null;
 
+  if (inAdmin) {
+    const areaKey = getAdminLocation(pathname, ADMIN_NAV_LINKS)?.areaKey ?? "admin-today";
+    items = ADMIN_PLACES.map((p) => ({
+      id: `nav-link-${p.href}`,
+      href: p.href,
+      label: p.label,
+      icon: p.icon,
+      active: p.key === areaKey,
+    }));
+    footer = { id: "nav-link-back", href: "/portal", label: "Back to portal", icon: ArrowLeft, active: false, outlined: true };
+  } else {
+    items = NAV_LINKS.filter((l) => l.rail !== false && l.href !== "/portal/admin" && (!l.execOnly || isExec)).map((l) => ({
+      id: `nav-link-${l.href}`,
+      href: l.href,
+      label: l.label,
+      icon: l.icon,
+      active:
+        (l.href === "/portal" ? pathname === "/portal" : pathname.startsWith(l.href)) ||
+        (ALSO_ACTIVE[l.href] ?? []).some((extra) => pathname.startsWith(extra)),
+    }));
+    if (isExec) {
+      footer = { id: "nav-link-/portal/admin", href: "/portal/admin", label: "Admin", icon: ShieldCheck, active: false, outlined: true };
+    }
+  }
+
+  function renderItem(item: RailItem) {
+    const Icon = item.icon;
     const linkEl = (
       <Link
-        id={`nav-link-${link.href}`}
-        href={link.href}
+        id={item.id}
+        href={item.href}
         onClick={onNavigate}
-        aria-label={collapsed ? link.label : undefined}
+        aria-label={collapsed ? item.label : undefined}
+        aria-current={item.active ? "page" : undefined}
         className={cn(
-          "flex items-center gap-2.5 py-2 text-sm font-semibold transition-colors",
+          "flex items-center gap-2.5 py-2 text-sm font-semibold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
           collapsed ? "mx-auto size-11 justify-center rounded-[14px] px-0" : "rounded-xl px-3",
-          active
+          item.active
             ? "bg-sidebar-primary text-sidebar-primary-foreground"
             : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+          item.outlined && !item.active && "border-[1.5px] border-sidebar-border",
         )}
       >
         <Icon className={cn("shrink-0", collapsed ? "size-[22px]" : "size-4")} />
-        {!collapsed && link.label}
+        {!collapsed && item.label}
       </Link>
     );
-
     return (
-      <div key={link.href}>
-        {showDivider && <div className="mx-1 my-2 border-t border-sidebar-border" />}
-        {showGap && <div className="h-3" />}
-        {showGroupLabel && (
-          <p className="px-3 pt-3 pb-1 text-[11px] font-medium tracking-wide text-sidebar-foreground/50 uppercase">
-            {GROUP_LABEL[link.group!]}
-          </p>
-        )}
+      <div key={item.id}>
         {collapsed ? (
           <Tooltip>
             <TooltipTrigger render={linkEl} />
-            <TooltipContent>{link.label}</TooltipContent>
+            <TooltipContent side="right">{item.label}</TooltipContent>
           </Tooltip>
         ) : (
           linkEl
         )}
       </div>
     );
-  });
+  }
 
   return (
     <TooltipProvider delay={200}>
       <div className="flex flex-1 flex-col">
-        <nav className="flex flex-col gap-0.5 px-2">{items}</nav>
-        {onReplayTour && (
-          <div
-            className={cn(
-              "mt-auto flex px-2 pb-2",
-              collapsed ? "justify-center" : "items-center justify-end",
-            )}
-          >
-            {collapsed ? (
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <button
-                      type="button"
-                      onClick={onReplayTour}
-                      className="flex size-7 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                      aria-label="Replay tour"
-                    >
-                      <HelpCircle className="size-4" />
-                    </button>
-                  }
-                />
-                <TooltipContent>Replay tour</TooltipContent>
-              </Tooltip>
-            ) : (
-              <button
-                type="button"
-                onClick={onReplayTour}
-                className="flex size-7 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                aria-label="Replay tour"
-              >
-                <HelpCircle className="size-4" />
-              </button>
-            )}
-          </div>
-        )}
+        <nav className="flex flex-col gap-1.5 px-2" aria-label={inAdmin ? "Admin" : "Portal"}>
+          {items.map(renderItem)}
+        </nav>
+        <div className={cn("mt-auto flex flex-col gap-2 px-2 pb-3", collapsed && "items-center")}>
+          {footer && renderItem(footer)}
+          {onReplayTour && (
+            <div className={cn("flex", collapsed ? "justify-center" : "items-center justify-end")}>
+              {collapsed ? (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        type="button"
+                        onClick={onReplayTour}
+                        className="flex size-7 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        aria-label="Replay tour"
+                      >
+                        <HelpCircle className="size-4" />
+                      </button>
+                    }
+                  />
+                  <TooltipContent side="right">Replay tour</TooltipContent>
+                </Tooltip>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onReplayTour}
+                  className="flex size-7 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  aria-label="Replay tour"
+                >
+                  <HelpCircle className="size-4" />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </TooltipProvider>
   );

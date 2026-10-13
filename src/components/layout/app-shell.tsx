@@ -105,7 +105,7 @@ export function AppShell({
     setExpanded(false);
   }
 
-  const tourSteps: TourStep[] = NAV_LINKS.filter((l) => (!l.execOnly || isExec) && l.tourDescription).map(
+  const tourSteps: TourStep[] = NAV_LINKS.filter((l) => l.rail !== false && (!l.execOnly || isExec) && l.tourDescription).map(
     (l) => ({ href: l.href, label: l.label, description: l.tourDescription! }),
   );
 
