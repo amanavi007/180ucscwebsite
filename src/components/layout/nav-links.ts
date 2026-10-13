@@ -226,5 +226,15 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     group: "admin-people",
   },
   { href: "/portal/admin/quarters", label: "Quarters", icon: CalendarRange, execOnly: true, group: "admin-setup" },
+  {
+    href: "/portal/admin/recruiting-setup",
+    label: "Recruiting Setup",
+    viewLabel: "Recruiting",
+    icon: ListOrdered,
+    execOnly: true,
+    quarterScoped: true,
+    keywords: "rubric rubrics categories events points review settings scoring",
+    group: "admin-setup",
+  },
   { href: "/portal/admin/settings", label: "Settings", icon: SlidersHorizontal, execOnly: true, group: "admin-setup" },
 ];

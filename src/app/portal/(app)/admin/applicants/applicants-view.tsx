@@ -20,9 +20,9 @@ function reviewLabel(state: ApplicantReviewState | undefined, hasApplication: bo
   if (!hasApplication) return { text: "Not reviewed", dot: "bg-status-warn-foreground" };
   if (!state || state.status === "unassigned") return { text: "Not assigned", dot: "bg-muted-foreground/50" };
   if (state.status === "not-started") return { text: "Not started", dot: "bg-muted-foreground/50" };
-  if (state.status === "revealed") return { text: "Revealed", dot: "bg-primary" };
+  if (state.status === "revealed") return { text: "Revealed", dot: "bg-status-ok-foreground" };
   const text = `${state.submitted} of ${state.assigned} done`;
-  return { text, dot: state.status === "complete" ? "bg-primary" : "bg-warning" };
+  return { text, dot: state.status === "complete" ? "bg-status-ok-foreground" : "bg-warning" };
 }
 
 export function ApplicantsView({
@@ -96,7 +96,7 @@ export function ApplicantsView({
           <span className="w-6 text-sm font-semibold tabular-nums">{r.total}</span>
           <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted" aria-hidden="true">
             <span
-              className="block h-full bg-primary"
+              className="block h-full bg-foreground"
               style={{ width: `${Math.max(0, Math.min(100, (r.total / max) * 100))}%` }}
             />
           </span>

@@ -114,7 +114,7 @@ export function ScoreForm({
       )}
 
       {criteria.length === 0 ? (
-        <p className="text-sm text-muted-foreground">This rubric has no active criteria. Add some in Settings → Rubric.</p>
+        <p className="text-sm text-muted-foreground">This rubric has no active criteria. Add some in Setup → Recruiting.</p>
       ) : (
         <TooltipProvider delay={120}>
           <ul className="space-y-5">

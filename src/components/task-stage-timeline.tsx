@@ -73,7 +73,7 @@ export function TaskStageTimeline({
               <div
                 className={cn(
                   "h-0.5 w-3 shrink-0 sm:w-4",
-                  i < currentIndex ? "bg-primary" : "bg-muted-foreground/30",
+                  i < currentIndex ? "bg-foreground" : "bg-muted-foreground/30",
                 )}
               />
             )}

@@ -4,9 +4,9 @@ const R = (SIZE - STROKE) / 2;
 const C = 2 * Math.PI * R;
 
 function tone(fraction: number): string {
-  if (fraction >= 0.66) return "stroke-emerald-600";
-  if (fraction >= 0.33) return "stroke-amber-500";
-  return "stroke-slate-400";
+  if (fraction >= 0.66) return "stroke-status-ok-foreground";
+  if (fraction >= 0.33) return "stroke-warning";
+  return "stroke-muted-foreground";
 }
 
 export function ScoreRing({ value, fraction }: { value: number; fraction: number }) {

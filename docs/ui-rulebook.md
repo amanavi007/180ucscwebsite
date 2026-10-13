@@ -41,7 +41,8 @@ Rules:
 - Text on a status fill uses that status's `-foreground`. All pairs are at least 6.5:1.
 - Color-block tiles (big numerals) use the four status fills plus a deep-forest tile with lime text. A page uses at most four tiles.
 - Avatars rotate through the status tints and are always initials, never a colored empty circle.
-- Lime is for: the main button, the active sidebar item, the selected score, the progress fill, the "today" marker. Nothing else.
+- Lime is for: the main button, the active sidebar item, the selected score, the selected pill's text, the "today" marker. Nothing else. Progress fills and meters on light surfaces are forest (`bg-foreground`); lime on a light surface is almost invisible.
+- Never use `text-primary` for text on a light surface. Links and small green text use `text-link`.
 - Dark mode is generated from the same token names in a `.dark` block. Pages never branch on theme. A separate design pass for dark mode is planned; until then dark is "works, not polished".
 
 ## 3. Type
@@ -163,7 +164,7 @@ Run these before opening a PR (a CI step is a good follow-up):
 
 ```sh
 # 1. No raw colors in portal pages (expect no output)
-grep -rnE "\b(bg|text|border|ring|from|to)-(red|amber|green|blue|yellow|orange|emerald|rose|slate|gray|zinc|neutral|stone|sky|indigo|violet|purple|pink|teal|lime)-[0-9]{2,3}|#[0-9a-fA-F]{6}\b" "src/app/portal" src/app/login --include='*.tsx'
+grep -rnE "\b(bg|text|border|ring|from|to|stroke|fill)-(red|amber|green|blue|yellow|orange|emerald|rose|slate|gray|zinc|neutral|stone|sky|indigo|violet|purple|pink|teal|lime)-[0-9]{2,3}|#[0-9a-fA-F]{6}\b" "src/app/portal" src/app/login --include='*.tsx'
 
 # 2. No native dialogs (expect no output)
 grep -rnE "window\.(confirm|alert)\(|(^|[^.[:alnum:]_])alert\(" src/app/portal --include='*.tsx'

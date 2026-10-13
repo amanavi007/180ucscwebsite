@@ -52,7 +52,7 @@ export function NotificationBell() {
           <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
             <Bell className="size-4.5" />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 flex size-2 rounded-full bg-primary" />
+              <span className="absolute top-1 right-1 flex size-2 rounded-full bg-link" />
             )}
           </Button>
         }

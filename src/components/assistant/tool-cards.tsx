@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 type Result<T> = { items?: T[]; total?: number; truncated?: boolean; note?: string };
 
-const TONE_BAR: Record<Tone, string> = { good: "bg-primary", warn: "bg-amber-500", bad: "bg-destructive" };
+const TONE_BAR: Record<Tone, string> = { good: "bg-foreground", warn: "bg-warning", bad: "bg-destructive" };
 const TONE_TEXT: Record<Tone, string> = { good: "text-link", warn: "text-status-warn-foreground", bad: "text-destructive" };
 
 /** Tool results start collapsed: the reply text carries the answer, the card is the detail behind a small arrow. */

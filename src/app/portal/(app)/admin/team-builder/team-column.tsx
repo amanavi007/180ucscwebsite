@@ -196,7 +196,7 @@ export function TeamColumn({
       <CardContent className="space-y-4 border-t pt-4">
         <div>
           <div className="mb-2 flex items-center gap-1.5">
-            <span className="size-1.5 rounded-full bg-primary ring-4 ring-primary/15" />
+            <span className="size-1.5 rounded-full bg-link ring-4 ring-link/15" />
             <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">PM</span>
           </div>
           <DropZone
