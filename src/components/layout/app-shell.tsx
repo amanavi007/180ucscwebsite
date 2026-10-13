@@ -46,24 +46,15 @@ function SidebarBody({
           className="flex items-center gap-2 transition-opacity hover:opacity-75"
         >
           {collapsed ? (
-            <Image src="/logo-icon.png" alt="" width={987} height={1006} className="h-6 w-auto" />
+            <Image src="/logo-icon.png" alt="" width={987} height={1006} className="h-7 w-auto" />
           ) : (
-            <>
-              <Image
-                src="/logo-banner-dark.svg"
-                alt="180 Degrees Consulting UC Santa Cruz"
-                width={1610}
-                height={538}
-                className="h-16 w-auto dark:hidden"
-              />
-              <Image
-                src="/logo-banner-light.svg"
-                alt="180 Degrees Consulting UC Santa Cruz"
-                width={1610}
-                height={538}
-                className="hidden h-16 w-auto dark:block"
-              />
-            </>
+            <Image
+              src="/logo-banner-light.svg"
+              alt="180 Degrees Consulting UC Santa Cruz"
+              width={1610}
+              height={538}
+              className="h-16 w-auto"
+            />
           )}
           <NavPendingWatcher />
         </Link>
@@ -137,15 +128,15 @@ export function AppShell({
   }, []);
 
   return (
-    <div className="flex h-svh md:gap-3 md:p-3">
+    <div className="flex h-svh">
       <aside
         onMouseEnter={() => setExpanded(true)}
         onMouseLeave={() => setExpanded(false)}
-        className="relative hidden min-h-0 w-16 shrink-0 md:block"
+        className="relative z-20 hidden min-h-0 w-[72px] shrink-0 md:block"
       >
         {/* Resting strip -- always occupies the real layout width, so
             nothing else on the page ever shifts. */}
-        <div className="glass-sidebar absolute inset-0 flex min-h-0 flex-col overflow-hidden rounded-3xl">
+        <div className="glass-sidebar absolute inset-0 flex min-h-0 flex-col overflow-hidden">
           <SidebarBody collapsed isExec={isExec} onReplayTour={startTour} />
         </div>
 
@@ -156,7 +147,7 @@ export function AppShell({
         <div
           inert={!expanded}
           className={cn(
-            "glass-sidebar glass-sidebar-floating absolute top-0 left-0 z-30 flex h-full w-60 flex-col overflow-hidden rounded-3xl shadow-2xl transition-[opacity,transform] duration-200 ease-out",
+            "glass-sidebar glass-sidebar-floating absolute top-0 left-0 z-30 flex h-full w-60 flex-col overflow-hidden rounded-r-3xl shadow-2xl transition-[opacity,transform] duration-200 ease-out",
             expanded
               ? "translate-x-0 opacity-100"
               : "pointer-events-none -translate-x-2 opacity-0",
@@ -167,7 +158,7 @@ export function AppShell({
       </aside>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="glass-overlay z-10 flex h-14 shrink-0 items-center justify-between px-4 md:mb-3 md:rounded-2xl">
+        <header className="z-10 flex h-16 shrink-0 items-center justify-between border-b bg-background px-4 md:px-10">
           <Button
             variant="ghost"
             size="icon"
@@ -204,11 +195,11 @@ export function AppShell({
             variant="ghost"
             size="sm"
             onClick={() => setCommandOpen(true)}
-            className="ml-2 hidden w-64 justify-start gap-2 rounded-full border border-foreground/10 bg-foreground/5 text-muted-foreground hover:bg-foreground/10 md:flex"
+            className="ml-2 hidden w-80 justify-start gap-2 border border-border bg-card font-medium text-muted-foreground hover:bg-muted md:flex"
           >
             <Search className="size-3.5" />
             Search...
-            <kbd className="ml-auto rounded-full border border-foreground/10 bg-foreground/5 px-1.5 py-0.5 font-mono text-[10px]">
+            <kbd className="ml-auto rounded-md border border-border px-1.5 py-0.5 font-mono text-xs">
               ⌘K
             </kbd>
           </Button>
@@ -259,25 +250,18 @@ export function AppShell({
           </div>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto p-4 md:px-10 md:py-8">{children}</main>
       </div>
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetContent side="left" className="w-64 p-0">
+        <SheetContent side="left" className="w-64 bg-sidebar p-0 text-sidebar-foreground">
           <SheetTitle className="px-4 py-4">
-            <Image
-              src="/logo-banner-dark.svg"
-              alt="180 Degrees Consulting UC Santa Cruz"
-              width={1610}
-              height={538}
-              className="h-14 w-auto dark:hidden"
-            />
             <Image
               src="/logo-banner-light.svg"
               alt="180 Degrees Consulting UC Santa Cruz"
               width={1610}
               height={538}
-              className="hidden h-14 w-auto dark:block"
+              className="h-14 w-auto"
             />
           </SheetTitle>
           <SidebarNav isExec={isExec} onNavigate={() => setMobileOpen(false)} />

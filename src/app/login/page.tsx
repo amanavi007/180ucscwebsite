@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -9,6 +8,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { login } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AuthShell } from "@/components/auth-shell";
 import {
   Field,
   FieldGroup,
@@ -45,80 +45,76 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-muted/30 px-4">
-      <div className="w-full max-w-sm space-y-8">
-        <div className="text-center">
-          <Image
-            src="/logo-stacked-dark.png"
-            alt="180 Degrees Consulting UC Santa Cruz"
-            width={982}
-            height={1374}
-            priority
-            className="mx-auto h-52 w-auto dark:hidden"
-          />
-          <Image
-            src="/logo-stacked-light.png"
-            alt="180 Degrees Consulting UC Santa Cruz"
-            width={982}
-            height={1374}
-            priority
-            className="mx-auto hidden h-52 w-auto dark:block"
-          />
-        </div>
+    <AuthShell
+      headline="Consulting for good, run by students."
+      tagline="Your projects, your team and everything the club needs from you this week, in one place."
+      footnote="Members and execs only"
+    >
+      <h2 className="text-4xl font-extrabold tracking-[-0.03em]">Welcome back</h2>
+      <p className="mt-2 mb-8 text-base text-muted-foreground">Sign in with the email the club gave you.</p>
 
-        <form onSubmit={handleSubmit(onSubmit)} noValidate>
-          <FieldGroup>
-            <Field data-invalid={!!errors.email}>
-              <FieldLabel htmlFor="email">Email</FieldLabel>
+      <form onSubmit={handleSubmit(onSubmit)} noValidate aria-label="Sign in">
+        <FieldGroup>
+          <Field data-invalid={!!errors.email}>
+            <FieldLabel htmlFor="email" className="text-sm font-semibold">
+              Email
+            </FieldLabel>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              placeholder="you@180dc.org"
+              className="h-12 rounded-[14px] border-border-strong px-4 text-base"
+              {...register("email")}
+            />
+            <FieldError errors={[errors.email]} />
+          </Field>
+
+          <Field data-invalid={!!errors.password}>
+            <FieldLabel htmlFor="password" className="text-sm font-semibold">
+              Password
+            </FieldLabel>
+            <div className="relative">
               <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                placeholder="you@180dc.org"
-                {...register("email")}
+                id="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                className="h-12 rounded-[14px] border-border-strong px-4 pr-12 text-base"
+                {...register("password")}
               />
-              <FieldError errors={[errors.email]} />
-            </Field>
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute inset-y-0 right-0 flex w-12 items-center justify-center rounded-r-[14px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {showPassword ? <EyeOff className="size-4.5" /> : <Eye className="size-4.5" />}
+              </button>
+            </div>
+            <FieldError errors={[errors.password]} />
+          </Field>
 
-            <Field data-invalid={!!errors.password}>
-              <FieldLabel htmlFor="password">Password</FieldLabel>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  className="pr-8"
-                  {...register("password")}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute inset-y-0 right-0 flex w-8 items-center justify-center text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                </button>
-              </div>
-              <FieldError errors={[errors.password]} />
-            </Field>
+          {serverError && (
+            <div
+              role="alert"
+              className="flex items-start gap-2.5 rounded-[14px] bg-status-bad px-3.5 py-3 text-sm leading-snug text-status-bad-foreground"
+            >
+              <span aria-hidden className="font-extrabold">
+                !
+              </span>
+              <span>{serverError}</span>
+            </div>
+          )}
 
-            {serverError && (
-              <p className="text-sm text-destructive" role="alert">
-                {serverError}
-              </p>
-            )}
+          <Button type="submit" size="lg" disabled={submitting} className="h-12 w-full rounded-[14px] text-base">
+            {submitting ? "Signing in..." : "Sign in"}
+          </Button>
 
-            <Button type="submit" disabled={submitting} className="w-full">
-              {submitting ? "Signing in..." : "Sign in"}
-            </Button>
-
-            <p className="text-center text-xs text-muted-foreground">
-              Accounts are created by your chapter admin. Contact an exec if
-              you don&apos;t have login credentials.
-            </p>
-          </FieldGroup>
-        </form>
-      </div>
-    </div>
+          <p className="text-center text-sm leading-relaxed text-muted-foreground">
+            Accounts are created by your chapter admin. Contact an exec if you don&apos;t have login credentials.
+          </p>
+        </FieldGroup>
+      </form>
+    </AuthShell>
   );
 }

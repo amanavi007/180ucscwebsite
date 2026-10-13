@@ -7,9 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-hanken);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-bricolage);
   --font-brand: var(--font-big-shoulders);
   --font-display: var(--font-lato);
   --color-warm: var(--warm);
@@ -41,6 +41,10 @@
   --color-status-warn-foreground: var(--status-warn-foreground);
   --color-status-bad: var(--status-bad);
   --color-status-bad-foreground: var(--status-bad-foreground);
+  --color-status-info: var(--status-info);
+  --color-status-info-foreground: var(--status-info-foreground);
+  --color-link: var(--link);
+  --color-border-strong: var(--border-strong);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -63,36 +67,42 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #588a2c;
-  --primary-foreground: #ffffff;
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: #eef4e4;
-  --accent-foreground: #3d621f;
-  --destructive: oklch(0.577 0.245 27.325);
+  --background: #f7f5ee;
+  --foreground: #14301a;
+  --card: #ffffff;
+  --card-foreground: #14301a;
+  --popover: #ffffff;
+  --popover-foreground: #14301a;
+  --primary: #c8f169;
+  --primary-foreground: #14301a;
+  --primary-border: #14301a;
+  --primary-edge: #14301a;
+  --secondary: #eceae0;
+  --secondary-foreground: #14301a;
+  --muted: #eceae0;
+  --muted-foreground: #5e6657;
+  --accent: #f0fad6;
+  --accent-foreground: #14301a;
+  --link: #1f6b2e;
+  --destructive: #9c2f17;
   --warning: #b45309;
-  --status-ok: #e3efd7;
-  --status-ok-foreground: #2f4a17;
-  --status-warn: #fdf1dc;
-  --status-warn-foreground: #7a4300;
-  --status-bad: #fce9e7;
-  --status-bad-foreground: #a3231b;
+  --status-ok: #e4f1d6;
+  --status-ok-foreground: #2f5a10;
+  --status-warn: #ffe9a3;
+  --status-warn-foreground: #5c4300;
+  --status-bad: #ffd9cf;
+  --status-bad-foreground: #8a2a12;
+  --status-info: #e6e0ff;
+  --status-info-foreground: #3b2e8a;
   --warm: #c2571f;
   --warm-foreground: #fff8f3;
   --mint: #e3efd7;
   --cream: #f7f3ea;
   --deep: #2f4a17;
-  --border: oklch(0.87 0 0);
-  --input: oklch(0.87 0 0);
-  --ring: #588a2c;
+  --border: #e4e0d2;
+  --border-strong: #14301a;
+  --input: #cbd1bf;
+  --ring: #14301a;
   --glass-panel-shadow:
     0 6px 18px rgba(0, 0, 0, 0.07), inset 0 1px 0 0 rgba(255, 255, 255, 0.7),
     inset 0 0 0 1px rgba(0, 0, 0, 0.04);
@@ -102,50 +112,56 @@
   --glass-sidebar-shadow:
     0 20px 45px -15px rgba(0, 0, 0, 0.18), inset 0 1px 0 0 rgba(255, 255, 255, 0.8),
     inset 0 0 0 1px rgba(0, 0, 0, 0.05);
-  --chart-1: #588a2c;
+  --chart-1: #2e8b3d;
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.5rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #588a2c;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #eef4e4;
-  --sidebar-accent-foreground: #3d621f;
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: #588a2c;
+  --radius: 0.875rem;
+  --sidebar: #14301a;
+  --sidebar-foreground: #e8f0df;
+  --sidebar-primary: #c8f169;
+  --sidebar-primary-foreground: #14301a;
+  --sidebar-accent: #1f4a26;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #2a4a2f;
+  --sidebar-ring: #c8f169;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.175 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: #86c24a;
-  --primary-foreground: #132007;
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: #253a17;
-  --accent-foreground: #aad980;
-  --destructive: oklch(0.704 0.191 22.216);
+  --background: #0e1710;
+  --foreground: #eef3e6;
+  --card: #16231a;
+  --card-foreground: #eef3e6;
+  --popover: #16231a;
+  --popover-foreground: #eef3e6;
+  --primary: #c8f169;
+  --primary-foreground: #14301a;
+  --primary-border: #c8f169;
+  --primary-edge: #6e9420;
+  --secondary: #26372a;
+  --secondary-foreground: #eef3e6;
+  --muted: #26372a;
+  --muted-foreground: #9cae97;
+  --accent: #1e2e15;
+  --accent-foreground: #c8f169;
+  --link: #c8f169;
+  --destructive: #ffc2b2;
   --warning: #fbbf24;
-  --status-ok: #1f3a1b;
-  --status-ok-foreground: #a8dc86;
-  --status-warn: #3b2d0f;
-  --status-warn-foreground: #f2c768;
-  --status-bad: #40201d;
-  --status-bad-foreground: #f5a39b;
+  --status-ok: #20361a;
+  --status-ok-foreground: #bfe59a;
+  --status-warn: #3b3010;
+  --status-warn-foreground: #ffe9a3;
+  --status-bad: #46221a;
+  --status-bad-foreground: #ffc2b2;
+  --status-info: #2b2554;
+  --status-info-foreground: #d4cbff;
   --warm: #ff9a66;
   --warm-foreground: #341206;
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: #86c24a;
+  --border: #2a3b2d;
+  --border-strong: #6e8a6c;
+  --input: #3a4f3c;
+  --ring: #c8f169;
   --glass-panel-shadow:
     0 8px 24px rgba(0, 0, 0, 0.28), inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
     inset 0 0 0 1px rgba(255, 255, 255, 0.04);
@@ -155,19 +171,19 @@
   --glass-sidebar-shadow:
     0 25px 60px -15px rgba(0, 0, 0, 0.55), inset 0 1px 0 0 rgba(255, 255, 255, 0.16),
     inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-  --chart-1: #86c24a;
+  --chart-1: #c8f169;
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: #86c24a;
-  --sidebar-primary-foreground: #132007;
-  --sidebar-accent: #253a17;
-  --sidebar-accent-foreground: #aad980;
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: #86c24a;
+  --sidebar: #0a130c;
+  --sidebar-foreground: #e8f0df;
+  --sidebar-primary: #c8f169;
+  --sidebar-primary-foreground: #14301a;
+  --sidebar-accent: #1f3322;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #223226;
+  --sidebar-ring: #c8f169;
 }
 
 /* Soft on-brand green ambient wash behind the marketing site so the light
@@ -189,11 +205,25 @@
     radial-gradient(44rem 38rem at 50% 100%, color-mix(in oklch, var(--primary) 16%, transparent), transparent 65%);
 }
 
-/* Public marketing site is light-mode only, regardless of the app-wide theme
-   toggle (which stays dark-by-default for the ops portal). Only needs to
-   exist under .dark since :root is already light. */
-.dark .marketing-light {
+/* Public marketing site keeps its own look, regardless of the app-wide theme
+   toggle and of the portal's tokens (which are redefined for the portal
+   refresh). Everything the portal changed is pinned back here. */
+.marketing-light {
   color-scheme: light;
+  --font-hanken: var(--font-geist-sans);
+  --font-bricolage: var(--font-geist-sans);
+  --radius: 0.5rem;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --status-ok: #e3efd7;
+  --status-ok-foreground: #2f4a17;
+  --status-warn: #fdf1dc;
+  --status-warn-foreground: #7a4300;
+  --status-bad: #fce9e7;
+  --status-bad-foreground: #a3231b;
+  --link: #3d621f;
+  --border-strong: oklch(0.87 0 0);
+  --primary-border: transparent;
+  --primary-edge: transparent;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -235,49 +265,52 @@
     @apply relative bg-background text-foreground;
     isolation: isolate;
   }
-  /* Vivid, fixed ambient light the glass panels refract -- two hues, close and
-     large enough to stay clearly visible through blurred translucent surfaces. */
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background:
-      radial-gradient(50rem 36rem at 8% -6%, color-mix(in oklch, var(--primary) 45%, transparent), transparent 65%),
-      radial-gradient(42rem 36rem at 104% 4%, color-mix(in oklch, oklch(0.65 0.16 230) 30%, transparent), transparent 62%),
-      radial-gradient(46rem 40rem at 45% 112%, color-mix(in oklch, var(--primary) 30%, transparent), transparent 65%),
-      radial-gradient(26rem 26rem at 75% 45%, color-mix(in oklch, oklch(0.7 0.14 200) 20%, transparent), transparent 60%);
-  }
   html {
     @apply font-sans;
+  }
+  /* Display type: page and section titles use the heading face. Classes on an
+     element (text size, weight) still win over these defaults. */
+  h1,
+  h2 {
+    font-family: var(--font-bricolage), var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .marketing-light h1,
+  .marketing-light h2 {
+    font-family: inherit;
+    font-weight: inherit;
+    letter-spacing: inherit;
   }
 }
 
 @layer components {
-  /* Inline/resting glass surfaces -- cards, sections. Enough fill + a clearly
-     visible ring that the panel still reads as a distinct surface, not just
-     background, while the blur keeps it glass rather than flat. */
+  /* Surfaces. In the portal these are flat: a solid fill with a hairline
+     border. The marketing site keeps its original frosted-glass look (see the
+     .marketing-light overrides below). Class names are kept so every component
+     that used them picks up the new look. */
   .glass-panel {
+    @apply bg-card ring-1 ring-border;
+  }
+  /* Elevated surfaces -- popovers, menus, dialogs, sheets. */
+  .glass-overlay {
+    @apply bg-popover ring-1 ring-border;
+    box-shadow: 0 14px 34px -14px rgb(20 48 26 / 0.28);
+  }
+  .glass-sidebar {
+    @apply bg-sidebar text-sidebar-foreground;
+  }
+  /* The hover preview floats over page content, so it needs to be solid. */
+  .glass-sidebar-floating {
+    @apply bg-sidebar;
+  }
+  .marketing-light .glass-panel {
     @apply bg-card/65 ring-1 ring-foreground/20 backdrop-blur-2xl backdrop-saturate-150;
     box-shadow: var(--glass-panel-shadow);
   }
-  /* Elevated glass surfaces -- popovers, menus, dialogs, sheets. */
-  .glass-overlay {
+  .marketing-light .glass-overlay {
     @apply bg-popover/50 ring-1 ring-foreground/14 backdrop-blur-3xl backdrop-saturate-150;
     box-shadow: var(--glass-overlay-shadow);
-  }
-  /* Floating iOS-style sidebar panel -- heavier blur/saturation and a bright
-     top specular edge so it reads as a distinct pane of glass over the page. */
-  .glass-sidebar {
-    @apply bg-sidebar/40 ring-1 ring-foreground/15 backdrop-blur-3xl backdrop-saturate-200;
-    box-shadow: var(--glass-sidebar-shadow);
-  }
-  /* The hover preview floats over arbitrary page content (and the resting
-     strip's icons), so it needs to be near-opaque or text behind it bleeds
-     through and the nav becomes hard to read. */
-  .glass-sidebar-floating {
-    @apply bg-sidebar/95;
   }
   /* Marked placeholder for real photography -- swap for an <Image> once real
      member/client photos exist; the dashed border keeps it unmistakably a

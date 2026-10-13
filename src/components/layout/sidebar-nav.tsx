@@ -40,14 +40,14 @@ export function SidebarNav({
         onClick={onNavigate}
         aria-label={collapsed ? link.label : undefined}
         className={cn(
-          "flex items-center gap-2.5 rounded-md py-2 text-sm font-medium transition-colors",
-          collapsed ? "justify-center px-0" : "px-3",
+          "flex items-center gap-2.5 py-2 text-sm font-semibold transition-colors",
+          collapsed ? "mx-auto size-11 justify-center rounded-[14px] px-0" : "rounded-xl px-3",
           active
-            ? "bg-primary/15 text-primary ring-1 ring-primary/30"
+            ? "bg-sidebar-primary text-sidebar-primary-foreground"
             : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         )}
       >
-        <Icon className="size-4 shrink-0" />
+        <Icon className={cn("shrink-0", collapsed ? "size-[22px]" : "size-4")} />
         {!collapsed && link.label}
       </Link>
     );
