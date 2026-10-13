@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 
-const DEFAULT_ATTENDANCE_ALERT_THRESHOLD = 0.8;
+export const DEFAULT_ATTENDANCE_ALERT_THRESHOLD = 0.8;
 const FALLBACK_BULK_PASSWORD = "ucsc180dc$";
 
 // RLS on org_settings is exec-only, so a non-exec caller's query is always

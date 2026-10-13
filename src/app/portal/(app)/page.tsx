@@ -58,7 +58,7 @@ export default async function AssistantPage() {
         />
       </div>
       <div className="hidden min-h-0 xl:flex xl:flex-col">
-        <HomeSidebar userId={profile.id} quarterId={quarter.id} />
+        <HomeSidebar userId={profile.id} quarterId={quarter.id} isExec={exec} />
       </div>
     </div>
   );
