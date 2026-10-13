@@ -35,8 +35,8 @@ export default async function TeamBuilderPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Team builder"
-        description="Sketch out roster drafts, then finalize the one you want to apply."
+        title="People"
+        description="Sketch out team drafts, then finalize the one you want to apply."
         actions={
           plans.length > 0 ? (
             <PlanSelect quarterId={selectedQuarter.id} plans={plans} selectedPlan={selectedPlan} />
