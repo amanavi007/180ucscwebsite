@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ExternalLink } from "lucide-react";
@@ -11,16 +11,6 @@ import { parseLevels, type AnswerKey } from "@/lib/recruit-rubric-levels";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
-/** Keystrokes meant for a text field must never score or navigate. */
-export function isTypingTarget(target: EventTarget | null): boolean {
-  const el = target as HTMLElement | null;
-  return !!el && (["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable);
-}
-
-function Kbd({ children }: { children: React.ReactNode }) {
-  return <kbd className="rounded border bg-muted px-1.5 py-px font-sans text-xs font-medium text-foreground">{children}</kbd>;
-}
 
 /** Remounted per applicant (key) so drafts reset without effects. */
 export function ScoreForm({
@@ -40,12 +30,10 @@ export function ScoreForm({
   const criteria = rubric.criteria.filter((c) => !c.archived);
   const [scores, setScores] = useState<Record<string, number>>(applicant.mine?.scores ?? {});
   const [comment, setComment] = useState(applicant.mine?.comment ?? "");
-  const [active, setActive] = useState(0);
   const [saved, setSaved] = useState<"idle" | "saving" | "saved">("idle");
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const firstRender = useRef(true);
-  const formRef = useRef<HTMLDivElement>(null);
   const levels = criteria.map((c) => parseLevels(c.description));
   const options = Array.from({ length: Math.floor(rubric.scaleMax - rubric.scaleMin) + 1 }, (_, i) => rubric.scaleMin + i);
   const complete = criteria.length > 0 && criteria.every((c) => scores[c.id] !== undefined);
@@ -77,7 +65,11 @@ export function ScoreForm({
   }, [scores, comment, alreadySubmitted, applicant.id, stage]);
 
   function setScore(criterionId: string, value: number) {
-    setScores((prev) => ({ ...prev, [criterionId]: value }));
+    // Clicking the chosen number again clears it.
+    setScores((prev) => {
+      const { [criterionId]: current, ...rest } = prev;
+      return current === value ? rest : { ...prev, [criterionId]: value };
+    });
     setSaved("idle");
   }
 
@@ -94,47 +86,14 @@ export function ScoreForm({
     });
   }
 
-  // Number keys score the highlighted line from anywhere on the page, except while typing in a field.
-  const handleKey = useEffectEvent((e: KeyboardEvent) => {
-    if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
-    const digit = Number(e.key);
-    if (e.key.length === 1 && Number.isInteger(digit) && options.includes(digit) && criteria[active]) {
-      setScore(criteria[active].id, digit);
-      setActive((a) => Math.min(a + 1, criteria.length - 1));
-      e.preventDefault();
-    } else if (e.key === "Enter" && complete && !isPending) {
-      // Enter on a focused button or link means that button, not submit.
-      const focused = document.activeElement;
-      const onBody = !focused || focused === document.body || formRef.current?.contains(focused);
-      if (onBody && !(focused instanceof HTMLButtonElement || focused instanceof HTMLAnchorElement)) {
-        submit();
-        e.preventDefault();
-      }
-    }
-  });
-  useEffect(() => {
-    const listener = (e: KeyboardEvent) => handleKey(e);
-    window.addEventListener("keydown", listener);
-    return () => window.removeEventListener("keydown", listener);
-  }, []);
-
   return (
     <div
-      ref={formRef}
       className="space-y-5 rounded-xl border bg-card p-6"
       aria-label={`Score ${applicant.name}`}
     >
       <div>
         <h3 className="text-base font-semibold">{showsApplication ? "Your score" : applicant.name}</h3>
-        <p className="mt-1 text-[13px] text-muted-foreground">
-          Press <Kbd>{options[0]}</Kbd> to <Kbd>{options[options.length - 1]}</Kbd> to score each line, <Kbd>Enter</Kbd> to submit.
-          {stage === "resume" && (
-            <>
-              {" "}
-              <Kbd>J</Kbd> <Kbd>K</Kbd> move between answers, <Kbd>[</Kbd> <Kbd>]</Kbd> between applicants.
-            </>
-          )}
-        </p>
+        <p className="mt-1 text-[13px] text-muted-foreground">Score each line from {options[0]} to {options[options.length - 1]}. Click a number again to clear it.</p>
       </div>
 
       {!showsApplication && (
@@ -162,8 +121,8 @@ export function ScoreForm({
             {criteria.map((c, i) => {
               const meaning = levels[i];
               return (
-                <li key={c.id} onClick={() => setActive(i)}>
-                  <div className={`text-sm font-medium ${i === active ? "text-primary" : ""}`}>{c.name}</div>
+                <li key={c.id}>
+                  <div className="text-sm font-medium">{c.name}</div>
                   {meaning.size === 0 && c.description && (
                     <div className="mt-0.5 text-[13px] leading-snug whitespace-pre-line text-muted-foreground">{c.description}</div>
                   )}

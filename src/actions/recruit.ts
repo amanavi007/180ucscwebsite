@@ -740,6 +740,12 @@ export async function saveReviewAction(input: {
     if (scoreError) return { error: scoreError.message };
   }
 
+  // A score the reviewer cleared is removed rather than left behind.
+  const keep = entries.map(([criterionId]) => criterionId);
+  const stale = supabase.from("recruit_review_scores").delete().eq("review_id", review.id);
+  const { error: clearError } = await (keep.length > 0 ? stale.not("criterion_id", "in", `(${keep.join(",")})`) : stale);
+  if (clearError) return { error: clearError.message };
+
   revalidateAll();
   return {};
 }

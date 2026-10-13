@@ -1,14 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import type { ScoringApplicant, StageData } from "@/lib/data/recruit-scoring";
 import { STAGES, type Stage } from "@/lib/recruit-scoring";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { AnswerKey } from "@/lib/recruit-rubric-levels";
-import { ApplicationCard, SECTION_SELECTOR } from "./application-card";
-import { isTypingTarget, ScoreForm } from "./score-form";
+import { ApplicationCard } from "./application-card";
+import { ScoreForm } from "./score-form";
 import { Segmented } from "./segmented";
 
 const fmt = (n: number | null) => (n === null ? "–" : n.toFixed(2));
@@ -94,35 +94,6 @@ function StagePanel({ data }: { data: StageData }) {
     topRef.current?.scrollIntoView({ block: "start" });
   }, [selected]);
 
-  // J and K walk the answers, [ and ] walk the queue.
-  const onShortcut = useEffectEvent((e: KeyboardEvent) => {
-    if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
-    const key = e.key.toLowerCase();
-    if (key === "j" || key === "k") {
-      if (data.stage !== "resume") return;
-      const sections = [...document.querySelectorAll<HTMLElement>(SECTION_SELECTOR)];
-      if (sections.length === 0) return;
-      const target =
-        key === "j"
-          ? sections.find((el) => el.getBoundingClientRect().top > 24)
-          : [...sections].reverse().find((el) => el.getBoundingClientRect().top < -24) ?? sections[0];
-      target?.scrollIntoView({ behavior: "smooth", block: "start" });
-      e.preventDefault();
-    } else if (key === "[" || key === "]") {
-      const at = list.findIndex((a) => a.id === selected?.id);
-      const to = list[at + (key === "]" ? 1 : -1)];
-      if (to) {
-        setSelectedId(to.id);
-        e.preventDefault();
-      }
-    }
-  });
-  useEffect(() => {
-    const listener = (e: KeyboardEvent) => onShortcut(e);
-    window.addEventListener("keydown", listener);
-    return () => window.removeEventListener("keydown", listener);
-  }, []);
-
   function next() {
     const after = data.applicants.filter((a) => !scored(a) && a.id !== selected?.id);
     setSelectedId(after[0]?.id ?? null);
@@ -144,41 +115,11 @@ function StagePanel({ data }: { data: StageData }) {
   const mineCount = data.applicants.length - todo.length;
 
   return (
-    <div className="grid items-start gap-8 xl:grid-cols-[14.5rem_minmax(0,1fr)]">
-      {/* Wide screens: the queue is a list on the left. */}
-      <aside aria-label="Your queue" className="hidden space-y-3 xl:block">
-        <QueueFilter filter={filter} onChange={setFilter} todo={todo.length} all={data.applicants.length} />
-        {list.length === 0 ? (
-          <p className="text-sm text-muted-foreground">You&apos;ve scored everyone. Nice work!</p>
-        ) : (
-          <ul className="max-h-[36rem] space-y-0.5 overflow-y-auto">
-            {list.map((a) => (
-              <li key={a.id}>
-                <button
-                  type="button"
-                  onClick={() => setSelectedId(a.id)}
-                  aria-current={selected?.id === a.id}
-                  className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring aria-[current=true]:bg-accent aria-[current=true]:font-semibold aria-[current=true]:text-accent-foreground"
-                >
-                  <span className="truncate">{a.name}</span>
-                  {scored(a) ? (
-                    <Check className="size-4 shrink-0 text-primary" aria-label="Scored" />
-                  ) : a.mine ? (
-                    <span className="text-xs font-medium text-status-warn-foreground">Draft</span>
-                  ) : null}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <p className="px-3 text-[13px] text-muted-foreground">
-          {mineCount} of {data.applicants.length} scored by you
-        </p>
-      </aside>
+    <div>
 
       <div className="min-w-0 space-y-5">
-        {/* Narrower screens: a compact picker keeps the application and score panel side by side. */}
-        <div className="flex flex-wrap items-center gap-3 xl:hidden">
+        {/* The queue is a picker above the application, so the page is only two columns: the application and the score. */}
+        <div className="flex flex-wrap items-center gap-3">
           <QueueFilter filter={filter} onChange={setFilter} todo={todo.length} all={data.applicants.length} />
           {list.length > 0 && selected && (
             <Select value={selected.id} onValueChange={(v) => v && setSelectedId(v)}>
