@@ -14,7 +14,7 @@ export function QuickActions({ quarterId }: { quarterId: string | null }) {
     { label: "Add members", href: "/portal/admin/members?action=bulk-add", icon: UserPlus },
     { label: "Reset a password", href: "/portal/admin/members?action=find", icon: KeyRound },
     { label: "Add a meeting day", href: withQuarterParam("/portal/admin/meeting-days", quarterId), icon: CalendarPlus },
-    { label: "Add coffee chat slots", href: "/portal/admin/coffee-chats?tab=schedule", icon: Coffee },
+    { label: "Add availability", href: "/portal/admin/scheduling", icon: Coffee },
   ];
 
   return (

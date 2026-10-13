@@ -7,7 +7,11 @@ export type AgendaState = "open" | "booked" | "hidden";
 
 export interface AgendaItem {
   id: string;
+  /** The slot's own id, for looking up the full row it came from. */
+  slotId: string;
   kind: AgendaKind;
+  /** True when the viewer hosts or sits on the panel for this slot. */
+  mine: boolean;
   date: string;
   startTime: string;
   endTime: string;
@@ -16,20 +20,12 @@ export interface AgendaItem {
   /** Who runs it and where. May be empty. */
   detail: string;
   state: AgendaState;
-  /** Where to manage this kind of slot. */
-  href: string;
 }
 
 export const AGENDA_KIND_LABEL: Record<AgendaKind, string> = {
   coffee: "Coffee chat",
   interview: "Interview",
   client: "Client call",
-};
-
-export const AGENDA_HREF: Record<AgendaKind, string> = {
-  coffee: "/portal/admin/coffee-chats?tab=schedule",
-  interview: "/portal/admin/interviews?tab=schedule",
-  client: "/portal/admin/client-meetings?tab=slots",
 };
 
 function stateOf(published: boolean, booking: "open" | "booked"): AgendaState {
@@ -42,40 +38,49 @@ export function buildAgenda(input: {
   coffee: CoffeeSlot[];
   interviews: InterviewSlotRow[];
   clients: ClientMeetingSlotRow[];
+  /** The viewer, for the "mine" flag. */
+  currentExecId?: string;
+  /** Client calls are run by one fixed panel, so "mine" is whether the viewer is on it. */
+  clientPanelExecIds?: string[];
 }): AgendaItem[] {
+  const me = input.currentExecId;
+  const onClientPanel = !!me && (input.clientPanelExecIds ?? []).includes(me);
   const items: AgendaItem[] = [
     ...input.coffee.map<AgendaItem>((s) => ({
       id: `coffee:${s.id}`,
+      slotId: s.id,
       kind: "coffee",
+      mine: !!me && (s.execId1 === me || s.execId2 === me),
       date: s.date,
       startTime: s.startTime,
       endTime: s.endTime,
       title: s.applicantName ?? "Open slot",
       detail: [[s.exec1Name, s.exec2Name].filter(Boolean).join(" and "), s.location].filter(Boolean).join(" · "),
       state: stateOf(s.published, s.bookingStatus),
-      href: AGENDA_HREF.coffee,
     })),
     ...input.interviews.map<AgendaItem>((s) => ({
       id: `interview:${s.id}`,
+      slotId: s.id,
       kind: "interview",
+      mine: !!me && s.execs.some((e) => e.id === me),
       date: s.date,
       startTime: s.startTime,
       endTime: s.endTime,
       title: s.applicantName ?? "Open slot",
       detail: s.execs.length > 0 ? `Panel: ${s.execs.map((e) => e.name).join(", ")}` : "No panel yet",
       state: stateOf(s.published, s.bookingStatus),
-      href: AGENDA_HREF.interview,
     })),
     ...input.clients.map<AgendaItem>((s) => ({
       id: `client:${s.id}`,
+      slotId: s.id,
       kind: "client",
+      mine: onClientPanel,
       date: s.date,
       startTime: s.startTime,
       endTime: s.endTime,
       title: s.businessName ?? "Open slot",
       detail: "",
       state: stateOf(s.published, s.bookingStatus),
-      href: AGENDA_HREF.client,
     })),
   ];
   return items.sort((a, b) => `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`));

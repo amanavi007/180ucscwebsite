@@ -19,7 +19,7 @@ import {
   Handshake,
   ListOrdered,
   House,
-  UsersRound,
+  UserSearch,
 } from "lucide-react";
 
 export type AdminGroup = "admin-today" | "admin-recruiting" | "admin-scheduling" | "admin-people" | "admin-setup";
@@ -117,7 +117,7 @@ export const NAV_LINKS: NavLink[] = [
 /** The five places on the admin rail. `href` is where the place opens. */
 export const ADMIN_PLACES: { key: AdminGroup; label: string; href: string; icon: LucideIcon }[] = [
   { key: "admin-today", label: "Today", href: "/portal/admin", icon: House },
-  { key: "admin-recruiting", label: "Recruiting", href: "/portal/admin/applicants", icon: UsersRound },
+  { key: "admin-recruiting", label: "Recruiting", href: "/portal/admin/applicants", icon: UserSearch },
   { key: "admin-scheduling", label: "Scheduling", href: "/portal/admin/scheduling", icon: CalendarDays },
   { key: "admin-people", label: "People", href: "/portal/admin/members", icon: Users2 },
   { key: "admin-setup", label: "Setup", href: "/portal/admin/quarters", icon: SlidersHorizontal },
@@ -154,36 +154,9 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
   {
     href: "/portal/admin/scheduling",
     label: "Scheduling",
-    viewLabel: "Agenda",
     icon: CalendarDays,
     execOnly: true,
-    keywords: "agenda slots bookings coffee chats interviews client calls availability",
-    group: "admin-scheduling",
-  },
-  {
-    href: "/portal/admin/coffee-chats",
-    label: "Coffee Chats",
-    viewLabel: "Coffee chats",
-    icon: CalendarHeart,
-    execOnly: true,
-    keywords: "recruitment applicants scheduling booking availability",
-    group: "admin-scheduling",
-  },
-  {
-    href: "/portal/admin/interviews",
-    label: "Interviews",
-    icon: ClipboardCheck,
-    execOnly: true,
-    keywords: "recruitment applicants interview invitees booking availability",
-    group: "admin-scheduling",
-  },
-  {
-    href: "/portal/admin/client-meetings",
-    label: "Client Meetings",
-    viewLabel: "Client calls",
-    icon: Handshake,
-    execOnly: true,
-    keywords: "clients consulting booking availability panel services",
+    keywords: "agenda slots bookings availability coffee chats interviews invitees client calls clients meetings panel calendar feed",
     group: "admin-scheduling",
   },
   {
@@ -192,9 +165,9 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     viewLabel: "Meeting days",
     icon: CalendarClock,
     execOnly: true,
-    keywords: "calendar schedule",
+    keywords: "calendar schedule attendance",
     quarterScoped: true,
-    group: "admin-scheduling",
+    group: "admin-setup",
   },
   {
     href: "/portal/admin/members",

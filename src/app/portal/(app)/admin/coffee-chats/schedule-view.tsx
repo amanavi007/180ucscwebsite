@@ -47,7 +47,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-function SwapControl({
+export function SwapControl({
   slot,
   position,
   router,

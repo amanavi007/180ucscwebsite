@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
-function UrlEditor({ booking }: { booking: ClientMeetingBookingRow }) {
+export function UrlEditor({ booking }: { booking: ClientMeetingBookingRow }) {
   const [isPending, startTransition] = useTransition();
   const [value, setValue] = useState(booking.meetingUrl ?? "");
   const router = useRouter();

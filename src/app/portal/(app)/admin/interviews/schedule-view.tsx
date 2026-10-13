@@ -101,7 +101,7 @@ function ExecPicker({
 }
 
 /** The 2-3 execs on a slot: each can be swapped or removed (down to 2), and a third can be added. */
-function PanelControl({ slot, router }: { slot: InterviewSlotRow; router: Router }) {
+export function PanelControl({ slot, router }: { slot: InterviewSlotRow; router: Router }) {
   const [isPending, startTransition] = useTransition();
 
   function remove(execId: string) {

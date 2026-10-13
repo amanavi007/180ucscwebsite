@@ -33,6 +33,18 @@ describe("buildAgenda", () => {
   });
 });
 
+describe("mine", () => {
+  it("flags coffee chats you host, interviews you are on, and client calls when you are on the panel", () => {
+    const items = buildAgenda({ coffee, interviews, clients, currentExecId: "a", clientPanelExecIds: ["a", "x", "y"] });
+    expect(items.find((i) => i.id === "coffee:c1")?.mine).toBe(true);
+    expect(items.find((i) => i.id === "client:m1")?.mine).toBe(true);
+    expect(items.find((i) => i.id === "interview:i1")?.mine).toBe(false);
+  });
+  it("flags nothing when no one is signed in", () => {
+    expect(buildAgenda({ coffee, interviews, clients }).some((i) => i.mine)).toBe(false);
+  });
+});
+
 describe("groupByDate", () => {
   it("groups consecutive items that share a date", () => {
     const groups = groupByDate(buildAgenda({ coffee, interviews, clients }));
