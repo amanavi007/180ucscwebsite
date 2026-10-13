@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, MapPin, Clock } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FilterChip } from "@/components/filter-chip";
+import { TimeGrid } from "./week-view";
 import { deleteOrgEvent, deleteProjectEvent } from "@/actions/calendar";
 import type { CalendarEvent, LeadProject } from "@/lib/data/calendar";
 import { parseLocalDate } from "@/lib/date";
@@ -67,6 +70,79 @@ function emptyProjectForm(projectId: string, date: string): ProjectEventFormValu
   return { id: null, projectId, consultantId: null, title: "", date, time: "", location: "", description: "" };
 }
 
+
+/** Everything about one calendar item: what it is, when, where, a link, and edit/delete when you may. */
+function EventCard({ e, onEdit, onDelete }: { e: CalendarEvent; onEdit: () => void; onDelete: () => void }) {
+  return (
+    <div className="rounded-xl border p-3 text-sm">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <span
+                                  className={cn(
+                                    "mb-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide",
+                                    TYPE_STYLE[e.type].chip,
+                                  )}
+                                >
+                                  <span className={cn("size-1.5 rounded-full", TYPE_STYLE[e.type].dot)} />
+                                  {TYPE_LABEL[e.type]}
+                                </span>
+                                {e.href ? (
+                                  <Link href={e.href} className="block font-medium hover:underline">
+                                    {e.title}
+                                  </Link>
+                                ) : (
+                                  <p className="font-medium">{e.title}</p>
+                                )}
+                                {e.subtitle && (
+                                  <p className="text-xs text-muted-foreground">{e.subtitle}</p>
+                                )}
+                                {(e.time || e.location) && (
+                                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                                    {e.time && (
+                                      <span className="flex items-center gap-1">
+                                        <Clock className="size-3" />
+                                        {e.time}
+                                      </span>
+                                    )}
+                                    {e.location && (
+                                      <span className="flex items-center gap-1">
+                                        <MapPin className="size-3" />
+                                        {e.location}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                                {e.description && (
+                                  <p className="mt-1 text-xs text-muted-foreground">{e.description}</p>
+                                )}
+                              </div>
+                              {e.canManage && (e.type === "event" || e.type === "project") && (
+                                <div className="flex shrink-0 gap-0.5">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-6"
+                                    onClick={onEdit}
+                                    aria-label="Edit"
+                                  >
+                                    <Pencil className="size-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-6 text-destructive hover:text-destructive"
+                                    onClick={onDelete}
+                                    aria-label="Delete"
+                                  >
+                                    <Trash2 className="size-3.5" />
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                              </div>
+  );
+}
+
 export function CalendarView({
   events,
   today,
@@ -79,10 +155,11 @@ export function CalendarView({
   leadProjects: LeadProject[];
 }) {
   const router = useRouter();
-  const [viewMonth, setViewMonth] = useState(() => {
-    const d = parseLocalDate(today);
-    return new Date(d.getFullYear(), d.getMonth(), 1);
-  });
+  const [mode, setMode] = useState<"day" | "week" | "month">("week");
+  // The date the current view is centered on. Month view shows that date's month.
+  const [anchor, setAnchor] = useState(() => parseLocalDate(today));
+  const [hiddenTypes, setHiddenTypes] = useState<CalendarEvent["type"][]>([]);
+  const viewMonth = useMemo(() => new Date(anchor.getFullYear(), anchor.getMonth(), 1), [anchor]);
   const [openDay, setOpenDay] = useState<string | null>(null);
   const [form, setForm] = useState<EventFormValues | null>(null);
   const [projectForm, setProjectForm] = useState<ProjectEventFormValues | null>(null);
@@ -95,9 +172,11 @@ export function CalendarView({
   const [isDeleting, startDelete] = useTransition();
   const canAddProjectItem = leadProjects.length > 0;
 
+  const shownEvents = useMemo(() => events.filter((e) => !hiddenTypes.includes(e.type)), [events, hiddenTypes]);
+
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
-    for (const e of events) {
+    for (const e of shownEvents) {
       const list = map.get(e.date) ?? [];
       list.push(e);
       map.set(e.date, list);
@@ -106,7 +185,39 @@ export function CalendarView({
       list.sort((a, b) => TYPE_ORDER[a.type] - TYPE_ORDER[b.type] || a.title.localeCompare(b.title));
     }
     return map;
-  }, [events]);
+  }, [shownEvents]);
+
+  const viewDays = useMemo(() => {
+    if (mode === "day") return [anchor];
+    const start = new Date(anchor);
+    start.setDate(anchor.getDate() - anchor.getDay());
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d;
+    });
+  }, [anchor, mode]);
+
+  const upNext = useMemo(
+    () => shownEvents.filter((e) => e.date >= today).sort((a, b) => `${a.date} ${a.time ?? ""}`.localeCompare(`${b.date} ${b.time ?? ""}`)).slice(0, 5),
+    [shownEvents, today],
+  );
+
+  function step(direction: -1 | 1) {
+    setAnchor((a) => {
+      if (mode === "month") return new Date(a.getFullYear(), a.getMonth() + direction, 1);
+      const next = new Date(a);
+      next.setDate(a.getDate() + direction * (mode === "week" ? 7 : 1));
+      return next;
+    });
+  }
+
+  const title =
+    mode === "month"
+      ? viewMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })
+      : mode === "day"
+        ? anchor.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
+        : `${viewDays[0].toLocaleDateString("en-US", { month: "short", day: "numeric" })} to ${viewDays[6].toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
 
   const weeks = useMemo(() => {
     const start = new Date(viewMonth);
@@ -176,64 +287,86 @@ export function CalendarView({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="min-w-0 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setViewMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
-            aria-label="Previous month"
-          >
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="mr-1 min-w-48 text-2xl">{title}</h2>
+          <Button variant="outline" size="icon" onClick={() => step(-1)} aria-label={`Previous ${mode}`}>
             <ChevronLeft className="size-4" />
           </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setViewMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
-            aria-label="Next month"
-          >
-            <ChevronRight className="size-4" />
-          </Button>
-          <h2 className="ml-2 min-w-40 text-lg font-semibold">
-            {viewMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-          </h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              const d = parseLocalDate(today);
-              setViewMonth(new Date(d.getFullYear(), d.getMonth(), 1));
-            }}
-          >
+          <Button variant="outline" onClick={() => setAnchor(parseLocalDate(today))}>
             Today
+          </Button>
+          <Button variant="outline" size="icon" onClick={() => step(1)} aria-label={`Next ${mode}`}>
+            <ChevronRight className="size-4" />
           </Button>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            {(Object.keys(TYPE_LABEL) as CalendarEvent["type"][]).map((type) => (
-              <span key={type} className="flex items-center gap-1.5">
-                <span className={cn("size-2 rounded-full", TYPE_STYLE[type].dot)} />
-                {TYPE_LABEL[type]}
-              </span>
-            ))}
-          </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Tabs value={mode} onValueChange={(v) => v && setMode(v as typeof mode)}>
+            <TabsList>
+              <TabsTrigger value="day">Day</TabsTrigger>
+              <TabsTrigger value="week">Week</TabsTrigger>
+              <TabsTrigger value="month">Month</TabsTrigger>
+            </TabsList>
+          </Tabs>
           {isExec && (
-            <Button size="sm" onClick={() => openAddDialog(today)} className="gap-1.5">
-              <Plus className="size-4" />
+            <Button size="lg" onClick={() => openAddDialog(today)}>
+              <Plus />
               Add event
             </Button>
           )}
           {canAddProjectItem && (
-            <Button size="sm" variant="outline" onClick={() => openAddProjectDialog(today)} className="gap-1.5">
-              <Plus className="size-4" />
+            <Button variant="outline" onClick={() => openAddProjectDialog(today)}>
+              <Plus />
               Add my item
             </Button>
           )}
         </div>
       </div>
 
+      {mode !== "month" && (
+        <TimeGrid
+          days={viewDays}
+          today={today}
+          eventsByDate={eventsByDate}
+          chipClass={(type) => TYPE_STYLE[type].chip}
+          onPickDay={(dateStr) => {
+            if (isExec) openAddDialog(dateStr);
+            else if (canAddProjectItem) openAddProjectDialog(dateStr);
+          }}
+          renderEvent={(e, variant) => (
+            <Popover>
+              <PopoverTrigger
+                render={
+                  <button
+                    type="button"
+                    className={cn(
+                      "block size-full text-left outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      variant === "block" ? "px-2.5 py-1.5" : "px-2 py-1",
+                    )}
+                  />
+                }
+              >
+                <span className="block truncate text-[0.8125rem] leading-tight font-semibold">{e.title}</span>
+                {variant === "block" && (e.time || e.subtitle) && (
+                  <span className="block truncate text-xs opacity-80">{e.time ?? e.subtitle}</span>
+                )}
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-80">
+                <EventCard
+                  e={e}
+                  onEdit={() => openEditDialog(e)}
+                  onDelete={() => setDeleteTarget({ id: e.sourceId, title: e.title, type: e.type, projectId: e.projectId })}
+                />
+              </PopoverContent>
+            </Popover>
+          )}
+        />
+      )}
+
+      {mode === "month" && (
       <div className="overflow-hidden rounded-lg border">
         <div className="grid grid-cols-7 border-b bg-muted/40">
           {WEEKDAYS.map((w) => (
@@ -333,80 +466,15 @@ export function CalendarView({
                     ) : (
                       <div className="flex flex-col gap-2">
                         {dayEvents.map((e) => (
-                          <div key={e.id} className="rounded-md border p-2 text-sm">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <span
-                                  className={cn(
-                                    "mb-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide",
-                                    TYPE_STYLE[e.type].chip,
-                                  )}
-                                >
-                                  <span className={cn("size-1.5 rounded-full", TYPE_STYLE[e.type].dot)} />
-                                  {TYPE_LABEL[e.type]}
-                                </span>
-                                {e.href ? (
-                                  <Link href={e.href} className="block font-medium hover:underline">
-                                    {e.title}
-                                  </Link>
-                                ) : (
-                                  <p className="font-medium">{e.title}</p>
-                                )}
-                                {e.subtitle && (
-                                  <p className="text-xs text-muted-foreground">{e.subtitle}</p>
-                                )}
-                                {(e.time || e.location) && (
-                                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                                    {e.time && (
-                                      <span className="flex items-center gap-1">
-                                        <Clock className="size-3" />
-                                        {e.time}
-                                      </span>
-                                    )}
-                                    {e.location && (
-                                      <span className="flex items-center gap-1">
-                                        <MapPin className="size-3" />
-                                        {e.location}
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-                                {e.description && (
-                                  <p className="mt-1 text-xs text-muted-foreground">{e.description}</p>
-                                )}
-                              </div>
-                              {e.canManage && (e.type === "event" || e.type === "project") && (
-                                <div className="flex shrink-0 gap-0.5">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="size-6"
-                                    onClick={() => openEditDialog(e)}
-                                    aria-label="Edit"
-                                  >
-                                    <Pencil className="size-3.5" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="size-6 text-destructive hover:text-destructive"
-                                    onClick={() => {
-                                      setOpenDay(null);
-                                      setDeleteTarget({
-                                        id: e.sourceId,
-                                        title: e.title,
-                                        type: e.type,
-                                        projectId: e.projectId,
-                                      });
-                                    }}
-                                    aria-label="Delete"
-                                  >
-                                    <Trash2 className="size-3.5" />
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
+                          <EventCard
+                            key={e.id}
+                            e={e}
+                            onEdit={() => openEditDialog(e)}
+                            onDelete={() => {
+                              setOpenDay(null);
+                              setDeleteTarget({ id: e.sourceId, title: e.title, type: e.type, projectId: e.projectId });
+                            }}
+                          />
                         ))}
                       </div>
                     )}
@@ -417,6 +485,7 @@ export function CalendarView({
           )}
         </div>
       </div>
+      )}
 
       {form && <EventFormDialog defaults={form} onClose={() => setForm(null)} />}
       {projectForm && (
@@ -441,6 +510,47 @@ export function CalendarView({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+
+    <aside aria-label="Up next and filters" className="space-y-5 xl:sticky xl:top-0">
+      <section className="rounded-[22px] border bg-card p-5">
+        <h2 className="text-lg">Up next</h2>
+        {upNext.length === 0 ? (
+          <p className="mt-2 text-sm text-muted-foreground">Nothing coming up.</p>
+        ) : (
+          <ul className="mt-3 space-y-3">
+            {upNext.map((e) => (
+              <li key={e.id} className="grid grid-cols-[0.5rem_1fr] gap-3">
+                <span aria-hidden className={cn("rounded-full", TYPE_STYLE[e.type].dot)} />
+                <div className="min-w-0">
+                  <p className="truncate text-[0.9375rem] font-semibold">{e.title}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {parseLocalDate(e.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                    {e.time ? ` · ${e.time}` : ""}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="rounded-[22px] border bg-card p-5">
+        <h2 className="text-lg">What is shown</h2>
+        <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Types to show">
+          {(Object.keys(TYPE_LABEL) as CalendarEvent["type"][]).map((type) => (
+            <FilterChip
+              key={type}
+              selected={!hiddenTypes.includes(type)}
+              onClick={() => setHiddenTypes((h) => (h.includes(type) ? h.filter((t) => t !== type) : [...h, type]))}
+            >
+              <span aria-hidden className={cn("size-2 rounded-full", TYPE_STYLE[type].dot)} />
+              {TYPE_LABEL[type]}
+            </FilterChip>
+          ))}
+        </div>
+      </section>
+    </aside>
     </div>
   );
 }
