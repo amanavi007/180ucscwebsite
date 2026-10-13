@@ -33,6 +33,8 @@ export function ScoreForm({
   const options = Array.from({ length: Math.floor(rubric.scaleMax - rubric.scaleMin) + 1 }, (_, i) => rubric.scaleMin + i);
   const complete = criteria.length > 0 && criteria.every((c) => scores[c.id] !== undefined);
   const alreadySubmitted = !!applicant.mine?.submitted;
+  // On the resume stage the application card beside the form already shows the name and resume link.
+  const showsApplication = stage === "resume" && !!applicant.application;
 
   // Debounced draft autosave; skipped for the initial render and for already-submitted reviews.
   useEffect(() => {
@@ -82,21 +84,25 @@ export function ScoreForm({
 
   return (
     <div className="space-y-4 outline-none" tabIndex={0} onKeyDown={onKeyDown} aria-label={`Score ${applicant.name}`}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-lg font-semibold">{applicant.name}</h3>
-        {applicant.applicationLink && (
-          <a
-            href={applicant.applicationLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-sm text-primary underline-offset-4 hover:underline"
-          >
-            Open application <ExternalLink className="size-3.5" />
-          </a>
+      {!showsApplication && (
+        <>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-lg font-semibold">{applicant.name}</h3>
+          {applicant.applicationLink && (
+            <a
+              href={applicant.applicationLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm text-primary underline-offset-4 hover:underline"
+            >
+              Open application <ExternalLink className="size-3.5" />
+            </a>
+          )}
+        </div>
+        {!applicant.applicationLink && stage === "resume" && (
+          <p className="text-xs text-muted-foreground">No application link yet — add one from the applicant&apos;s profile.</p>
         )}
-      </div>
-      {!applicant.applicationLink && stage === "resume" && (
-        <p className="text-xs text-muted-foreground">No application link yet — add one from the applicant&apos;s profile.</p>
+        </>
       )}
       <p className="text-xs text-muted-foreground">
         Tip: click this form, then press {options[0]}–{options[options.length - 1]} to score each criterion in turn, and Enter to submit.

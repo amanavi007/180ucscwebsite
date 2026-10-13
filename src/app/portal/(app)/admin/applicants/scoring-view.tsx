@@ -7,14 +7,21 @@ import { STAGES, type Stage } from "@/lib/recruit-scoring";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ApplicationCard } from "./application-card";
 import { ReviewerInsights } from "./reviewer-insights";
 import { ScoreForm } from "./score-form";
 
 const fmt = (n: number | null) => (n === null ? "–" : n.toFixed(2));
 
-function OthersPanel({ applicant, disagreeing }: { applicant: ScoringApplicant; disagreeing: boolean }) {
-  if (!applicant.mine?.submitted) {
-    return <p className="text-xs text-muted-foreground">Other reviewers&apos; scores are hidden until you submit yours.</p>;
+function OthersPanel({ applicant, disagreeing, stage }: { applicant: ScoringApplicant; disagreeing: boolean; stage: Stage }) {
+  if (!applicant.unlocked) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        {stage === "resume"
+          ? "Other reviewers' scores stay hidden until everyone assigned to this applicant has submitted."
+          : "Other reviewers' scores are hidden until you submit yours."}
+      </p>
+    );
   }
   return (
     <div className="space-y-2">
@@ -69,12 +76,12 @@ function StagePanel({ data, settings }: { data: StageData; settings: RecruitSett
       <Card className="mt-4">
         <CardContent className="py-10 text-center">
           <p className="font-medium">
-            {data.stage === "interview" ? "No one to interview-score yet" : "No applicants to score yet"}
+            {data.stage === "interview" ? "No one to interview-score yet" : "No applicants are assigned to you yet"}
           </p>
           <p className="text-sm text-muted-foreground">
             {data.stage === "interview"
               ? "Applicants show up here once you mark their interview as attended in the Attendance tab."
-              : "Add applicants or import a list first."}
+              : "Import applications, then use Assign reviewers in the Review progress tab."}
           </p>
         </CardContent>
       </Card>
@@ -87,7 +94,7 @@ function StagePanel({ data, settings }: { data: StageData; settings: RecruitSett
     <div className="mt-4 grid items-start gap-6 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
       <div className="space-y-3">
         <div className="text-sm">
-          <b>{mineCount}</b> of {data.applicants.length} scored by you
+          <b>{mineCount}</b> of {data.applicants.length} {data.stage === "resume" ? "assigned to you scored" : "scored by you"}
         </div>
         <div className="flex gap-1.5 text-xs">
           {(["todo", "all"] as const).map((f) => (
@@ -128,10 +135,24 @@ function StagePanel({ data, settings }: { data: StageData; settings: RecruitSett
       </div>
 
       <div className="space-y-5">
-        {selected ? (
+        {selected && data.stage === "resume" ? (
+          <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_24rem]">
+            <ApplicationCard
+              key={selected.id}
+              name={selected.name}
+              email={selected.email}
+              application={selected.application}
+              applicationLink={selected.applicationLink}
+            />
+            <div className="space-y-5 xl:sticky xl:top-4">
+              <ScoreForm key={`${data.stage}:${selected.id}`} stage={data.stage} rubric={data.rubric} applicant={selected} onSubmitted={next} />
+              <OthersPanel applicant={selected} disagreeing={selected.disagree} stage={data.stage} />
+            </div>
+          </div>
+        ) : selected ? (
           <>
             <ScoreForm key={`${data.stage}:${selected.id}`} stage={data.stage} rubric={data.rubric} applicant={selected} onSubmitted={next} />
-            <OthersPanel applicant={selected} disagreeing={selected.disagree} />
+            <OthersPanel applicant={selected} disagreeing={selected.disagree} stage={data.stage} />
           </>
         ) : (
           <p className="text-sm text-muted-foreground">Pick an applicant to start scoring.</p>
