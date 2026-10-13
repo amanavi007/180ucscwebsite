@@ -44,7 +44,7 @@ export function ImportDialog({
         render={
           <Button size="sm" variant="outline">
             <FileUp />
-            Import list
+            Import attendance
           </Button>
         }
       />

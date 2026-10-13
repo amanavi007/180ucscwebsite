@@ -36,6 +36,7 @@
     "react-easy-crop": "^6.2.3",
     "react-hook-form": "^7.83.0",
     "react-markdown": "^10.1.0",
+    "read-excel-file": "^9.3.12",
     "remark-gfm": "^4.0.1",
     "resend": "^6.30.0",
     "server-only": "^0.0.1",
