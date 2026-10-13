@@ -1,22 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import { Check } from "lucide-react";
 import type { ScoringApplicant, StageData } from "@/lib/data/recruit-scoring";
-import type { RecruitSettings } from "@/lib/recruit-settings";
 import { STAGES, type Stage } from "@/lib/recruit-scoring";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ApplicationCard } from "./application-card";
-import { ReviewerInsights } from "./reviewer-insights";
 import { ScoreForm } from "./score-form";
+import { Segmented } from "./segmented";
 
 const fmt = (n: number | null) => (n === null ? "–" : n.toFixed(2));
 
 function OthersPanel({ applicant, disagreeing, stage }: { applicant: ScoringApplicant; disagreeing: boolean; stage: Stage }) {
   if (!applicant.unlocked) {
     return (
-      <p className="text-xs text-muted-foreground">
+      <p className="text-[13px] text-muted-foreground">
         {stage === "resume"
           ? "Other reviewers' scores stay hidden until everyone assigned to this applicant has submitted."
           : "Other reviewers' scores are hidden until you submit yours."}
@@ -33,14 +32,14 @@ function OthersPanel({ applicant, disagreeing, stage }: { applicant: ScoringAppl
             {applicant.visibleSummary.count === 1 ? "" : "s"}
           </span>
         )}
-        {disagreeing && <Badge variant="destructive">reviewers disagree</Badge>}
+        {disagreeing && <Badge variant="destructive">Reviewers disagree</Badge>}
       </div>
       {applicant.others.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Nobody else has submitted yet.</p>
+        <p className="text-[13px] text-muted-foreground">Nobody else has submitted yet.</p>
       ) : (
-        <ul className="divide-y rounded-lg border">
+        <ul className="divide-y rounded-xl border bg-card">
           {applicant.others.map((o) => (
-            <li key={o.id} className="space-y-0.5 p-2 text-sm">
+            <li key={o.id} className="space-y-0.5 px-3 py-2.5 text-sm">
               <div className="flex items-center justify-between gap-2">
                 <span>{o.reviewerName}</span>
                 <span className="tabular-nums">
@@ -48,7 +47,7 @@ function OthersPanel({ applicant, disagreeing, stage }: { applicant: ScoringAppl
                   {o.wasNormalized && <span className="text-xs text-muted-foreground"> → {fmt(o.normalized)}</span>}
                 </span>
               </div>
-              {o.comment && <p className="text-xs text-muted-foreground">&ldquo;{o.comment}&rdquo;</p>}
+              {o.comment && <p className="text-[13px] text-muted-foreground">&ldquo;{o.comment}&rdquo;</p>}
             </li>
           ))}
         </ul>
@@ -57,7 +56,22 @@ function OthersPanel({ applicant, disagreeing, stage }: { applicant: ScoringAppl
   );
 }
 
-function StagePanel({ data, settings }: { data: StageData; settings: RecruitSettings }) {
+function QueueFilter({ filter, onChange, todo, all }: { filter: "todo" | "all"; onChange: (f: "todo" | "all") => void; todo: number; all: number }) {
+  return (
+    <Segmented
+      size="sm"
+      label="Queue filter"
+      value={filter}
+      onChange={onChange}
+      options={[
+        { value: "todo", label: `To score · ${todo}` },
+        { value: "all", label: `All · ${all}` },
+      ]}
+    />
+  );
+}
+
+function StagePanel({ data }: { data: StageData }) {
   const [filter, setFilter] = useState<"todo" | "all">("todo");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -73,110 +87,118 @@ function StagePanel({ data, settings }: { data: StageData; settings: RecruitSett
 
   if (data.applicants.length === 0) {
     return (
-      <Card className="mt-4">
-        <CardContent className="py-10 text-center">
-          <p className="font-medium">
-            {data.stage === "interview" ? "No one to interview-score yet" : "No applicants are assigned to you yet"}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {data.stage === "interview"
-              ? "Applicants show up here once you mark their interview as attended in the Attendance tab."
-              : "Import applications, then use Assign reviewers in the Review progress tab."}
-          </p>
-        </CardContent>
-      </Card>
+      <div className="py-14 text-center">
+        <p className="font-medium">{data.stage === "interview" ? "No one to interview-score yet" : "No applicants are assigned to you yet"}</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {data.stage === "interview"
+            ? "Applicants show up here once you mark their interview as attended in the Attendance tab."
+            : "Import applications, then use Assign reviewers in the Progress view."}
+        </p>
+      </div>
     );
   }
 
   const mineCount = data.applicants.length - todo.length;
 
   return (
-    <div className="mt-4 grid items-start gap-6 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
-      <div className="space-y-3">
-        <div className="text-sm">
-          <b>{mineCount}</b> of {data.applicants.length} {data.stage === "resume" ? "assigned to you scored" : "scored by you"}
-        </div>
-        <div className="flex gap-1.5 text-xs">
-          {(["todo", "all"] as const).map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setFilter(f)}
-              className={`rounded-full px-3 py-1 ${filter === f ? "bg-foreground text-background" : "bg-muted"}`}
-            >
-              {f === "todo" ? `To score (${todo.length})` : "Everyone"}
-            </button>
-          ))}
-        </div>
+    <div className="grid items-start gap-8 2xl:grid-cols-[14.5rem_minmax(0,1fr)]">
+      {/* Wide screens: the queue is a list on the left. */}
+      <aside aria-label="Your queue" className="hidden space-y-3 2xl:block">
+        <QueueFilter filter={filter} onChange={setFilter} todo={todo.length} all={data.applicants.length} />
         {list.length === 0 ? (
           <p className="text-sm text-muted-foreground">You&apos;ve scored everyone. Nice work!</p>
         ) : (
-          <ul className="max-h-[28rem] divide-y overflow-y-auto rounded-xl border">
+          <ul className="max-h-[36rem] space-y-0.5 overflow-y-auto">
             {list.map((a) => (
               <li key={a.id}>
                 <button
                   type="button"
                   onClick={() => setSelectedId(a.id)}
-                  className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-muted/50 ${
-                    selected?.id === a.id ? "bg-muted" : ""
-                  }`}
+                  aria-current={selected?.id === a.id}
+                  className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring aria-[current=true]:bg-accent aria-[current=true]:font-semibold aria-[current=true]:text-accent-foreground"
                 >
                   <span className="truncate">{a.name}</span>
-                  {scored(a) ? <Badge variant="secondary">scored</Badge> : a.mine ? <Badge variant="outline">draft</Badge> : null}
+                  {scored(a) ? (
+                    <Check className="size-4 shrink-0 text-primary" aria-label="Scored" />
+                  ) : a.mine ? (
+                    <span className="text-xs font-medium text-status-warn-foreground">Draft</span>
+                  ) : null}
                 </button>
               </li>
             ))}
           </ul>
         )}
-        <div className="pt-2">
-          <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Reviewers</h4>
-          <ReviewerInsights reviewers={data.reviewers} minN={settings.normalizeMinN} />
-        </div>
-      </div>
+        <p className="px-3 text-[13px] text-muted-foreground">
+          {mineCount} of {data.applicants.length} scored by you
+        </p>
+      </aside>
 
-      <div className="space-y-5">
+      <div className="min-w-0 space-y-5">
+        {/* Narrower screens: a compact picker keeps the application and score panel side by side. */}
+        <div className="flex flex-wrap items-center gap-3 2xl:hidden">
+          <QueueFilter filter={filter} onChange={setFilter} todo={todo.length} all={data.applicants.length} />
+          {list.length > 0 && selected && (
+            <Select value={selected.id} onValueChange={(v) => v && setSelectedId(v)}>
+              <SelectTrigger size="sm" className="w-64" aria-label="Applicant">
+                <SelectValue>{(value: string) => data.applicants.find((a) => a.id === value)?.name}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {list.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name}
+                    {scored(a) ? " · scored" : a.mine ? " · draft" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <span className="text-[13px] text-muted-foreground">
+            {mineCount} of {data.applicants.length} scored by you
+          </span>
+        </div>
+
         {selected && data.stage === "resume" ? (
-          <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_24rem]">
-            <ApplicationCard
-              key={selected.id}
-              name={selected.name}
-              email={selected.email}
-              application={selected.application}
-              applicationLink={selected.applicationLink}
-            />
-            <div className="space-y-5 xl:sticky xl:top-4">
+          <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
+            <div className="max-w-[40rem]">
+              <ApplicationCard
+                key={selected.id}
+                name={selected.name}
+                email={selected.email}
+                application={selected.application}
+                applicationLink={selected.applicationLink}
+              />
+            </div>
+            <div className="space-y-4 xl:sticky xl:top-4">
               <ScoreForm key={`${data.stage}:${selected.id}`} stage={data.stage} rubric={data.rubric} applicant={selected} onSubmitted={next} />
               <OthersPanel applicant={selected} disagreeing={selected.disagree} stage={data.stage} />
             </div>
           </div>
         ) : selected ? (
-          <>
+          <div className="max-w-xl space-y-4">
             <ScoreForm key={`${data.stage}:${selected.id}`} stage={data.stage} rubric={data.rubric} applicant={selected} onSubmitted={next} />
             <OthersPanel applicant={selected} disagreeing={selected.disagree} stage={data.stage} />
-          </>
+          </div>
         ) : (
-          <p className="text-sm text-muted-foreground">Pick an applicant to start scoring.</p>
+          <p className="text-sm text-muted-foreground">You&apos;ve scored everyone. Nice work!</p>
         )}
       </div>
     </div>
   );
 }
 
-export function ScoringView({ stages, settings }: { stages: Record<Stage, StageData>; settings: RecruitSettings }) {
+export function ScoringView({ stages }: { stages: Record<Stage, StageData> }) {
   const [stage, setStage] = useState<Stage>("resume");
   return (
-    <div className="mt-4">
-      <Tabs value={stage} onValueChange={(v) => v && setStage(v as Stage)}>
-        <TabsList>
-          {STAGES.map((s) => (
-            <TabsTrigger key={s.value} value={s.value}>
-              {s.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+    <div className="space-y-5">
+      <Segmented
+        size="sm"
+        label="Stage"
+        value={stage}
+        onChange={setStage}
+        options={STAGES.map((s) => ({ value: s.value, label: s.label === "Resume" ? "Applications" : "Interviews" }))}
+      />
       {/* Keyed by stage so each stage keeps its own selection and filter. */}
-      <StagePanel key={stage} data={stages[stage]} settings={settings} />
+      <StagePanel key={stage} data={stages[stage]} />
     </div>
   );
 }

@@ -83,51 +83,55 @@ export function ScoreForm({
   }
 
   return (
-    <div className="space-y-4 outline-none" tabIndex={0} onKeyDown={onKeyDown} aria-label={`Score ${applicant.name}`}>
+    <div
+      className="space-y-5 rounded-xl border bg-card p-6 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      tabIndex={0}
+      onKeyDown={onKeyDown}
+      aria-label={`Score ${applicant.name}`}
+    >
+      <div>
+        <h3 className="text-base font-semibold">{showsApplication ? "Your score" : applicant.name}</h3>
+        <p className="mt-1 text-[13px] text-muted-foreground">
+          Press {options[0]} to {options[options.length - 1]} to score each line, and Enter to submit.
+        </p>
+      </div>
+
       {!showsApplication && (
-        <>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-lg font-semibold">{applicant.name}</h3>
-          {applicant.applicationLink && (
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          {applicant.applicationLink ? (
             <a
               href={applicant.applicationLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-sm text-primary underline-offset-4 hover:underline"
+              className="inline-flex items-center gap-1 font-medium text-primary underline-offset-4 hover:underline"
             >
               Open application <ExternalLink className="size-3.5" />
             </a>
+          ) : (
+            stage === "resume" && <span className="text-muted-foreground">No application link yet. Add one from the applicant&apos;s profile.</span>
           )}
         </div>
-        {!applicant.applicationLink && stage === "resume" && (
-          <p className="text-xs text-muted-foreground">No application link yet — add one from the applicant&apos;s profile.</p>
-        )}
-        </>
       )}
-      <p className="text-xs text-muted-foreground">
-        Tip: click this form, then press {options[0]}–{options[options.length - 1]} to score each criterion in turn, and Enter to submit.
-      </p>
 
       {criteria.length === 0 ? (
-        <p className="text-sm text-muted-foreground">This rubric has no active criteria. Add some in the Setup tab.</p>
+        <p className="text-sm text-muted-foreground">This rubric has no active criteria. Add some in Settings → Rubric.</p>
       ) : (
-        <ul className="space-y-3">
+        <ul className="space-y-5">
           {criteria.map((c, i) => (
-            <li key={c.id} className={`rounded-lg border p-3 ${i === active ? "border-foreground" : ""}`} onClick={() => setActive(i)}>
-              <div className="font-medium">{c.name}</div>
-              {c.description && <div className="mb-2 text-xs text-muted-foreground">{c.description}</div>}
-              <div className="flex flex-wrap gap-1.5">
+            <li key={c.id} onClick={() => setActive(i)}>
+              <div className={`text-sm font-medium ${i === active ? "text-primary" : ""}`}>{c.name}</div>
+              {c.description && <div className="mt-0.5 text-[13px] leading-snug text-muted-foreground">{c.description}</div>}
+              <div role="group" aria-label={`${c.name} score`} className="mt-2.5 flex gap-1.5">
                 {options.map((o) => (
-                  <Button
+                  <button
                     key={o}
                     type="button"
-                    size="sm"
-                    variant={scores[c.id] === o ? "default" : "outline"}
                     aria-pressed={scores[c.id] === o}
                     onClick={() => setScore(c.id, o)}
+                    className="size-11 rounded-lg border bg-card text-[15px] font-medium transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:font-semibold aria-pressed:text-background"
                   >
                     {o}
-                  </Button>
+                  </button>
                 ))}
               </div>
             </li>
@@ -135,26 +139,32 @@ export function ScoreForm({
         </ul>
       )}
 
-      <Textarea
-        aria-label="Comment"
-        placeholder="Anything the group should know (optional)"
-        rows={3}
-        value={comment}
-        onChange={(e) => {
-          setComment(e.target.value);
-          setSaved("idle");
-        }}
-      />
+      <div>
+        <label htmlFor={`comment-${applicant.id}`} className="text-sm font-medium">
+          Comment <span className="font-normal text-muted-foreground">(optional)</span>
+        </label>
+        <Textarea
+          id={`comment-${applicant.id}`}
+          className="mt-2"
+          placeholder="Anything the group should know"
+          rows={3}
+          value={comment}
+          onChange={(e) => {
+            setComment(e.target.value);
+            setSaved("idle");
+          }}
+        />
+      </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-xs text-muted-foreground">
-          {alreadySubmitted ? "Submitted — you can still change it." : saved === "saving" ? "Saving draft…" : saved === "saved" ? "Draft saved" : ""}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="text-[13px] text-muted-foreground">
+          {alreadySubmitted ? "Submitted. You can still change it." : saved === "saving" ? "Saving draft…" : saved === "saved" ? "Draft saved" : ""}
         </span>
-        <Button disabled={isPending || !complete} onClick={submit}>
-          {alreadySubmitted ? "Update score" : "Submit & next"}
+        <Button size="lg" disabled={isPending || !complete} onClick={submit}>
+          {alreadySubmitted ? "Update score" : "Submit and next"}
         </Button>
       </div>
-      {!complete && criteria.length > 0 && <p className="text-xs text-muted-foreground">Score every criterion to submit.</p>}
+      {!complete && criteria.length > 0 && <p className="text-[13px] text-muted-foreground">Score every line to submit.</p>}
     </div>
   );
 }

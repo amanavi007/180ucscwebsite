@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Check, Download, Users } from "lucide-react";
 import { assignReviewersAction, setApplicantReviewersAction, setRevealAction } from "@/actions/recruit-review";
-import type { ScoringBundle } from "@/lib/data/recruit-scoring";
+import type { ReviewerInsightRow, ScoringBundle } from "@/lib/data/recruit-scoring";
 import {
   dashboardCsv,
   filterDashboardApplicants,
@@ -20,6 +20,8 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ReviewerInsights } from "./reviewer-insights";
+import { StatusChip, type StatusTone } from "./status-chip";
 
 type Setup = ScoringBundle["reviewSetup"];
 type Role = "assigned" | "none" | "conflict";
@@ -39,14 +41,26 @@ const ROLE_LABELS: Record<Role, string> = {
 
 const fmt = (n: number | null) => (n === null ? "–" : n.toFixed(2));
 
+const STATUS_TONE: Record<DashboardApplicant["state"]["status"], StatusTone> = {
+  unassigned: "warn",
+  "not-started": "neutral",
+  "in-progress": "warn",
+  complete: "ok",
+  revealed: "ok",
+};
+
 export function ReviewProgressView({
   quarterId,
   dashboard,
   setup,
+  insights,
+  minN,
 }: {
   quarterId: string;
   dashboard: ScoringBundle["dashboard"];
   setup: Setup;
+  insights: ReviewerInsightRow[];
+  minN: number;
 }) {
   const [filter, setFilter] = useState<DashboardFilter>("all");
   const [query, setQuery] = useState("");
@@ -200,6 +214,13 @@ export function ReviewProgressView({
         )}
       </section>
 
+      <details className="group">
+        <summary className="cursor-pointer text-sm font-medium">How each reviewer grades</summary>
+        <div className="mt-3 max-w-2xl">
+          <ReviewerInsights reviewers={insights} minN={minN} />
+        </div>
+      </details>
+
       <ReassignDialog key={editing?.id ?? "none"} applicant={editing} setup={setup} onClose={() => setEditingId(null)} />
     </div>
   );
@@ -242,9 +263,9 @@ function ApplicantRow({
         )}
       </TableCell>
       <TableCell>
-        <Badge variant={status === "complete" || status === "revealed" ? "secondary" : status === "unassigned" ? "outline" : "default"}>
+        <StatusChip tone={STATUS_TONE[status]} className="h-7 px-2.5 text-[13px]">
           {status === "in-progress" ? `${a.state.submitted} of ${a.state.assigned} done` : STATUS_LABELS[status]}
-        </Badge>
+        </StatusChip>
       </TableCell>
       <TableCell className="text-right tabular-nums">{fmt(a.raw)}</TableCell>
       <TableCell className="text-right tabular-nums">{fmt(a.normalized)}</TableCell>
