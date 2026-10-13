@@ -4,6 +4,18 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 
+/** Plain text of rendered heading children, for ids and the "On this page" outline. */
+function textOf(node: React.ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(textOf).join("");
+  if (node && typeof node === "object" && "props" in node) return textOf((node as { props: { children?: React.ReactNode } }).props.children);
+  return "";
+}
+
+export function headingId(text: string) {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
 const components = {
   p: (props: React.ComponentProps<"p">) => <p className="mb-3 last:mb-0" {...props} />,
   ul: (props: React.ComponentProps<"ul">) => (
@@ -22,13 +34,13 @@ const components = {
     <input className="mr-1.5 -mt-0.5 inline-block size-3.5 align-middle accent-primary" disabled {...props} />
   ),
   h1: (props: React.ComponentProps<"h1">) => (
-    <h1 className="mt-6 mb-3 text-xl font-semibold first:mt-0" {...props} />
+    <h1 id={headingId(textOf(props.children))} className="mt-6 mb-3 text-xl font-semibold first:mt-0" {...props} />
   ),
   h2: (props: React.ComponentProps<"h2">) => (
-    <h2 className="mt-6 mb-2 text-lg font-semibold first:mt-0" {...props} />
+    <h2 id={headingId(textOf(props.children))} className="mt-6 mb-2 text-lg font-semibold first:mt-0" {...props} />
   ),
   h3: (props: React.ComponentProps<"h3">) => (
-    <h3 className="mt-4 mb-2 text-base font-semibold first:mt-0" {...props} />
+    <h3 id={headingId(textOf(props.children))} className="mt-4 mb-2 text-base font-semibold first:mt-0" {...props} />
   ),
   a: (props: React.ComponentProps<"a">) => (
     <a className="underline underline-offset-2" target="_blank" rel="noreferrer" {...props} />
