@@ -28,16 +28,18 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ROLE_LABELS, roleLabel } from "@/lib/auth/roles";
 import type { UserRole } from "@/lib/supabase/database.types";
-import { ROLE_OPTIONS, type Member } from "./member-types";
+import { ROLE_OPTIONS, type Member, type MemberStats } from "./member-types";
 import { MaskedSecret } from "./masked-secret";
 
 /** Everything you can do to one member, in a panel beside the roster. Keyed by member so drafts reset when you pick someone else. */
 export function MemberInspector({
   member,
+  stats,
   defaultPassword,
   onClose,
 }: {
   member: Member;
+  stats: MemberStats | undefined;
   defaultPassword: string;
   onClose: () => void;
 }) {
@@ -103,6 +105,28 @@ export function MemberInspector({
           ✕
         </Button>
       </div>
+
+      {stats && (
+        <dl className="grid grid-cols-3 gap-3 text-sm">
+          <div className="rounded-2xl bg-muted p-3">
+            <dt className="text-muted-foreground">Team</dt>
+            <dd className="mt-0.5 font-semibold">{stats.team}</dd>
+          </div>
+          <div className="rounded-2xl bg-muted p-3">
+            <dt className="text-muted-foreground">Attendance</dt>
+            <dd className="mt-0.5 font-semibold tabular-nums">
+              {stats.attendanceRate === null ? "–" : `${Math.round(stats.attendanceRate * 100)}%`}
+            </dd>
+          </div>
+          <div className="rounded-2xl bg-muted p-3">
+            <dt className="text-muted-foreground">Tasks</dt>
+            <dd className="mt-0.5 font-semibold tabular-nums">
+              {stats.tasksDone} of {stats.tasksTotal}
+              {stats.overdueTasks > 0 && <span className="block text-xs font-semibold text-status-bad-foreground">{stats.overdueTasks} overdue</span>}
+            </dd>
+          </div>
+        </dl>
+      )}
 
       <div className="space-y-5">
         <Field>

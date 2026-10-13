@@ -4,10 +4,25 @@ import { Badge } from "@/components/ui/badge";
 import { PersonAvatar } from "@/components/person-avatar";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { roleLabel } from "@/lib/auth/roles";
-import type { Member } from "./member-types";
+import { memberStatus, type Member, type MemberStats } from "./member-types";
 
 /** One roster row. Clicking it opens that member in the panel beside the table. */
-export function MemberRow({ member, selected, onSelect }: { member: Member; selected: boolean; onSelect: () => void }) {
+export function MemberRow({
+  member,
+  stats,
+  threshold,
+  selected,
+  onSelect,
+}: {
+  member: Member;
+  stats: MemberStats | undefined;
+  threshold: number;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const status = memberStatus(stats, threshold);
+  const rate = stats?.attendanceRate;
+  const team = stats?.team ?? "Unassigned";
   return (
     <TableRow
       data-state={selected ? "selected" : undefined}
@@ -25,12 +40,19 @@ export function MemberRow({ member, selected, onSelect }: { member: Member; sele
       <TableCell>
         <span className="flex items-center gap-3">
           <PersonAvatar name={member.name} />
-          <span className="font-semibold">{member.name}</span>
+          <span className="min-w-0">
+            <span className="block font-semibold">{member.name}</span>
+            <span className="block text-sm text-muted-foreground">{member.email}</span>
+          </span>
         </span>
       </TableCell>
-      <TableCell className="text-muted-foreground">{member.email}</TableCell>
       <TableCell>
         <Badge variant="muted">{roleLabel(member.role)}</Badge>
+      </TableCell>
+      <TableCell className={team === "Unassigned" ? "text-muted-foreground" : ""}>{team}</TableCell>
+      <TableCell className="tabular-nums">{rate === null || rate === undefined ? "–" : `${Math.round(rate * 100)}%`}</TableCell>
+      <TableCell>
+        <Badge variant={status.variant}>{status.label}</Badge>
       </TableCell>
     </TableRow>
   );

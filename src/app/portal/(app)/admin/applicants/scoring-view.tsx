@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { AnswerKey } from "@/lib/recruit-rubric-levels";
 import { ApplicationCard } from "./application-card";
 import { ScoreForm } from "./score-form";
-import { Segmented } from "./segmented";
+import { FilterChip } from "@/components/filter-chip";
 
 const fmt = (n: number | null) => (n === null ? "–" : n.toFixed(2));
 
@@ -58,16 +58,14 @@ function OthersPanel({ applicant, disagreeing, stage }: { applicant: ScoringAppl
 
 function QueueFilter({ filter, onChange, todo, all }: { filter: "todo" | "all"; onChange: (f: "todo" | "all") => void; todo: number; all: number }) {
   return (
-    <Segmented
-      size="sm"
-      label="Queue filter"
-      value={filter}
-      onChange={onChange}
-      options={[
-        { value: "todo", label: `To score · ${todo}` },
-        { value: "all", label: `All · ${all}` },
-      ]}
-    />
+    <div role="group" aria-label="Queue filter" className="flex gap-1.5">
+      <FilterChip selected={filter === "todo"} onClick={() => onChange("todo")} count={todo}>
+        To score
+      </FilterChip>
+      <FilterChip selected={filter === "all"} onClick={() => onChange("all")} count={all}>
+        All
+      </FilterChip>
+    </div>
   );
 }
 
@@ -182,13 +180,13 @@ export function ScoringView({ stages }: { stages: Record<Stage, StageData> }) {
   const [stage, setStage] = useState<Stage>("resume");
   return (
     <div className="space-y-5">
-      <Segmented
-        size="sm"
-        label="Stage"
-        value={stage}
-        onChange={setStage}
-        options={STAGES.map((s) => ({ value: s.value, label: s.label === "Resume" ? "Applications" : "Interviews" }))}
-      />
+      <div role="group" aria-label="Stage" className="flex gap-1.5">
+        {STAGES.map((s) => (
+          <FilterChip key={s.value} selected={stage === s.value} onClick={() => setStage(s.value)}>
+            {s.label === "Resume" ? "Applications" : "Interviews"}
+          </FilterChip>
+        ))}
+      </div>
       {/* Keyed by stage so each stage keeps its own selection and filter. */}
       <StagePanel key={stage} data={stages[stage]} />
     </div>

@@ -20,7 +20,8 @@ import { GivePointsDialog } from "./give-points-dialog";
 import { HowItWorks } from "./how-it-works";
 import { ImportApplicationsDialog } from "./import-applications-dialog";
 import { ImportDialog } from "./import-dialog";
-import { ReviewsView } from "./reviews-view";
+import { ReviewProgressView } from "./review-progress-view";
+import { ScoringView } from "./scoring-view";
 
 export function ApplicantsWorkspace({
   quarterId,
@@ -43,7 +44,7 @@ export function ApplicantsWorkspace({
   attendance: AttendanceData;
   scoring: ScoringBundle;
 }) {
-  const [tab, setTab] = useUrlTab(["applicants", "reviews", "attendance", "duplicates"], "applicants");
+  const [tab, setTab] = useUrlTab(["applicants", "queue", "progress", "attendance", "duplicates"], "applicants");
   const [addOpen, setAddOpen] = useState(false);
   const [importApplicationsOpen, setImportApplicationsOpen] = useState(false);
   const [importAttendanceOpen, setImportAttendanceOpen] = useState(false);
@@ -56,6 +57,10 @@ export function ApplicantsWorkspace({
   const reviewStatus = Object.fromEntries(scoring.dashboard.applicants.map((a) => [a.id, a.state]));
 
   const withoutApplication = rows.filter((r) => !r.hasApplication).length;
+  const myToScore = (["resume", "interview"] as const).reduce(
+    (n, stage) => n + scoring.stages[stage].applicants.filter((a) => !a.mine?.submitted).length,
+    0,
+  );
 
   return (
     <div className="space-y-6">
@@ -97,7 +102,8 @@ export function ApplicantsWorkspace({
         <TabsList className="self-start">
           {[
             { value: "applicants", label: "Applicants", count: 0 },
-            { value: "reviews", label: "Reviews", count: scoring.dashboard.totals.unassigned },
+            { value: "queue", label: "My reviews", count: myToScore },
+            { value: "progress", label: "Team progress", count: scoring.dashboard.totals.unassigned },
             { value: "attendance", label: "Attendance", count: attendance.toMark.length },
           ].map((t) => (
             <TabsTrigger key={t.value} value={t.value} className="gap-2">
@@ -121,8 +127,19 @@ export function ApplicantsWorkspace({
             onAdd={() => setAddOpen(true)}
           />
         </TabsContent>
-        <TabsContent value="reviews">
-          <ReviewsView quarterId={quarterId} scoring={scoring} />
+        <TabsContent value="queue">
+          <div className="mt-6">
+            <ScoringView stages={scoring.stages} />
+          </div>
+        </TabsContent>
+        <TabsContent value="progress">
+          <ReviewProgressView
+            quarterId={quarterId}
+            dashboard={scoring.dashboard}
+            setup={scoring.reviewSetup}
+            insights={scoring.stages.resume.reviewers}
+            minN={scoring.settings.normalizeMinN}
+          />
         </TabsContent>
         <TabsContent value="attendance">
           <AttendanceView quarterId={quarterId} data={attendance} applicantNames={applicantNames} />

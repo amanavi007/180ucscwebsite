@@ -202,6 +202,7 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     viewLabel: "Roster",
     icon: Users,
     execOnly: true,
+    quarterScoped: true,
     keywords: "people bulk create accounts reset password",
     group: "admin-people",
   },
