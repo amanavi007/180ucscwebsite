@@ -857,6 +857,52 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["recruit_reviews"]["Insert"]>;
         Relationships: [];
       };
+      recruit_applicant_answers: {
+        Row: {
+          applicant_id: string;
+          submitted_at: string | null;
+          graduation_term: string | null;
+          how_heard: string | null;
+          essay_why: string | null;
+          essay_teamwork: string | null;
+          essay_bring: string | null;
+          resume_url: string | null;
+          import_batch_id: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          applicant_id: string;
+          submitted_at?: string | null;
+          graduation_term?: string | null;
+          how_heard?: string | null;
+          essay_why?: string | null;
+          essay_teamwork?: string | null;
+          essay_bring?: string | null;
+          resume_url?: string | null;
+          import_batch_id?: string | null;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["recruit_applicant_answers"]["Insert"]>;
+        Relationships: [];
+      };
+      recruit_review_assignments: {
+        Row: { id: string; applicant_id: string; reviewer_id: string; stage: "resume" | "interview"; assigned_at: string };
+        Insert: { id?: string; applicant_id: string; reviewer_id: string; stage?: "resume" | "interview"; assigned_at?: string };
+        Update: Partial<Database["public"]["Tables"]["recruit_review_assignments"]["Insert"]>;
+        Relationships: [];
+      };
+      recruit_review_exclusions: {
+        Row: { applicant_id: string; reviewer_id: string };
+        Insert: { applicant_id: string; reviewer_id: string };
+        Update: Partial<Database["public"]["Tables"]["recruit_review_exclusions"]["Insert"]>;
+        Relationships: [];
+      };
+      recruit_review_reveals: {
+        Row: { applicant_id: string; stage: "resume" | "interview"; revealed_by: string | null; revealed_at: string };
+        Insert: { applicant_id: string; stage?: "resume" | "interview"; revealed_by?: string | null; revealed_at?: string };
+        Update: Partial<Database["public"]["Tables"]["recruit_review_reveals"]["Insert"]>;
+        Relationships: [];
+      };
       recruit_review_scores: {
         Row: { id: string; review_id: string; criterion_id: string; score: number };
         Insert: { id?: string; review_id: string; criterion_id: string; score: number };
@@ -1148,6 +1194,14 @@ export interface Database {
       undo_merge_recruit_applicants: {
         Args: { p_log_id: string };
         Returns: unknown;
+      };
+      commit_application_import: {
+        Args: { p_quarter: string; p_rows: unknown };
+        Returns: unknown;
+      };
+      undo_application_import: {
+        Args: { p_batch: string };
+        Returns: number;
       };
       consume_chat_message: {
         Args: { p_user_cap: number; p_global_cap: number };
