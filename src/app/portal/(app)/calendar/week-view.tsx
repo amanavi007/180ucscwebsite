@@ -58,7 +58,7 @@ export function TimeGrid({
   const gridTemplate = `3.5rem repeat(${days.length}, minmax(0, 1fr))`;
 
   return (
-    <div className="overflow-hidden rounded-[22px] border bg-card">
+    <div className="flex flex-col overflow-hidden rounded-[22px] border bg-card xl:min-h-0 xl:flex-1">
       <div className="grid border-b" style={{ gridTemplateColumns: gridTemplate }}>
         <span />
         {columns.map(({ d, dateStr }) => {
@@ -89,7 +89,7 @@ export function TimeGrid({
 
       {columns.some((c) => c.allDay.length > 0) && (
         <div className="grid border-b bg-muted/30" style={{ gridTemplateColumns: gridTemplate }}>
-          <span className="px-2 py-2 text-right text-[0.6875rem] font-semibold text-muted-foreground">All day</span>
+          <span className="px-2 py-2 text-right text-xs font-semibold text-muted-foreground">All day</span>
           {columns.map(({ dateStr, allDay }) => (
             <div key={dateStr} className="min-w-0 space-y-1 border-l p-1.5">
               {allDay.map((e) => (
@@ -102,11 +102,11 @@ export function TimeGrid({
         </div>
       )}
 
-      <div className="max-h-[34rem] overflow-y-auto">
+      <div className="max-h-[34rem] overflow-y-auto xl:max-h-none xl:min-h-0 xl:flex-1">
         <div className="relative grid" style={{ gridTemplateColumns: gridTemplate }}>
           <div>
             {hours.map((h) => (
-              <div key={h} className="pr-2 text-right text-[0.6875rem] font-semibold text-muted-foreground" style={{ height: HOUR_PX }}>
+              <div key={h} className="pr-2 text-right text-xs font-semibold text-muted-foreground" style={{ height: HOUR_PX }}>
                 <span className="relative -top-2">{hours[0] === h ? "" : hourLabel(h)}</span>
               </div>
             ))}

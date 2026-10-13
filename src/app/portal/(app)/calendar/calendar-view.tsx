@@ -287,8 +287,8 @@ export function CalendarView({
   }
 
   return (
-    <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_320px]">
-    <div className="min-w-0 space-y-4">
+    <div className="grid items-start gap-8 xl:min-h-0 xl:flex-1 xl:grid-cols-[minmax(0,1fr)_320px] xl:grid-rows-[minmax(0,1fr)] xl:items-stretch">
+    <div className="flex min-w-0 flex-col gap-4 xl:min-h-0">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="mr-1 min-w-48 text-2xl">{title}</h2>
@@ -367,7 +367,7 @@ export function CalendarView({
       )}
 
       {mode === "month" && (
-      <div className="overflow-hidden rounded-lg border">
+      <div className="flex flex-col overflow-hidden rounded-lg border xl:min-h-0 xl:flex-1">
         <div className="grid grid-cols-7 border-b bg-muted/40">
           {WEEKDAYS.map((w) => (
             <div key={w} className="px-2 py-1.5 text-center text-xs font-medium text-muted-foreground">
@@ -375,7 +375,7 @@ export function CalendarView({
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-7">
+        <div className="grid grid-cols-7 xl:min-h-0 xl:flex-1 xl:auto-rows-[minmax(0,1fr)]">
           {weeks.flatMap((week) =>
             week.map((d) => {
               const dateStr = toDateString(d);
@@ -396,7 +396,7 @@ export function CalendarView({
                       <button
                         type="button"
                         className={cn(
-                          "flex min-h-24 flex-col gap-1 border-b border-r p-1.5 text-left align-top last:border-r-0 hover:bg-muted/40 [&:nth-child(7n)]:border-r-0",
+                          "flex min-h-24 flex-col gap-1 xl:min-h-0 xl:overflow-hidden border-b border-r p-1.5 text-left align-top last:border-r-0 hover:bg-muted/40 [&:nth-child(7n)]:border-r-0",
                           !inMonth && "bg-muted/20 text-muted-foreground",
                         )}
                       />
@@ -512,7 +512,7 @@ export function CalendarView({
       </AlertDialog>
     </div>
 
-    <aside aria-label="Up next and filters" className="space-y-5 xl:sticky xl:top-0">
+    <aside aria-label="Up next and filters" className="space-y-5 xl:min-h-0 xl:overflow-y-auto">
       <section className="rounded-[22px] border bg-card p-5">
         <h2 className="text-lg">Up next</h2>
         {upNext.length === 0 ? (

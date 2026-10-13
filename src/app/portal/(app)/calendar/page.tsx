@@ -17,7 +17,7 @@ export default async function CalendarPage() {
   const exec = isExec(profile.role);
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6 xl:h-full xl:min-h-0">
       <PageHeader
         title="Calendar"
         description="Meeting days, project deadlines, org events and project team items, in one place."
