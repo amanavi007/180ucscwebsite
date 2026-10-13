@@ -168,9 +168,8 @@ function StagePanel({ data }: { data: StageData }) {
                 scoredIn={scoredIn}
               />
             </div>
-            <div className="space-y-4">
-              {/* The score card stays in view while you read, but only when it fits on screen: it never scrolls on its own. */}
-              <div ref={panelRef} className={cn(panelFits && "xl:sticky xl:top-4")}>
+            {/* The whole right column stays in view while you read, but only when it fits on screen: it never scrolls on its own. */}
+            <div ref={panelRef} className={cn("space-y-4", panelFits && "xl:sticky xl:top-4")}>
               <ScoreForm
                 key={`${data.stage}:${selected.id}`}
                 stage={data.stage}
@@ -179,7 +178,6 @@ function StagePanel({ data }: { data: StageData }) {
                 onSubmitted={next}
                 onScoredAnswers={onScoredAnswers}
               />
-              </div>
               <OthersPanel applicant={selected} disagreeing={selected.disagree} stage={data.stage} />
             </div>
           </div>
