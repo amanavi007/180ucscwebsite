@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { AppShell } from "@/components/layout/app-shell";
-import { isExec } from "@/lib/auth/roles";
+import { isExec, ELEVATED_ROLES } from "@/lib/auth/roles";
 
 export default async function AppLayout({
   children,
@@ -24,6 +24,7 @@ export default async function AppLayout({
       role={profile.role}
       isExec={exec}
       showOnboarding={profile.onboarding_completed_at === null}
+      showAttendanceNotice={ELEVATED_ROLES.includes(profile.role) && profile.attendance_notice_seen_at === null}
     >
       {children}
     </AppShell>

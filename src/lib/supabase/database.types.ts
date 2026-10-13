@@ -75,6 +75,7 @@ export interface Database {
           role: UserRole;
           must_reset_password: boolean;
           onboarding_completed_at: string | null;
+          attendance_notice_seen_at: string | null;
           archived_at: string | null;
           departure_reason: "graduated" | "left" | null;
           current_title: string | null;
@@ -89,6 +90,7 @@ export interface Database {
           role?: UserRole;
           must_reset_password?: boolean;
           onboarding_completed_at?: string | null;
+          attendance_notice_seen_at?: string | null;
           archived_at?: string | null;
           departure_reason?: "graduated" | "left" | null;
           current_title?: string | null;

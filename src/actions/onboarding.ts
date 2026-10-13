@@ -24,3 +24,21 @@ export async function completeOnboarding(): Promise<ActionResult> {
   revalidatePath("/portal", "layout");
   return {};
 }
+
+/** Marks the "attendance moved to Check in" notice as seen, so it never shows again. */
+export async function dismissAttendanceNotice(): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in." };
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ attendance_notice_seen_at: new Date().toISOString() })
+    .eq("id", user.id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/portal", "layout");
+  return {};
+}
