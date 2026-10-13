@@ -118,7 +118,7 @@ export const NAV_LINKS: NavLink[] = [
 export const ADMIN_PLACES: { key: AdminGroup; label: string; href: string; icon: LucideIcon }[] = [
   { key: "admin-today", label: "Today", href: "/portal/admin", icon: House },
   { key: "admin-recruiting", label: "Recruiting", href: "/portal/admin/applicants", icon: UsersRound },
-  { key: "admin-scheduling", label: "Scheduling", href: "/portal/admin/coffee-chats", icon: CalendarDays },
+  { key: "admin-scheduling", label: "Scheduling", href: "/portal/admin/scheduling", icon: CalendarDays },
   { key: "admin-people", label: "People", href: "/portal/admin/members", icon: Users2 },
   { key: "admin-setup", label: "Setup", href: "/portal/admin/quarters", icon: SlidersHorizontal },
 ];
@@ -150,6 +150,15 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     quarterScoped: true,
     keywords: "recruitment recruiting applicants reviews points leaderboard ranking scores attendance info session",
     group: "admin-recruiting",
+  },
+  {
+    href: "/portal/admin/scheduling",
+    label: "Scheduling",
+    viewLabel: "Agenda",
+    icon: CalendarDays,
+    execOnly: true,
+    keywords: "agenda slots bookings coffee chats interviews client calls availability",
+    group: "admin-scheduling",
   },
   {
     href: "/portal/admin/coffee-chats",
