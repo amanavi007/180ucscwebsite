@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyAddResult,
+  combinedTotal,
   formatPoints,
   isPlausibleEmail,
   needsEmailChoice,
@@ -190,5 +191,16 @@ describe("undoableMergeIds", () => {
   });
   it("never offers an already-undone merge", () => {
     expect(undoableMergeIds([log("m1", "A", "2026-10-01T00:00:00Z", "2026-10-02T00:00:00Z")])).toEqual(new Set());
+  });
+});
+
+describe("combinedTotal", () => {
+  it("adds points and the adjusted resume and interview scores", () => {
+    expect(combinedTotal(5, { normalized: 3.5 }, { normalized: 4 })).toBe(12.5);
+  });
+
+  it("counts a stage with no reviews yet as zero", () => {
+    expect(combinedTotal(5, undefined, undefined)).toBe(5);
+    expect(combinedTotal(5, { normalized: 3.25 }, undefined)).toBe(8.25);
   });
 });

@@ -124,6 +124,8 @@ export function ApplicantsWorkspace({
             onReviewAttendance={() => setTab("attendance")}
             onSelect={setSelectedId}
             reviewStatus={reviewStatus}
+            summaries={scoring.summaries}
+            disagreementThreshold={scoring.settings.disagreementThreshold}
             onAdd={() => setAddOpen(true)}
           />
         </TabsContent>

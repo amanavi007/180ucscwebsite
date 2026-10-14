@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { Search, UserPlus } from "lucide-react";
 import type { ApplicantRow, RecruitCategory, RecruitEvent } from "@/lib/data/recruit";
 import type { ApplicantReviewState } from "@/lib/recruit-assignment";
-import { rankByTotal } from "@/lib/recruit";
+import { combinedTotal, rankByTotal } from "@/lib/recruit";
+import { isDisagreement, type StageSummary } from "@/lib/recruit-scoring";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +15,7 @@ import { Segmented } from "./segmented";
 type Filter = "all" | "engaged" | "none";
 type Sort = "points" | "name";
 
-const GRID = "grid-cols-[3rem_minmax(0,1.7fr)_9.5rem_minmax(0,1.3fr)_9.5rem]";
+const GRID = "grid-cols-[3rem_minmax(0,1.7fr)_9.5rem_minmax(0,1.3fr)_14rem]";
 
 type ReviewChip = { text: string; variant: "ok" | "warn" | "bad" | "muted" };
 
@@ -36,6 +37,8 @@ export function ApplicantsView({
   onReviewAttendance,
   onSelect,
   reviewStatus,
+  summaries,
+  disagreementThreshold,
   onAdd,
 }: {
   quarterId: string;
@@ -48,13 +51,20 @@ export function ApplicantsView({
   onReviewAttendance: () => void;
   onSelect: (id: string) => void;
   reviewStatus: Record<string, ApplicantReviewState>;
+  /** Adjusted review scores per stage; the rank counts them on top of points. */
+  summaries: Record<"resume" | "interview", Record<string, StageSummary>>;
+  disagreementThreshold: number;
   onAdd: () => void;
 }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("points");
 
-  const max = Math.max(1, ...rows.map((r) => r.total));
+  const scored = useMemo(
+    () => rows.map((r) => ({ ...r, total: combinedTotal(r.total, summaries.resume[r.id], summaries.interview[r.id]) })),
+    [rows, summaries],
+  );
+  const max = Math.max(1, ...scored.map((r) => r.total));
 
   const { visible, noApplication } = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -65,18 +75,21 @@ export function ApplicantsView({
       if (!q) return true;
       return r.name.toLowerCase().includes(q) || (r.email ?? "").includes(q) || r.aliases.some((a) => a.includes(q));
     };
-    const filtered = rows.filter((r) => r.hasApplication && matches(r));
+    const filtered = scored.filter((r) => r.hasApplication && matches(r));
     return {
       visible:
         sort === "points"
           ? rankByTotal(filtered)
           : [...filtered].sort((a, b) => a.name.localeCompare(b.name)).map((r) => ({ ...r, rank: 0 })),
-      noApplication: rows.filter((r) => !r.hasApplication && matches(r)).sort((a, b) => a.name.localeCompare(b.name)),
+      noApplication: scored.filter((r) => !r.hasApplication && matches(r)).sort((a, b) => a.name.localeCompare(b.name)),
     };
-  }, [rows, search, filter, sort]);
+  }, [scored, search, filter, sort]);
   const applicantCount = rows.filter((r) => r.hasApplication).length;
 
   function renderRow(r: ApplicantRow, rankLabel: string) {
+    const resume = summaries.resume[r.id];
+    const interview = summaries.interview[r.id];
+    const disagree = [resume, interview].some((x) => x && isDisagreement(x, disagreementThreshold));
     const came = [...new Set(r.entries.filter((e) => !e.voidedAt).map((e) => e.categoryName))];
               const review = reviewLabel(reviewStatus[r.id], r.hasApplication);
               return (
@@ -96,7 +109,7 @@ export function ApplicantsView({
           <span className="block truncate text-[13px] text-muted-foreground">{r.email}</span>
         </span>
         <span className="flex items-center gap-2.5">
-          <span className="w-6 text-sm font-semibold tabular-nums">{r.total}</span>
+          <span className="w-10 text-sm font-semibold tabular-nums">{r.total}</span>
           <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted" aria-hidden="true">
             <span
               className="block h-full bg-foreground"
@@ -105,8 +118,11 @@ export function ApplicantsView({
           </span>
         </span>
         <span className="truncate text-[13px] text-foreground/80">{came.length > 0 ? came.join(", ") : "Nothing yet"}</span>
-        <span className="flex items-center gap-2 text-[13px] text-foreground/80">
+        <span className="flex flex-wrap items-center gap-2 text-[13px] text-foreground/80">
           <Badge variant={review.variant}>{review.text}</Badge>
+          {resume && <span className="tabular-nums" title="Adjusted resume score">R {resume.normalized.toFixed(1)}</span>}
+          {interview && <span className="tabular-nums" title="Adjusted interview score">I {interview.normalized.toFixed(1)}</span>}
+          {disagree && <Badge variant="destructive">Reviewers disagree</Badge>}
         </span>
       </button>
     </li>

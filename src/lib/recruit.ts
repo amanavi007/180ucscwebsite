@@ -14,6 +14,15 @@ export function sumPoints(entries: { points: number; voidedAt: string | null }[]
   return roundPoints(entries.reduce((sum, e) => (e.voidedAt ? sum : sum + e.points), 0));
 }
 
+/** Attendance points plus the adjusted resume and interview scores; a stage with no reviews yet adds nothing. */
+export function combinedTotal(
+  points: number,
+  resume: { normalized: number } | undefined,
+  interview: { normalized: number } | undefined,
+): number {
+  return roundPoints(points + (resume?.normalized ?? 0) + (interview?.normalized ?? 0));
+}
+
 export function formatPoints(n: number): string {
   const r = roundPoints(n);
   return r > 0 ? `+${r}` : String(r);
