@@ -28,7 +28,11 @@ export function ScoreForm({
   onScoredAnswers?: (keys: AnswerKey[]) => void;
 }) {
   const criteria = rubric.criteria.filter((c) => !c.archived);
-  const [scores, setScores] = useState<Record<string, number>>(applicant.mine?.scores ?? {});
+  // Earlier scores on a criterion that has since been archived stay out of the form, or the server rejects the save.
+  const [scores, setScores] = useState<Record<string, number>>(() => {
+    const active = new Set(criteria.map((c) => c.id));
+    return Object.fromEntries(Object.entries(applicant.mine?.scores ?? {}).filter(([id]) => active.has(id)));
+  });
   const [comment, setComment] = useState(applicant.mine?.comment ?? "");
   const [saved, setSaved] = useState<"idle" | "saving" | "saved">("idle");
   const [isPending, startTransition] = useTransition();
