@@ -5,6 +5,7 @@ import { isElevatedOrAbove, isExec } from "@/lib/auth/roles";
 import type { WikiSection } from "@/lib/supabase/database.types";
 import { LinkSwitch } from "@/components/link-switch";
 import { PageHeader } from "@/components/page-header";
+import { resourceViews } from "@/lib/resource-views";
 import { ResourcesView } from "./resources-view";
 
 export const metadata: Metadata = { title: "Resources" };
@@ -27,10 +28,7 @@ export default async function ResourcesPage({
         <LinkSwitch
           className="mt-4"
           label="Resources views"
-          items={[
-            { href: "/portal/resources", label: "Wiki", active: true },
-            { href: "/portal/quick-links", label: "Quick links", active: false },
-          ]}
+          items={resourceViews("wiki")}
         />
       </PageHeader>
 

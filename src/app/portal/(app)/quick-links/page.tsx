@@ -4,6 +4,7 @@ import { getQuickLinks } from "@/lib/data/quick-links";
 import { isExec } from "@/lib/auth/roles";
 import { LinkSwitch } from "@/components/link-switch";
 import { PageHeader } from "@/components/page-header";
+import { resourceViews } from "@/lib/resource-views";
 import { QuickLinksView } from "./quick-links-view";
 
 export const metadata: Metadata = { title: "Quick Links" };
@@ -18,10 +19,7 @@ export default async function QuickLinksPage() {
         <LinkSwitch
           className="mt-4"
           label="Resources views"
-          items={[
-            { href: "/portal/resources", label: "Wiki", active: false },
-            { href: "/portal/quick-links", label: "Quick links", active: true },
-          ]}
+          items={resourceViews("links")}
         />
       </PageHeader>
 
