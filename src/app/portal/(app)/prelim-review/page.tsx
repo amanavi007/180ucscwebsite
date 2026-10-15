@@ -30,6 +30,7 @@ export default async function PrelimReviewPage() {
         projects={projects.map((p) => ({ id: p.id, name: p.client_name }))}
         reviews={reviews}
         rubrics={{ doc: docRubric, slides: slidesRubric }}
+        canDelete={isExec(profile.role)}
       />
     </div>
   );

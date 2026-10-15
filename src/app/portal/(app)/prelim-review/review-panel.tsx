@@ -2,6 +2,11 @@
 
 import { format } from "date-fns";
 import { ExternalLink, X } from "lucide-react";
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { deletePrelimReview } from "@/actions/prelim-reviews";
+import { useConfirm } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { PrelimReviewRow } from "@/lib/data/prelim-review";
@@ -12,15 +17,41 @@ export function ReviewPanel({
   review,
   rubric,
   busy,
+  canDelete,
   onReviewAgain,
   onClose,
 }: {
   review: PrelimReviewRow;
   rubric: Rubric;
   busy: boolean;
+  canDelete: boolean;
   onReviewAgain: () => void;
   onClose: () => void;
 }) {
+  const router = useRouter();
+  const [confirm, confirmDialog] = useConfirm();
+  const [deleting, startDelete] = useTransition();
+
+  async function onDelete() {
+    const ok = await confirm({
+      title: "Delete this review?",
+      description: "The review and its feedback are removed for everyone. Your file in Google Drive is not touched.",
+      confirmLabel: "Delete the review",
+      cancelLabel: "Keep it",
+    });
+    if (!ok) return;
+    startDelete(async () => {
+      const result = await deletePrelimReview(review.id);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Review deleted.");
+      onClose();
+      router.refresh();
+    });
+  }
+
   const titles = new Map(rubric.criteria.map((c) => [c.id, c.title]));
   const chip = review.status === "done" && review.verdict ? VERDICT_CHIP[review.verdict] : RUN_CHIP[review.status === "running" ? "running" : "error"];
 
@@ -81,6 +112,16 @@ export function ReviewPanel({
           Review again
         </Button>
       </div>
+
+      {canDelete && (
+        <div className="border-t pt-4">
+          <Button variant="destructive" onClick={onDelete} disabled={deleting}>
+            Delete review
+          </Button>
+          <p className="mt-2 text-sm text-muted-foreground">Exec only. Removes this review from the portal, not your file.</p>
+        </div>
+      )}
+      {confirmDialog}
     </aside>
   );
 }

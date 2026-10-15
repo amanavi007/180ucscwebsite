@@ -22,10 +22,12 @@ export function ReviewTab({
   projects,
   reviews,
   rubrics,
+  canDelete,
 }: {
   projects: { id: string; name: string }[];
   reviews: PrelimReviewRow[];
   rubrics: Record<ReviewKind, Rubric>;
+  canDelete: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -175,6 +177,7 @@ export function ReviewTab({
             review={selected}
             rubric={rubrics[selected.kind]}
             busy={busy}
+            canDelete={canDelete}
             onReviewAgain={onReview}
             onClose={() => setSelectedId(null)}
           />
