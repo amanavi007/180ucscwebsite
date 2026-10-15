@@ -217,5 +217,14 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     quarterScoped: true,
     group: "admin-setup",
   },
+  {
+    href: "/portal/admin/review-rules",
+    label: "Review Rules",
+    viewLabel: "Review rules",
+    icon: ClipboardCheck,
+    execOnly: true,
+    keywords: "prelim reviewer ai rubric formatting guide sources slides",
+    group: "admin-setup",
+  },
   { href: "/portal/admin/settings", label: "Settings", icon: SlidersHorizontal, execOnly: true, group: "admin-setup" },
 ];
