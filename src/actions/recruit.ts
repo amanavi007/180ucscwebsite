@@ -18,7 +18,7 @@ import { findMatches, normalizeName, pairKey, type MatchClass } from "@/lib/recr
 import { cleanDisplayName, parseAttendeeInput, reviewImport, type CommitRow, type ReviewRow } from "@/lib/recruit-import";
 import type { AnswerKey } from "@/lib/recruit-rubric-levels";
 import { validateScore, type Stage } from "@/lib/recruit-scoring";
-import { RECRUIT_SETTING_KEYS, validateRecruitSettings, type RecruitSettings } from "@/lib/recruit-settings";
+import { RECRUIT_SETTING_KEYS, serializeRecruitSetting, validateRecruitSettings, type RecruitSettings } from "@/lib/recruit-settings";
 import { NO_SHOW_DEFAULT_REASON, systemKeyFor, type AttendanceStatus, type BookingKind } from "@/lib/recruit-attendance";
 
 export interface ActionResult {
@@ -870,7 +870,7 @@ export async function updateRecruitSettingsAction(partial: Partial<RecruitSettin
 
   const rows = (Object.keys(partial) as (keyof RecruitSettings)[])
     .filter((k) => partial[k] !== undefined)
-    .map((k) => ({ key: RECRUIT_SETTING_KEYS[k], value: String(partial[k]) }));
+    .map((k) => ({ key: RECRUIT_SETTING_KEYS[k], value: serializeRecruitSetting(k, partial[k] ?? null) }));
   if (rows.length === 0) return {};
 
   const supabase = await createClient();

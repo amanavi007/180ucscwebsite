@@ -101,6 +101,31 @@ export function rankByTotal<T extends { id: string; name: string; total: number 
   });
 }
 
+/** True when a combined total reaches the cutoff. Someone exactly at the cutoff is in. */
+export function meetsCutoff(total: number, cutoff: number | null): boolean {
+  return cutoff !== null && total >= cutoff;
+}
+
+/**
+ * Splits applicants into who gets an interview invite and who is skipped.
+ * `eligible` has everyone at or above the cutoff who has a usable email; `noEmail` are above the line but can't be invited.
+ */
+export function pickAboveCutoff<T extends { name: string; email: string | null; total: number; hasApplication: boolean }>(
+  rows: T[],
+  cutoff: number | null,
+  isInvitable: (email: string) => boolean,
+): { eligible: (T & { email: string })[]; noEmail: T[] } {
+  const eligible: (T & { email: string })[] = [];
+  const noEmail: T[] = [];
+  if (cutoff === null) return { eligible, noEmail };
+  for (const r of rows) {
+    if (!r.hasApplication || !meetsCutoff(r.total, cutoff)) continue;
+    if (r.email && isInvitable(r.email)) eligible.push({ ...r, email: r.email });
+    else noEmail.push(r);
+  }
+  return { eligible, noEmail };
+}
+
 /** What the Add-applicant dialog should do with `addApplicantAction`'s result: only "added" means a row was saved. */
 export function classifyAddResult(result: { error?: string; needsConfirm?: boolean }): "added" | "needs-confirm" | "error" {
   if (result.error) return "error";

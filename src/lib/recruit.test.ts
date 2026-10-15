@@ -6,6 +6,8 @@ import {
   isPlausibleEmail,
   needsEmailChoice,
   normalizeApplicantEmail,
+  meetsCutoff,
+  pickAboveCutoff,
   rankByTotal,
   resolveMerge,
   ringFraction,
@@ -202,5 +204,37 @@ describe("combinedTotal", () => {
   it("counts a stage with no reviews yet as zero", () => {
     expect(combinedTotal(5, undefined, undefined)).toBe(5);
     expect(combinedTotal(5, { normalized: 3.25 }, undefined)).toBe(8.25);
+  });
+});
+
+describe("interview cutoff", () => {
+  const row = (name: string, total: number, email: string | null = `${name}@ucsc.edu`, hasApplication = true) => ({
+    name,
+    email,
+    total,
+    hasApplication,
+  });
+  const ucsc = (e: string) => e.endsWith("@ucsc.edu");
+
+  it("counts someone exactly at the cutoff", () => {
+    expect(meetsCutoff(10, 10)).toBe(true);
+    expect(meetsCutoff(9.9, 10)).toBe(false);
+    expect(meetsCutoff(0, 0)).toBe(true);
+  });
+  it("picks nobody when no cutoff is set", () => {
+    expect(pickAboveCutoff([row("a", 99)], null, ucsc)).toEqual({ eligible: [], noEmail: [] });
+  });
+  it("splits above-the-line people into invitable and not", () => {
+    const out = pickAboveCutoff(
+      [row("a", 12), row("b", 10), row("c", 9), row("d", 20, null), row("e", 20, "e@gmail.com")],
+      10,
+      ucsc,
+    );
+    expect(out.eligible.map((r) => r.name)).toEqual(["a", "b"]);
+    expect(out.noEmail.map((r) => r.name)).toEqual(["d", "e"]);
+  });
+  it("ignores people who never submitted an application", () => {
+    const out = pickAboveCutoff([row("a", 50, "a@ucsc.edu", false)], 10, ucsc);
+    expect(out).toEqual({ eligible: [], noEmail: [] });
   });
 });

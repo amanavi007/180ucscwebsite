@@ -8,13 +8,17 @@ import { isExec } from "@/lib/auth/roles";
 import { logAudit } from "@/lib/audit";
 import { emailApplicantInterviewCancelled, notifyInterviewExecs } from "@/lib/email/notify-interview";
 import { getInterviewAdminSettings, getInterviewAvailability, getInterviewExecOptions, getInterviewSlots } from "@/lib/data/interview";
-import { expandAvailabilityEntry, overlaps, type TimeBlockInput } from "@/lib/coffee-chat";
+import { expandAvailabilityEntry, isValidUcscEmail, overlaps, type TimeBlockInput } from "@/lib/coffee-chat";
 import { getOrgTodayDateString } from "@/lib/date";
+import { getApplicantRows } from "@/lib/data/recruit";
+import { getScoringBundle } from "@/lib/data/recruit-scoring";
+import { combinedTotal, pickAboveCutoff } from "@/lib/recruit";
 import {
   canAddToPanel,
   canRemoveFromPanel,
   generateInterviewSlots,
   isInterviewSwapEligible,
+  normalizeInviteeEmail,
   parseInviteeList,
   type InterviewSlotAssignment,
 } from "@/lib/interview";
@@ -61,6 +65,47 @@ export async function addInviteesAction(text: string): Promise<ActionResult & { 
   await logAudit(profile.id, "interview.invitees_added", undefined, `${fresh.length} added`);
   revalidateAdmin();
   return { addedCount: fresh.length, errors };
+}
+
+/**
+ * Adds everyone in the quarter at or above the saved interview cutoff to the invite list.
+ * Totals are recomputed here from the stored scores, so the client's list is never trusted.
+ */
+export async function inviteAboveCutoffAction(
+  quarterId: string,
+): Promise<ActionResult & { addedCount?: number; alreadyInvitedCount?: number; skippedCount?: number }> {
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error };
+
+  const [rows, bundle] = await Promise.all([getApplicantRows(quarterId), getScoringBundle(quarterId, profile.id)]);
+  const cutoff = bundle.settings.interviewCutoff;
+  if (cutoff === null) return { error: "Set an interview cutoff first." };
+
+  const scored = rows.map((r) => ({
+    ...r,
+    total: combinedTotal(r.total, bundle.summaries.resume[r.id], bundle.summaries.interview[r.id]),
+  }));
+  const { eligible, noEmail } = pickAboveCutoff(scored, cutoff, (email) => isValidUcscEmail(normalizeInviteeEmail(email)));
+
+  const byEmail = new Map(eligible.map((r) => [normalizeInviteeEmail(r.email), r.name]));
+  const supabase = await createClient();
+  const { data: existing, error: existingError } = await supabase
+    .from("interview_invitees")
+    .select("email")
+    .in("email", [...byEmail.keys()]);
+  if (existingError) return { error: existingError.message };
+  const known = new Set((existing ?? []).map((e) => e.email));
+  const fresh = [...byEmail].filter(([email]) => !known.has(email)).map(([email, name]) => ({ email, name }));
+
+  if (fresh.length > 0) {
+    const { error: insertError } = await supabase.from("interview_invitees").insert(fresh);
+    if (insertError) return { error: insertError.message };
+  }
+
+  await logAudit(profile.id, "interview.invitees_added_by_cutoff", undefined, `${fresh.length} added at cutoff ${cutoff}`);
+  revalidateAdmin();
+  revalidatePath("/portal/admin/applicants");
+  return { addedCount: fresh.length, alreadyInvitedCount: known.size, skippedCount: noEmail.length };
 }
 
 /** Removes someone from the allowlist. Their existing booking (if any) is deliberately left alone. */
