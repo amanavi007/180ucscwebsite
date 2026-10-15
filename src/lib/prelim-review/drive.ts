@@ -66,6 +66,11 @@ async function gfetch(url: string, token: string): Promise<Response> {
   } catch {
     throw new DriveError("failed");
   }
+  if (!res.ok) {
+    // Google's reason (for example API not enabled) is the only way to tell causes apart; the token is never logged.
+    const detail = (await res.text().catch(() => "")).slice(0, 400);
+    console.error(`drive request failed: ${res.status} ${url.split("?")[0]} ${detail}`);
+  }
   if (res.status === 401 || res.status === 403) throw new DriveError("denied");
   if (res.status === 404) throw new DriveError("not_found");
   if (!res.ok) throw new DriveError("failed");
