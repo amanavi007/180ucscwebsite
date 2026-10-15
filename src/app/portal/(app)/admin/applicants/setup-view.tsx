@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useUrlTab } from "@/components/url-tabs";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
@@ -20,6 +21,8 @@ import { RubricEditor, ScoringSettingsCard } from "./rubric-editor";
 import { Segmented } from "./segmented";
 
 type Section = "categories" | "events" | "reviewers" | "rubric" | "adjustment" | "cutoff";
+
+const SECTIONS = ["categories", "events", "reviewers", "rubric", "adjustment", "cutoff"] as const;
 
 const NAV: { group: string; items: { value: Section; label: string }[] }[] = [
   {
@@ -57,7 +60,9 @@ export function SetupView({
   settings: RecruitSettings;
   reviewSetup: ScoringBundle["reviewSetup"];
 }) {
-  const [section, setSection] = useState<Section>("categories");
+  const [urlSection, setUrlSection] = useUrlTab(SECTIONS, "categories", "section");
+  const section = urlSection as Section;
+  const setSection = (next: Section) => setUrlSection(next);
   const [rubricStage, setRubricStage] = useState<Stage>("resume");
   const [isPending, startTransition] = useTransition();
   const router = useRouter();

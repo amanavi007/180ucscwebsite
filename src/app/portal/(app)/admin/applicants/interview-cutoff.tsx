@@ -114,7 +114,7 @@ export function CutoffBar({
     });
   }
 
-  const setupHref = `/portal/admin/recruiting-setup?quarter=${quarterId}`;
+  const setupHref = `/portal/admin/recruiting-setup?quarter=${quarterId}&section=cutoff`;
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-xl border bg-card px-5 py-3">
