@@ -65,3 +65,10 @@ Vitest unit tests for rubric schemas, pass-1 extraction (citations, URLs, per-sl
 
 - The actual formatting guide and prelim-check criteria text must be supplied by execs to seed the first rubric versions; v1 ships with a clearly labeled starter rubric.
 - Exact criterion list for "background bubbles" and source format depends on the guide.
+
+## Changes made during planning
+
+- Google Identity Services' browser token client replaces a server-side OAuth flow, so the env vars are `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_GOOGLE_PICKER_API_KEY` and `NEXT_PUBLIC_GOOGLE_APP_ID` (all public by design).
+- The Google Slides API is used for per-slide text, so it must be enabled alongside Drive and Picker.
+- PDF uploads are out of scope for v1; only Google Docs and Slides are reviewed.
+- The review runs in a route handler (`/api/prelim-review`, 60 s) rather than a server action.

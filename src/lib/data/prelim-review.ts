@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { effectiveStatus } from "@/lib/prelim-review/stale";
 import {
   criteriaSchema,
   criterionResultSchema,
@@ -47,8 +48,13 @@ export async function listReviews(projectId: string): Promise<PrelimReviewRow[]>
     .eq("project_id", projectId)
     .order("created_at", { ascending: false })
     .limit(50);
-  if (error) throw error;
+  if (error) {
+    // The Prelim review tab is secondary: a missing table (migration not applied yet) must not take the whole project page down.
+    console.error("listReviews failed:", error.message);
+    return [];
+  }
   const rows = data ?? [];
+  const now = new Date();
   const authorIds = [...new Set(rows.map((r) => r.created_by))];
   const names = new Map<string, string>();
   if (authorIds.length > 0) {
@@ -57,16 +63,17 @@ export async function listReviews(projectId: string): Promise<PrelimReviewRow[]>
   }
   return rows.map((r) => {
     const results = z.array(criterionResultSchema).safeParse(r.result);
+    const live = effectiveStatus({ status: r.status, createdAt: r.created_at }, now);
     return {
       id: r.id,
       fileName: r.file_name,
       fileUrl: r.file_url,
       kind: r.kind,
       rubricVersion: r.rubric_version,
-      status: r.status,
+      status: live.status,
       verdict: r.verdict,
       results: results.success ? results.data : [],
-      errorMessage: r.error_message,
+      errorMessage: r.error_message ?? live.errorMessage,
       createdAt: r.created_at,
       authorName: names.get(r.created_by) ?? "Someone",
     };
