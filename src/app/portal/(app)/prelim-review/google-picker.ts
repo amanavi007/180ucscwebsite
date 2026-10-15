@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReviewKind } from "@/lib/prelim-review/rubric";
+
 const SCOPE = "https://www.googleapis.com/auth/drive.readonly";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -44,7 +46,8 @@ function getToken(): Promise<string> {
 }
 
 /** Opens Google sign-in, then the Picker. Resolves null when the person closes the Picker without choosing. */
-export async function pickDriveFile(): Promise<{ id: string; accessToken: string } | null> {
+/** Shows only Google Docs for `doc` and only Google Slides for `slides`, so nobody picks the wrong type. */
+export async function pickDriveFile(kind: ReviewKind): Promise<{ id: string; accessToken: string } | null> {
   await Promise.all([
     loadScript("https://accounts.google.com/gsi/client"),
     loadScript("https://apis.google.com/js/api.js"),
@@ -53,9 +56,10 @@ export async function pickDriveFile(): Promise<{ id: string; accessToken: string
   const accessToken = await getToken();
   return new Promise((resolve) => {
     const g = window.google.picker;
-    const view = new g.DocsView().setMimeTypes(
-      "application/vnd.google-apps.document,application/vnd.google-apps.presentation",
-    );
+    const view = new g.DocsView()
+      .setMimeTypes(kind === "slides" ? "application/vnd.google-apps.presentation" : "application/vnd.google-apps.document")
+      .setIncludeFolders(true)
+      .setEnableDrives(true);
     const picker = new g.PickerBuilder()
       .addView(view)
       .setOAuthToken(accessToken)

@@ -5,13 +5,15 @@ import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useUrlTab } from "@/components/url-tabs";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { PrelimReviewRow } from "@/lib/data/prelim-review";
 import { RUN_CHIP, VERDICT_CHIP } from "@/lib/prelim-review/labels";
-import { KIND_LABELS, type ReviewKind, type Rubric } from "@/lib/prelim-review/rubric";
+import { KIND_LABELS, REVIEW_KINDS, type ReviewKind, type Rubric } from "@/lib/prelim-review/rubric";
 import { pickDriveFile, pickerConfigured } from "./google-picker";
 import { ReviewPanel } from "./review-panel";
 import { ReviewingCard } from "./reviewing-card";
@@ -32,12 +34,16 @@ export function ReviewTab({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [projectId, setProjectId] = useState(projects[0]?.id ?? "");
   const configured = pickerConfigured();
-  const selected = reviews.find((r) => r.id === selectedId) ?? null;
+  const [tab, setTab] = useUrlTab(REVIEW_KINDS, "doc");
+  const kind = tab as ReviewKind;
+  const rows = reviews.filter((r) => r.kind === kind);
+  const selected = rows.find((r) => r.id === selectedId) ?? null;
+  const noun = kind === "slides" ? "slides" : "doc";
 
   async function onReview() {
     setBusy(true);
     try {
-      const picked = await pickDriveFile();
+      const picked = await pickDriveFile(kind);
       if (!picked) return;
       setReviewing(true);
       const res = await fetch("/api/prelim-review", {
@@ -62,8 +68,24 @@ export function ReviewTab({
 
   return (
     <div className="space-y-5">
+      <Tabs
+        value={kind}
+        onValueChange={(v) => {
+          if (!v) return;
+          setTab(String(v));
+          setSelectedId(null);
+        }}
+      >
+        <TabsList>
+          {REVIEW_KINDS.map((k) => (
+            <TabsTrigger key={k} value={k}>
+              {k === "doc" ? "Research docs" : "Slides"} ({reviews.filter((r) => r.kind === k).length})
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
       <div className="flex flex-wrap items-end gap-3">
-        <div className="flex flex-wrap items-end gap-3">
         <Field className="w-56">
           <FieldLabel>Project</FieldLabel>
           <Select value={projectId} onValueChange={(v) => v && setProjectId(v)}>
@@ -79,13 +101,12 @@ export function ReviewTab({
             </SelectContent>
           </Select>
         </Field>
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex flex-col items-start gap-1">
           <Button size="lg" onClick={onReview} disabled={busy || !configured || !projectId}>
-            Review a file
+            Review {noun === "slides" ? "slides" : "a doc"}
           </Button>
           {!projectId && <span className="text-sm text-muted-foreground">You&apos;re not on a project yet, so there&apos;s nothing to attach a review to.</span>}
           {!configured && <span className="text-sm text-muted-foreground">Google Drive isn&apos;t set up yet. Ask an exec.</span>}
-        </div>
         </div>
       </div>
 
@@ -93,10 +114,10 @@ export function ReviewTab({
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1">
-          {reviews.length === 0 ? (
+          {rows.length === 0 ? (
             <div className="rounded-[22px] border bg-card p-6">
-              <p className="font-medium">No reviews yet</p>
-              <p className="text-sm text-muted-foreground">Pick a file to get one.</p>
+              <p className="font-medium">No {kind === "slides" ? "slides" : "research doc"} reviews yet</p>
+              <p className="text-sm text-muted-foreground">Pick {kind === "slides" ? "a deck" : "a doc"} to get one.</p>
             </div>
           ) : (
             <div className="overflow-hidden rounded-[22px] border bg-card">
@@ -109,7 +130,7 @@ export function ReviewTab({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {reviews.map((r) => {
+                  {rows.map((r) => {
                     const chip = r.status === "done" && r.verdict ? VERDICT_CHIP[r.verdict] : RUN_CHIP[r.status === "running" ? "running" : "error"];
                     const passing = r.results.filter((x) => x.status === "pass").length;
                     const isSelected = r.id === selectedId;
