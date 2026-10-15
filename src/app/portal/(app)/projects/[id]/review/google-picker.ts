@@ -1,6 +1,6 @@
 "use client";
 
-const SCOPE = "https://www.googleapis.com/auth/drive.file";
+const SCOPE = "https://www.googleapis.com/auth/drive.readonly";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 declare global {

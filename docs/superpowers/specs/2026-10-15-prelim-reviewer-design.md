@@ -72,3 +72,4 @@ Vitest unit tests for rubric schemas, pass-1 extraction (citations, URLs, per-sl
 - The Google Slides API is used for per-slide text, so it must be enabled alongside Drive and Picker.
 - PDF uploads are out of scope for v1; only Google Docs and Slides are reviewed.
 - The review runs in a route handler (`/api/prelim-review`, 60 s) rather than a server action.
+- Scope changed from `drive.file` to `drive.readonly` at the owner's request, so the portal can read any file the signed-in person can open. The token is still used per request and never stored. `drive.readonly` is a restricted scope: it needs no Google verification only while the consent screen is **Internal** (Workspace `180dc.org`). An External app would need Google's verification.
