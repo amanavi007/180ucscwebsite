@@ -10,7 +10,7 @@ describe("parseRecruitSettings", () => {
       { key: RECRUIT_SETTING_KEYS.normalizeMinN, value: "12" },
       { key: RECRUIT_SETTING_KEYS.disagreementThreshold, value: "2" },
     ];
-    expect(parseRecruitSettings(rows)).toEqual({ normalizeMinN: 12, disagreementThreshold: 2 });
+    expect(parseRecruitSettings(rows)).toEqual({ normalizeMinN: 12, disagreementThreshold: 2, interviewCutoff: null });
   });
   it("ignores garbage and out-of-range values", () => {
     const rows = [
@@ -31,5 +31,25 @@ describe("validateRecruitSettings", () => {
   });
   it("requires a positive disagreement threshold", () => {
     expect(validateRecruitSettings({ disagreementThreshold: 0 })).toMatch(/greater than 0/i);
+  });
+});
+
+describe("interview cutoff", () => {
+  it("is unset by default and when stored empty", () => {
+    expect(parseRecruitSettings([]).interviewCutoff).toBeNull();
+    expect(parseRecruitSettings([{ key: RECRUIT_SETTING_KEYS.interviewCutoff, value: "" }]).interviewCutoff).toBeNull();
+  });
+  it("reads a stored number, including 0", () => {
+    expect(parseRecruitSettings([{ key: RECRUIT_SETTING_KEYS.interviewCutoff, value: "12.5" }]).interviewCutoff).toBe(12.5);
+    expect(parseRecruitSettings([{ key: RECRUIT_SETTING_KEYS.interviewCutoff, value: "0" }]).interviewCutoff).toBe(0);
+  });
+  it("ignores garbage and negatives", () => {
+    expect(parseRecruitSettings([{ key: RECRUIT_SETTING_KEYS.interviewCutoff, value: "abc" }]).interviewCutoff).toBeNull();
+    expect(parseRecruitSettings([{ key: RECRUIT_SETTING_KEYS.interviewCutoff, value: "-2" }]).interviewCutoff).toBeNull();
+  });
+  it("validates but allows clearing", () => {
+    expect(validateRecruitSettings({ interviewCutoff: null })).toBeNull();
+    expect(validateRecruitSettings({ interviewCutoff: -1 })).toMatch(/negative/i);
+    expect(validateRecruitSettings({ interviewCutoff: Number.NaN })).toMatch(/number/i);
   });
 });

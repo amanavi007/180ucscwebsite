@@ -33,6 +33,7 @@ export function ApplicantsWorkspace({
   merges,
   attendance,
   scoring,
+  invitedEmails,
 }: {
   quarterId: string;
   quarterName: string;
@@ -43,6 +44,8 @@ export function ApplicantsWorkspace({
   merges: MergeLogRow[];
   attendance: AttendanceData;
   scoring: ScoringBundle;
+  /** Lowercased emails already on the interview invite list. */
+  invitedEmails: string[];
 }) {
   const [tab, setTab] = useUrlTab(["applicants", "queue", "progress", "attendance", "duplicates"], "applicants");
   const [addOpen, setAddOpen] = useState(false);
@@ -126,6 +129,8 @@ export function ApplicantsWorkspace({
             reviewStatus={reviewStatus}
             summaries={scoring.summaries}
             disagreementThreshold={scoring.settings.disagreementThreshold}
+            interviewCutoff={scoring.settings.interviewCutoff}
+            invitedEmails={invitedEmails}
             onAdd={() => setAddOpen(true)}
           />
         </TabsContent>

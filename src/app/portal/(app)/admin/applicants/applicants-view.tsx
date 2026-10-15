@@ -1,15 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { Search, UserPlus } from "lucide-react";
 import type { ApplicantRow, RecruitCategory, RecruitEvent } from "@/lib/data/recruit";
 import type { ApplicantReviewState } from "@/lib/recruit-assignment";
-import { combinedTotal, rankByTotal } from "@/lib/recruit";
+import { combinedTotal, meetsCutoff, pickAboveCutoff, rankByTotal } from "@/lib/recruit";
+import { isValidUcscEmail } from "@/lib/coffee-chat";
 import { isDisagreement, type StageSummary } from "@/lib/recruit-scoring";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CutoffBar } from "./interview-cutoff";
 import { Segmented } from "./segmented";
 
 type Filter = "all" | "engaged" | "none";
@@ -29,7 +31,19 @@ function reviewLabel(state: ApplicantReviewState | undefined, hasApplication: bo
   return { text: `${state.submitted} of ${state.assigned} in`, variant: "warn" };
 }
 
+/** Divider row between those at or above the cutoff and everyone below. A word, not just a color. */
+function CutoffLine({ cutoff, above }: { cutoff: number | null; above: number }) {
+  return (
+    <li role="separator" aria-label={`Interview cutoff ${cutoff}`} className="flex items-center gap-3 border-b border-dashed border-foreground bg-accent px-5 py-1.5">
+      <span className="text-[13px] font-semibold text-accent-foreground tabular-nums">
+        Interview cutoff: {cutoff} · {above} at or above
+      </span>
+    </li>
+  );
+}
+
 export function ApplicantsView({
+  quarterId,
   rows,
   duplicateCount,
   toMarkCount,
@@ -39,6 +53,8 @@ export function ApplicantsView({
   reviewStatus,
   summaries,
   disagreementThreshold,
+  interviewCutoff,
+  invitedEmails,
   onAdd,
 }: {
   quarterId: string;
@@ -54,6 +70,9 @@ export function ApplicantsView({
   /** Adjusted review scores per stage; the rank counts them on top of points. */
   summaries: Record<"resume" | "interview", Record<string, StageSummary>>;
   disagreementThreshold: number;
+  interviewCutoff: number | null;
+  /** Lowercased emails already on the interview invite list. */
+  invitedEmails: string[];
   onAdd: () => void;
 }) {
   const [search, setSearch] = useState("");
@@ -84,6 +103,20 @@ export function ApplicantsView({
       noApplication: scored.filter((r) => !r.hasApplication && matches(r)).sort((a, b) => a.name.localeCompare(b.name)),
     };
   }, [scored, search, filter, sort]);
+  const invited = useMemo(() => new Set(invitedEmails), [invitedEmails]);
+  const cutoffStats = useMemo(() => {
+    const { eligible, noEmail } = pickAboveCutoff(scored, interviewCutoff, (e) => isValidUcscEmail(e.trim().toLowerCase()));
+    const alreadyInvited = eligible.filter((r) => invited.has(r.email.trim().toLowerCase())).length;
+    return {
+      above: eligible.length + noEmail.length,
+      alreadyInvited,
+      newInvites: eligible.length - alreadyInvited,
+      noEmail: noEmail.length,
+    };
+  }, [scored, interviewCutoff, invited]);
+  // The line only means something in the full ranking, so it hides while the list is sorted by name or narrowed.
+  const showLine = interviewCutoff !== null && sort === "points" && filter === "all" && search.trim() === "";
+  const lineIndex = showLine ? visible.findIndex((r) => !meetsCutoff(r.total, interviewCutoff)) : -1;
   const applicantCount = rows.filter((r) => r.hasApplication).length;
 
   function renderRow(r: ApplicantRow, rankLabel: string) {
@@ -105,6 +138,7 @@ export function ApplicantsView({
             <span className="text-sm font-medium">{r.name}</span>
             {r.hasPrevious && <Badge variant="secondary">Previously applied</Badge>}
             {!r.email && <Badge variant="outline">No email yet</Badge>}
+            {r.email && invited.has(r.email.trim().toLowerCase()) && <Badge variant="info">Invited</Badge>}
           </span>
           <span className="block truncate text-[13px] text-muted-foreground">{r.email}</span>
         </span>
@@ -199,6 +233,15 @@ export function ApplicantsView({
         )}
       </div>
 
+      <CutoffBar
+        quarterId={quarterId}
+        cutoff={interviewCutoff}
+        aboveCount={cutoffStats.above}
+        newInviteCount={cutoffStats.newInvites}
+        alreadyInvitedCount={cutoffStats.alreadyInvited}
+        noEmailCount={cutoffStats.noEmail}
+      />
+
       {visible.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">No one matches that.</p>
       ) : (
@@ -211,7 +254,13 @@ export function ApplicantsView({
             <span>Reviews</span>
           </div>
           <ul>
-            {visible.map((r) => renderRow(r, sort === "points" ? String(r.rank) : ""))}
+            {visible.map((r, i) => (
+              <Fragment key={r.id}>
+                {showLine && i === lineIndex && <CutoffLine cutoff={interviewCutoff} above={i} />}
+                {renderRow(r, sort === "points" ? String(r.rank) : "")}
+              </Fragment>
+            ))}
+            {showLine && lineIndex === -1 && <CutoffLine cutoff={interviewCutoff} above={visible.length} />}
           </ul>
         </div>
       )}

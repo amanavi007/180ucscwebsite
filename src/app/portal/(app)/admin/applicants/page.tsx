@@ -12,6 +12,7 @@ import { getAttendanceData } from "@/lib/data/recruit-import";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getScoringBundle } from "@/lib/data/recruit-scoring";
 import { findDuplicatePairs } from "@/lib/recruit-matching";
+import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { ApplicantsWorkspace } from "./applicants-workspace";
 
@@ -44,6 +45,8 @@ export default async function ApplicantsPage({ searchParams }: { searchParams: P
     getAttendanceData(quarterId),
     getScoringBundle(quarterId, profile.id),
   ]);
+  const supabase = await createClient();
+  const { data: invitees } = await supabase.from("interview_invitees").select("email");
   const pairs = findDuplicatePairs(
     rows.map((r) => ({ id: r.id, name: r.name, email: r.email, aliases: r.aliases })),
     dismissed,
@@ -61,6 +64,7 @@ export default async function ApplicantsPage({ searchParams }: { searchParams: P
       merges={merges}
       attendance={attendance}
       scoring={scoring}
+      invitedEmails={(invitees ?? []).map((i) => i.email)}
     />
   );
 }

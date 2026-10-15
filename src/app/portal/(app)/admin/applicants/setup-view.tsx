@@ -14,11 +14,12 @@ import { formatDateLong } from "@/lib/date";
 import { Button } from "@/components/ui/button";
 import { CategoryDialog } from "./category-dialog";
 import { EventDialog } from "./event-dialog";
+import { InterviewCutoffCard } from "./interview-cutoff";
 import { ReviewSettingsCard } from "./review-settings-card";
 import { RubricEditor, ScoringSettingsCard } from "./rubric-editor";
 import { Segmented } from "./segmented";
 
-type Section = "categories" | "events" | "reviewers" | "rubric" | "adjustment";
+type Section = "categories" | "events" | "reviewers" | "rubric" | "adjustment" | "cutoff";
 
 const NAV: { group: string; items: { value: Section; label: string }[] }[] = [
   {
@@ -34,6 +35,7 @@ const NAV: { group: string; items: { value: Section; label: string }[] }[] = [
       { value: "reviewers", label: "Reviewers" },
       { value: "rubric", label: "Rubric" },
       { value: "adjustment", label: "Score adjustment" },
+      { value: "cutoff", label: "Interview cutoff" },
     ],
   },
 ];
@@ -275,6 +277,12 @@ export function SetupView({
         {section === "adjustment" && (
           <div>
             <ScoringSettingsCard settings={settings} />
+          </div>
+        )}
+
+        {section === "cutoff" && (
+          <div>
+            <InterviewCutoffCard cutoff={settings.interviewCutoff} />
           </div>
         )}
       </div>
