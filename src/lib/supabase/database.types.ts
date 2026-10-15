@@ -907,6 +907,26 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["recruit_review_reveals"]["Insert"]>;
         Relationships: [];
       };
+      review_rubrics: {
+        Row: { id: string; kind: "doc" | "slides"; version: number; criteria: unknown; guide_text: string; created_by: string | null; created_at: string };
+        Insert: { id?: string; kind: "doc" | "slides"; version: number; criteria: unknown; guide_text?: string; created_by?: string | null; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["review_rubrics"]["Insert"]>;
+        Relationships: [];
+      };
+      prelim_reviews: {
+        Row: {
+          id: string; project_id: string; created_by: string; file_id: string; file_name: string; file_url: string;
+          kind: "doc" | "slides"; rubric_version: number; status: "running" | "done" | "error";
+          verdict: "ready" | "needs_work" | null; result: unknown; error_message: string | null; created_at: string;
+        };
+        Insert: {
+          id?: string; project_id: string; created_by: string; file_id: string; file_name: string; file_url: string;
+          kind: "doc" | "slides"; rubric_version: number; status?: "running" | "done" | "error";
+          verdict?: "ready" | "needs_work" | null; result?: unknown; error_message?: string | null; created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["prelim_reviews"]["Insert"]>;
+        Relationships: [];
+      };
       recruit_review_scores: {
         Row: { id: string; review_id: string; criterion_id: string; score: number };
         Insert: { id?: string; review_id: string; criterion_id: string; score: number };
