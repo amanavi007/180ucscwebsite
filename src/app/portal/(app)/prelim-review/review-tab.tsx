@@ -14,6 +14,7 @@ import { RUN_CHIP, VERDICT_CHIP } from "@/lib/prelim-review/labels";
 import { KIND_LABELS, type ReviewKind, type Rubric } from "@/lib/prelim-review/rubric";
 import { pickDriveFile, pickerConfigured } from "./google-picker";
 import { ReviewPanel } from "./review-panel";
+import { ReviewingCard } from "./reviewing-card";
 
 export function ReviewTab({
   projects,
@@ -26,6 +27,8 @@ export function ReviewTab({
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  // Only true once a file is chosen, so the scan card does not show behind the Google Picker.
+  const [reviewing, setReviewing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [projectId, setProjectId] = useState(projects[0]?.id ?? "");
   const configured = pickerConfigured();
@@ -36,6 +39,7 @@ export function ReviewTab({
     try {
       const picked = await pickDriveFile();
       if (!picked) return;
+      setReviewing(true);
       const res = await fetch("/api/prelim-review", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -52,6 +56,7 @@ export function ReviewTab({
       toast.error(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       setBusy(false);
+      setReviewing(false);
     }
   }
 
@@ -78,12 +83,13 @@ export function ReviewTab({
           <Button size="lg" onClick={onReview} disabled={busy || !configured || !projectId}>
             Review a file
           </Button>
-          {busy && <span className="text-sm text-muted-foreground">Reviewing your file. This takes under a minute.</span>}
           {!projectId && <span className="text-sm text-muted-foreground">You&apos;re not on a project yet, so there&apos;s nothing to attach a review to.</span>}
           {!configured && <span className="text-sm text-muted-foreground">Google Drive isn&apos;t set up yet. Ask an exec.</span>}
         </div>
         </div>
       </div>
+
+      {reviewing && <ReviewingCard />}
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1">

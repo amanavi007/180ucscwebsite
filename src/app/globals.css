@@ -424,6 +424,58 @@
   }
 }
 
+/* Prelim review: the document scan shown while a file is being reviewed. */
+@keyframes review-scan {
+  0% {
+    top: -36px;
+  }
+  100% {
+    top: 170px;
+  }
+}
+
+@keyframes review-pop {
+  0%,
+  8% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  18%,
+  70% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.review-scan {
+  position: absolute;
+  inset-inline: 0;
+  top: -36px;
+  height: 36px;
+  background: linear-gradient(to bottom, transparent, color-mix(in oklab, var(--primary) 75%, transparent));
+  border-bottom: 2px solid var(--foreground);
+  animation: review-scan 2.2s ease-in-out infinite;
+}
+
+.review-tick {
+  opacity: 0;
+  animation: review-pop 2.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .review-scan {
+    animation: none;
+    display: none;
+  }
+  .review-tick {
+    animation: none;
+    opacity: 1;
+  }
+}
+
 /* A table inside a card should not draw a second border and corner inside the card's own.
    Outside any layer on purpose, so it beats the table's own utility classes. */
 [data-slot="card"] [data-slot="table-container"] {

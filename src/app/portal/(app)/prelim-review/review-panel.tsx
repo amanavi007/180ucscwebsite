@@ -80,7 +80,6 @@ export function ReviewPanel({
         <Button variant="outline" onClick={onReviewAgain} disabled={busy}>
           Review again
         </Button>
-        {busy && <p className="mt-2 text-sm text-muted-foreground">Reviewing your file. This takes under a minute.</p>}
       </div>
     </aside>
   );
