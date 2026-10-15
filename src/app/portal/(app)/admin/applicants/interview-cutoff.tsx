@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { inviteAboveCutoffAction } from "@/actions/interview";
@@ -113,21 +114,26 @@ export function CutoffBar({
     });
   }
 
+  const setupHref = `/portal/admin/recruiting-setup?quarter=${quarterId}`;
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-xl border bg-card px-5 py-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <label htmlFor="interview-cutoff" className="text-sm font-medium">
-          Interview cutoff
-        </label>
-        <CutoffEditor key={cutoff ?? "none"} cutoff={cutoff} inputId="interview-cutoff" />
-      </div>
       {cutoff === null ? (
-        <p className="text-sm text-muted-foreground">No cutoff set. Enter a score to draw the line in the list.</p>
+        <p className="text-sm text-muted-foreground">
+          No interview cutoff set.{" "}
+          <Link href={setupHref} className="font-medium text-link underline-offset-2 hover:underline">
+            Set one in Setup
+          </Link>{" "}
+          to draw the line in this list.
+        </p>
       ) : (
-        <div className="flex flex-wrap items-center gap-3">
+        <>
           <p className="text-sm text-muted-foreground tabular-nums">
-            {aboveCount} at or above {cutoff} · {alreadyInvitedCount} invited
-            {noEmailCount > 0 && ` · ${noEmailCount} without a UCSC email`}
+            <span className="font-medium text-foreground">Interview cutoff {cutoff}</span> · {aboveCount} at or above · {alreadyInvitedCount} invited
+            {noEmailCount > 0 && ` · ${noEmailCount} without a UCSC email`} ·{" "}
+            <Link href={setupHref} className="font-medium text-link underline-offset-2 hover:underline">
+              Change in Setup
+            </Link>
           </p>
           <Button
             variant="outline"
@@ -137,7 +143,7 @@ export function CutoffBar({
           >
             {newInviteCount === 0 ? "Everyone above is invited" : `Invite ${newInviteCount} above the line`}
           </Button>
-        </div>
+        </>
       )}
       {confirmDialog}
     </div>
@@ -158,8 +164,7 @@ export function InterviewCutoffCard({ cutoff }: { cutoff: number | null }) {
           <CutoffEditor key={cutoff ?? "none"} cutoff={cutoff} inputId="setup-interview-cutoff" />
           <FieldDescription>
             Uses the same total as the Applicants ranking: points plus adjusted resume and interview scores. Someone exactly at the
-            cutoff is in. The list draws a line at this score, and you can invite everyone above it from there. You can also change it
-            there at any time.
+            cutoff is in. The Applicants list draws a line at this score, and you can invite everyone above it from there.
           </FieldDescription>
         </Field>
       </CardContent>
