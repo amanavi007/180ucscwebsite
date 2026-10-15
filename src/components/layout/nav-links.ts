@@ -104,6 +104,15 @@ export const NAV_LINKS: NavLink[] = [
     tourDescription: "Fast access to shared docs, Drive folders, and other outside resources.",
   },
   {
+    href: "/portal/prelim-review",
+    label: "Prelim Review",
+    icon: ClipboardCheck,
+    keywords: "ai reviewer check research doc slides formatting sources feedback",
+    group: "reference",
+    rail: false,
+    tourDescription: "Get your prelim research doc or slides checked against the chapter's rules before the prelim check.",
+  },
+  {
     href: "/portal/admin",
     label: "Admin",
     icon: ShieldCheck,

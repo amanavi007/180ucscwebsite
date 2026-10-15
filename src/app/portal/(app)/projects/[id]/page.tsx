@@ -10,10 +10,6 @@ import { computeProjectHealth } from "@/lib/project-health";
 import { ProjectHeader } from "./project-header";
 import { TeamRoster } from "./team-roster";
 import { TaskList } from "./task-list";
-import { UrlTabs } from "@/components/url-tabs";
-import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getCurrentRubric, listReviews } from "@/lib/data/prelim-review";
-import { ReviewTab } from "./review/review-tab";
 
 export async function generateMetadata({
   params,
@@ -49,13 +45,10 @@ export default async function ProjectDetailPage({
 
   const canEdit = await isProjectLead(id, profile.id, isExec(profile.role));
 
-  const [tasks, members, allProfiles, reviews, docRubric, slidesRubric] = await Promise.all([
+  const [tasks, members, allProfiles] = await Promise.all([
     getTasksForProject(id),
     getProjectMembers(id),
     canEdit ? getAllProfiles() : Promise.resolve([]),
-    listReviews(id),
-    getCurrentRubric("doc"),
-    getCurrentRubric("slides"),
   ]);
 
   const computedHealth = computeProjectHealth(project, tasks);
@@ -73,26 +66,15 @@ export default async function ProjectDetailPage({
         members={allProfiles}
       />
 
-      <UrlTabs values={["work", "review"]} fallback="work">
-        <TabsList>
-          <TabsTrigger value="work">Team and tasks</TabsTrigger>
-          <TabsTrigger value="review">Prelim review</TabsTrigger>
-        </TabsList>
-        <TabsContent value="work" className="space-y-8">
-        <TeamRoster projectId={id} members={members} allProfiles={allProfiles} canEdit={canEdit} />
+      <TeamRoster projectId={id} members={members} allProfiles={allProfiles} canEdit={canEdit} />
 
-        <TaskList
-          projectId={id}
-          tasks={visibleTasks}
-          canManage={canEdit}
-          currentUserId={profile.id}
-          rosterProfiles={members.map((m) => m.profile).filter((p): p is NonNullable<typeof p> => !!p)}
-        />
-        </TabsContent>
-        <TabsContent value="review">
-          <ReviewTab projectId={id} reviews={reviews} rubrics={{ doc: docRubric, slides: slidesRubric }} />
-        </TabsContent>
-      </UrlTabs>
+      <TaskList
+        projectId={id}
+        tasks={visibleTasks}
+        canManage={canEdit}
+        currentUserId={profile.id}
+        rosterProfiles={members.map((m) => m.profile).filter((p): p is NonNullable<typeof p> => !!p)}
+      />
     </div>
   );
 }

@@ -6,6 +6,8 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { PrelimReviewRow } from "@/lib/data/prelim-review";
 import { RUN_CHIP, VERDICT_CHIP } from "@/lib/prelim-review/labels";
@@ -14,17 +16,18 @@ import { pickDriveFile, pickerConfigured } from "./google-picker";
 import { ReviewPanel } from "./review-panel";
 
 export function ReviewTab({
-  projectId,
+  projects,
   reviews,
   rubrics,
 }: {
-  projectId: string;
+  projects: { id: string; name: string }[];
   reviews: PrelimReviewRow[];
   rubrics: Record<ReviewKind, Rubric>;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState(projects[0]?.id ?? "");
   const configured = pickerConfigured();
   const selected = reviews.find((r) => r.id === selectedId) ?? null;
 
@@ -54,16 +57,31 @@ export function ReviewTab({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-prose text-base text-muted-foreground">
-          Check your research doc or slides against the chapter&apos;s rules before the prelim check.
-        </p>
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-wrap items-end gap-3">
+        <Field className="w-56">
+          <FieldLabel>Project</FieldLabel>
+          <Select value={projectId} onValueChange={(v) => v && setProjectId(v)}>
+            <SelectTrigger className="w-full">
+              <SelectValue>{projects.find((p) => p.id === projectId)?.name ?? "Choose a project"}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {projects.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
         <div className="flex flex-col items-end gap-1">
-          <Button size="lg" onClick={onReview} disabled={busy || !configured}>
+          <Button size="lg" onClick={onReview} disabled={busy || !configured || !projectId}>
             Review a file
           </Button>
           {busy && <span className="text-sm text-muted-foreground">Reviewing your file. This takes under a minute.</span>}
+          {!projectId && <span className="text-sm text-muted-foreground">You&apos;re not on a project yet, so there&apos;s nothing to attach a review to.</span>}
           {!configured && <span className="text-sm text-muted-foreground">Google Drive isn&apos;t set up yet. Ask an exec.</span>}
+        </div>
         </div>
       </div>
 
@@ -107,7 +125,7 @@ export function ReviewTab({
                         <TableCell>
                           <span className="block font-semibold">{r.fileName}</span>
                           <span className="block text-sm text-muted-foreground">
-                            {KIND_LABELS[r.kind]} · {r.authorName} · {format(new Date(r.createdAt), "MMM d, h:mm a")}
+                            {r.projectName} · {KIND_LABELS[r.kind]} · {r.authorName} · {format(new Date(r.createdAt), "MMM d, h:mm a")}
                           </span>
                         </TableCell>
                         <TableCell>

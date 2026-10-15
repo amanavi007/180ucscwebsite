@@ -28,6 +28,8 @@ export async function getCurrentRubric(kind: ReviewKind): Promise<Rubric> {
 
 export interface PrelimReviewRow {
   id: string;
+  projectId: string;
+  projectName: string;
   fileName: string;
   fileUrl: string;
   kind: ReviewKind;
@@ -40,12 +42,12 @@ export interface PrelimReviewRow {
   authorName: string;
 }
 
-export async function listReviews(projectId: string): Promise<PrelimReviewRow[]> {
+/** Every review the signed-in person may see (row-level security: their projects' reviews, or all for execs). */
+export async function listReviews(): Promise<PrelimReviewRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("prelim_reviews")
     .select("*")
-    .eq("project_id", projectId)
     .order("created_at", { ascending: false })
     .limit(50);
   if (error) {
@@ -61,11 +63,19 @@ export async function listReviews(projectId: string): Promise<PrelimReviewRow[]>
     const { data: people } = await supabase.from("profiles").select("id, name").in("id", authorIds);
     for (const p of people ?? []) names.set(p.id, p.name);
   }
+  const projectIds = [...new Set(rows.map((r) => r.project_id))];
+  const projectNames = new Map<string, string>();
+  if (projectIds.length > 0) {
+    const { data: projects } = await supabase.from("projects").select("id, client_name").in("id", projectIds);
+    for (const p of projects ?? []) projectNames.set(p.id, p.client_name);
+  }
   return rows.map((r) => {
     const results = z.array(criterionResultSchema).safeParse(r.result);
     const live = effectiveStatus({ status: r.status, createdAt: r.created_at }, now);
     return {
       id: r.id,
+      projectId: r.project_id,
+      projectName: projectNames.get(r.project_id) ?? "Project",
       fileName: r.file_name,
       fileUrl: r.file_url,
       kind: r.kind,

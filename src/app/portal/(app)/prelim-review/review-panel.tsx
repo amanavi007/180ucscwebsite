@@ -30,7 +30,7 @@ export function ReviewPanel({
         <div className="min-w-0">
           <h2 className="truncate text-xl">{review.fileName}</h2>
           <p className="text-sm text-muted-foreground">
-            {KIND_LABELS[review.kind]} · {review.authorName} · {format(new Date(review.createdAt), "MMM d, h:mm a")}
+            {review.projectName} · {KIND_LABELS[review.kind]} · {review.authorName} · {format(new Date(review.createdAt), "MMM d, h:mm a")}
           </p>
         </div>
         <Button variant="ghost" size="icon" aria-label="Close review" onClick={onClose}>
