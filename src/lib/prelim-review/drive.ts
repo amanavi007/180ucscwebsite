@@ -77,10 +77,15 @@ async function gfetch(url: string, token: string): Promise<Response> {
   return res;
 }
 
+/** Shared-drive files are invisible (404) unless the request says it supports them. */
+export function metadataUrl(fileId: string): string {
+  return `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=id,name,mimeType,webViewLink&supportsAllDrives=true`;
+}
+
 export async function fetchDriveFile(fileId: string, token: string): Promise<DriveFile> {
   const id = encodeURIComponent(fileId);
   const meta = (await (
-    await gfetch(`https://www.googleapis.com/drive/v3/files/${id}?fields=id,name,mimeType,webViewLink`, token)
+    await gfetch(metadataUrl(fileId), token)
   ).json()) as { id: string; name: string; mimeType: string; webViewLink?: string };
 
   const kind = kindForMime(meta.mimeType);
