@@ -31,6 +31,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "interview.invitees_added": "Added interview invitees",
   "interview.invitee_removed": "Removed an interview invitee",
   "interview.booking_toggled": "Opened or closed interview booking",
+  "interview.window_set": "Changed the interview date range",
   "recruit.applicants_merged": "Merged duplicate applicants",
   "recruit.merge_undone": "Undid an applicant merge",
   "recruit.rubric_scale_changed": "Changed a rubric scale",

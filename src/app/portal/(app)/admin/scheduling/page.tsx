@@ -55,7 +55,7 @@ export default async function SchedulingPage() {
     orFallback(getInterviewBookings(), []),
     orFallback(getInterviewAvailability(), []),
     orFallback(getInvitees(), []),
-    orFallback(getInterviewAdminSettings(), { bookingOpen: false, slotMinutes: 30 }),
+    orFallback(getInterviewAdminSettings(), { bookingOpen: false, slotMinutes: 30, windowStart: null, windowEnd: null }),
     orFallback(getClientMeetingSlots(), []),
     orFallback(getClientMeetingBookings(), []),
     orFallback(getClientMeetingAvailability(), []),
@@ -75,6 +75,8 @@ export default async function SchedulingPage() {
         availability: interviewAvailability,
         invitees,
         bookingOpen: interviewSettings.bookingOpen,
+        windowStart: interviewSettings.windowStart,
+        windowEnd: interviewSettings.windowEnd,
       }}
       clients={{
         slots: clientSlots,

@@ -49,6 +49,8 @@ export interface SchedulingData {
     availability: InterviewAvailabilityRow[];
     invitees: InviteeRow[];
     bookingOpen: boolean;
+    windowStart: string | null;
+    windowEnd: string | null;
   };
   clients: {
     slots: ClientMeetingSlotRow[];
@@ -291,6 +293,7 @@ export function SchedulingWorkspace({
         onOpenChange={setAddOpen}
         today={today}
         onClientPanel={clients.panelExecIds.includes(currentExecId)}
+        interviewWindow={{ windowStart: interviews.windowStart, windowEnd: interviews.windowEnd }}
         existing={{
           coffee: new Set(coffee.availability.filter((a) => a.execId === currentExecId).map((a) => availabilityKey(a))),
           interview: new Set(interviews.availability.filter((a) => a.execId === currentExecId).map((a) => availabilityKey(a))),

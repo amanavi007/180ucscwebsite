@@ -237,13 +237,40 @@ export function parseInviteeList(text: string): { invitees: { email: string; nam
   return { invitees, errors };
 }
 
-/** Reads the two interview `org_settings` rows, falling back to closed / 60 minutes. */
-export function parseInterviewSettings(rows: { key: string; value: string }[]): { bookingOpen: boolean; slotMinutes: number } {
+export type InterviewWindow = { windowStart: string | null; windowEnd: string | null };
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** True when `date` falls inside the optional interview window. A missing end means open-ended. */
+export function isInInterviewWindow(date: string, { windowStart, windowEnd }: InterviewWindow): boolean {
+  if (windowStart && date < windowStart) return false;
+  if (windowEnd && date > windowEnd) return false;
+  return true;
+}
+
+/** Reads the interview `org_settings` rows, falling back to closed / 60 minutes / no date window. */
+export function parseInterviewSettings(
+  rows: { key: string; value: string }[],
+): { bookingOpen: boolean; slotMinutes: number } & InterviewWindow {
   const get = (key: string) => rows.find((r) => r.key === key)?.value;
   const minutes = Number(get("interview_slot_minutes"));
   const valid = Number.isInteger(minutes) && minutes >= 15 && minutes <= 240;
+  const date = (key: string) => {
+    const v = get(key);
+    return v && DATE_RE.test(v) ? v : null;
+  };
   return {
     bookingOpen: get("interview_booking_open") === "true",
     slotMinutes: valid ? minutes : DEFAULT_INTERVIEW_SLOT_MINUTES,
+    windowStart: date("interview_window_start"),
+    windowEnd: date("interview_window_end"),
   };
+}
+
+/** "between 2026-10-20 and 2026-11-03", for error messages and hints. */
+export function describeInterviewWindow({ windowStart, windowEnd }: InterviewWindow): string {
+  if (windowStart && windowEnd) return `between ${windowStart} and ${windowEnd}`;
+  if (windowStart) return `from ${windowStart} on`;
+  if (windowEnd) return `up to ${windowEnd}`;
+  return "on any date";
 }

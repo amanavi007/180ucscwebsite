@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BookingToggle as InterviewBookingToggle } from "../interviews/booking-toggle";
 import { BookingToggle as ClientBookingToggle } from "../client-meetings/booking-toggle";
+import { InterviewWindowForm } from "../interviews/window-form";
 import { InviteesView } from "../interviews/invitees-view";
 import { PanelView } from "../client-meetings/panel-view";
 import type { SchedulingData } from "./scheduling-workspace";
@@ -27,6 +28,7 @@ export function SetupCard({ interviews, clients }: { interviews: SchedulingData[
         <div className="space-y-2">
           <p className="text-sm font-bold">Interviews</p>
           <InterviewBookingToggle open={interviews.bookingOpen} />
+          <InterviewWindowForm windowStart={interviews.windowStart} windowEnd={interviews.windowEnd} />
           <Button variant="outline" size="sm" onClick={() => setOpen("invitees")}>
             Invitees ({interviews.invitees.length})
           </Button>

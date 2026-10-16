@@ -96,7 +96,7 @@ export async function createInterviewBookingAction(
   const { data: settingRows } = await supabase
     .from("org_settings")
     .select("key, value")
-    .in("key", ["interview_booking_open", "interview_slot_minutes"]);
+    .in("key", ["interview_booking_open", "interview_slot_minutes", "interview_window_start", "interview_window_end"]);
   if (!parseInterviewSettings(settingRows ?? []).bookingOpen) {
     return {
       error: "Interview booking isn't open right now. Check back soon.",

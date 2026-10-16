@@ -25,9 +25,9 @@ export async function getPublicInterviewState(): Promise<{
   const { data: settingRows, error: settingsError } = await supabase
     .from("org_settings")
     .select("key, value")
-    .in("key", ["interview_booking_open", "interview_slot_minutes"]);
+    .in("key", ["interview_booking_open", "interview_slot_minutes", "interview_window_start", "interview_window_end"]);
   if (settingsError) throw settingsError;
-  const { bookingOpen } = parseInterviewSettings(settingRows ?? []);
+  const { bookingOpen, windowStart, windowEnd } = parseInterviewSettings(settingRows ?? []);
   if (!bookingOpen) return { bookingOpen: false, slots: [] };
 
   const now = new Date();
@@ -37,7 +37,8 @@ export async function getPublicInterviewState(): Promise<{
       .from("interview_slots")
       .select("id, date, start_time, end_time, published")
       .eq("published", true)
-      .gte("date", formatOrgDate(now))
+      .gte("date", windowStart && windowStart > formatOrgDate(now) ? windowStart : formatOrgDate(now))
+      .lte("date", windowEnd ?? "9999-12-31")
       .order("date", { ascending: true })
       .order("start_time", { ascending: true })
       .order("id")

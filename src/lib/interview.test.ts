@@ -9,6 +9,7 @@ import {
   isInterviewSwapEligible,
   normalizeInviteeEmail,
   panelSizes,
+  isInInterviewWindow,
   parseInterviewSettings,
   parseInviteeList,
   type InterviewAvailabilityBlock,
@@ -231,16 +232,37 @@ describe("invitee parsing", () => {
 
 describe("parseInterviewSettings", () => {
   it("defaults to closed and 60 minutes", () => {
-    expect(parseInterviewSettings([])).toEqual({ bookingOpen: false, slotMinutes: 60 });
+    expect(parseInterviewSettings([])).toEqual({ bookingOpen: false, slotMinutes: 60, windowStart: null, windowEnd: null });
   });
 
   it("reads open and a valid slot length, rejecting nonsense lengths", () => {
     expect(parseInterviewSettings([{ key: "interview_booking_open", value: "true" }, { key: "interview_slot_minutes", value: "45" }])).toEqual({
       bookingOpen: true,
       slotMinutes: 45,
+      windowStart: null,
+      windowEnd: null,
     });
     expect(parseInterviewSettings([{ key: "interview_slot_minutes", value: "abc" }]).slotMinutes).toBe(60);
     expect(parseInterviewSettings([{ key: "interview_slot_minutes", value: "5" }]).slotMinutes).toBe(60);
+  });
+});
+
+describe("interview window", () => {
+  it("reads valid window dates and ignores malformed ones", () => {
+    const rows = [
+      { key: "interview_window_start", value: "2026-10-20" },
+      { key: "interview_window_end", value: "nope" },
+    ];
+    expect(parseInterviewSettings(rows)).toMatchObject({ windowStart: "2026-10-20", windowEnd: null });
+  });
+
+  it("includes both ends and treats a missing bound as open", () => {
+    const w = { windowStart: "2026-10-20", windowEnd: "2026-11-03" };
+    expect(isInInterviewWindow("2026-10-19", w)).toBe(false);
+    expect(isInInterviewWindow("2026-10-20", w)).toBe(true);
+    expect(isInInterviewWindow("2026-11-03", w)).toBe(true);
+    expect(isInInterviewWindow("2026-11-04", w)).toBe(false);
+    expect(isInInterviewWindow("2030-01-01", { windowStart: null, windowEnd: null })).toBe(true);
   });
 });
 

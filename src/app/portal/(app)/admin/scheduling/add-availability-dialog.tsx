@@ -17,6 +17,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { describeInterviewWindow, isInInterviewWindow, type InterviewWindow } from "@/lib/interview";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AvailabilityKind } from "./availability-panel";
 
@@ -55,6 +56,7 @@ export function AddAvailabilityDialog({
   today,
   onClientPanel,
   existing,
+  interviewWindow,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -63,6 +65,8 @@ export function AddAvailabilityDialog({
   onClientPanel: boolean;
   /** What you already have, so repeating a weekly schedule doesn't double it up. */
   existing: ExistingKeys;
+  /** Interviews only run inside this date range; other kinds ignore it. */
+  interviewWindow: InterviewWindow;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -115,7 +119,9 @@ export function AddAvailabilityDialog({
       let added = 0;
       let made = 0;
       for (const kind of kinds) {
-        const fresh = upcoming.filter((r) => !existing[kind].has(availabilityKey(r)));
+        const fresh = upcoming.filter(
+          (r) => !existing[kind].has(availabilityKey(r)) && (kind !== "interview" || isInInterviewWindow(r.date, interviewWindow)),
+        );
         for (const group of groupByBlocks(fresh)) {
           const result =
             kind === "coffee"
@@ -176,6 +182,11 @@ export function AddAvailabilityDialog({
 
         <section className="space-y-3">
           <h3 className="text-sm font-bold">2. Which days?</h3>
+          {kinds.includes("interview") && (interviewWindow.windowStart || interviewWindow.windowEnd) && (
+            <p className="text-sm text-muted-foreground">
+              Interviews only run {describeInterviewWindow(interviewWindow)}. Days outside that are skipped for interviews.
+            </p>
+          )}
           <Tabs value={mode} onValueChange={(v) => v && setMode(v as typeof mode)}>
             <TabsList>
               <TabsTrigger value="weekly">Every week</TabsTrigger>

@@ -2,7 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeTime } from "@/lib/coffee-chat";
 import { EXEC_ROLES } from "@/lib/auth/roles";
-import { parseInterviewSettings } from "@/lib/interview";
+import { parseInterviewSettings, type InterviewWindow } from "@/lib/interview";
 import { fetchAllPages } from "@/lib/paginate";
 import type { ExecOption } from "@/lib/data/coffee-chat";
 
@@ -305,15 +305,14 @@ export async function getInterviewExecOptions(
   };
 }
 
-export async function getInterviewAdminSettings(): Promise<{
-  bookingOpen: boolean;
-  slotMinutes: number;
-}> {
+export async function getInterviewAdminSettings(): Promise<
+  { bookingOpen: boolean; slotMinutes: number } & InterviewWindow
+> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("org_settings")
     .select("key, value")
-    .in("key", ["interview_booking_open", "interview_slot_minutes"]);
+    .in("key", ["interview_booking_open", "interview_slot_minutes", "interview_window_start", "interview_window_end"]);
   if (error) throw error;
   return parseInterviewSettings(data ?? []);
 }

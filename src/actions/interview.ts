@@ -9,6 +9,7 @@ import { logAudit } from "@/lib/audit";
 import { emailApplicantInterviewCancelled, notifyInterviewExecs } from "@/lib/email/notify-interview";
 import { getInterviewAdminSettings, getInterviewAvailability, getInterviewExecOptions, getInterviewSlots } from "@/lib/data/interview";
 import { expandAvailabilityEntry, isValidUcscEmail, overlaps, type TimeBlockInput } from "@/lib/coffee-chat";
+import { describeInterviewWindow, isInInterviewWindow } from "@/lib/interview";
 import { getOrgTodayDateString } from "@/lib/date";
 import { getApplicantRows } from "@/lib/data/recruit";
 import { getScoringBundle } from "@/lib/data/recruit-scoring";
@@ -139,7 +140,13 @@ export async function addInterviewAvailabilityAction(
   const { profile, error } = await requireExec();
   if (error || !profile) return { error };
 
-  const expanded = expandAvailabilityEntry(dates, blocks);
+  const settings = await getInterviewAdminSettings();
+  const inWindow = dates.filter((d) => isInInterviewWindow(d, settings));
+  if (inWindow.length === 0) {
+    return { error: `Interviews only run ${describeInterviewWindow(settings)}.` };
+  }
+
+  const expanded = expandAvailabilityEntry(inWindow, blocks);
   if ("error" in expanded) return { error: expanded.error };
 
   const supabase = await createClient();
@@ -239,7 +246,9 @@ async function generateMissingInterviewSlots(
       execIds: s.execs.map((e) => e.id),
     }));
   const wanted = generateInterviewSlots(
-    availability.map((a) => ({ execId: a.execId, date: a.date, startTime: a.startTime, endTime: a.endTime })),
+    availability
+      .filter((a) => isInInterviewWindow(a.date, settings))
+      .map((a) => ({ execId: a.execId, date: a.date, startTime: a.startTime, endTime: a.endTime })),
     assignments,
     settings.slotMinutes,
   );
@@ -464,4 +473,29 @@ export async function setInterviewBookingOpenAction(open: boolean): Promise<Acti
   await logAudit(profile.id, "interview.booking_toggled", undefined, open ? "opened" : "closed");
   revalidateAdmin();
   return {};
+}
+
+/** Sets (or, with nulls, clears) the dates interviews can be scheduled on. */
+export async function setInterviewWindowAction(windowStart: string | null, windowEnd: string | null): Promise<ActionResult> {
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error };
+
+  const valid = (d: string | null) => d === null || /^\d{4}-\d{2}-\d{2}$/.test(d);
+  if (!valid(windowStart) || !valid(windowEnd)) return { error: "Pick valid dates." };
+  if (windowStart && windowEnd && windowEnd < windowStart) return { error: "The end date is before the start date." };
+
+  const supabase = await createClient();
+  const rows = [
+    { key: "interview_window_start", value: windowStart ?? "" },
+    { key: "interview_window_end", value: windowEnd ?? "" },
+  ];
+  const { error: updateError } = await supabase.from("org_settings").upsert(rows, { onConflict: "key" });
+  if (updateError) return { error: updateError.message };
+
+  // Slots outside a narrowed window are dropped (booked ones stay); a widened window brings them back.
+  const generated = await generateMissingInterviewSlots(profile.id);
+
+  await logAudit(profile.id, "interview.window_set", undefined, `${windowStart ?? "any"} to ${windowEnd ?? "any"}`);
+  revalidateAdmin();
+  return { error: generated.error };
 }
