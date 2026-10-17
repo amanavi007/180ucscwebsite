@@ -10,7 +10,7 @@ import {
 } from "react";
 import Script from "next/script";
 import { useRouter } from "next/navigation";
-import { CircleAlert, MapPin } from "lucide-react";
+import { CircleAlert, Video } from "lucide-react";
 import { createInterviewBookingAction } from "@/actions/interview-public";
 import type { PublicInterviewSlot } from "@/lib/data/interview-public";
 import { formatTime12h, isValidUcscEmail } from "@/lib/coffee-chat";
@@ -321,7 +321,7 @@ export function InterviewBookingForm({
                   }}
                 />
                 <p className="mt-3 flex items-center gap-1.5 px-1 text-sm text-muted-foreground">
-                  <MapPin className="size-4" aria-hidden />
+                  <Video className="size-4" aria-hidden />
                   {INTERVIEW_LOCATION} · 1 hour
                 </p>
               </fieldset>

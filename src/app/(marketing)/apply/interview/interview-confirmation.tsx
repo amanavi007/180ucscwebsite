@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, type CSSProperties } from "react";
 import Link from "next/link";
-import { Check, ChevronRight, Mail, MapPin } from "lucide-react";
-import { formatTimeRange, mapsSearchUrl } from "@/lib/coffee-chat";
+import { Check, ChevronRight, Mail, Video } from "lucide-react";
+import { formatTimeRange } from "@/lib/coffee-chat";
 import { INTERVIEW_LOCATION } from "@/lib/interview";
 import { formatDateParts } from "@/lib/date";
 import { DateTile } from "../coffee-chat/date-tile";
@@ -70,25 +70,16 @@ export function InterviewConfirmation({
                 {formatTimeRange(booking.startTime, booking.endTime)}
               </p>
               <p className="text-sm text-muted-foreground">
-                1 hour · In person
+                1 hour · Online
               </p>
             </div>
           </div>
-          <a
-            href={mapsSearchUrl(INTERVIEW_LOCATION)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 border-t border-dashed border-border px-6 py-3 font-semibold transition-colors hover:bg-mint/45"
-          >
+          <div className="flex items-center gap-3 border-t border-dashed border-border px-6 py-3 font-semibold">
             <span className="grid size-7 shrink-0 place-items-center rounded-full bg-mint text-deep">
-              <MapPin className="size-3.5" />
+              <Video className="size-3.5" />
             </span>
             <span className="flex-1">{INTERVIEW_LOCATION}</span>
-            <span className="inline-flex shrink-0 items-center gap-1 text-[0.8125rem] font-semibold text-primary">
-              Open in Maps
-              <span className="sr-only">(opens in a new tab)</span>
-            </span>
-          </a>
+          </div>
         </div>
 
         <InterviewAddToCalendarButtons

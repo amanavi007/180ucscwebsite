@@ -1,7 +1,7 @@
 import { isValidUcscEmail, minutesToTime, normalizeTime, overlaps, timeToMinutes } from "./coffee-chat";
 import { zonedDateTimeToUtc } from "./date";
 
-export const INTERVIEW_LOCATION = "SnE Library";
+export const INTERVIEW_LOCATION = "Online";
 export const DEFAULT_INTERVIEW_SLOT_MINUTES = 60;
 export const INTERVIEW_GRID_MINUTES = 30;
 export const INTERVIEW_MIN_LEAD_MINUTES = 12 * 60;

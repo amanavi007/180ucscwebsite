@@ -13,7 +13,7 @@ describe("interview invites", () => {
   it("builds a Google Calendar link in UTC with the fixed location", () => {
     const url = buildInterviewGoogleCalendarUrl(base);
     expect(url).toContain("dates=20261007T160000Z%2F20261007T170000Z");
-    expect(url).toContain("location=SnE+Library");
+    expect(url).toContain("location=Online");
     expect(url).toContain("text=180DC+UCSC+Interview");
   });
 
@@ -34,7 +34,7 @@ describe("interview invites", () => {
     expect(ics).toContain("\r\n");
     expect(ics).toContain("DTSTART:20261007T160000Z");
     expect(ics).toContain("DTEND:20261007T170000Z");
-    expect(ics).toContain("LOCATION:SnE Library");
+    expect(ics).toContain("LOCATION:Online");
   });
 
   it("gives feed events a stable per-booking UID", () => {
