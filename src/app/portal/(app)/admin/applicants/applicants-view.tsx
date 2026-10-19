@@ -1,7 +1,8 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { Search, UserPlus } from "lucide-react";
+import { Copy, Search, UserPlus } from "lucide-react";
+import { toast } from "sonner";
 import type { ApplicantRow, RecruitCategory, RecruitEvent } from "@/lib/data/recruit";
 import type { ApplicantReviewState } from "@/lib/recruit-assignment";
 import { combinedTotal, meetsCutoff, pickAboveCutoff, rankByTotal } from "@/lib/recruit";
@@ -9,6 +10,7 @@ import { isValidUcscEmail } from "@/lib/coffee-chat";
 import { isDisagreement, type StageSummary } from "@/lib/recruit-scoring";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { FilterChip } from "@/components/filter-chip";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CutoffBar } from "./interview-cutoff";
@@ -16,6 +18,8 @@ import { Segmented } from "./segmented";
 
 type Filter = "all" | "engaged" | "none";
 type Sort = "points" | "name";
+/** Where someone is in the interview process. Narrows the list like the other filters. */
+type Stage = "above" | "notInvited" | "invitedNotBooked" | "booked";
 
 const GRID = "grid-cols-[3rem_minmax(0,1.7fr)_9.5rem_minmax(0,1.3fr)_14rem]";
 
@@ -81,12 +85,34 @@ export function ApplicantsView({
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("points");
+  const [stage, setStage] = useState<Stage | null>(null);
 
   const scored = useMemo(
     () => rows.map((r) => ({ ...r, total: combinedTotal(r.total, summaries.resume[r.id], summaries.interview[r.id]) })),
     [rows, summaries],
   );
   const max = Math.max(1, ...scored.map((r) => r.total));
+  const invited = useMemo(() => new Set(invitedEmails), [invitedEmails]);
+  const booked = useMemo(() => new Set(bookedEmails), [bookedEmails]);
+
+  const inStage = (r: { email: string | null; total: number }, which: Stage) => {
+    const email = (r.email ?? "").trim().toLowerCase();
+    const isInvited = invited.has(email);
+    const isBooked = booked.has(email);
+    if (which === "above") return meetsCutoff(r.total, interviewCutoff);
+    if (which === "notInvited") return meetsCutoff(r.total, interviewCutoff) && !isInvited;
+    if (which === "booked") return isBooked;
+    return isInvited && !isBooked;
+  };
+  const stageCounts = useMemo(() => {
+    const counts: Record<Stage, number> = { above: 0, notInvited: 0, invitedNotBooked: 0, booked: 0 };
+    for (const r of scored) {
+      if (!r.hasApplication) continue;
+      for (const k of Object.keys(counts) as Stage[]) if (inStage(r, k)) counts[k]++;
+    }
+    return counts;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scored, invited, booked, interviewCutoff]);
 
   const { visible, noApplication } = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -94,6 +120,7 @@ export function ApplicantsView({
       const engaged = r.entries.some((e) => !e.voidedAt && e.points > 0);
       if (filter === "engaged" && !engaged) return false;
       if (filter === "none" && engaged) return false;
+      if (stage && !inStage(r, stage)) return false;
       if (!q) return true;
       return r.name.toLowerCase().includes(q) || (r.email ?? "").includes(q) || r.aliases.some((a) => a.includes(q));
     };
@@ -105,9 +132,8 @@ export function ApplicantsView({
           : [...filtered].sort((a, b) => a.name.localeCompare(b.name)).map((r) => ({ ...r, rank: 0 })),
       noApplication: scored.filter((r) => !r.hasApplication && matches(r)).sort((a, b) => a.name.localeCompare(b.name)),
     };
-  }, [scored, search, filter, sort]);
-  const invited = useMemo(() => new Set(invitedEmails), [invitedEmails]);
-  const booked = useMemo(() => new Set(bookedEmails), [bookedEmails]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scored, search, filter, sort, stage, invited, booked, interviewCutoff]);
   const cutoffStats = useMemo(() => {
     const { eligible, noEmail } = pickAboveCutoff(scored, interviewCutoff, (e) => isValidUcscEmail(e.trim().toLowerCase()));
     const alreadyInvited = eligible.filter((r) => invited.has(r.email.trim().toLowerCase())).length;
@@ -119,8 +145,21 @@ export function ApplicantsView({
     };
   }, [scored, interviewCutoff, invited]);
   // The line only means something in the full ranking, so it hides while the list is sorted by name or narrowed.
-  const showLine = interviewCutoff !== null && sort === "points" && filter === "all" && search.trim() === "";
+  const showLine = interviewCutoff !== null && sort === "points" && filter === "all" && stage === null && search.trim() === "";
   const lineIndex = showLine ? visible.findIndex((r) => !meetsCutoff(r.total, interviewCutoff)) : -1;
+  // Emails of whoever is on screen, so a filtered list can go straight into a reminder.
+  const emails = useMemo(
+    () => [...new Set(visible.map((r) => (r.email ?? "").trim().toLowerCase()).filter(Boolean))],
+    [visible],
+  );
+  async function copyEmails() {
+    try {
+      await navigator.clipboard.writeText(emails.join(", "));
+      toast.success(`Copied ${emails.length} ${emails.length === 1 ? "email" : "emails"}.`);
+    } catch {
+      toast.error("Couldn't copy. Select the emails by hand instead.");
+    }
+  }
   const applicantCount = rows.filter((r) => r.hasApplication).length;
 
   function renderRow(r: ApplicantRow, rankLabel: string) {
@@ -241,6 +280,31 @@ export function ApplicantsView({
         )}
       </div>
 
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Interview stage">
+        <FilterChip selected={stage === "above"} onClick={() => setStage(stage === "above" ? null : "above")} count={stageCounts.above}>
+          Above cutoff
+        </FilterChip>
+        <FilterChip selected={stage === "notInvited"} onClick={() => setStage(stage === "notInvited" ? null : "notInvited")} count={stageCounts.notInvited}>
+          Not invited yet
+        </FilterChip>
+        <FilterChip
+          selected={stage === "invitedNotBooked"}
+          onClick={() => setStage(stage === "invitedNotBooked" ? null : "invitedNotBooked")}
+          count={stageCounts.invitedNotBooked}
+        >
+          Invited, not booked
+        </FilterChip>
+        <FilterChip selected={stage === "booked"} onClick={() => setStage(stage === "booked" ? null : "booked")} count={stageCounts.booked}>
+          Booked
+        </FilterChip>
+        {stage && (
+          <Button variant="outline" size="sm" onClick={copyEmails} disabled={emails.length === 0}>
+            <Copy />
+            Copy {emails.length} {emails.length === 1 ? "email" : "emails"}
+          </Button>
+        )}
+      </div>
+
       <CutoffBar
         quarterId={quarterId}
         cutoff={interviewCutoff}
@@ -276,7 +340,7 @@ export function ApplicantsView({
         Showing {visible.length} of {applicantCount}. Select a row to see their application, points and notes.
       </p>
 
-      {noApplication.length > 0 && (
+      {!stage && noApplication.length > 0 && (
         <details className="overflow-hidden rounded-xl border bg-card">
           <summary className="cursor-pointer px-5 py-3 text-sm font-medium">
             No application submitted ({noApplication.length})
