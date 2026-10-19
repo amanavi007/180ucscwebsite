@@ -9,7 +9,7 @@ import { logAudit } from "@/lib/audit";
 import { emailApplicantInterviewCancelled, notifyInterviewExecs } from "@/lib/email/notify-interview";
 import { getInterviewAdminSettings, getInterviewAvailability, getInterviewExecOptions, getInterviewSlots } from "@/lib/data/interview";
 import { expandAvailabilityEntry, isValidUcscEmail, overlaps, type TimeBlockInput } from "@/lib/coffee-chat";
-import { describeInterviewWindow, isInInterviewWindow } from "@/lib/interview";
+import { describeInterviewWindow, isInInterviewWindow, isInterviewPast, planInterviewRebalance, type RebalanceSwap } from "@/lib/interview";
 import { getOrgTodayDateString } from "@/lib/date";
 import { getApplicantRows } from "@/lib/data/recruit";
 import { getScoringBundle } from "@/lib/data/recruit-scoring";
@@ -498,4 +498,95 @@ export async function setInterviewWindowAction(windowStart: string | null, windo
   await logAudit(profile.id, "interview.window_set", undefined, `${windowStart ?? "any"} to ${windowEnd ?? "any"}`);
   revalidateAdmin();
   return { error: generated.error };
+}
+
+export interface RebalancePreviewRow extends RebalanceSwap {
+  date: string;
+  startTime: string;
+  endTime: string;
+  applicantName: string | null;
+  outName: string;
+  inName: string;
+}
+
+export interface RebalancePreview {
+  rows: RebalancePreviewRow[];
+  /** Interviews per exec before and after, only for execs the plan changes. */
+  loads: { name: string; before: number; after: number }[];
+}
+
+async function planRebalance() {
+  const [slots, availability] = await Promise.all([getInterviewSlots(), getInterviewAvailability()]);
+  const now = new Date();
+  const upcoming = slots.filter((s) => !isInterviewPast(s.date, s.endTime, now));
+  const swaps = planInterviewRebalance(
+    upcoming.map((s) => ({
+      slotId: s.id,
+      date: s.date,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      execIds: s.execs.map((e) => e.id),
+      booked: s.bookingStatus === "booked",
+    })),
+    availability.map((a) => ({ execId: a.execId, date: a.date, startTime: a.startTime, endTime: a.endTime })),
+  );
+  return { upcoming, availability, swaps };
+}
+
+/** Shows what "Rebalance execs" would change without changing anything. */
+export async function previewInterviewRebalanceAction(): Promise<ActionResult & { preview?: RebalancePreview }> {
+  const { error } = await requireExec();
+  if (error) return { error };
+
+  const { upcoming, availability, swaps } = await planRebalance();
+  const names = new Map<string, string>();
+  for (const s of upcoming) for (const e of s.execs) names.set(e.id, e.name);
+  for (const a of availability) names.set(a.execId, a.execName);
+  const slotById = new Map(upcoming.map((s) => [s.id, s]));
+
+  const load = new Map<string, number>();
+  for (const s of upcoming) for (const e of s.execs) load.set(e.id, (load.get(e.id) ?? 0) + 1);
+  const before = new Map(load);
+  for (const w of swaps) {
+    load.set(w.outExecId, (load.get(w.outExecId) ?? 0) - 1);
+    load.set(w.inExecId, (load.get(w.inExecId) ?? 0) + 1);
+  }
+  const touched = new Set(swaps.flatMap((w) => [w.outExecId, w.inExecId]));
+
+  return {
+    preview: {
+      rows: swaps.map((w) => {
+        const slot = slotById.get(w.slotId)!;
+        return {
+          ...w,
+          date: slot.date,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          applicantName: slot.applicantName,
+          outName: names.get(w.outExecId) ?? "Unknown",
+          inName: names.get(w.inExecId) ?? "Unknown",
+        };
+      }),
+      loads: [...touched]
+        .map((id) => ({ name: names.get(id) ?? "Unknown", before: before.get(id) ?? 0, after: load.get(id) ?? 0 }))
+        .sort((a, b) => b.before - a.before || a.name.localeCompare(b.name)),
+    },
+  };
+}
+
+/** Plans again from the current data and applies it, so a stale preview can't swap anyone onto a conflict. */
+export async function rebalanceInterviewExecsAction(): Promise<ActionResult & { swappedCount?: number }> {
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error };
+
+  const { swaps } = await planRebalance();
+  let swappedCount = 0;
+  for (const w of swaps) {
+    const result = await swapInterviewExecAction(w.slotId, w.outExecId, w.inExecId);
+    if (result.error) return { error: `${result.error} ${swappedCount} swap(s) were made before that.`, swappedCount };
+    swappedCount += 1;
+  }
+
+  await logAudit(profile.id, "interview.execs_rebalanced", undefined, `${swappedCount} swap(s)`);
+  return { swappedCount };
 }

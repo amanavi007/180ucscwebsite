@@ -187,6 +187,61 @@ export function isInterviewSwapEligible(
   );
 }
 
+export interface RebalanceSlot extends InterviewSlotAssignment {
+  booked: boolean;
+}
+
+export interface RebalanceSwap {
+  slotId: string;
+  outExecId: string;
+  inExecId: string;
+}
+
+/**
+ * Evens out how many interviews each exec has by swapping the busiest exec off a
+ * slot for a less busy exec who marked themselves free for the whole slot. Works
+ * on booked slots too. Each swap must narrow the gap by at least two, so it always
+ * stops. Open slots are used before booked ones, since a booked swap emails people.
+ */
+export function planInterviewRebalance(slots: RebalanceSlot[], availability: InterviewAvailabilityBlock[]): RebalanceSwap[] {
+  const state = slots.map((s) => ({ ...s, startTime: normalizeTime(s.startTime), endTime: normalizeTime(s.endTime), execIds: [...s.execIds] }));
+  const blocks = availability.map((b) => ({ ...b, startTime: normalizeTime(b.startTime), endTime: normalizeTime(b.endTime) }));
+
+  const load = new Map<string, number>();
+  for (const b of blocks) if (!load.has(b.execId)) load.set(b.execId, 0);
+  for (const s of state) for (const id of s.execIds) load.set(id, (load.get(id) ?? 0) + 1);
+  const loadOf = (id: string) => load.get(id) ?? 0;
+
+  const isFree = (execId: string, s: { date: string; startTime: string; endTime: string }) =>
+    blocks.some((b) => b.execId === execId && b.date === s.date && b.startTime <= s.startTime && b.endTime >= s.endTime);
+
+  const swaps: RebalanceSwap[] = [];
+  for (;;) {
+    let best: { gain: number; booked: boolean; slot: (typeof state)[number]; out: string; in: string } | null = null;
+    for (const s of state) {
+      for (const candidate of load.keys()) {
+        if (!isFree(candidate, s) || !isInterviewSwapEligible(s, candidate, state)) continue;
+        for (const out of s.execIds) {
+          const gain = loadOf(out) - loadOf(candidate);
+          if (gain < 2) continue;
+          const better =
+            !best ||
+            gain > best.gain ||
+            (gain === best.gain &&
+              (Number(s.booked) < Number(best.booked) ||
+                (s.booked === best.booked && `${s.slotId}|${out}|${candidate}` < `${best.slot.slotId}|${best.out}|${best.in}`)));
+          if (better) best = { gain, booked: s.booked, slot: s, out, in: candidate };
+        }
+      }
+    }
+    if (!best) return swaps;
+    best.slot.execIds = best.slot.execIds.map((id) => (id === best!.out ? best!.in : id));
+    load.set(best.out, loadOf(best.out) - 1);
+    load.set(best.in, loadOf(best.in) + 1);
+    swaps.push({ slotId: best.slot.slotId, outExecId: best.out, inExecId: best.in });
+  }
+}
+
 export function canAddToPanel(currentCount: number): boolean {
   return currentCount < MAX_PANEL_SIZE;
 }

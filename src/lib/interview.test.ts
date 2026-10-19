@@ -7,6 +7,7 @@ import {
   isInterviewPast,
   isInterviewSlotBookable,
   isInterviewSwapEligible,
+  planInterviewRebalance,
   normalizeInviteeEmail,
   panelSizes,
   isInInterviewWindow,
@@ -291,5 +292,55 @@ describe("isInterviewPast", () => {
     expect(isInterviewPast("2026-10-07", "10:00", new Date("2026-10-07T16:59:00Z"))).toBe(false);
     expect(isInterviewPast("2026-10-07", "10:00", new Date("2026-10-07T17:00:00Z"))).toBe(true);
     expect(isInterviewPast("2026-10-07", "10:00", new Date("2027-03-01T00:00:00Z"))).toBe(true);
+  });
+});
+
+describe("planInterviewRebalance", () => {
+  const slot = (slotId: string, startTime: string, endTime: string, execIds: string[], booked = false, date = D) => ({
+    slotId,
+    date,
+    startTime,
+    endTime,
+    execIds,
+    booked,
+  });
+
+  it("moves an exec with no interviews onto slots from the busiest execs", () => {
+    const slots = [slot("s1", "10:00", "11:00", ["a", "b"], true), slot("s2", "12:00", "13:00", ["a", "b"], true), slot("s3", "14:00", "15:00", ["a", "b"], true)];
+    const swaps = planInterviewRebalance(slots, [block("p", "09:00", "17:00")]);
+    expect(swaps.length).toBeGreaterThan(0);
+    const load = new Map<string, number>();
+    for (const s of slots) for (const id of s.execIds) load.set(id, (load.get(id) ?? 0) + 1);
+    for (const w of swaps) {
+      expect(w.inExecId).toBe("p");
+      load.set(w.outExecId, load.get(w.outExecId)! - 1);
+      load.set(w.inExecId, (load.get(w.inExecId) ?? 0) + 1);
+    }
+    const counts = [...load.values()];
+    expect(Math.max(...counts) - Math.min(...counts)).toBeLessThanOrEqual(1);
+  });
+
+  it("only uses an exec whose availability covers the whole slot", () => {
+    const slots = [slot("s1", "10:00", "11:00", ["a", "b"]), slot("s2", "12:00", "13:00", ["a", "b"])];
+    expect(planInterviewRebalance(slots, [block("p", "10:30", "11:00")])).toEqual([]);
+  });
+
+  it("never double-books an exec on overlapping slots", () => {
+    const slots = [slot("s1", "10:00", "11:00", ["a", "b"]), slot("s2", "10:30", "11:30", ["a", "c"]), slot("s3", "13:00", "14:00", ["a", "b"])];
+    const swaps = planInterviewRebalance(slots, [block("p", "09:00", "17:00")]);
+    const bySlot = (id: string) => swaps.filter((w) => w.slotId === id);
+    // p can take at most one of the two overlapping slots
+    expect(bySlot("s1").length + bySlot("s2").length).toBeLessThanOrEqual(1);
+  });
+
+  it("prefers open slots over booked ones when the gain is equal", () => {
+    const slots = [slot("booked", "10:00", "11:00", ["a", "b"], true), slot("open", "12:00", "13:00", ["a", "b"], false), slot("x", "14:00", "15:00", ["a", "b"], true)];
+    const swaps = planInterviewRebalance(slots, [block("p", "09:00", "17:00")]);
+    expect(swaps[0].slotId).toBe("open");
+  });
+
+  it("does nothing when loads are already within one", () => {
+    const slots = [slot("s1", "10:00", "11:00", ["a", "b"]), slot("s2", "12:00", "13:00", ["a", "p"])];
+    expect(planInterviewRebalance(slots, [block("p", "09:00", "17:00")])).toEqual([]);
   });
 });

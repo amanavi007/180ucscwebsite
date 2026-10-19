@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CalendarDays, CalendarPlus, CircleHelp, Eye, MoreHorizontal, Plus, RefreshCw } from "lucide-react";
+import { CalendarDays, CalendarPlus, CircleHelp, Eye, MoreHorizontal, Plus, RefreshCw, Shuffle } from "lucide-react";
 import { generateSlotsAction, publishAllSlotsAction } from "@/actions/coffee-chat";
 import { generateInterviewSlotsAction, publishAllInterviewSlotsAction } from "@/actions/interview";
 import { generateClientMeetingSlotsAction, publishAllClientMeetingSlotsAction } from "@/actions/client-meeting";
@@ -40,6 +40,7 @@ import { SlotPanel } from "./slot-panel";
 import { AvailabilityPanel } from "./availability-panel";
 import { ExecAvailabilityPanel } from "./exec-availability-panel";
 import { SetupCard } from "./setup-card";
+import { RebalanceDialog } from "./rebalance-dialog";
 import { AddAvailabilityDialog } from "./add-availability-dialog";
 
 export interface SchedulingData {
@@ -106,6 +107,7 @@ export function SchedulingWorkspace({
   const [showPast, setShowPast] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [rebalanceOpen, setRebalanceOpen] = useState(false);
 
   const all = useMemo(
     () =>
@@ -189,6 +191,10 @@ export function SchedulingWorkspace({
                 <DropdownMenuItem onClick={makeMissingSlots}>
                   <RefreshCw />
                   Make any missing slots
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setRebalanceOpen(true)}>
+                  <Shuffle />
+                  Rebalance interview execs
                 </DropdownMenuItem>
                 <DropdownMenuItem disabled={hiddenCount === 0} onClick={publishAllHidden}>
                   <Eye />
@@ -297,6 +303,7 @@ export function SchedulingWorkspace({
       </div>
 
       <CalendarHelp open={helpOpen} onOpenChange={setHelpOpen} />
+      <RebalanceDialog open={rebalanceOpen} onOpenChange={setRebalanceOpen} />
       <AddAvailabilityDialog
         key={addOpen ? "open" : "closed"}
         open={addOpen}
