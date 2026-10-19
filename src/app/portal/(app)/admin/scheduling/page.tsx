@@ -67,6 +67,7 @@ export default async function SchedulingPage() {
     <SchedulingWorkspace
       today={getOrgTodayDateString()}
       currentExecId={profile.id}
+      isSuperAdmin={profile.role === "director_of_projects"}
       feedUrl={`${process.env.NEXT_PUBLIC_SITE_URL}${calendarFeedPath(profile.id)}`}
       coffee={{ slots: coffeeSlots, bookings: coffeeBookings, availability: coffeeAvailability }}
       interviews={{

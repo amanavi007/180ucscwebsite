@@ -38,6 +38,7 @@ import { availabilityKey } from "@/lib/availability-groups";
 import { CalendarHelp } from "../coffee-chats/schedule-view";
 import { SlotPanel } from "./slot-panel";
 import { AvailabilityPanel } from "./availability-panel";
+import { ExecAvailabilityPanel } from "./exec-availability-panel";
 import { SetupCard } from "./setup-card";
 import { AddAvailabilityDialog } from "./add-availability-dialog";
 
@@ -92,7 +93,8 @@ export function SchedulingWorkspace({
   coffee,
   interviews,
   clients,
-}: { today: string; currentExecId: string; feedUrl: string } & SchedulingData) {
+  isSuperAdmin,
+}: { today: string; currentExecId: string; feedUrl: string; isSuperAdmin: boolean } & SchedulingData) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [kind, setKind] = useState<AgendaKind | "all">("all");
@@ -280,6 +282,14 @@ export function SchedulingWorkspace({
                 clients={clients.availability}
                 onAdd={() => setAddOpen(true)}
               />
+              {isSuperAdmin && (
+                <ExecAvailabilityPanel
+                  today={today}
+                  coffee={coffee.availability}
+                  interviews={interviews.availability}
+                  clients={clients.availability}
+                />
+              )}
               <SetupCard interviews={interviews} clients={clients} />
             </>
           )}
