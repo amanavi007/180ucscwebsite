@@ -143,7 +143,7 @@ Then one of five bodies:
 
 1. **List and panel** (People roster, Applicants): filters row, table, panel opens on selection.
 2. **Board** (Projects, Team builder): columns of cards, status chip per card; the Team builder also has a "Before you finalize" advice panel.
-3. **Agenda or calendar** (Scheduling, Calendar): day groups of rows or a time grid, with a side column. Scheduling's side column is "Your availability", then "Exec availability" (read-only, Director of Projects only), then "Booking and setup", and becomes the slot panel when a slot is selected.
+3. **Agenda or calendar** (Scheduling, Calendar): day groups of rows or a time grid, with a side column. Scheduling's side column is "Your availability", then "Booking and setup", then "Exec availability" (read-only, Director of Projects only), and becomes the slot panel when a slot is selected.
 4. **Reader and score** (Reviews): reading column on the left, score card on the right that stays in view only while the whole column fits on screen (it never scrolls on its own), pill row of sections above the text. The resume is shown by default.
 5. **Settings** (Setup): left list of sections, one section on the right. Settings are never tabs.
 

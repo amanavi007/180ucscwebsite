@@ -282,6 +282,7 @@ export function SchedulingWorkspace({
                 clients={clients.availability}
                 onAdd={() => setAddOpen(true)}
               />
+              <SetupCard interviews={interviews} clients={clients} />
               {isSuperAdmin && (
                 <ExecAvailabilityPanel
                   today={today}
@@ -290,7 +291,6 @@ export function SchedulingWorkspace({
                   clients={clients.availability}
                 />
               )}
-              <SetupCard interviews={interviews} clients={clients} />
             </>
           )}
         </aside>
