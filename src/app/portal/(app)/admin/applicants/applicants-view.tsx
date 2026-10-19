@@ -55,6 +55,7 @@ export function ApplicantsView({
   disagreementThreshold,
   interviewCutoff,
   invitedEmails,
+  bookedEmails,
   onAdd,
 }: {
   quarterId: string;
@@ -73,6 +74,8 @@ export function ApplicantsView({
   interviewCutoff: number | null;
   /** Lowercased emails already on the interview invite list. */
   invitedEmails: string[];
+  /** Lowercased emails with a confirmed interview booking. */
+  bookedEmails: string[];
   onAdd: () => void;
 }) {
   const [search, setSearch] = useState("");
@@ -104,6 +107,7 @@ export function ApplicantsView({
     };
   }, [scored, search, filter, sort]);
   const invited = useMemo(() => new Set(invitedEmails), [invitedEmails]);
+  const booked = useMemo(() => new Set(bookedEmails), [bookedEmails]);
   const cutoffStats = useMemo(() => {
     const { eligible, noEmail } = pickAboveCutoff(scored, interviewCutoff, (e) => isValidUcscEmail(e.trim().toLowerCase()));
     const alreadyInvited = eligible.filter((r) => invited.has(r.email.trim().toLowerCase())).length;
@@ -138,7 +142,11 @@ export function ApplicantsView({
             <span className="text-sm font-medium">{r.name}</span>
             {r.hasPrevious && <Badge variant="secondary">Previously applied</Badge>}
             {!r.email && <Badge variant="outline">No email yet</Badge>}
-            {r.email && invited.has(r.email.trim().toLowerCase()) && <Badge variant="info">Invited</Badge>}
+            {r.email && booked.has(r.email.trim().toLowerCase()) ? (
+              <Badge variant="ok">Booked</Badge>
+            ) : (
+              r.email && invited.has(r.email.trim().toLowerCase()) && <Badge variant="info">Invited</Badge>
+            )}
           </span>
           <span className="block truncate text-[13px] text-muted-foreground">{r.email}</span>
         </span>

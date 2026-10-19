@@ -47,6 +47,7 @@ export default async function ApplicantsPage({ searchParams }: { searchParams: P
   ]);
   const supabase = await createClient();
   const { data: invitees } = await supabase.from("interview_invitees").select("email");
+  const { data: booked } = await supabase.from("interview_bookings").select("applicant_email").eq("status", "confirmed");
   const pairs = findDuplicatePairs(
     rows.map((r) => ({ id: r.id, name: r.name, email: r.email, aliases: r.aliases })),
     dismissed,
@@ -65,6 +66,7 @@ export default async function ApplicantsPage({ searchParams }: { searchParams: P
       attendance={attendance}
       scoring={scoring}
       invitedEmails={(invitees ?? []).map((i) => i.email)}
+      bookedEmails={(booked ?? []).map((b) => b.applicant_email)}
     />
   );
 }

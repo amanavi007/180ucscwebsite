@@ -34,6 +34,7 @@ export function ApplicantsWorkspace({
   attendance,
   scoring,
   invitedEmails,
+  bookedEmails,
 }: {
   quarterId: string;
   quarterName: string;
@@ -46,6 +47,8 @@ export function ApplicantsWorkspace({
   scoring: ScoringBundle;
   /** Lowercased emails already on the interview invite list. */
   invitedEmails: string[];
+  /** Lowercased emails with a confirmed interview booking. */
+  bookedEmails: string[];
 }) {
   const [tab, setTab] = useUrlTab(["applicants", "queue", "progress", "attendance", "duplicates"], "applicants");
   const [addOpen, setAddOpen] = useState(false);
@@ -131,6 +134,7 @@ export function ApplicantsWorkspace({
             disagreementThreshold={scoring.settings.disagreementThreshold}
             interviewCutoff={scoring.settings.interviewCutoff}
             invitedEmails={invitedEmails}
+            bookedEmails={bookedEmails}
             onAdd={() => setAddOpen(true)}
           />
         </TabsContent>
