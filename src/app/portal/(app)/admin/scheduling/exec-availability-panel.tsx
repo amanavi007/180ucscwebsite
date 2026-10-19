@@ -67,7 +67,7 @@ export function ExecAvailabilityPanel({
       <h2 id="exec-availability-heading" className="text-lg">
         Exec availability
       </h2>
-      <p className="mt-1 text-sm text-muted-foreground">Everyone&apos;s upcoming free time. Only the Director of Projects sees this.</p>
+      <p className="mt-1 text-sm text-muted-foreground">Everyone&apos;s upcoming free time.</p>
 
       <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Kind of availability">
         <FilterChip selected={kind === "all"} onClick={() => setKind("all")}>

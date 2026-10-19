@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { Copy, Search, UserPlus } from "lucide-react";
+import { Copy, ListFilter, Search, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import type { ApplicantRow, RecruitCategory, RecruitEvent } from "@/lib/data/recruit";
 import type { ApplicantReviewState } from "@/lib/recruit-assignment";
@@ -11,6 +11,7 @@ import { isDisagreement, type StageSummary } from "@/lib/recruit-scoring";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FilterChip } from "@/components/filter-chip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CutoffBar } from "./interview-cutoff";
@@ -160,6 +161,7 @@ export function ApplicantsView({
       toast.error("Couldn't copy. Select the emails by hand instead.");
     }
   }
+  const activeFilters = (filter !== "all" ? 1 : 0) + (stage ? 1 : 0);
   const applicantCount = rows.filter((r) => r.hasApplication).length;
 
   function renderRow(r: ApplicantRow, rankLabel: string) {
@@ -245,16 +247,6 @@ export function ApplicantsView({
               className="h-10 w-72 pl-9"
             />
           </div>
-          <Segmented
-            label="Filter applicants"
-            value={filter}
-            onChange={setFilter}
-            options={[
-              { value: "all", label: "All" },
-              { value: "engaged", label: "Has points" },
-              { value: "none", label: "No points yet" },
-            ]}
-          />
           <Select value={sort} onValueChange={(v) => v && setSort(v as Sort)}>
             <SelectTrigger size="sm" className="w-40">
               <SelectValue>{(value: string) => (value === "name" ? "Name A–Z" : "Most points")}</SelectValue>
@@ -264,6 +256,68 @@ export function ApplicantsView({
               <SelectItem value="name">Name A–Z</SelectItem>
             </SelectContent>
           </Select>
+          <Popover>
+            <PopoverTrigger render={<Button variant="outline" size="sm" />}>
+              <ListFilter />
+              Filters
+              {activeFilters > 0 && <span className="tabular-nums">({activeFilters})</span>}
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-80 gap-4 p-4">
+              <div className="space-y-2">
+                <p className="text-[13px] font-medium text-muted-foreground">Points</p>
+                <Segmented
+                  label="Filter applicants"
+                  value={filter}
+                  onChange={setFilter}
+                  options={[
+                    { value: "all", label: "All" },
+                    { value: "engaged", label: "Has points" },
+                    { value: "none", label: "No points yet" },
+                  ]}
+                />
+              </div>
+              <div className="space-y-2">
+                <p className="text-[13px] font-medium text-muted-foreground">Interview stage</p>
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Interview stage">
+                  <FilterChip selected={stage === "above"} onClick={() => setStage(stage === "above" ? null : "above")} count={stageCounts.above}>
+                    Above cutoff
+                  </FilterChip>
+                  <FilterChip selected={stage === "notInvited"} onClick={() => setStage(stage === "notInvited" ? null : "notInvited")} count={stageCounts.notInvited}>
+                    Not invited yet
+                  </FilterChip>
+                  <FilterChip
+                    selected={stage === "invitedNotBooked"}
+                    onClick={() => setStage(stage === "invitedNotBooked" ? null : "invitedNotBooked")}
+                    count={stageCounts.invitedNotBooked}
+                  >
+                    Invited, not booked
+                  </FilterChip>
+                  <FilterChip selected={stage === "booked"} onClick={() => setStage(stage === "booked" ? null : "booked")} count={stageCounts.booked}>
+                    Booked
+                  </FilterChip>
+                </div>
+              </div>
+              {activeFilters > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="self-start text-link"
+                  onClick={() => {
+                    setFilter("all");
+                    setStage(null);
+                  }}
+                >
+                  Clear filters
+                </Button>
+              )}
+            </PopoverContent>
+          </Popover>
+          {stage && (
+            <Button variant="outline" size="sm" onClick={copyEmails} disabled={emails.length === 0}>
+              <Copy />
+              Copy {emails.length} {emails.length === 1 ? "email" : "emails"}
+            </Button>
+          )}
         </div>
         {needsYou.length > 0 && (
           <p className="text-sm text-muted-foreground">
@@ -277,31 +331,6 @@ export function ApplicantsView({
               </span>
             ))}
           </p>
-        )}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Interview stage">
-        <FilterChip selected={stage === "above"} onClick={() => setStage(stage === "above" ? null : "above")} count={stageCounts.above}>
-          Above cutoff
-        </FilterChip>
-        <FilterChip selected={stage === "notInvited"} onClick={() => setStage(stage === "notInvited" ? null : "notInvited")} count={stageCounts.notInvited}>
-          Not invited yet
-        </FilterChip>
-        <FilterChip
-          selected={stage === "invitedNotBooked"}
-          onClick={() => setStage(stage === "invitedNotBooked" ? null : "invitedNotBooked")}
-          count={stageCounts.invitedNotBooked}
-        >
-          Invited, not booked
-        </FilterChip>
-        <FilterChip selected={stage === "booked"} onClick={() => setStage(stage === "booked" ? null : "booked")} count={stageCounts.booked}>
-          Booked
-        </FilterChip>
-        {stage && (
-          <Button variant="outline" size="sm" onClick={copyEmails} disabled={emails.length === 0}>
-            <Copy />
-            Copy {emails.length} {emails.length === 1 ? "email" : "emails"}
-          </Button>
         )}
       </div>
 
