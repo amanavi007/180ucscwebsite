@@ -51,13 +51,11 @@ type Session = NonNullable<InterviewRow["session"]>;
 type NoteStatus = "idle" | "saving" | "saved" | "error";
 
 /** Local copy of the shared notes. Only the fields you changed are sent, and the server merges them. */
-function useSharedNotes(session: Session) {
+function useSharedNotes(session: Session, onSaved: () => void) {
   const [notes, setNotes] = useState<Record<string, string>>(session.notes);
   const [status, setStatus] = useState<NoteStatus>("idle");
   const dirty = useRef<Set<string>>(new Set());
   const latest = useRef(notes);
-  /** Counts finished saves, so a poll that was already in flight can tell its answer may be stale. */
-  const saves = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const flush = useCallback(async () => {
@@ -73,9 +71,9 @@ function useSharedNotes(session: Session) {
       toast.error(result.error);
       return;
     }
-    saves.current += 1;
+    onSaved();
     setStatus(dirty.current.size > 0 ? "saving" : "saved");
-  }, [session.id]);
+  }, [session.id, onSaved]);
 
   const set = useCallback(
     (key: string, value: string) => {
@@ -114,7 +112,7 @@ function useSharedNotes(session: Session) {
     [flush],
   );
 
-  return { notes, set, status, applyRemote, saves };
+  return { notes, set, status, applyRemote };
 }
 
 function NoteField({
@@ -589,7 +587,12 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
   const [researchKey, setResearchKey] = useState<string | null>(session.researchKey);
   const [caseKey, setCaseKey] = useState<string | null>(session.caseKey);
   const timers = useStopwatches(`interview-timers:${session.id}`);
-  const { notes, set: setNote, status, applyRemote, saves: noteSaves } = useSharedNotes(session);
+  // Counts finished saves (notes and score), so a poll already in flight can tell its answer may be stale.
+  const saveCount = useRef(0);
+  const countSave = useCallback(() => {
+    saveCount.current += 1;
+  }, []);
+  const { notes, set: setNote, status, applyRemote } = useSharedNotes(session, countSave);
   // Last known shared score. Updated by polling and by this page's own saves.
   const [live, setLive] = useState<LiveScore>({
     scores: session.scores,
@@ -597,13 +600,12 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
     scoredAt: session.scoredAt,
     scoredBy: session.scoredBy,
   });
-  const saveCount = useRef(0);
 
   const poll = useCallback(async () => {
-    const startedAt = saveCount.current + noteSaves.current;
+    const startedAt = saveCount.current;
     const result = await getInterviewLiveAction(session.id);
     // A save finished while this was in flight, so this answer may be older than what we just wrote.
-    if (!result.state || saveCount.current + noteSaves.current !== startedAt) return;
+    if (!result.state || saveCount.current !== startedAt) return;
     applyRemote(result.state.notes);
     setLive({
       scores: result.state.scores,
@@ -611,7 +613,7 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
       scoredAt: result.state.scoredAt,
       scoredBy: result.state.scoredBy,
     });
-  }, [session.id, applyRemote, noteSaves]);
+  }, [session.id, applyRemote]);
 
   useEffect(() => {
     const tick = () => {
@@ -626,13 +628,13 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
   }, [poll]);
 
   const onScoreSaved = useCallback((patch: ScorePatch) => {
-    saveCount.current += 1;
+    countSave();
     setLive((prev) => {
       const scores = { ...prev.scores, ...patch.set };
       for (const k of patch.clear) delete scores[k];
       return { ...prev, scores, recommendation: patch.recommendation !== undefined ? patch.recommendation : prev.recommendation };
     });
-  }, []);
+  }, [countSave]);
   const planned = useRef(false);
   const router = useRouter();
   const [confirm, confirmDialog] = useConfirm();
