@@ -8,6 +8,7 @@ import { Sparkles } from "lucide-react";
 import { suggestInterviewQuestionsAction } from "@/actions/interview-suggest";
 import type { QuestionSuggestion } from "@/lib/interview-suggest";
 import {
+  applyInterviewTimerAction,
   getInterviewLiveAction,
   resetInterviewSessionAction,
   saveInterviewNotesAction,
@@ -38,6 +39,7 @@ import {
   type ScriptSection,
 } from "@/lib/interview-guide";
 import { useStopwatches, type Stopwatches } from "@/lib/use-stopwatches";
+import type { TimerOp } from "@/lib/interview-timers";
 import { playChime } from "@/lib/chime";
 import { formatDateLong } from "@/lib/date";
 import { formatTimeRange } from "@/lib/coffee-chat";
@@ -57,6 +59,8 @@ import { Segmented } from "./segmented";
 
 type Session = NonNullable<InterviewRow["session"]>;
 type NoteStatus = "idle" | "saving" | "saved" | "error";
+
+const sameKeys = (a: string[], b: string[]) => a.length === b.length && a.every((k, i) => k === b[i]);
 
 /** Local copy of the shared notes. Only the fields you changed are sent, and the server merges them. */
 function useSharedNotes(session: Session, onSaved: () => void) {
@@ -735,7 +739,21 @@ export function InterviewWorkspace({
   const [behavioralKeys, setBehavioralKeys] = useState<string[]>(session.behavioralKeys);
   const [researchKey, setResearchKey] = useState<string | null>(session.researchKey);
   const [caseKey, setCaseKey] = useState<string | null>(session.caseKey);
-  const timers = useStopwatches(`interview-timers:${session.id}`);
+  // The plan as last saved or adopted from the server; a change that matches it needs no save.
+  const lastPlan = useRef(JSON.stringify([session.behavioralKeys, session.researchKey, session.caseKey]));
+  const sendTimer = useCallback(
+    async (op: TimerOp) => {
+      const result = await applyInterviewTimerAction({ sessionId: session.id, op });
+      if (result.error || !result.sync) {
+        toast.error(result.error ?? "The timer didn't save.");
+        return null;
+      }
+      return result.sync;
+    },
+    [session.id],
+  );
+  const timers = useStopwatches(session.timers, sendTimer);
+  const { applyRemote: applyRemoteTimers } = timers;
   const [soundOn, setSoundOn] = useState(() => {
     try {
       return localStorage.getItem("interview-sound") !== "off";
@@ -786,11 +804,23 @@ export function InterviewWorkspace({
     scoredBy: session.scoredBy,
   });
 
+  // True from the moment this page changes the plan until that change has saved, so a poll can't undo it.
+  const planDirty = useRef(false);
+
   const poll = useCallback(async () => {
     const startedAt = saveCount.current;
     const result = await getInterviewLiveAction(session.id);
     // A save finished while this was in flight, so this answer may be older than what we just wrote.
     if (!result.state || saveCount.current !== startedAt) return;
+    applyRemoteTimers(result.state.timers, result.state.now);
+    if (!planDirty.current) {
+      const remote = result.state;
+      // Adopting someone else's picks shouldn't echo back as a save.
+      lastPlan.current = JSON.stringify([remote.behavioralKeys, remote.researchKey, remote.caseKey]);
+      setBehavioralKeys((prev) => (sameKeys(prev, remote.behavioralKeys) ? prev : remote.behavioralKeys));
+      setResearchKey(remote.researchKey);
+      setCaseKey(remote.caseKey);
+    }
     applyRemote(result.state.notes);
     setLive({
       scores: result.state.scores,
@@ -798,12 +828,13 @@ export function InterviewWorkspace({
       scoredAt: result.state.scoredAt,
       scoredBy: result.state.scoredBy,
     });
-  }, [session.id, applyRemote]);
+  }, [session.id, applyRemote, applyRemoteTimers]);
 
   useEffect(() => {
     const tick = () => {
       if (!document.hidden) void poll();
     };
+    tick();
     const id = setInterval(tick, 5000);
     window.addEventListener("focus", tick);
     return () => {
@@ -820,7 +851,6 @@ export function InterviewWorkspace({
       return { ...prev, scores, recommendation: patch.recommendation !== undefined ? patch.recommendation : prev.recommendation };
     });
   }, [countSave]);
-  const planned = useRef(false);
   const router = useRouter();
   const [confirm, confirmDialog] = useConfirm();
   const [resetting, setResetting] = useState(false);
@@ -839,11 +869,6 @@ export function InterviewWorkspace({
       toast.error(result.error);
       return;
     }
-    try {
-      sessionStorage.removeItem(`interview-timers:${session.id}`);
-    } catch {
-      // Nothing to clear if storage is blocked.
-    }
     toast.success(`Reset ${row.name}'s interview.`);
     router.refresh();
     leave();
@@ -851,13 +876,17 @@ export function InterviewWorkspace({
 
   // The plan saves itself shortly after any change.
   useEffect(() => {
-    if (!planned.current) {
-      planned.current = true;
-      return;
-    }
+    const plan = JSON.stringify([behavioralKeys, researchKey, caseKey]);
+    if (plan === lastPlan.current) return;
+    planDirty.current = true;
     const t = setTimeout(async () => {
       const result = await saveInterviewPlanAction({ sessionId: session.id, behavioralKeys, researchKey, caseKey });
-      if (result.error) toast.error(result.error);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      lastPlan.current = plan;
+      planDirty.current = false;
     }, 600);
     return () => clearTimeout(t);
   }, [behavioralKeys, researchKey, caseKey, session.id]);

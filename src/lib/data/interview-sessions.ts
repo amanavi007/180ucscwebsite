@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchAllPages } from "@/lib/paginate";
 import { getInterviewSlots } from "@/lib/data/interview";
 import { getResearchPrompts } from "@/lib/data/org-settings";
+import { asClocks, type Clocks } from "@/lib/interview-timers";
 import type { Recommendation, ResearchPrompt, Scores } from "@/lib/interview-guide";
 
 export interface SessionView {
@@ -10,6 +11,7 @@ export interface SessionView {
   behavioralKeys: string[];
   researchKey: string | null;
   caseKey: string | null;
+  timers: Clocks;
   notes: Record<string, string>;
   notesUpdatedBy: string | null;
   notesUpdatedAt: string | null;
@@ -161,6 +163,7 @@ export async function getInterviewWorkspace(quarterId: string, viewerId: string,
           behavioralKeys: s.behavioral_keys ?? [],
           researchKey: s.research_key,
           caseKey: s.case_key,
+          timers: asClocks(s.timers),
           notes: asNotes(s.notes),
           notesUpdatedBy: s.notes_updated_by ? names.get(s.notes_updated_by) ?? null : null,
           notesUpdatedAt: s.notes_updated_at,

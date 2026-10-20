@@ -17,6 +17,7 @@ import {
   type Recommendation,
   type Scores,
 } from "@/lib/interview-guide";
+import { asClocks, type Clocks, type TimerOp, type TimerSync } from "@/lib/interview-timers";
 
 export interface SessionResult {
   error?: string;
@@ -36,6 +37,29 @@ async function requireExec() {
 
 function refresh() {
   revalidatePath("/portal/admin/applicants");
+}
+
+const TIMER_ID = /^[a-z][a-z0-9:_-]{0,39}$/;
+
+/** Starts, pauses, resets or switches one of the interview's shared timers. The database stamps the time. */
+export async function applyInterviewTimerAction(input: { sessionId: string; op: TimerOp }): Promise<{ error?: string; sync?: TimerSync }> {
+  const { error } = await requireExec();
+  if (error) return { error };
+  const { op } = input;
+  const ids = op.op === "switch" ? [op.next, ...op.ids] : [op.id];
+  if (ids.length > 12 || !ids.every((id) => TIMER_ID.test(id))) return { error: "That timer isn't part of the interview." };
+
+  const supabase = await createClient();
+  const { data, error: rpcError } = await supabase.rpc("apply_interview_timer", {
+    p_session: input.sessionId,
+    p_op: op.op,
+    p_id: op.op === "switch" ? op.next : op.id,
+    p_ids: op.op === "switch" ? op.ids : [],
+  });
+  if (rpcError) return { error: rpcError.message };
+  const result = data as { timers?: unknown; now?: unknown } | null;
+  if (!result || typeof result.now !== "number") return { error: "The timer didn't save." };
+  return { sync: { timers: asClocks(result.timers), now: result.now } };
 }
 
 /** Opens the working session for an interview, or returns the one that already exists. */
@@ -266,6 +290,12 @@ async function mirrorToReview(
 }
 
 export interface LiveInterviewState {
+  timers: Clocks;
+  /** The server's clock when this was read, so the page can line its running timers up with it. */
+  now: number;
+  behavioralKeys: string[];
+  researchKey: string | null;
+  caseKey: string | null;
   notes: Record<string, string>;
   scores: Scores;
   recommendation: Recommendation | null;
@@ -273,14 +303,14 @@ export interface LiveInterviewState {
   scoredBy: string | null;
 }
 
-/** The shared parts of an interview (notes and the joint score), for the page to poll so two people see each other's changes. */
+/** The shared parts of an interview (picked questions, notes and the joint score), for the page to poll so two people see each other's changes. */
 export async function getInterviewLiveAction(sessionId: string): Promise<{ error?: string; gone?: boolean; state?: LiveInterviewState }> {
   const { error } = await requireExec();
   if (error) return { error };
   const supabase = await createClient();
   const { data, error: readError } = await supabase
     .from("interview_sessions")
-    .select("notes, scores, recommendation, scored_at, scored_by")
+    .select("notes, scores, recommendation, scored_at, scored_by, behavioral_keys, research_key, case_key, timers")
     .eq("id", sessionId)
     .maybeSingle();
   if (readError) return { error: readError.message };
@@ -297,6 +327,11 @@ export async function getInterviewLiveAction(sessionId: string): Promise<{ error
       : {};
   return {
     state: {
+      timers: asClocks(data.timers),
+      now: Date.now(),
+      behavioralKeys: data.behavioral_keys ?? [],
+      researchKey: data.research_key,
+      caseKey: data.case_key,
       notes,
       scores: (data.scores ?? {}) as Scores,
       recommendation: data.recommendation as Recommendation | null,
