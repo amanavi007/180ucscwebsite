@@ -58,6 +58,9 @@ export async function importInterviewTranscriptAction(input: { sessionId: string
     if (APICallError.isInstance(err) && (err.statusCode === 429 || (err.statusCode ?? 0) >= 500)) {
       return { error: "The AI provider is busy right now. Try again in a minute." };
     }
+    if (APICallError.isInstance(err) && (err.statusCode === 401 || err.statusCode === 403)) {
+      return { error: "The AI key was rejected. Ask an exec to check the AI key in the site settings." };
+    }
     return { error: "The transcript couldn't be read. Try again, or fill the notes by hand." };
   }
 
