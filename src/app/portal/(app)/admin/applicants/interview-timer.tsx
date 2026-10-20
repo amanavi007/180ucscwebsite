@@ -32,6 +32,9 @@ export function SectionTimer({
   const running = timers.running(id);
   const status = timerStatus(seconds, target, running, timers.started(id));
   const percent = Math.min(100, Math.round((seconds / target) * 100));
+  const timeUp = seconds >= target;
+  // A heads-up only on the longer parts, where a minute is enough to wrap a thought.
+  const oneMinuteLeft = !timeUp && running && target >= 300 && target - seconds <= 60;
 
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -45,6 +48,7 @@ export function SectionTimer({
         </div>
       </div>
       <Badge variant={status.variant}>{status.label}</Badge>
+      {oneMinuteLeft && <Badge variant="warn">1 minute left</Badge>}
       <div className="flex items-center gap-1.5">
         {running ? (
           <Button variant="outline" size="sm" onClick={() => timers.pause(id)}>
@@ -59,6 +63,11 @@ export function SectionTimer({
           <RotateCcw />
         </Button>
       </div>
+      {timeUp && (
+        <p role="status" className="w-full rounded-xl bg-status-warn px-3 py-2 text-sm font-semibold text-status-warn-foreground">
+          Time&apos;s up. Cut them off.
+        </p>
+      )}
       {!compact && (
         <div
           role="progressbar"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
+import { ArrowLeft, ArrowRight, ExternalLink, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import {
@@ -29,11 +29,13 @@ import {
   behavioralMixAdvice,
   findCase,
   formatClock,
+  timerTargetSeconds,
   type Depth,
   type RubricSection,
   type ScriptSection,
 } from "@/lib/interview-guide";
 import { useStopwatches, type Stopwatches } from "@/lib/use-stopwatches";
+import { playChime } from "@/lib/chime";
 import { formatDateLong } from "@/lib/date";
 import { formatTimeRange } from "@/lib/coffee-chat";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -597,6 +599,11 @@ function WrapUpSection({ value, onNote }: { value: (key: string) => string; onNo
   );
 }
 
+function timeIsUp(id: string, timers: Stopwatches): boolean {
+  const target = timerTargetSeconds(id);
+  return target !== null && timers.seconds(id) >= target;
+}
+
 const sectionToRubric: Partial<Record<ScriptSection["key"], RubricSection["key"]>> = {
   behavioral: "behavioral",
   research: "research",
@@ -617,6 +624,41 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
   const [researchKey, setResearchKey] = useState<string | null>(session.researchKey);
   const [caseKey, setCaseKey] = useState<string | null>(session.caseKey);
   const timers = useStopwatches(`interview-timers:${session.id}`);
+  const [soundOn, setSoundOn] = useState(() => {
+    try {
+      return localStorage.getItem("interview-sound") !== "off";
+    } catch {
+      return true;
+    }
+  });
+  const chimed = useRef<Set<string>>(new Set());
+
+  // One soft chime when a running timer reaches its limit. Resetting a timer lets it chime again.
+  useEffect(() => {
+    for (const id of timers.runningIds) {
+      const target = timerTargetSeconds(id);
+      if (target === null) continue;
+      if (timers.seconds(id) >= target && !chimed.current.has(id)) {
+        chimed.current.add(id);
+        if (soundOn) playChime();
+      }
+    }
+    for (const id of [...chimed.current]) {
+      const target = timerTargetSeconds(id);
+      if (target !== null && timers.seconds(id) < target) chimed.current.delete(id);
+    }
+  });
+
+  function toggleSound() {
+    const next = !soundOn;
+    setSoundOn(next);
+    try {
+      localStorage.setItem("interview-sound", next ? "on" : "off");
+    } catch {
+      // The choice just won't be remembered.
+    }
+    if (next) playChime();
+  }
   // Counts finished saves (notes and score), so a poll already in flight can tell its answer may be stale.
   const saveCount = useRef(0);
   const countSave = useCallback(() => {
@@ -757,10 +799,21 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
             Reset interview
           </Button>
           {runningLabel && (
-            <Badge variant="info">
+            <Badge variant={timeIsUp(runningLabel.id, timers) ? "warn" : "info"}>
               {runningLabel.label} {formatClock(timers.seconds(runningLabel.id))}
+              {timeIsUp(runningLabel.id, timers) ? " · Time's up" : ""}
             </Badge>
           )}
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-pressed={soundOn}
+            aria-label={soundOn ? "Turn the time's-up chime off" : "Turn the time's-up chime on"}
+            onClick={toggleSound}
+          >
+            {soundOn ? <Volume2 /> : <VolumeX />}
+            {soundOn ? "Chime on" : "Chime off"}
+          </Button>
           <span>
             {status === "saving" ? "Saving notes…" : status === "saved" ? "Notes saved" : status === "error" ? "Notes didn't save" : "Notes save as you type"}
             {session.notesUpdatedBy && status === "idle" ? ` · last edited by ${session.notesUpdatedBy}` : ""}

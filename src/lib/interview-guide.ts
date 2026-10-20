@@ -557,6 +557,16 @@ export function validateScores(scores: unknown): string | null {
   return null;
 }
 
+/** Seconds allowed for a timer id: a script section ("behavioral") or a case step ("case:qa"). Null when it has no limit. */
+export function timerTargetSeconds(id: string): number | null {
+  if (id.startsWith("case:")) {
+    const step = CASE_STEPS.find((s) => `case:${s.key}` === id);
+    return step ? step.minutes * 60 : null;
+  }
+  const section = SCRIPT_SECTIONS.find((s) => s.key === id);
+  return section?.minutes ? section.minutes * 60 : null;
+}
+
 export function formatClock(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;

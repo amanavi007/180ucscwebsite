@@ -9,6 +9,7 @@ import {
   formatClock,
   isScoreComplete,
   sectionMax,
+  timerTargetSeconds,
   sectionTotal,
   totalScore,
   validateScores,
@@ -83,5 +84,19 @@ describe("formatClock", () => {
     expect(formatClock(65)).toBe("1:05");
     expect(formatClock(720)).toBe("12:00");
     expect(formatClock(-3)).toBe("0:00");
+  });
+});
+
+describe("timerTargetSeconds", () => {
+  it("knows each timer's limit", () => {
+    expect(timerTargetSeconds("behavioral")).toBe(720);
+    expect(timerTargetSeconds("research")).toBe(480);
+    expect(timerTargetSeconds("case:qa")).toBe(480);
+    expect(timerTargetSeconds("case:plan")).toBe(120);
+  });
+
+  it("has no limit for steps without a timer or unknown ids", () => {
+    expect(timerTargetSeconds("before")).toBeNull();
+    expect(timerTargetSeconds("case:nope")).toBeNull();
   });
 });
