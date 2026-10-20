@@ -319,16 +319,49 @@ export interface TimedStep {
   key: string;
   label: string;
   minutes: number;
+  /** For the interviewer. */
   hint: string;
+  /** What to say to the candidate about this step. */
+  say: string;
 }
 
 /** The case is 16 minutes: 1 + 2 + 8 + 2 + 3. */
 export const CASE_STEPS: TimedStep[] = [
-  { key: "intro", label: "Read the prompt", minutes: 1, hint: "Read the prompt twice. Take clarifying questions." },
-  { key: "plan", label: "Plan an approach", minutes: 2, hint: "They form a hypothesis and say what they would look into." },
-  { key: "qa", label: "Questions and answers", minutes: 8, hint: "They lead. Share data only if asked, or if they are lost." },
-  { key: "conclude", label: "Form a conclusion", minutes: 2, hint: "Give them time to gather their thoughts and finish any analysis." },
-  { key: "present", label: "Present the conclusion", minutes: 3, hint: "They answer the original question from the prompt." },
+  {
+    key: "intro",
+    label: "Read the prompt",
+    minutes: 1,
+    hint: "Read it slowly so they can take notes. Offer to repeat it once, and never read it more than twice. Clarifying questions are about the prompt only.",
+    say: "I'll read the case slowly so you can take notes. When you're ready, tell me and I'll read it once more. Then you can ask clarifying questions about the prompt, not to solve it, just so we're on the same page.",
+  },
+  {
+    key: "plan",
+    label: "Plan an approach",
+    minutes: 2,
+    hint: "You don't need to talk. Give them space, and remind them it's good to think out loud.",
+    say: "Now you have two minutes to plan. Form a hypothesis and decide what you'd want to look into. Write things down, and feel free to think out loud so we can follow where you're going.",
+  },
+  {
+    key: "qa",
+    label: "Questions and answers",
+    minutes: 8,
+    hint: "They lead. Only answer from the list below. Anything else, say \"I can't answer that.\" Keep a straight face.",
+    say: "For the next eight minutes, ask me whatever you'd like. I only have certain information, so if I can't answer something, I'll tell you.",
+  },
+  {
+    key: "conclude",
+    label: "Form a conclusion",
+    minutes: 2,
+    hint: "Give them time to gather their thoughts and finish any analysis. Remind them to think out loud.",
+    say: "Take two minutes to pull your thinking together and form a conclusion. It's fine to think out loud.",
+  },
+  {
+    key: "present",
+    label: "Present the conclusion",
+    minutes: 3,
+    hint: "They answer the original question from the prompt. Whoever isn't running the case writes down their findings and solution.",
+    say: "You have three minutes to present your final conclusion and answer the question from the prompt.",
+  },
 ];
 
 export interface ScriptSection {
@@ -356,7 +389,7 @@ export const SCRIPT = {
     welcome: [
       "Hi, I'm [name] and this is [name]. Thanks for coming in. We're on the exec team, and we'll be working with whoever joins our project teams.",
       "Here's how this goes. Twelve minutes of behavioral questions, then five to eight on your research, then sixteen on a case. We'll keep time.",
-      "One thing before we start: for the case, the right answer matters much less than how you reason and how you map out your thinking. Talk us through it.",
+      "One thing before we start: for the case, the right answer matters much less than how you reason and how you map out your thinking. It really helps us if you think out loud.",
       "Any questions before we start?",
     ],
   },
@@ -367,7 +400,14 @@ export const SCRIPT = {
     intro: "They researched one of the three prompts ahead of time and brought sources. Ask which one they chose, then these.",
   },
   case: {
-    intro: "Choose one case. Read the prompt aloud, twice. Then walk through the five steps below with their timers.",
+    intro: "Choose one case and know which one you are reading. Explain the structure below, read the prompt, then walk through the five steps with their timers.",
+    explain: [
+      "For this part we'll do a case. The correct answer matters much less than how you reason through it, so please think out loud. We want to hear how you're thinking.",
+      "It's sixteen minutes in five parts. First, one minute: I'll read the case and you can ask clarifying questions about the prompt, to make sure we're on the same page.",
+      "Then two minutes to plan your approach: form a hypothesis and decide what you'd want to look into.",
+      "Then eight minutes of questions and answers, led by you. I can only share certain information, so if I can't answer something, I'll say so.",
+      "Then two minutes to form a conclusion, and a final three minutes to present it. I'll be keeping time, and I'll stop each part when its time is up.",
+    ],
   },
   wrapup: {
     lines: [

@@ -40,6 +40,7 @@ import { useConfirm } from "@/components/confirm-dialog";
 import { useUrlTab } from "@/components/url-tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { FilterChip } from "@/components/filter-chip";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -466,7 +467,12 @@ function CaseSection({
 
       {chosen ? (
         <>
-          <Card title="Read this aloud, twice">
+          <Card title="First, explain how the case works">
+            <p className="text-sm text-muted-foreground">Read this to them before you start. Change it to your own words if you like.</p>
+            <ReadAloud lines={SCRIPT.case.explain} />
+          </Card>
+
+          <Card title="Then read this aloud, slowly, at most twice">
             <p className="max-w-[66ch] text-[17px] leading-relaxed">{chosen.prompt}</p>
             <p className="text-[13px] text-muted-foreground">{chosen.source}</p>
           </Card>
@@ -488,6 +494,10 @@ function CaseSection({
                     {i + 1}. {s.label}
                   </div>
                   <p className="mb-2 text-[13px] text-muted-foreground">{s.hint}</p>
+                  <p className="mb-3 rounded-xl bg-accent px-3 py-2 text-[15px] leading-relaxed text-accent-foreground">
+                    <span className="font-semibold">Say: </span>
+                    {s.say}
+                  </p>
                   <SectionTimer id={`case:${s.key}`} label={s.label} minutes={s.minutes} timers={timers} compact />
                 </li>
               ))}
@@ -495,14 +505,34 @@ function CaseSection({
           </Card>
 
           <Card title="Only if they ask">
-            <dl className="max-w-[66ch] space-y-3">
-              {chosen.ifAsked.map((a) => (
-                <div key={a.question}>
-                  <dt className="text-sm font-semibold">{a.question}</dt>
-                  <dd className="text-[15px]">{a.answer}</dd>
-                </div>
-              ))}
-            </dl>
+            <p className="max-w-[66ch] text-sm text-muted-foreground">
+              Give this only if they ask. Tick each one they asked, so you can score their questions.{" "}
+              <span className="tabular-nums">
+                {chosen.ifAsked.filter((_, i) => value(`c:asked:${chosen.key}:${i}`) === "1").length} of {chosen.ifAsked.length} asked.
+              </span>
+            </p>
+            <ul className="max-w-[66ch] space-y-3">
+              {chosen.ifAsked.map((a, i) => {
+                const key = `c:asked:${chosen.key}:${i}`;
+                const asked = value(key) === "1";
+                return (
+                  <li key={a.question} className={cn("flex gap-3 rounded-2xl border p-3", asked ? "border-border-strong bg-accent" : "border-border")}>
+                    <Checkbox
+                      id={`asked-${chosen.key}-${i}`}
+                      className="mt-0.5 size-5"
+                      checked={asked}
+                      onCheckedChange={(checked) => onNote(key, checked ? "1" : "")}
+                    />
+                    <div>
+                      <label htmlFor={`asked-${chosen.key}-${i}`} className="block cursor-pointer text-sm font-semibold">
+                        {a.question} <span className="font-normal text-muted-foreground">They asked this</span>
+                      </label>
+                      <p className="text-[15px]">{a.answer}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
             {chosen.interviewerNotes && (
               <div>
                 <div className="text-[13px] font-semibold text-muted-foreground">For you, not for them</div>
