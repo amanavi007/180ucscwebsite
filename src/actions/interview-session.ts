@@ -265,6 +265,47 @@ async function mirrorToReview(
   return { done: true };
 }
 
+export interface LiveInterviewState {
+  notes: Record<string, string>;
+  scores: Scores;
+  recommendation: Recommendation | null;
+  scoredAt: string | null;
+  scoredBy: string | null;
+}
+
+/** The shared parts of an interview (notes and the joint score), for the page to poll so two people see each other's changes. */
+export async function getInterviewLiveAction(sessionId: string): Promise<{ error?: string; gone?: boolean; state?: LiveInterviewState }> {
+  const { error } = await requireExec();
+  if (error) return { error };
+  const supabase = await createClient();
+  const { data, error: readError } = await supabase
+    .from("interview_sessions")
+    .select("notes, scores, recommendation, scored_at, scored_by")
+    .eq("id", sessionId)
+    .maybeSingle();
+  if (readError) return { error: readError.message };
+  if (!data) return { gone: true };
+
+  let scoredBy: string | null = null;
+  if (data.scored_by) {
+    const { data: who } = await supabase.from("profiles").select("name").eq("id", data.scored_by).maybeSingle();
+    scoredBy = who?.name ?? null;
+  }
+  const notes =
+    typeof data.notes === "object" && data.notes !== null && !Array.isArray(data.notes)
+      ? (Object.fromEntries(Object.entries(data.notes).filter(([, v]) => typeof v === "string")) as Record<string, string>)
+      : {};
+  return {
+    state: {
+      notes,
+      scores: (data.scores ?? {}) as Scores,
+      recommendation: data.recommendation as Recommendation | null,
+      scoredAt: data.scored_at,
+      scoredBy,
+    },
+  };
+}
+
 /** Wipes an interview back to unopened: picks, notes, every interviewer's scorecard, and the review copies of those scores. */
 export async function resetInterviewSessionAction(sessionId: string): Promise<SessionResult> {
   const { error } = await requireExec();

@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { saveScorecardAction } from "@/actions/interview-session";
-import type { InterviewRow } from "@/lib/data/interview-sessions";
 import {
   RECOMMENDATIONS,
   RUBRIC,
@@ -44,91 +43,111 @@ function SectionTotals({ scores }: { scores: Scores }) {
   );
 }
 
-/** One shared scorecard per interview. Remounted per interview (key), so drafts reset without effects. */
+export interface LiveScore {
+  scores: Scores;
+  recommendation: Recommendation | null;
+  scoredAt: string | null;
+  scoredBy: string | null;
+}
+
+/** What one save changed: lines set, lines cleared, and the recommendation if it changed. */
+export interface ScorePatch {
+  set: Scores;
+  clear: string[];
+  recommendation?: Recommendation | null;
+}
+
+const emptyPatch = (): ScorePatch => ({ set: {}, clear: [] });
+const isEmpty = (p: ScorePatch) => Object.keys(p.set).length === 0 && p.clear.length === 0 && p.recommendation === undefined;
+
+/** What is left of `pending` after `saved` went through. A line you changed again while saving stays pending. */
+function remaining(pending: ScorePatch, saved: ScorePatch): ScorePatch {
+  return {
+    set: Object.fromEntries(Object.entries(pending.set).filter(([k, v]) => saved.set[k] !== v)),
+    clear: pending.clear.filter((k) => !saved.clear.includes(k)),
+    recommendation: pending.recommendation === saved.recommendation ? undefined : pending.recommendation,
+  };
+}
+
+/**
+ * One shared scorecard per interview. What you see is the last known shared score (`live`, refreshed by the page every few seconds)
+ * with your own unsaved clicks on top, so a partner's changes appear without ever undoing something you just clicked.
+ */
 export function InterviewScorecard({
   sessionId,
   applicantName,
-  session,
+  live,
+  onSaved,
+  onSubmitted,
   activeSection,
 }: {
   sessionId: string;
   applicantName: string;
-  session: NonNullable<InterviewRow["session"]>;
+  live: LiveScore;
+  onSaved: (patch: ScorePatch) => void;
+  onSubmitted: () => void;
   /** The script section on screen, so its rubric lines open with their reminders. */
   activeSection: RubricSection["key"] | null;
 }) {
-  const [scores, setScores] = useState<Scores>(session.scores);
-  const [recommendation, setRecommendation] = useState<Recommendation | null>(session.recommendation);
+  const [pending, setPending] = useState<ScorePatch>(emptyPatch);
   const [saved, setSaved] = useState<"idle" | "saving" | "saved">("idle");
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
-  // Only what you changed is sent, so a partner's clicks on other lines are never overwritten.
-  const pending = useRef<{ set: Scores; clear: Set<string>; recommendation?: Recommendation | null }>({ set: {}, clear: new Set() });
-  const [edits, setEdits] = useState(0);
-  const alreadySubmitted = !!session.scoredAt;
-  const complete = isScoreComplete(scores) && recommendation !== null;
 
-  function takePending() {
-    const taken = pending.current;
-    pending.current = { set: {}, clear: new Set() };
-    return { set: taken.set, clear: [...taken.clear], recommendation: taken.recommendation };
-  }
+  const scores: Scores = { ...live.scores, ...pending.set };
+  for (const k of pending.clear) delete scores[k];
+  const recommendation = pending.recommendation !== undefined ? pending.recommendation : live.recommendation;
+  const alreadySubmitted = !!live.scoredAt;
+  const complete = isScoreComplete(scores) && recommendation !== null;
 
   // Debounced draft autosave. Once a final score is submitted, edits wait for "Update score".
   useEffect(() => {
-    if (edits === 0 || alreadySubmitted) return;
+    if (isEmpty(pending) || alreadySubmitted) return;
     const timer = setTimeout(async () => {
       setSaved("saving");
-      const patch = takePending();
-      const result = await saveScorecardAction({ sessionId, ...patch, submit: false });
+      const result = await saveScorecardAction({ sessionId, ...pending, submit: false });
       if (result.error) {
-        // Put the changes back so the next save retries them.
-        for (const [k, v] of Object.entries(patch.set)) if (!pending.current.clear.has(k) && pending.current.set[k] === undefined) pending.current.set[k] = v;
-        for (const k of patch.clear) if (pending.current.set[k] === undefined) pending.current.clear.add(k);
-        if (patch.recommendation !== undefined && pending.current.recommendation === undefined) pending.current.recommendation = patch.recommendation;
         setSaved("idle");
         return;
       }
+      onSaved(pending);
+      setPending((p) => remaining(p, pending));
       setSaved("saved");
     }, 1000);
     return () => clearTimeout(timer);
-  }, [edits, alreadySubmitted, sessionId]);
+  }, [pending, alreadySubmitted, sessionId, onSaved]);
 
   function setScore(key: string, value: number) {
     // Clicking the chosen number again clears it.
-    const current = scores[key];
-    if (current === value) {
-      setScores((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => k !== key)));
-      delete pending.current.set[key];
-      pending.current.clear.add(key);
-    } else {
-      setScores((prev) => ({ ...prev, [key]: value }));
-      pending.current.set[key] = value;
-      pending.current.clear.delete(key);
-    }
-    setEdits((n) => n + 1);
+    const clearing = scores[key] === value;
+    setPending((p) => {
+      const set = Object.fromEntries(Object.entries(p.set).filter(([k]) => k !== key));
+      const clear = p.clear.filter((k) => k !== key);
+      return clearing ? { ...p, set, clear: [...clear, key] } : { ...p, set: { ...set, [key]: value }, clear };
+    });
     setSaved("idle");
   }
 
   function pickRecommendation(value: Recommendation) {
-    setRecommendation(value);
-    pending.current.recommendation = value;
-    setEdits((n) => n + 1);
+    setPending((p) => ({ ...p, recommendation: value }));
     setSaved("idle");
   }
 
   function submit() {
     startTransition(async () => {
-      const patch = takePending();
+      const patch = pending;
       const result = await saveScorecardAction({ sessionId, ...patch, submit: true });
       if (result.error) {
         toast.error(result.error);
         return;
       }
+      onSaved(patch);
+      setPending((p) => remaining(p, patch));
       toast.success(`${alreadySubmitted ? "Updated" : "Submitted"} the score for ${applicantName}.`);
       if (result.mirrored === false) {
         toast.message("Saved on the interview. They aren't in the applicants list yet, so it isn't on their review.");
       }
+      onSubmitted();
       router.refresh();
     });
   }
@@ -138,8 +157,8 @@ export function InterviewScorecard({
       <div>
         <h3 className="text-base font-semibold">Final score</h3>
         <p className="mt-0.5 text-[13px] text-muted-foreground">
-          Score together right after they leave, out of {RUBRIC_TOTAL}. If you disagree, talk it out and enter the number you agree on. One of you
-          fills this in. Click a number again to clear it.
+          Score together right after they leave, out of {RUBRIC_TOTAL}. If you disagree, talk it out and enter the number you agree on. Click a
+          number again to clear it. Your partner&apos;s changes show up here within a few seconds.
         </p>
       </div>
 
@@ -203,7 +222,7 @@ export function InterviewScorecard({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-[13px] text-muted-foreground">
           {alreadySubmitted
-            ? `Submitted${session.scoredBy ? ` by ${session.scoredBy}` : ""}. You can still change it.`
+            ? `Submitted${live.scoredBy ? ` by ${live.scoredBy}` : ""}. You can still change it.`
             : saved === "saving"
               ? "Saving draft…"
               : saved === "saved"
@@ -215,7 +234,6 @@ export function InterviewScorecard({
         </Button>
       </div>
       {!complete && <p className="text-[13px] text-muted-foreground">Score every line and pick a recommendation to submit.</p>}
-      <p className="text-[13px] text-muted-foreground">If your partner is also scoring, refresh to see their changes.</p>
     </div>
   );
 }

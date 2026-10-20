@@ -4,7 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { resetInterviewSessionAction, saveInterviewNotesAction, saveInterviewPlanAction } from "@/actions/interview-session";
+import {
+  getInterviewLiveAction,
+  resetInterviewSessionAction,
+  saveInterviewNotesAction,
+  saveInterviewPlanAction,
+} from "@/actions/interview-session";
 import type { InterviewRow } from "@/lib/data/interview-sessions";
 import {
   BEHAVIORAL_PICK_MAX,
@@ -39,7 +44,7 @@ import { FilterChip } from "@/components/filter-chip";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { SectionTimer } from "./interview-timer";
-import { InterviewScorecard } from "./interview-scorecard";
+import { InterviewScorecard, type LiveScore, type ScorePatch } from "./interview-scorecard";
 import { Segmented } from "./segmented";
 
 type Session = NonNullable<InterviewRow["session"]>;
@@ -51,6 +56,8 @@ function useSharedNotes(session: Session) {
   const [status, setStatus] = useState<NoteStatus>("idle");
   const dirty = useRef<Set<string>>(new Set());
   const latest = useRef(notes);
+  /** Counts finished saves, so a poll that was already in flight can tell its answer may be stale. */
+  const saves = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const flush = useCallback(async () => {
@@ -66,6 +73,7 @@ function useSharedNotes(session: Session) {
       toast.error(result.error);
       return;
     }
+    saves.current += 1;
     setStatus(dirty.current.size > 0 ? "saving" : "saved");
   }, [session.id]);
 
@@ -81,6 +89,22 @@ function useSharedNotes(session: Session) {
     [flush],
   );
 
+  /** Takes in a partner's changes, except for boxes you have unsaved edits in or are typing in right now. */
+  const applyRemote = useCallback((remote: Record<string, string>) => {
+    const focused = typeof document !== "undefined" ? document.activeElement?.getAttribute("data-note-key") : null;
+    const next = { ...latest.current };
+    let changed = false;
+    for (const [key, value] of Object.entries(remote)) {
+      if (dirty.current.has(key) || key === focused || next[key] === value) continue;
+      next[key] = value;
+      changed = true;
+    }
+    if (changed) {
+      latest.current = next;
+      setNotes(next);
+    }
+  }, []);
+
   // Don't lose the last few seconds of typing when leaving the interview.
   useEffect(
     () => () => {
@@ -90,11 +114,12 @@ function useSharedNotes(session: Session) {
     [flush],
   );
 
-  return { notes, set, status };
+  return { notes, set, status, applyRemote, saves };
 }
 
 function NoteField({
   id,
+  noteKey,
   label,
   hint,
   rows = 4,
@@ -102,6 +127,8 @@ function NoteField({
   onChange,
 }: {
   id: string;
+  /** Which shared note this is, so a live update never overwrites the box you're typing in. */
+  noteKey: string;
   label: string;
   hint?: string;
   rows?: number;
@@ -114,7 +141,7 @@ function NoteField({
         {label}
         {hint && <span className="font-normal text-muted-foreground"> {hint}</span>}
       </label>
-      <Textarea id={id} className="mt-2" rows={rows} value={value} onChange={(e) => onChange(e.target.value)} />
+      <Textarea id={id} data-note-key={noteKey} className="mt-2" rows={rows} value={value} onChange={(e) => onChange(e.target.value)} />
     </div>
   );
 }
@@ -328,7 +355,7 @@ function BehavioralSection({
                 ))}
               </ul>
             </div>
-            <NoteField id={`note-b-${q.key}`} label="Notes" value={value(`b:${q.key}`)} onChange={(v) => onNote(`b:${q.key}`, v)} />
+            <NoteField id={`note-b-${q.key}`} label="Notes" value={value(`b:${q.key}`)} noteKey={`b:${q.key}`} onChange={(v) => onNote(`b:${q.key}`, v)} />
           </Card>
         ))
       )}
@@ -339,7 +366,7 @@ function BehavioralSection({
           label="Resume questions"
           hint="Anything you asked from their resume, and what they said."
           value={value("b:resume")}
-          onChange={(v) => onNote("b:resume", v)}
+          noteKey={"b:resume"} onChange={(v) => onNote("b:resume", v)}
         />
       </Card>
     </div>
@@ -388,7 +415,7 @@ function ResearchSection({
           hint="Number and quality of sources, how they chose their direction, whether it sounds like ChatGPT, how they presented."
           rows={6}
           value={value("research")}
-          onChange={(v) => onNote("research", v)}
+          noteKey={"research"} onChange={(v) => onNote("research", v)}
         />
       </Card>
     </div>
@@ -502,16 +529,16 @@ function CaseSection({
           label="Questions they asked"
           hint="Were they relevant? Did they ask enough?"
           value={value("c:questions")}
-          onChange={(v) => onNote("c:questions", v)}
+          noteKey={"c:questions"} onChange={(v) => onNote("c:questions", v)}
         />
         <NoteField
           id="note-case-approach"
           label="Summary of approach and solution"
           rows={6}
           value={value("c:approach")}
-          onChange={(v) => onNote("c:approach", v)}
+          noteKey={"c:approach"} onChange={(v) => onNote("c:approach", v)}
         />
-        <NoteField id="note-case-answer" label="Their final answer" rows={3} value={value("c:answer")} onChange={(v) => onNote("c:answer", v)} />
+        <NoteField id="note-case-answer" label="Their final answer" rows={3} value={value("c:answer")} noteKey={"c:answer"} onChange={(v) => onNote("c:answer", v)} />
       </Card>
     </div>
   );
@@ -535,7 +562,7 @@ function WrapUpSection({ value, onNote }: { value: (key: string) => string; onNo
           hint="Strengths, concerns, and why you'd move them forward or not."
           rows={6}
           value={value("overall")}
-          onChange={(v) => onNote("overall", v)}
+          noteKey={"overall"} onChange={(v) => onNote("overall", v)}
         />
       </Card>
     </div>
@@ -562,7 +589,50 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
   const [researchKey, setResearchKey] = useState<string | null>(session.researchKey);
   const [caseKey, setCaseKey] = useState<string | null>(session.caseKey);
   const timers = useStopwatches(`interview-timers:${session.id}`);
-  const { notes, set: setNote, status } = useSharedNotes(session);
+  const { notes, set: setNote, status, applyRemote, saves: noteSaves } = useSharedNotes(session);
+  // Last known shared score. Updated by polling and by this page's own saves.
+  const [live, setLive] = useState<LiveScore>({
+    scores: session.scores,
+    recommendation: session.recommendation,
+    scoredAt: session.scoredAt,
+    scoredBy: session.scoredBy,
+  });
+  const saveCount = useRef(0);
+
+  const poll = useCallback(async () => {
+    const startedAt = saveCount.current + noteSaves.current;
+    const result = await getInterviewLiveAction(session.id);
+    // A save finished while this was in flight, so this answer may be older than what we just wrote.
+    if (!result.state || saveCount.current + noteSaves.current !== startedAt) return;
+    applyRemote(result.state.notes);
+    setLive({
+      scores: result.state.scores,
+      recommendation: result.state.recommendation,
+      scoredAt: result.state.scoredAt,
+      scoredBy: result.state.scoredBy,
+    });
+  }, [session.id, applyRemote, noteSaves]);
+
+  useEffect(() => {
+    const tick = () => {
+      if (!document.hidden) void poll();
+    };
+    const id = setInterval(tick, 5000);
+    window.addEventListener("focus", tick);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("focus", tick);
+    };
+  }, [poll]);
+
+  const onScoreSaved = useCallback((patch: ScorePatch) => {
+    saveCount.current += 1;
+    setLive((prev) => {
+      const scores = { ...prev.scores, ...patch.set };
+      for (const k of patch.clear) delete scores[k];
+      return { ...prev, scores, recommendation: patch.recommendation !== undefined ? patch.recommendation : prev.recommendation };
+    });
+  }, []);
   const planned = useRef(false);
   const router = useRouter();
   const [confirm, confirmDialog] = useConfirm();
@@ -692,7 +762,9 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
             key={session.id}
             sessionId={session.id}
             applicantName={row.name}
-            session={session}
+            live={live}
+            onSaved={onScoreSaved}
+            onSubmitted={poll}
             activeSection={sectionToRubric[section] ?? null}
           />
         </div>
