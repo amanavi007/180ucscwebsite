@@ -32,6 +32,7 @@ import { useStopwatches, type Stopwatches } from "@/lib/use-stopwatches";
 import { formatDateLong } from "@/lib/date";
 import { formatTimeRange } from "@/lib/coffee-chat";
 import { useConfirm } from "@/components/confirm-dialog";
+import { useUrlTab } from "@/components/url-tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { FilterChip } from "@/components/filter-chip";
@@ -549,7 +550,14 @@ const sectionToRubric: Partial<Record<ScriptSection["key"], RubricSection["key"]
 
 /** The working screen for one interview: script and notes on the left, your scorecard on the right. */
 export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow; session: Session; onBack: () => void }) {
-  const [section, setSection] = useState<ScriptSection["key"]>("before");
+  // The step is in the URL, so a reload lands on the same part of the script.
+  const [stepParam, setStep] = useUrlTab(SCRIPT_SECTIONS.map((s) => s.key), "before", "step");
+  const section = stepParam as ScriptSection["key"];
+  const setSection = setStep as (key: ScriptSection["key"]) => void;
+  const leave = () => {
+    setStep("before");
+    onBack();
+  };
   const [behavioralKeys, setBehavioralKeys] = useState<string[]>(session.behavioralKeys);
   const [researchKey, setResearchKey] = useState<string | null>(session.researchKey);
   const [caseKey, setCaseKey] = useState<string | null>(session.caseKey);
@@ -581,7 +589,7 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
     }
     toast.success(`Reset ${row.name}'s interview.`);
     router.refresh();
-    onBack();
+    leave();
   }
 
   // The plan saves itself shortly after any change.
@@ -634,7 +642,7 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
       {confirmDialog}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <Button variant="ghost" size="sm" onClick={onBack} className="-ml-3">
+          <Button variant="ghost" size="sm" onClick={leave} className="-ml-3">
             <ArrowLeft /> All interviews
           </Button>
           <h2 className="text-2xl">{row.name}</h2>

@@ -11,6 +11,7 @@ import { formatTimeRange } from "@/lib/coffee-chat";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FilterChip } from "@/components/filter-chip";
+import { useUrlParam } from "@/components/url-tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { InterviewWorkspace as Workspace } from "./interview-workspace";
 
@@ -92,16 +93,20 @@ export function InterviewsPanel({ workspace }: { workspace: InterviewWorkspace }
   const [isPending, startTransition] = useTransition();
   const mineRows = workspace.rows.filter((r) => r.mine);
   const [scope, setScope] = useState<"mine" | "all">(mineRows.length > 0 ? "mine" : "all");
-  const [openKey, setOpenKey] = useState<string | null>(null);
+  // The open interview lives in the URL, so a reload lands back inside it.
+  const [openKey, setOpenKey] = useUrlParam("interview");
+  const [starting, setStarting] = useState(false);
   const [manualId, setManualId] = useState<string | null>(null);
 
   const rows = scope === "mine" ? mineRows : workspace.rows;
   const open = workspace.rows.find((r) => r.key === openKey) ?? null;
 
   function start(input: { bookingId?: string; applicantId?: string }, key: string) {
+    setStarting(true);
     startTransition(async () => {
       const result = await startInterviewSessionAction(input);
       if (result.error) {
+        setStarting(false);
         toast.error(result.error);
         return;
       }
@@ -121,7 +126,7 @@ export function InterviewsPanel({ workspace }: { workspace: InterviewWorkspace }
   if (open?.session) {
     return <Workspace key={open.session.id} row={open} session={open.session} onBack={() => setOpenKey(null)} />;
   }
-  if (open) return <p className="py-14 text-center text-sm text-muted-foreground">Setting up the interview…</p>;
+  if (openKey && starting) return <p className="py-14 text-center text-sm text-muted-foreground">Setting up the interview…</p>;
 
   const groups = groupRows(rows, workspace.today);
 

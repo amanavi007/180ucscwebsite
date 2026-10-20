@@ -11,6 +11,7 @@ import { ScoreForm } from "./score-form";
 import { InterviewsPanel } from "./interviews-panel";
 import type { InterviewWorkspace } from "@/lib/data/interview-sessions";
 import { FilterChip } from "@/components/filter-chip";
+import { useUrlTab } from "@/components/url-tabs";
 import { cn } from "@/lib/utils";
 
 const fmt = (n: number | null) => (n === null ? "–" : n.toFixed(2));
@@ -197,7 +198,9 @@ function StagePanel({ data }: { data: StageData }) {
 }
 
 export function ScoringView({ stages, interviews }: { stages: Record<Stage, StageData>; interviews: InterviewWorkspace }) {
-  const [stage, setStage] = useState<Stage>("resume");
+  // In the URL so a reload lands back on the same stage.
+  const [stageParam, setStage] = useUrlTab(["resume", "interview"], "resume", "stage");
+  const stage = stageParam as Stage;
   return (
     <div className="space-y-5">
       <div role="group" aria-label="Stage" className="flex gap-1.5">

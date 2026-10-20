@@ -24,6 +24,25 @@ export function useUrlTab(values: readonly string[], fallback: string, param = "
   return [tab, setTab] as const;
 }
 
+/** A free-form value (like an id) kept in the URL the same way, or null when the param is absent. */
+export function useUrlParam(param: string) {
+  const searchParams = useSearchParams();
+  const value = searchParams.get(param);
+
+  const setValue = useCallback(
+    (next: string | null) => {
+      const params = new URLSearchParams(window.location.search);
+      if (next === null) params.delete(param);
+      else params.set(param, next);
+      const qs = params.toString();
+      window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`);
+    },
+    [param],
+  );
+
+  return [value, setValue] as const;
+}
+
 export function UrlTabs({
   values,
   fallback,
