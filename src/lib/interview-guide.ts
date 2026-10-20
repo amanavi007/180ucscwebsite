@@ -170,11 +170,12 @@ export interface ResearchPrompt {
   text: string;
 }
 
-export const RESEARCH_PROMPTS: ResearchPrompt[] = [
+/** The prompts used until an exec edits them in Settings. */
+export const DEFAULT_RESEARCH_PROMPTS: ResearchPrompt[] = [
   {
-    key: "disney",
-    title: "Child Disney stars",
-    text: "Provide an analysis of Child Disney Stars and their ability to capitalize on their fame into adulthood. Please include statistics and research with sources. With this knowledge, would you recommend having your kid be a “Disney Child?”",
+    key: "stock",
+    title: "A stock as an investment",
+    text: "Research a company on the stock market that shows its market trends, competitors, strengths, and weaknesses as an investment. Please include necessary statistics and sources for your research. Would you recommend an investor to buy stocks from this company?",
   },
   {
     key: "pop-culture",
@@ -182,11 +183,58 @@ export const RESEARCH_PROMPTS: ResearchPrompt[] = [
     text: "Please research the effects pop culture has on different societal and economic demographics. Be sure to include statistics and research with sources. Would you recommend utilizing pop culture for marketing to companies?",
   },
   {
-    key: "stock",
-    title: "A stock as an investment",
-    text: "Research a company on the stock market that shows its market trends, competitors, strengths, and weaknesses as an investment. Please include necessary statistics and sources for your research. Would you recommend an investor to buy stocks from this company?",
+    key: "disney",
+    title: "Child Disney stars",
+    text: "Provide an analysis of Child Disney Stars and their ability to capitalize on their fame into adulthood. Please include statistics and research with sources. With this knowledge, would you recommend having your kid be a “Disney Child?”",
+  },
+  {
+    key: "nonprofit",
+    title: "A nonprofit or social enterprise",
+    text: "Research a nonprofit or social enterprise and assess its financial health, program outcomes, competition for the same donor dollars, and biggest operational risks. Please include necessary statistics and sources for your research. Would you recommend a major donor give to this organization over a peer organization in the same space?",
+  },
+  {
+    key: "delivery-apps",
+    title: "Delivery apps and restaurants",
+    text: "Provide an analysis of how third-party delivery apps affect independent restaurants, including commission structures, order volume changes, and customer retention. Please include statistics and research with sources. With this knowledge, would you recommend a family-owned restaurant sign onto DoorDash?",
   },
 ];
+
+export const RESEARCH_PROMPT_TITLE_MAX = 80;
+export const RESEARCH_PROMPT_TEXT_MAX = 1500;
+export const RESEARCH_PROMPT_LIMIT = 12;
+
+/** Errors for an edited list of research prompts; null when it can be saved. */
+export function validateResearchPrompts(prompts: ResearchPrompt[]): string | null {
+  if (prompts.length === 0) return "Keep at least one research prompt.";
+  if (prompts.length > RESEARCH_PROMPT_LIMIT) return `Keep it to ${RESEARCH_PROMPT_LIMIT} prompts or fewer.`;
+  const keys = new Set<string>();
+  for (const p of prompts) {
+    if (!p.key || keys.has(p.key)) return "Two prompts share an id. Refresh the page and try again.";
+    keys.add(p.key);
+    if (!p.title.trim()) return "Every prompt needs a short title.";
+    if (!p.text.trim()) return `“${p.title.trim()}” needs its prompt text.`;
+    if (p.title.length > RESEARCH_PROMPT_TITLE_MAX) return `Keep titles under ${RESEARCH_PROMPT_TITLE_MAX} characters.`;
+    if (p.text.length > RESEARCH_PROMPT_TEXT_MAX) return `Keep each prompt under ${RESEARCH_PROMPT_TEXT_MAX} characters.`;
+  }
+  return null;
+}
+
+/** Reads the stored JSON; anything missing or malformed falls back to the defaults. */
+export function parseResearchPrompts(raw: string | null | undefined): ResearchPrompt[] {
+  if (!raw) return DEFAULT_RESEARCH_PROMPTS;
+  try {
+    const data: unknown = JSON.parse(raw);
+    if (!Array.isArray(data)) return DEFAULT_RESEARCH_PROMPTS;
+    const list = data.map((d) => ({
+      key: typeof d?.key === "string" ? d.key : "",
+      title: typeof d?.title === "string" ? d.title : "",
+      text: typeof d?.text === "string" ? d.text : "",
+    }));
+    return validateResearchPrompts(list) === null ? list : DEFAULT_RESEARCH_PROMPTS;
+  } catch {
+    return DEFAULT_RESEARCH_PROMPTS;
+  }
+}
 
 /** Questions to ask during the research portion. */
 export const RESEARCH_ASKS = [
@@ -249,61 +297,6 @@ export const CASES: CaseInfo[] = [
         question: "What are customers' key purchase criteria?",
         answer: "Customers are looking for apparel that is trendy and affordable, which FashionCo does not entirely provide.",
       },
-    ],
-  },
-  {
-    key: "coffeegrind",
-    title: "CoffeeGrind (falling profits)",
-    source: "Wharton casebook, case 6",
-    prompt:
-      "The CEO of a major client has requested a short-term study examining a small part of the client’s product portfolio. The company has a small division that manufactures automatic drip coffeemakers for the US and Canadian market. The division has been steadily producing coffeemakers for 20 years, and has made few changes to the business over its history. The client has always enjoyed healthy margins for the coffeemaker division, and annual volumes have been steady. Recently, however, the coffeemaker division's profits have been declining. The CEO wants to understand what is going on. What broader insights would you want to explore first to answer the CEO’s question?",
-    ifAsked: [
-      {
-        question: "Did fixed or variable costs change?",
-        answer:
-          "No. The production lines and facilities are mature, the business has been steady, and production is efficient. No major changes to fixed or variable cost inputs have occurred recently.",
-      },
-    ],
-    interviewerNotes: [
-      "This looks like a profitability case, but the point is a framework beyond the standard one. The question asks for “broader” insights.",
-      "If they go straight to profit = price × volume − costs, push them to think bigger picture.",
-      "This case was done at the partner level, so there is more ambiguity than usual.",
-    ],
-  },
-  {
-    key: "foodco",
-    title: "FoodCo (triple profitability)",
-    source: "Wharton casebook, case 7",
-    prompt:
-      "Our client is a private equity firm that has invested in FoodCo, a family-owned $19M branded frozen ethnic foods manufacturer operating out of the Northeast. They would like our help to determine how FoodCo can triple their profitability over the next 2 years.",
-    ifAsked: [
-      { question: "What does the $19M figure measure?", answer: "Revenue." },
-      { question: "What is profit now, and what is the goal?", answer: "Profit is $3M today, so the goal is $9M." },
-    ],
-    interviewerNotes: [
-      "They may ask a few clarifying questions about the goal, then should build a framework. Expect areas like the market, revenues, and costs.",
-    ],
-  },
-  {
-    key: "skedasky",
-    title: "Skedasky Farms (grow revenue)",
-    source: "Wharton casebook, case 10",
-    prompt:
-      "Skedasky Farms is involved in the process of making, selling, and distributing white wines. As of late, industry growth has stagnated. The CEO wants to increase revenue, and has enlisted you to help. To start off, come up with ideas to help the CEO with his goal.",
-    ifAsked: [
-      { question: "Where do the grapes come from?", answer: "Skedasky grows all of its own grapes." },
-      { question: "Where are the farms and facilities?", answer: "Farms are in California, with some processing on site and another large facility nearby." },
-      { question: "Who do they sell to?", answer: "Wine distributors, and directly to some stores in the state." },
-      { question: "What do they sell?", answer: "A range of grades, from cheaper boxed wine to premium bottles." },
-      {
-        question: "What is the market like?",
-        answer: "Very fragmented (they should be able to guess this). Skedasky has a domestic market share comparable to the other major winemakers in its area.",
-      },
-    ],
-    interviewerNotes: [
-      "Open-ended. Lots of brainstorming. Keep them on ways to increase revenue; costs are not relevant for now.",
-      "Don't let them get stuck on one idea. If they suggest red wines, that's good, but have them move on to others.",
-      "Eventually push them toward the next part of the case.",
     ],
   },
 ];

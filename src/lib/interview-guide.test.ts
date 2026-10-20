@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_RESEARCH_PROMPTS,
+  parseResearchPrompts,
+  validateResearchPrompts,
   BEHAVIORAL_QUESTIONS,
   CASES,
   CASE_STEPS,
@@ -98,5 +101,21 @@ describe("timerTargetSeconds", () => {
   it("has no limit for steps without a timer or unknown ids", () => {
     expect(timerTargetSeconds("before")).toBeNull();
     expect(timerTargetSeconds("case:nope")).toBeNull();
+  });
+});
+
+describe("research prompts", () => {
+  it("falls back to the five defaults when nothing valid is stored", () => {
+    expect(DEFAULT_RESEARCH_PROMPTS).toHaveLength(5);
+    expect(parseResearchPrompts(null)).toBe(DEFAULT_RESEARCH_PROMPTS);
+    expect(parseResearchPrompts("not json")).toBe(DEFAULT_RESEARCH_PROMPTS);
+    expect(parseResearchPrompts("[]")).toBe(DEFAULT_RESEARCH_PROMPTS);
+  });
+
+  it("reads an edited list and rejects blanks and duplicate ids", () => {
+    const edited = [{ key: "a", title: "A", text: "Do A." }];
+    expect(parseResearchPrompts(JSON.stringify(edited))).toEqual(edited);
+    expect(validateResearchPrompts([{ key: "a", title: " ", text: "x" }])).not.toBeNull();
+    expect(validateResearchPrompts([edited[0], edited[0]])).not.toBeNull();
   });
 });

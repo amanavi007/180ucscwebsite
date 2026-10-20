@@ -2,13 +2,16 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllPages } from "@/lib/paginate";
 import { getInterviewSlots } from "@/lib/data/interview";
-import type { Recommendation, Scores } from "@/lib/interview-guide";
+import { getResearchPrompts } from "@/lib/data/org-settings";
+import { asClocks, type Clocks } from "@/lib/interview-timers";
+import type { Recommendation, ResearchPrompt, Scores } from "@/lib/interview-guide";
 
 export interface SessionView {
   id: string;
   behavioralKeys: string[];
   researchKey: string | null;
   caseKey: string | null;
+  timers: Clocks;
   notes: Record<string, string>;
   notesUpdatedBy: string | null;
   notesUpdatedAt: string | null;
@@ -49,6 +52,8 @@ export interface InterviewWorkspace {
   /** Applicants with no interview row yet, for starting one by hand. */
   pickable: { id: string; name: string; email: string | null }[];
   today: string;
+  /** The research prompts to pick from, as edited in Settings. */
+  researchPrompts: ResearchPrompt[];
 }
 
 const CHUNK = 100;
@@ -66,7 +71,7 @@ function asNotes(value: unknown): Record<string, string> {
 
 export async function getInterviewWorkspace(quarterId: string, viewerId: string, today: string): Promise<InterviewWorkspace> {
   const supabase = await createClient();
-  const [slots, applicants] = await Promise.all([
+  const [slots, applicants, researchPrompts] = await Promise.all([
     getInterviewSlots(),
     fetchAllPages((from, to) =>
       supabase
@@ -78,6 +83,7 @@ export async function getInterviewWorkspace(quarterId: string, viewerId: string,
         .order("id")
         .range(from, to),
     ),
+    getResearchPrompts(),
   ]);
 
   const booked = slots.filter((s) => s.bookingStatus === "booked" && s.bookingId);
@@ -157,6 +163,7 @@ export async function getInterviewWorkspace(quarterId: string, viewerId: string,
           behavioralKeys: s.behavioral_keys ?? [],
           researchKey: s.research_key,
           caseKey: s.case_key,
+          timers: asClocks(s.timers),
           notes: asNotes(s.notes),
           notesUpdatedBy: s.notes_updated_by ? names.get(s.notes_updated_by) ?? null : null,
           notesUpdatedAt: s.notes_updated_at,
@@ -210,5 +217,5 @@ export async function getInterviewWorkspace(quarterId: string, viewerId: string,
   const taken = new Set(rows.flatMap((r) => (r.applicant ? [r.applicant.id] : [])));
   const pickable = applicants.filter((a) => !taken.has(a.id)).map((a) => ({ id: a.id, name: a.name, email: a.email }));
 
-  return { rows, pickable, today };
+  return { rows, pickable, today, researchPrompts };
 }

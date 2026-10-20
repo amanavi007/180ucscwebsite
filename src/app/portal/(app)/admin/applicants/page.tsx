@@ -11,6 +11,7 @@ import {
 import { getAttendanceData } from "@/lib/data/recruit-import";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getScoringBundle } from "@/lib/data/recruit-scoring";
+import { DEFAULT_RESEARCH_PROMPTS } from "@/lib/interview-guide";
 import { getInterviewWorkspace, type InterviewWorkspace } from "@/lib/data/interview-sessions";
 import { getOrgTodayDateString } from "@/lib/date";
 import { findDuplicatePairs } from "@/lib/recruit-matching";
@@ -49,7 +50,7 @@ export default async function ApplicantsPage({ searchParams }: { searchParams: P
     // The interview workspace is new; if its tables aren't there yet, the rest of Recruiting should still load.
     getInterviewWorkspace(quarterId, profile.id, getOrgTodayDateString()).catch((error): InterviewWorkspace => {
       console.error("Interview workspace failed:", error);
-      return { rows: [], pickable: [], today: getOrgTodayDateString() };
+      return { rows: [], pickable: [], today: getOrgTodayDateString(), researchPrompts: DEFAULT_RESEARCH_PROMPTS };
     }),
   ]);
   const supabase = await createClient();

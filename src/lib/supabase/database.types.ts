@@ -1115,6 +1115,7 @@ export interface Database {
           behavioral_keys: string[];
           research_key: string | null;
           case_key: string | null;
+          timers: Json;
           notes: Json;
           notes_updated_by: string | null;
           notes_updated_at: string | null;
@@ -1133,6 +1134,7 @@ export interface Database {
           behavioral_keys?: string[];
           research_key?: string | null;
           case_key?: string | null;
+          timers?: Json;
           notes?: Json;
           notes_updated_by?: string | null;
           notes_updated_at?: string | null;
@@ -1272,6 +1274,10 @@ export interface Database {
       apply_team_plan: {
         Args: { p_plan_id: string };
         Returns: unknown;
+      };
+      apply_interview_timer: {
+        Args: { p_session: string; p_op: string; p_id: string; p_ids: string[] };
+        Returns: Json;
       };
       merge_interview_scores: {
         Args: { p_set: Json; p_clear: string[]; p_session: string };

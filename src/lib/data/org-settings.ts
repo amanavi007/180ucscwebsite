@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { parseResearchPrompts, type ResearchPrompt } from "@/lib/interview-guide";
 
 export const DEFAULT_ATTENDANCE_ALERT_THRESHOLD = 0.8;
 const FALLBACK_BULK_PASSWORD = "ucsc180dc$";
@@ -50,4 +51,17 @@ export async function getDefaultBulkPassword(): Promise<string> {
     .maybeSingle();
 
   return data?.value || FALLBACK_BULK_PASSWORD;
+}
+
+export const RESEARCH_PROMPTS_SETTING_KEY = "interview_research_prompts";
+
+/** The research prompts interviewers pick from; the defaults until an exec edits them in Settings. */
+export async function getResearchPrompts(): Promise<ResearchPrompt[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("org_settings")
+    .select("value")
+    .eq("key", RESEARCH_PROMPTS_SETTING_KEY)
+    .maybeSingle();
+  return parseResearchPrompts(data?.value);
 }

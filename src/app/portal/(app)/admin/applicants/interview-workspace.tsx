@@ -4,7 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, ExternalLink, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { Sparkles } from "lucide-react";
+import { suggestInterviewQuestionsAction } from "@/actions/interview-suggest";
+import type { QuestionSuggestion } from "@/lib/interview-suggest";
 import {
+  applyInterviewTimerAction,
   getInterviewLiveAction,
   resetInterviewSessionAction,
   saveInterviewNotesAction,
@@ -21,7 +25,6 @@ import {
   DEPTHS,
   ELABORATE_PROMPTS,
   RESEARCH_ASKS,
-  RESEARCH_PROMPTS,
   SCRIPT,
   SCRIPT_SECTIONS,
   SUGGESTED_MIX,
@@ -31,10 +34,12 @@ import {
   formatClock,
   timerTargetSeconds,
   type Depth,
+  type ResearchPrompt,
   type RubricSection,
   type ScriptSection,
 } from "@/lib/interview-guide";
 import { useStopwatches, type Stopwatches } from "@/lib/use-stopwatches";
+import type { TimerOp } from "@/lib/interview-timers";
 import { playChime } from "@/lib/chime";
 import { formatDateLong } from "@/lib/date";
 import { formatTimeRange } from "@/lib/coffee-chat";
@@ -54,6 +59,8 @@ import { Segmented } from "./segmented";
 
 type Session = NonNullable<InterviewRow["session"]>;
 type NoteStatus = "idle" | "saving" | "saved" | "error";
+
+const sameKeys = (a: string[], b: string[]) => a.length === b.length && a.every((k, i) => k === b[i]);
 
 /** Local copy of the shared notes. Only the fields you changed are sent, and the server merges them. */
 function useSharedNotes(session: Session, onSaved: () => void) {
@@ -232,6 +239,22 @@ function BeforeSection({
   const advice = behavioralMixAdvice(behavioralKeys);
   const mix = behavioralMix(behavioralKeys);
   const applicant = row.applicant;
+  const sessionId = row.session?.id;
+  const [suggestions, setSuggestions] = useState<QuestionSuggestion[] | null>(null);
+  const [suggesting, setSuggesting] = useState(false);
+  async function suggest() {
+    if (!sessionId) return;
+    setSuggesting(true);
+    const result = await suggestInterviewQuestionsAction({ sessionId });
+    setSuggesting(false);
+    if (result.error || !result.suggestions) {
+      toast.error(result.error ?? "The suggestions couldn't be made.");
+      return;
+    }
+    setSuggestions(result.suggestions);
+    if (result.suggestions.length === 0) toast.message("Nothing in their answers stood out. Pick whichever you like.");
+  }
+  const suggestionFor = (key: string) => suggestions?.find((s) => s.key === key);
   return (
     <div className="space-y-5">
       <Card title="Before they join">
@@ -290,6 +313,14 @@ function BeforeSection({
           ))}
         </div>
         {advice && <p className="text-[13px] text-muted-foreground">{advice}</p>}
+        {sessionId && (applicant?.essays.length ?? 0) > 0 && (
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="outline" size="sm" onClick={suggest} disabled={suggesting}>
+              <Sparkles /> {suggesting ? "Reading their answers…" : suggestions ? "Suggest again" : "Suggest from their answers"}
+            </Button>
+            <span className="text-[13px] text-muted-foreground">The AI reads their application and marks questions worth asking. You still pick.</span>
+          </div>
+        )}
         <div className="space-y-5">
           {DEPTHS.map((d) => (
             <div key={d.value}>
@@ -300,6 +331,7 @@ function BeforeSection({
               <ul className="mt-2 space-y-1.5">
                 {BEHAVIORAL_QUESTIONS.filter((q) => q.depth === d.value).map((q) => {
                   const picked = behavioralKeys.includes(q.key);
+                  const hint = suggestionFor(q.key);
                   return (
                     <li key={q.key}>
                       <button
@@ -311,7 +343,15 @@ function BeforeSection({
                         <span className="mt-0.5 inline-flex h-5 min-w-14 items-center justify-center rounded-full bg-muted px-2 text-[12px] font-semibold text-muted-foreground">
                           {picked ? "Picked" : "Pick"}
                         </span>
-                        <span>{q.text}</span>
+                        <span>
+                          {q.text}
+                          {hint && (
+                            <span className="mt-1 flex items-start gap-2 text-[13px] text-muted-foreground">
+                              <Badge variant="info">Good fit</Badge>
+                              <span>{hint.reason}</span>
+                            </span>
+                          )}
+                        </span>
                       </button>
                     </li>
                   );
@@ -426,19 +466,21 @@ function BehavioralSection({
 }
 
 function ResearchSection({
+  prompts,
   researchKey,
   setResearchKey,
   timers,
   value,
   onNote,
 }: {
+  prompts: ResearchPrompt[];
   researchKey: string | null;
   setResearchKey: (key: string | null) => void;
   timers: Stopwatches;
   value: (key: string) => string;
   onNote: (key: string, v: string) => void;
 }) {
-  const prompt = RESEARCH_PROMPTS.find((r) => r.key === researchKey) ?? null;
+  const prompt = prompts.find((r) => r.key === researchKey) ?? null;
   return (
     <div className="space-y-5">
       <Card>
@@ -447,7 +489,7 @@ function ResearchSection({
       </Card>
       <Card title="Which prompt did they choose?">
         <div role="group" aria-label="Research prompt" className="flex flex-wrap gap-1.5">
-          {RESEARCH_PROMPTS.map((r) => (
+          {prompts.map((r) => (
             <FilterChip key={r.key} selected={researchKey === r.key} onClick={() => setResearchKey(researchKey === r.key ? null : r.key)}>
               {r.title}
             </FilterChip>
@@ -675,7 +717,17 @@ const sectionToRubric: Partial<Record<ScriptSection["key"], RubricSection["key"]
 };
 
 /** The working screen for one interview: script and notes on the left, your scorecard on the right. */
-export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow; session: Session; onBack: () => void }) {
+export function InterviewWorkspace({
+  row,
+  session,
+  researchPrompts,
+  onBack,
+}: {
+  row: InterviewRow;
+  session: Session;
+  researchPrompts: ResearchPrompt[];
+  onBack: () => void;
+}) {
   // The step is in the URL, so a reload lands on the same part of the script.
   const [stepParam, setStep] = useUrlTab(SCRIPT_SECTIONS.map((s) => s.key), "before", "step");
   const section = stepParam as ScriptSection["key"];
@@ -687,7 +739,21 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
   const [behavioralKeys, setBehavioralKeys] = useState<string[]>(session.behavioralKeys);
   const [researchKey, setResearchKey] = useState<string | null>(session.researchKey);
   const [caseKey, setCaseKey] = useState<string | null>(session.caseKey);
-  const timers = useStopwatches(`interview-timers:${session.id}`);
+  // The plan as last saved or adopted from the server; a change that matches it needs no save.
+  const lastPlan = useRef(JSON.stringify([session.behavioralKeys, session.researchKey, session.caseKey]));
+  const sendTimer = useCallback(
+    async (op: TimerOp) => {
+      const result = await applyInterviewTimerAction({ sessionId: session.id, op });
+      if (result.error || !result.sync) {
+        toast.error(result.error ?? "The timer didn't save.");
+        return null;
+      }
+      return result.sync;
+    },
+    [session.id],
+  );
+  const timers = useStopwatches(session.timers, sendTimer);
+  const { applyRemote: applyRemoteTimers } = timers;
   const [soundOn, setSoundOn] = useState(() => {
     try {
       return localStorage.getItem("interview-sound") !== "off";
@@ -738,11 +804,23 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
     scoredBy: session.scoredBy,
   });
 
+  // True from the moment this page changes the plan until that change has saved, so a poll can't undo it.
+  const planDirty = useRef(false);
+
   const poll = useCallback(async () => {
     const startedAt = saveCount.current;
     const result = await getInterviewLiveAction(session.id);
     // A save finished while this was in flight, so this answer may be older than what we just wrote.
     if (!result.state || saveCount.current !== startedAt) return;
+    applyRemoteTimers(result.state.timers, result.state.now);
+    if (!planDirty.current) {
+      const remote = result.state;
+      // Adopting someone else's picks shouldn't echo back as a save.
+      lastPlan.current = JSON.stringify([remote.behavioralKeys, remote.researchKey, remote.caseKey]);
+      setBehavioralKeys((prev) => (sameKeys(prev, remote.behavioralKeys) ? prev : remote.behavioralKeys));
+      setResearchKey(remote.researchKey);
+      setCaseKey(remote.caseKey);
+    }
     applyRemote(result.state.notes);
     setLive({
       scores: result.state.scores,
@@ -750,12 +828,13 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
       scoredAt: result.state.scoredAt,
       scoredBy: result.state.scoredBy,
     });
-  }, [session.id, applyRemote]);
+  }, [session.id, applyRemote, applyRemoteTimers]);
 
   useEffect(() => {
     const tick = () => {
       if (!document.hidden) void poll();
     };
+    tick();
     const id = setInterval(tick, 5000);
     window.addEventListener("focus", tick);
     return () => {
@@ -772,7 +851,6 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
       return { ...prev, scores, recommendation: patch.recommendation !== undefined ? patch.recommendation : prev.recommendation };
     });
   }, [countSave]);
-  const planned = useRef(false);
   const router = useRouter();
   const [confirm, confirmDialog] = useConfirm();
   const [resetting, setResetting] = useState(false);
@@ -791,11 +869,6 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
       toast.error(result.error);
       return;
     }
-    try {
-      sessionStorage.removeItem(`interview-timers:${session.id}`);
-    } catch {
-      // Nothing to clear if storage is blocked.
-    }
     toast.success(`Reset ${row.name}'s interview.`);
     router.refresh();
     leave();
@@ -803,13 +876,17 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
 
   // The plan saves itself shortly after any change.
   useEffect(() => {
-    if (!planned.current) {
-      planned.current = true;
-      return;
-    }
+    const plan = JSON.stringify([behavioralKeys, researchKey, caseKey]);
+    if (plan === lastPlan.current) return;
+    planDirty.current = true;
     const t = setTimeout(async () => {
       const result = await saveInterviewPlanAction({ sessionId: session.id, behavioralKeys, researchKey, caseKey });
-      if (result.error) toast.error(result.error);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      lastPlan.current = plan;
+      planDirty.current = false;
     }, 600);
     return () => clearTimeout(t);
   }, [behavioralKeys, researchKey, caseKey, session.id]);
@@ -902,7 +979,7 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
             <BehavioralSection keys={behavioralKeys} timers={timers} value={value} onNote={setNote} goBefore={() => setSection("before")} />
           )}
           {section === "research" && (
-            <ResearchSection researchKey={researchKey} setResearchKey={setResearchKey} timers={timers} value={value} onNote={setNote} />
+            <ResearchSection prompts={researchPrompts} researchKey={researchKey} setResearchKey={setResearchKey} timers={timers} value={value} onNote={setNote} />
           )}
           {section === "case" && <CaseSection caseKey={caseKey} setCaseKey={setCaseKey} timers={timers} value={value} onNote={setNote} />}
           {section === "wrapup" && <WrapUpSection value={value} onNote={setNote} />}
