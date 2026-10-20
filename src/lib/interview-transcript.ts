@@ -4,7 +4,7 @@ import { BEHAVIORAL_QUESTIONS, findCase } from "@/lib/interview-guide";
 /** Transcript-filled notes live next to the exec's own, under this prefix, so the two never overwrite each other. */
 export const TRANSCRIPT_PREFIX = "t:";
 export const TRANSCRIPT_META_KEY = `${TRANSCRIPT_PREFIX}meta`;
-export const TRANSCRIPT_MIN_CHARS = 200;
+export const TRANSCRIPT_MIN_CHARS = 1500;
 export const TRANSCRIPT_MAX_CHARS = 120_000;
 
 export function transcriptKey(noteKey: string): string {
