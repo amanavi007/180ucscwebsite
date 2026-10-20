@@ -46,7 +46,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { FilterChip } from "@/components/filter-chip";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { hasTranscriptNotes, transcriptKey } from "@/lib/interview-transcript";
 import { SectionTimer } from "./interview-timer";
+import { TranscriptImport } from "./interview-transcript-import";
 import { InterviewScorecard, type LiveScore, type ScorePatch } from "./interview-scorecard";
 import { Segmented } from "./segmented";
 
@@ -126,6 +128,7 @@ function NoteField({
   rows = 4,
   value,
   onChange,
+  transcript,
 }: {
   id: string;
   /** Which shared note this is, so a live update never overwrites the box you're typing in. */
@@ -135,6 +138,8 @@ function NoteField({
   rows?: number;
   value: string;
   onChange: (v: string) => void;
+  /** What an imported transcript says for this box. Shown apart from the notes, which stay the interviewer's own. */
+  transcript?: string;
 }) {
   return (
     <div>
@@ -143,7 +148,45 @@ function NoteField({
         {hint && <span className="font-normal text-muted-foreground"> {hint}</span>}
       </label>
       <Textarea id={id} data-note-key={noteKey} className="mt-2" rows={rows} value={value} onChange={(e) => onChange(e.target.value)} />
+      {transcript ? (
+        <div className="mt-2 rounded-2xl bg-accent px-4 py-3 text-accent-foreground">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Badge variant="info">From the transcript</Badge>
+            <Button variant="ghost" size="sm" onClick={() => onChange(value.trim() ? `${value.trimEnd()}\n\n${transcript}` : transcript)}>
+              Add to my notes
+            </Button>
+          </div>
+          <p className="mt-2 max-w-[66ch] text-[15px] leading-relaxed whitespace-pre-line">{transcript}</p>
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+/** Back and next at the foot of a step, so you can walk through the script without going back up to the pills. */
+function StepNav({ section, setSection }: { section: ScriptSection["key"]; setSection: (key: ScriptSection["key"]) => void }) {
+  const index = SCRIPT_SECTIONS.findIndex((s) => s.key === section);
+  const prev = SCRIPT_SECTIONS[index - 1];
+  const next = SCRIPT_SECTIONS[index + 1];
+  function go(key: ScriptSection["key"]) {
+    setSection(key);
+    window.scrollTo({ top: 0 });
+  }
+  return (
+    <nav aria-label="Interview steps" className="flex flex-wrap items-center justify-between gap-3 pt-2">
+      {prev ? (
+        <Button variant="ghost" onClick={() => go(prev.key)}>
+          <ArrowLeft /> {prev.label}
+        </Button>
+      ) : (
+        <span />
+      )}
+      {next && (
+        <Button variant="outline" onClick={() => go(next.key)}>
+          Next: {next.label} <ArrowRight />
+        </Button>
+      )}
+    </nav>
   );
 }
 
@@ -356,7 +399,14 @@ function BehavioralSection({
                 ))}
               </ul>
             </div>
-            <NoteField id={`note-b-${q.key}`} label="Notes" value={value(`b:${q.key}`)} noteKey={`b:${q.key}`} onChange={(v) => onNote(`b:${q.key}`, v)} />
+            <NoteField
+              id={`note-b-${q.key}`}
+              label="Notes"
+              value={value(`b:${q.key}`)}
+              noteKey={`b:${q.key}`}
+              onChange={(v) => onNote(`b:${q.key}`, v)}
+              transcript={value(transcriptKey(`b:${q.key}`))}
+            />
           </Card>
         ))
       )}
@@ -368,6 +418,7 @@ function BehavioralSection({
           hint="Anything you asked from their resume, and what they said."
           value={value("b:resume")}
           noteKey={"b:resume"} onChange={(v) => onNote("b:resume", v)}
+          transcript={value(transcriptKey("b:resume"))}
         />
       </Card>
     </div>
@@ -417,6 +468,7 @@ function ResearchSection({
           rows={6}
           value={value("research")}
           noteKey={"research"} onChange={(v) => onNote("research", v)}
+          transcript={value(transcriptKey("research"))}
         />
       </Card>
     </div>
@@ -517,6 +569,7 @@ function CaseSection({
               {chosen.ifAsked.map((a, i) => {
                 const key = `c:asked:${chosen.key}:${i}`;
                 const asked = value(key) === "1";
+                const heard = value(transcriptKey(key)) === "1";
                 return (
                   <li key={a.question} className={cn("flex gap-3 rounded-2xl border p-3", asked ? "border-border-strong bg-accent" : "border-border")}>
                     <Checkbox
@@ -527,7 +580,8 @@ function CaseSection({
                     />
                     <div>
                       <label htmlFor={`asked-${chosen.key}-${i}`} className="block cursor-pointer text-sm font-semibold">
-                        {a.question} <span className="font-normal text-muted-foreground">They asked this</span>
+                        {a.question} <span className="font-normal text-muted-foreground">They asked this</span>{" "}
+                        {heard && <Badge variant="info">Heard in transcript</Badge>}
                       </label>
                       <p className="text-[15px]">{a.answer}</p>
                     </div>
@@ -560,6 +614,7 @@ function CaseSection({
           hint="Were they relevant? Did they ask enough?"
           value={value("c:questions")}
           noteKey={"c:questions"} onChange={(v) => onNote("c:questions", v)}
+          transcript={value(transcriptKey("c:questions"))}
         />
         <NoteField
           id="note-case-approach"
@@ -567,8 +622,17 @@ function CaseSection({
           rows={6}
           value={value("c:approach")}
           noteKey={"c:approach"} onChange={(v) => onNote("c:approach", v)}
+          transcript={value(transcriptKey("c:approach"))}
         />
-        <NoteField id="note-case-answer" label="Their final answer" rows={3} value={value("c:answer")} noteKey={"c:answer"} onChange={(v) => onNote("c:answer", v)} />
+        <NoteField
+          id="note-case-answer"
+          label="Their final answer"
+          rows={3}
+          value={value("c:answer")}
+          noteKey={"c:answer"}
+          onChange={(v) => onNote("c:answer", v)}
+          transcript={value(transcriptKey("c:answer"))}
+        />
       </Card>
     </div>
   );
@@ -665,6 +729,7 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
     saveCount.current += 1;
   }, []);
   const { notes, set: setNote, status, applyRemote } = useSharedNotes(session, countSave);
+  const transcriptImported = hasTranscriptNotes(notes);
   // Last known shared score. Updated by polling and by this page's own saves.
   const [live, setLive] = useState<LiveScore>({
     scores: session.scores,
@@ -795,6 +860,7 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 text-[13px] text-muted-foreground" aria-live="polite">
+          <TranscriptImport sessionId={session.id} imported={transcriptImported} onImported={applyRemote} />
           <Button variant="destructive" size="sm" disabled={resetting} onClick={reset}>
             Reset interview
           </Button>
@@ -840,6 +906,7 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
           )}
           {section === "case" && <CaseSection caseKey={caseKey} setCaseKey={setCaseKey} timers={timers} value={value} onNote={setNote} />}
           {section === "wrapup" && <WrapUpSection value={value} onNote={setNote} />}
+          <StepNav section={section} setSection={setSection} />
         </div>
 
         <div ref={panelRef} className={cn(panelFits && "xl:sticky xl:top-4")}>
