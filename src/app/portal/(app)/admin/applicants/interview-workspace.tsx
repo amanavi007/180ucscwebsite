@@ -610,8 +610,6 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
   }, []);
   const value = useCallback((key: string) => notes[key] ?? "", [notes]);
 
-  const mine = row.scorecards.find((c) => c.mine) ?? null;
-  const others = row.scorecards.filter((c) => !c.mine);
   const panelRef = useRef<HTMLDivElement>(null);
   const [panelFits, setPanelFits] = useState(true);
   useEffect(() => {
@@ -694,8 +692,7 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
             key={session.id}
             sessionId={session.id}
             applicantName={row.name}
-            mine={mine}
-            others={others}
+            session={session}
             activeSection={sectionToRubric[section] ?? null}
           />
         </div>

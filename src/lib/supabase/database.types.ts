@@ -1118,6 +1118,10 @@ export interface Database {
           notes: Json;
           notes_updated_by: string | null;
           notes_updated_at: string | null;
+          scores: Json;
+          recommendation: string | null;
+          scored_at: string | null;
+          scored_by: string | null;
           created_by: string | null;
           created_at: string;
           updated_at: string;
@@ -1132,6 +1136,10 @@ export interface Database {
           notes?: Json;
           notes_updated_by?: string | null;
           notes_updated_at?: string | null;
+          scores?: Json;
+          recommendation?: string | null;
+          scored_at?: string | null;
+          scored_by?: string | null;
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -1264,6 +1272,10 @@ export interface Database {
       apply_team_plan: {
         Args: { p_plan_id: string };
         Returns: unknown;
+      };
+      merge_interview_scores: {
+        Args: { p_set: Json; p_clear: string[]; p_session: string };
+        Returns: undefined;
       };
       merge_interview_notes: {
         Args: { p_session: string; p_patch: Json };

@@ -4,15 +4,6 @@ import { fetchAllPages } from "@/lib/paginate";
 import { getInterviewSlots } from "@/lib/data/interview";
 import type { Recommendation, Scores } from "@/lib/interview-guide";
 
-export interface ScorecardView {
-  reviewerId: string;
-  reviewerName: string;
-  scores: Scores;
-  recommendation: Recommendation | null;
-  submitted: boolean;
-  mine: boolean;
-}
-
 export interface SessionView {
   id: string;
   behavioralKeys: string[];
@@ -21,6 +12,11 @@ export interface SessionView {
   notes: Record<string, string>;
   notesUpdatedBy: string | null;
   notesUpdatedAt: string | null;
+  /** The one shared scorecard for this interview. */
+  scores: Scores;
+  recommendation: Recommendation | null;
+  scoredAt: string | null;
+  scoredBy: string | null;
 }
 
 export interface InterviewApplicant {
@@ -46,8 +42,6 @@ export interface InterviewRow {
   mine: boolean;
   applicant: InterviewApplicant | null;
   session: SessionView | null;
-  /** Your scorecard, plus everyone else's once you have submitted yours. */
-  scorecards: ScorecardView[];
 }
 
 export interface InterviewWorkspace {
@@ -110,19 +104,10 @@ export async function getInterviewWorkspace(quarterId: string, viewerId: string,
   const sessionByBooking = new Map(sessionRows.filter((s) => s.booking_id).map((s) => [s.booking_id as string, s]));
   const sessionByApplicant = new Map(sessionRows.filter((s) => s.applicant_id).map((s) => [s.applicant_id as string, s]));
 
-  const scoreRows = await chunked(
-    sessionRows.map((s) => s.id),
-    async (ids) => {
-      const { data, error } = await supabase.from("interview_session_scores").select("*").in("session_id", ids);
-      if (error) throw error;
-      return data ?? [];
-    },
-  );
-
   const profileIds = [
     ...new Set([
-      ...scoreRows.map((r) => r.reviewer_id),
       ...sessionRows.map((s) => s.notes_updated_by).filter((id): id is string => !!id),
+      ...sessionRows.map((s) => s.scored_by).filter((id): id is string => !!id),
     ]),
   ];
   const names = new Map<string, string>();
@@ -175,25 +160,12 @@ export async function getInterviewWorkspace(quarterId: string, viewerId: string,
           notes: asNotes(s.notes),
           notesUpdatedBy: s.notes_updated_by ? names.get(s.notes_updated_by) ?? null : null,
           notesUpdatedAt: s.notes_updated_at,
+          scores: (s.scores ?? {}) as Scores,
+          recommendation: s.recommendation as Recommendation | null,
+          scoredAt: s.scored_at,
+          scoredBy: s.scored_by ? names.get(s.scored_by) ?? null : null,
         }
       : null;
-
-  const scorecardsFor = (sessionId: string | undefined): ScorecardView[] => {
-    if (!sessionId) return [];
-    const all: ScorecardView[] = scoreRows
-      .filter((r) => r.session_id === sessionId)
-      .map((r) => ({
-        reviewerId: r.reviewer_id,
-        reviewerName: names.get(r.reviewer_id) ?? "Unknown",
-        scores: (r.scores ?? {}) as Scores,
-        recommendation: r.recommendation as Recommendation | null,
-        submitted: r.submitted_at !== null,
-        mine: r.reviewer_id === viewerId,
-      }));
-    // Blind until you submit: you always see yours; others' only after yours is in.
-    const iSubmitted = all.some((c) => c.mine && c.submitted);
-    return all.filter((c) => c.mine || (iSubmitted && c.submitted));
-  };
 
   const rows: InterviewRow[] = booked.map((s) => {
     const applicantId = applicantIdOf(s.applicantEmail);
@@ -210,7 +182,6 @@ export async function getInterviewWorkspace(quarterId: string, viewerId: string,
       mine: s.execs.some((e) => e.id === viewerId),
       applicant: applicantView(applicantId),
       session: sessionView(session),
-      scorecards: scorecardsFor(session?.id),
     };
   });
 
@@ -232,7 +203,6 @@ export async function getInterviewWorkspace(quarterId: string, viewerId: string,
       mine: s.created_by === viewerId,
       applicant: applicantView(a.id),
       session: sessionView(s),
-      scorecards: scorecardsFor(s.id),
     });
     seen.add(s.id);
   }

@@ -66,8 +66,8 @@ export function ApplicantsWorkspace({
   const reviewStatus = Object.fromEntries(scoring.dashboard.applicants.map((a) => [a.id, a.state]));
 
   const withoutApplication = rows.filter((r) => !r.hasApplication).length;
-  // Interviews are scored in their own workspace: count the ones on my panel that I haven't submitted yet.
-  const myInterviewsToScore = interviews.rows.filter((r) => r.mine && !r.scorecards.some((c) => c.mine && c.submitted)).length;
+  // Interviews are scored in their own workspace: count the ones on my panel that don't have a final score yet.
+  const myInterviewsToScore = interviews.rows.filter((r) => r.mine && !r.session?.scoredAt).length;
   const myToScore = scoring.stages.resume.applicants.filter((a) => !a.mine?.submitted).length + myInterviewsToScore;
 
   return (

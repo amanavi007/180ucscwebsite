@@ -10,6 +10,7 @@ import {
   CASES,
   RECOMMENDATIONS,
   RESEARCH_PROMPTS,
+  RUBRIC_CRITERIA,
   isScoreComplete,
   totalScore,
   validateScores,
@@ -132,52 +133,69 @@ export async function saveInterviewNotesAction(input: { sessionId: string; patch
   return {};
 }
 
-/** Saves your own 40-point scorecard. A submitted scorecard is also copied into the applicant's interview review. */
+/**
+ * Saves the shared 40-point scorecard. Only the lines that changed are sent, and the server merges them, so two people
+ * clicking different lines don't overwrite each other. Submitting also copies the total into the applicant's interview review.
+ */
 export async function saveScorecardAction(input: {
   sessionId: string;
-  scores: Scores;
-  recommendation: Recommendation | null;
+  /** Lines that were set since the last save. */
+  set: Scores;
+  /** Lines that were cleared since the last save. */
+  clear: string[];
+  /** Leave undefined when it didn't change. */
+  recommendation?: Recommendation | null;
   submit: boolean;
 }): Promise<SessionResult> {
   const { profile, error } = await requireExec();
   if (error || !profile) return { error };
 
-  const problem = validateScores(input.scores);
+  const problem = validateScores(input.set);
   if (problem) return { error: problem };
+  const known = new Set(RUBRIC_CRITERIA.map((c) => c.key));
+  if (input.clear.some((k) => !known.has(k))) return { error: "One of those scores doesn't match the rubric. Refresh the page." };
   if (input.recommendation && !RECOMMENDATIONS.some((r) => r.value === input.recommendation)) return { error: "Pick Move forward, Maybe or Don't move forward." };
-  if (input.submit) {
-    if (!isScoreComplete(input.scores)) return { error: "Score every line before submitting, or save a draft." };
-    if (!input.recommendation) return { error: "Pick Move forward, Maybe or Don't move forward before submitting." };
-  }
 
   const supabase = await createClient();
-  const { error: saveError } = await supabase.from("interview_session_scores").upsert(
-    {
-      session_id: input.sessionId,
-      reviewer_id: profile.id,
-      scores: input.scores,
-      recommendation: input.recommendation,
-      ...(input.submit ? { submitted_at: new Date().toISOString() } : {}),
-    },
-    { onConflict: "session_id,reviewer_id" },
-  );
-  if (saveError) return { error: saveError.message };
-
-  let mirrored = false;
-  if (input.submit) {
-    const mirror = await mirrorToReview(input.sessionId, profile.id, totalScore(input.scores), input.recommendation);
-    if (mirror.error) return { error: `Your score is saved, but it couldn't be added to the applicant's review: ${mirror.error}` };
-    mirrored = mirror.done;
+  if (Object.keys(input.set).length > 0 || input.clear.length > 0) {
+    const { error: mergeError } = await supabase.rpc("merge_interview_scores", { p_session: input.sessionId, p_set: input.set, p_clear: input.clear });
+    if (mergeError) return { error: mergeError.message };
   }
+  if (input.recommendation !== undefined) {
+    const { error: recError } = await supabase.from("interview_sessions").update({ recommendation: input.recommendation }).eq("id", input.sessionId);
+    if (recError) return { error: recError.message };
+  }
+  if (!input.submit) return {};
+
+  const { data: session, error: readError } = await supabase
+    .from("interview_sessions")
+    .select("scores, recommendation, scored_by")
+    .eq("id", input.sessionId)
+    .maybeSingle();
+  if (readError) return { error: readError.message };
+  if (!session) return { error: "That interview is gone. Refresh the page." };
+  const scores = (session.scores ?? {}) as Scores;
+  if (!isScoreComplete(scores)) return { error: "Score every line before submitting." };
+  if (!session.recommendation) return { error: "Pick Move forward, Maybe or Don't move forward before submitting." };
+
+  const { error: submitError } = await supabase
+    .from("interview_sessions")
+    .update({ scored_at: new Date().toISOString(), scored_by: profile.id })
+    .eq("id", input.sessionId);
+  if (submitError) return { error: submitError.message };
+
+  const mirror = await mirrorToReview(input.sessionId, profile.id, session.scored_by, totalScore(scores), session.recommendation as Recommendation);
+  if (mirror.error) return { error: `Your score is saved, but it couldn't be added to the applicant's review: ${mirror.error}` };
   refresh();
-  return { mirrored };
+  return { mirrored: mirror.done };
 }
 
 async function mirrorToReview(
   sessionId: string,
   reviewerId: string,
+  previousReviewerId: string | null,
   total: number,
-  recommendation: Recommendation | null,
+  recommendation: Recommendation,
 ): Promise<{ done: boolean; error?: string }> {
   const supabase = await createClient();
   const { data: session, error: sessionError } = await supabase
@@ -204,7 +222,7 @@ async function mirrorToReview(
       if (applicantId) await supabase.from("interview_sessions").update({ applicant_id: applicantId }).eq("id", sessionId).is("applicant_id", null);
     }
   }
-  // Not an error: the scorecard is saved, there is just no applicant record to attach a review to yet.
+  // Not an error: the score is saved, there is just no applicant record to attach a review to yet.
   if (!applicantId) return { done: false };
 
   const { data: rubric } = await supabase.from("recruit_rubrics").select("id").eq("stage", "interview").maybeSingle();
@@ -218,17 +236,22 @@ async function mirrorToReview(
     .maybeSingle();
   if (!criterion) return { done: false };
 
+  // One joint score means one review. If someone else submitted it before, their copy is replaced, not doubled.
+  if (previousReviewerId && previousReviewerId !== reviewerId) {
+    const { error: staleError } = await supabase
+      .from("recruit_reviews")
+      .delete()
+      .eq("applicant_id", applicantId)
+      .eq("stage", "interview")
+      .eq("reviewer_id", previousReviewerId);
+    if (staleError) return { done: false, error: staleError.message };
+  }
+
   const label = RECOMMENDATIONS.find((r) => r.value === recommendation)?.label ?? "";
   const { data: review, error: reviewError } = await supabase
     .from("recruit_reviews")
     .upsert(
-      {
-        applicant_id: applicantId,
-        stage: "interview",
-        reviewer_id: reviewerId,
-        comment: label,
-        submitted_at: new Date().toISOString(),
-      },
+      { applicant_id: applicantId, stage: "interview", reviewer_id: reviewerId, comment: label, submitted_at: new Date().toISOString() },
       { onConflict: "applicant_id,stage,reviewer_id" },
     )
     .select("id")
@@ -250,7 +273,7 @@ export async function resetInterviewSessionAction(sessionId: string): Promise<Se
   const supabase = await createClient();
   const { data: session, error: sessionError } = await supabase
     .from("interview_sessions")
-    .select("applicant_id")
+    .select("applicant_id, scored_by")
     .eq("id", sessionId)
     .maybeSingle();
   if (sessionError) return { error: sessionError.message };
@@ -259,7 +282,7 @@ export async function resetInterviewSessionAction(sessionId: string): Promise<Se
   if (session.applicant_id) {
     const { data: cards, error: cardsError } = await supabase.from("interview_session_scores").select("reviewer_id").eq("session_id", sessionId);
     if (cardsError) return { error: cardsError.message };
-    const reviewerIds = (cards ?? []).map((c) => c.reviewer_id);
+    const reviewerIds = [...new Set([...(cards ?? []).map((c) => c.reviewer_id), ...(session.scored_by ? [session.scored_by] : [])])];
     if (reviewerIds.length > 0) {
       const { error: reviewError } = await supabase
         .from("recruit_reviews")

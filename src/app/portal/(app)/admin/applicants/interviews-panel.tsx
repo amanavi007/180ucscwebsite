@@ -18,11 +18,16 @@ import { InterviewWorkspace as Workspace } from "./interview-workspace";
 type MyState = "todo" | "draft" | "scored";
 
 function myState(row: InterviewRow): MyState {
-  const mine = row.scorecards.find((c) => c.mine);
-  if (mine?.submitted) return "scored";
-  // Just opening an interview isn't progress: it counts once something has been picked, written or scored.
   const s = row.session;
-  const started = !!s && (s.behavioralKeys.length > 0 || !!s.researchKey || !!s.caseKey || Object.values(s.notes).some((n) => n.trim() !== "") || !!mine);
+  if (s?.scoredAt) return "scored";
+  // Just opening an interview isn't progress: it counts once something has been picked, written or scored.
+  const started =
+    !!s &&
+    (s.behavioralKeys.length > 0 ||
+      !!s.researchKey ||
+      !!s.caseKey ||
+      Object.keys(s.scores).length > 0 ||
+      Object.values(s.notes).some((n) => n.trim() !== ""));
   return started ? "draft" : "todo";
 }
 
@@ -49,7 +54,7 @@ function groupRows(rows: InterviewRow[], today: string): { title: string; rows: 
 
 function InterviewListRow({ row, onOpen }: { row: InterviewRow; onOpen: () => void }) {
   const state = STATE_CHIP[myState(row)];
-  const mineCard = row.scorecards.find((c) => c.mine && c.submitted);
+  const scored = row.session?.scoredAt ? row.session : null;
   return (
     <li>
       <button
@@ -76,9 +81,9 @@ function InterviewListRow({ row, onOpen }: { row: InterviewRow; onOpen: () => vo
         <span className="flex items-center gap-2">
           {!row.applicant && <Badge variant="bad">Not in applicants</Badge>}
           {row.mine && <Badge variant="info">Yours</Badge>}
-          {mineCard && (
+          {scored && (
             <span className="text-sm tabular-nums text-muted-foreground">
-              {totalScore(mineCard.scores)}/{RUBRIC_TOTAL}
+              {totalScore(scored.scores)}/{RUBRIC_TOTAL}
             </span>
           )}
           <Badge variant={state.variant}>{state.label}</Badge>
