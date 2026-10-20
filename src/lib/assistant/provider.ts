@@ -45,6 +45,7 @@ function createModel(spec: ModelSpec, env: Env): LanguageModelV4 {
       name: "bayleaf",
       baseURL: "https://api.bayleaf.dev/v1",
       apiKey: env.BAYLEAF_API_KEY,
+      supportsStructuredOutputs: true,
     })(spec.modelId) as LanguageModelV4;
   }
   return createGroq({ apiKey: env.GROQ_API_KEY })(spec.modelId) as LanguageModelV4;
