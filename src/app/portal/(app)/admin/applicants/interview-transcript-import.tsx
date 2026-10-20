@@ -37,7 +37,7 @@ export function TranscriptImport({
     onImported(result.notes);
     setText("");
     setOpen(false);
-    toast.success("Filled the notes from the transcript. Your own notes are untouched.");
+    toast.success(`Filled ${result.filled ?? 0} ${result.filled === 1 ? "box" : "boxes"} from the transcript. Your own notes are untouched.`);
   }
 
   return (

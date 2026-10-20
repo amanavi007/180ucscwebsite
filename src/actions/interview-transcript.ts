@@ -7,6 +7,7 @@ import { isExec } from "@/lib/auth/roles";
 import { buildModel } from "@/lib/assistant/provider";
 import {
   TRANSCRIPT_MAX_CHARS,
+  TRANSCRIPT_META_KEY,
   TRANSCRIPT_MIN_CHARS,
   buildTranscriptPrompt,
   transcriptNotePatch,
@@ -17,6 +18,8 @@ export interface TranscriptImportResult {
   error?: string;
   /** The transcript-filled notes that were saved, so the page can show them right away. */
   notes?: Record<string, string>;
+  /** How many note boxes got text, for the confirmation message. */
+  filled?: number;
 }
 
 /**
@@ -64,7 +67,13 @@ export async function importInterviewTranscriptAction(input: { sessionId: string
     return { error: "The transcript couldn't be read. Try again, or fill the notes by hand." };
   }
 
+  const filled = Object.entries(patch).filter(([key, value]) => key !== TRANSCRIPT_META_KEY && value.trim() !== "").length;
+  if (filled === 0) {
+    console.error("interview transcript import: the model returned nothing for", { sessionId: input.sessionId, chars: transcript.length });
+    return { error: "Nothing in that transcript matched this interview's questions. Check that you pasted the whole transcript, then try again." };
+  }
+
   const { error: rpcError } = await supabase.rpc("merge_interview_notes", { p_session: input.sessionId, p_patch: patch });
   if (rpcError) return { error: rpcError.message };
-  return { notes: patch };
+  return { notes: patch, filled };
 }
