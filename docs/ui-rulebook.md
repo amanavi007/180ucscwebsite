@@ -105,6 +105,7 @@ Always a word. Four status colors plus neutral (`muted`). Sentence case, fully r
 - **View switch** (pill, forest selected pill with lime text): different views of the same thing. Roster / Teams / Stats. Maximum four options. For a view inside one page the state goes in the URL as `?tab=` (`UrlTabs`); admin places use real routes.
 - **Filter chips**: narrow the list you are looking at. Never navigate.
 - **Sort and secondary filters**: plain text with a caret, or a small select.
+- A **section pill row** above a reading column (the interview script: Before, Behavioral, Research, Case, Wrap up) jumps between parts of one document and may have up to five options. It is not a view switch.
 - Do not nest view switches. Stage (Applications / Interviews) next to a view switch is a filter chip row, not a second switch.
 
 ### Tables and lists

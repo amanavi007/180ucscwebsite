@@ -6,6 +6,7 @@ import { ChevronDown, FileSpreadsheet, FileUp, UserPlus } from "lucide-react";
 import type { ApplicantRow, MergeLogRow, RecruitCategory, RecruitEvent } from "@/lib/data/recruit";
 import type { AttendanceData } from "@/lib/data/recruit-import";
 import type { ScoringBundle } from "@/lib/data/recruit-scoring";
+import type { InterviewWorkspace } from "@/lib/data/interview-sessions";
 import type { DuplicatePair } from "@/lib/recruit-matching";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ export function ApplicantsWorkspace({
   merges,
   attendance,
   scoring,
+  interviews,
   invitedEmails,
   bookedEmails,
 }: {
@@ -45,6 +47,7 @@ export function ApplicantsWorkspace({
   merges: MergeLogRow[];
   attendance: AttendanceData;
   scoring: ScoringBundle;
+  interviews: InterviewWorkspace;
   /** Lowercased emails already on the interview invite list. */
   invitedEmails: string[];
   /** Lowercased emails with a confirmed interview booking. */
@@ -63,10 +66,9 @@ export function ApplicantsWorkspace({
   const reviewStatus = Object.fromEntries(scoring.dashboard.applicants.map((a) => [a.id, a.state]));
 
   const withoutApplication = rows.filter((r) => !r.hasApplication).length;
-  const myToScore = (["resume", "interview"] as const).reduce(
-    (n, stage) => n + scoring.stages[stage].applicants.filter((a) => !a.mine?.submitted).length,
-    0,
-  );
+  // Interviews are scored in their own workspace: count the ones on my panel that I haven't submitted yet.
+  const myInterviewsToScore = interviews.rows.filter((r) => r.mine && !r.scorecards.some((c) => c.mine && c.submitted)).length;
+  const myToScore = scoring.stages.resume.applicants.filter((a) => !a.mine?.submitted).length + myInterviewsToScore;
 
   return (
     <div className="space-y-6">
@@ -140,7 +142,7 @@ export function ApplicantsWorkspace({
         </TabsContent>
         <TabsContent value="queue">
           <div className="mt-6">
-            <ScoringView stages={scoring.stages} />
+            <ScoringView stages={scoring.stages} interviews={interviews} />
           </div>
         </TabsContent>
         <TabsContent value="progress">
