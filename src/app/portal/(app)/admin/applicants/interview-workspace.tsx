@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-import { saveInterviewNotesAction, saveInterviewPlanAction } from "@/actions/interview-session";
+import { useRouter } from "next/navigation";
+import { resetInterviewSessionAction, saveInterviewNotesAction, saveInterviewPlanAction } from "@/actions/interview-session";
 import type { InterviewRow } from "@/lib/data/interview-sessions";
 import {
   BEHAVIORAL_PICK_MAX,
@@ -30,6 +31,7 @@ import {
 import { useStopwatches, type Stopwatches } from "@/lib/use-stopwatches";
 import { formatDateLong } from "@/lib/date";
 import { formatTimeRange } from "@/lib/coffee-chat";
+import { useConfirm } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { FilterChip } from "@/components/filter-chip";
@@ -554,6 +556,33 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
   const timers = useStopwatches(`interview-timers:${session.id}`);
   const { notes, set: setNote, status } = useSharedNotes(session);
   const planned = useRef(false);
+  const router = useRouter();
+  const [confirm, confirmDialog] = useConfirm();
+  const [resetting, setResetting] = useState(false);
+
+  async function reset() {
+    const ok = await confirm({
+      title: `Reset ${row.name}'s interview?`,
+      description: "Clears the questions you picked, all notes, and every interviewer's score, so it goes back to not started.",
+      confirmLabel: "Reset interview",
+    });
+    if (!ok) return;
+    setResetting(true);
+    const result = await resetInterviewSessionAction(session.id);
+    if (result.error) {
+      setResetting(false);
+      toast.error(result.error);
+      return;
+    }
+    try {
+      sessionStorage.removeItem(`interview-timers:${session.id}`);
+    } catch {
+      // Nothing to clear if storage is blocked.
+    }
+    toast.success(`Reset ${row.name}'s interview.`);
+    router.refresh();
+    onBack();
+  }
 
   // The plan saves itself shortly after any change.
   useEffect(() => {
@@ -602,6 +631,7 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
 
   return (
     <div className="space-y-5">
+      {confirmDialog}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <Button variant="ghost" size="sm" onClick={onBack} className="-ml-3">
@@ -615,6 +645,9 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 text-[13px] text-muted-foreground" aria-live="polite">
+          <Button variant="outline" size="sm" className="border-destructive text-destructive" disabled={resetting} onClick={reset}>
+            Reset interview
+          </Button>
           {runningLabel && (
             <Badge variant="info">
               {runningLabel.label} {formatClock(timers.seconds(runningLabel.id))}

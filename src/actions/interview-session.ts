@@ -241,3 +241,38 @@ async function mirrorToReview(
   if (scoreError) return { done: false, error: scoreError.message };
   return { done: true };
 }
+
+/** Wipes an interview back to unopened: picks, notes, every interviewer's scorecard, and the review copies of those scores. */
+export async function resetInterviewSessionAction(sessionId: string): Promise<SessionResult> {
+  const { error } = await requireExec();
+  if (error) return { error };
+
+  const supabase = await createClient();
+  const { data: session, error: sessionError } = await supabase
+    .from("interview_sessions")
+    .select("applicant_id")
+    .eq("id", sessionId)
+    .maybeSingle();
+  if (sessionError) return { error: sessionError.message };
+  if (!session) return {};
+
+  if (session.applicant_id) {
+    const { data: cards, error: cardsError } = await supabase.from("interview_session_scores").select("reviewer_id").eq("session_id", sessionId);
+    if (cardsError) return { error: cardsError.message };
+    const reviewerIds = (cards ?? []).map((c) => c.reviewer_id);
+    if (reviewerIds.length > 0) {
+      const { error: reviewError } = await supabase
+        .from("recruit_reviews")
+        .delete()
+        .eq("applicant_id", session.applicant_id)
+        .eq("stage", "interview")
+        .in("reviewer_id", reviewerIds);
+      if (reviewError) return { error: reviewError.message };
+    }
+  }
+
+  const { error: deleteError } = await supabase.from("interview_sessions").delete().eq("id", sessionId);
+  if (deleteError) return { error: deleteError.message };
+  refresh();
+  return {};
+}
