@@ -4,6 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, ExternalLink, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { Sparkles } from "lucide-react";
+import { suggestInterviewQuestionsAction } from "@/actions/interview-suggest";
+import type { QuestionSuggestion } from "@/lib/interview-suggest";
 import {
   getInterviewLiveAction,
   resetInterviewSessionAction,
@@ -232,6 +235,22 @@ function BeforeSection({
   const advice = behavioralMixAdvice(behavioralKeys);
   const mix = behavioralMix(behavioralKeys);
   const applicant = row.applicant;
+  const sessionId = row.session?.id;
+  const [suggestions, setSuggestions] = useState<QuestionSuggestion[] | null>(null);
+  const [suggesting, setSuggesting] = useState(false);
+  async function suggest() {
+    if (!sessionId) return;
+    setSuggesting(true);
+    const result = await suggestInterviewQuestionsAction({ sessionId });
+    setSuggesting(false);
+    if (result.error || !result.suggestions) {
+      toast.error(result.error ?? "The suggestions couldn't be made.");
+      return;
+    }
+    setSuggestions(result.suggestions);
+    if (result.suggestions.length === 0) toast.message("Nothing in their answers stood out. Pick whichever you like.");
+  }
+  const suggestionFor = (key: string) => suggestions?.find((s) => s.key === key);
   return (
     <div className="space-y-5">
       <Card title="Before they join">
@@ -290,6 +309,14 @@ function BeforeSection({
           ))}
         </div>
         {advice && <p className="text-[13px] text-muted-foreground">{advice}</p>}
+        {sessionId && (applicant?.essays.length ?? 0) > 0 && (
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="outline" size="sm" onClick={suggest} disabled={suggesting}>
+              <Sparkles /> {suggesting ? "Reading their answers…" : suggestions ? "Suggest again" : "Suggest from their answers"}
+            </Button>
+            <span className="text-[13px] text-muted-foreground">The AI reads their application and marks questions worth asking. You still pick.</span>
+          </div>
+        )}
         <div className="space-y-5">
           {DEPTHS.map((d) => (
             <div key={d.value}>
@@ -300,6 +327,7 @@ function BeforeSection({
               <ul className="mt-2 space-y-1.5">
                 {BEHAVIORAL_QUESTIONS.filter((q) => q.depth === d.value).map((q) => {
                   const picked = behavioralKeys.includes(q.key);
+                  const hint = suggestionFor(q.key);
                   return (
                     <li key={q.key}>
                       <button
@@ -311,7 +339,15 @@ function BeforeSection({
                         <span className="mt-0.5 inline-flex h-5 min-w-14 items-center justify-center rounded-full bg-muted px-2 text-[12px] font-semibold text-muted-foreground">
                           {picked ? "Picked" : "Pick"}
                         </span>
-                        <span>{q.text}</span>
+                        <span>
+                          {q.text}
+                          {hint && (
+                            <span className="mt-1 flex items-start gap-2 text-[13px] text-muted-foreground">
+                              <Badge variant="info">Good fit</Badge>
+                              <span>{hint.reason}</span>
+                            </span>
+                          )}
+                        </span>
                       </button>
                     </li>
                   );

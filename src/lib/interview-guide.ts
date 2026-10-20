@@ -299,61 +299,6 @@ export const CASES: CaseInfo[] = [
       },
     ],
   },
-  {
-    key: "coffeegrind",
-    title: "CoffeeGrind (falling profits)",
-    source: "Wharton casebook, case 6",
-    prompt:
-      "The CEO of a major client has requested a short-term study examining a small part of the client’s product portfolio. The company has a small division that manufactures automatic drip coffeemakers for the US and Canadian market. The division has been steadily producing coffeemakers for 20 years, and has made few changes to the business over its history. The client has always enjoyed healthy margins for the coffeemaker division, and annual volumes have been steady. Recently, however, the coffeemaker division's profits have been declining. The CEO wants to understand what is going on. What broader insights would you want to explore first to answer the CEO’s question?",
-    ifAsked: [
-      {
-        question: "Did fixed or variable costs change?",
-        answer:
-          "No. The production lines and facilities are mature, the business has been steady, and production is efficient. No major changes to fixed or variable cost inputs have occurred recently.",
-      },
-    ],
-    interviewerNotes: [
-      "This looks like a profitability case, but the point is a framework beyond the standard one. The question asks for “broader” insights.",
-      "If they go straight to profit = price × volume − costs, push them to think bigger picture.",
-      "This case was done at the partner level, so there is more ambiguity than usual.",
-    ],
-  },
-  {
-    key: "foodco",
-    title: "FoodCo (triple profitability)",
-    source: "Wharton casebook, case 7",
-    prompt:
-      "Our client is a private equity firm that has invested in FoodCo, a family-owned $19M branded frozen ethnic foods manufacturer operating out of the Northeast. They would like our help to determine how FoodCo can triple their profitability over the next 2 years.",
-    ifAsked: [
-      { question: "What does the $19M figure measure?", answer: "Revenue." },
-      { question: "What is profit now, and what is the goal?", answer: "Profit is $3M today, so the goal is $9M." },
-    ],
-    interviewerNotes: [
-      "They may ask a few clarifying questions about the goal, then should build a framework. Expect areas like the market, revenues, and costs.",
-    ],
-  },
-  {
-    key: "skedasky",
-    title: "Skedasky Farms (grow revenue)",
-    source: "Wharton casebook, case 10",
-    prompt:
-      "Skedasky Farms is involved in the process of making, selling, and distributing white wines. As of late, industry growth has stagnated. The CEO wants to increase revenue, and has enlisted you to help. To start off, come up with ideas to help the CEO with his goal.",
-    ifAsked: [
-      { question: "Where do the grapes come from?", answer: "Skedasky grows all of its own grapes." },
-      { question: "Where are the farms and facilities?", answer: "Farms are in California, with some processing on site and another large facility nearby." },
-      { question: "Who do they sell to?", answer: "Wine distributors, and directly to some stores in the state." },
-      { question: "What do they sell?", answer: "A range of grades, from cheaper boxed wine to premium bottles." },
-      {
-        question: "What is the market like?",
-        answer: "Very fragmented (they should be able to guess this). Skedasky has a domestic market share comparable to the other major winemakers in its area.",
-      },
-    ],
-    interviewerNotes: [
-      "Open-ended. Lots of brainstorming. Keep them on ways to increase revenue; costs are not relevant for now.",
-      "Don't let them get stuck on one idea. If they suggest red wines, that's good, but have them move on to others.",
-      "Eventually push them toward the next part of the case.",
-    ],
-  },
 ];
 
 export const CASE_REMINDERS = [
