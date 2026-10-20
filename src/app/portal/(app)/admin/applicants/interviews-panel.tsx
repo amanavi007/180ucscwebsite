@@ -19,7 +19,10 @@ type MyState = "todo" | "draft" | "scored";
 function myState(row: InterviewRow): MyState {
   const mine = row.scorecards.find((c) => c.mine);
   if (mine?.submitted) return "scored";
-  return row.session ? "draft" : "todo";
+  // Just opening an interview isn't progress: it counts once something has been picked, written or scored.
+  const s = row.session;
+  const started = !!s && (s.behavioralKeys.length > 0 || !!s.researchKey || !!s.caseKey || Object.values(s.notes).some((n) => n.trim() !== "") || !!mine);
+  return started ? "draft" : "todo";
 }
 
 const STATE_CHIP: Record<MyState, { label: string; variant: "muted" | "warn" | "ok" }> = {

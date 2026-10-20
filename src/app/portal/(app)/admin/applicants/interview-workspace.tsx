@@ -153,7 +153,7 @@ function BeforeSection({
   behavioralKeys: string[];
   toggleQuestion: (key: string) => void;
   caseKey: string | null;
-  setCaseKey: (key: string) => void;
+  setCaseKey: (key: string | null) => void;
 }) {
   const advice = behavioralMixAdvice(behavioralKeys);
   const mix = behavioralMix(behavioralKeys);
@@ -249,10 +249,10 @@ function BeforeSection({
       </Card>
 
       <Card title="Pick the case">
-        <p className="max-w-[66ch] text-sm text-muted-foreground">You can change this later. The prompt shows up in the Case step.</p>
+        <p className="max-w-[66ch] text-sm text-muted-foreground">You can change this later, or click the chosen one again to clear it. The prompt shows up in the Case step.</p>
         <div role="group" aria-label="Case" className="flex flex-wrap gap-1.5">
           {CASES.map((c) => (
-            <FilterChip key={c.key} selected={caseKey === c.key} onClick={() => setCaseKey(c.key)}>
+            <FilterChip key={c.key} selected={caseKey === c.key} onClick={() => setCaseKey(caseKey === c.key ? null : c.key)}>
               {c.title}
             </FilterChip>
           ))}
@@ -351,7 +351,7 @@ function ResearchSection({
   onNote,
 }: {
   researchKey: string | null;
-  setResearchKey: (key: string) => void;
+  setResearchKey: (key: string | null) => void;
   timers: Stopwatches;
   value: (key: string) => string;
   onNote: (key: string, v: string) => void;
@@ -366,7 +366,7 @@ function ResearchSection({
       <Card title="Which prompt did they choose?">
         <div role="group" aria-label="Research prompt" className="flex flex-wrap gap-1.5">
           {RESEARCH_PROMPTS.map((r) => (
-            <FilterChip key={r.key} selected={researchKey === r.key} onClick={() => setResearchKey(r.key)}>
+            <FilterChip key={r.key} selected={researchKey === r.key} onClick={() => setResearchKey(researchKey === r.key ? null : r.key)}>
               {r.title}
             </FilterChip>
           ))}
@@ -400,7 +400,7 @@ function CaseSection({
   onNote,
 }: {
   caseKey: string | null;
-  setCaseKey: (key: string) => void;
+  setCaseKey: (key: string | null) => void;
   timers: Stopwatches;
   value: (key: string) => string;
   onNote: (key: string, v: string) => void;
@@ -424,7 +424,7 @@ function CaseSection({
         <p className="max-w-[66ch] text-sm text-muted-foreground">{SCRIPT.case.intro}</p>
         <div role="group" aria-label="Case" className="flex flex-wrap gap-1.5">
           {CASES.map((c) => (
-            <FilterChip key={c.key} selected={caseKey === c.key} onClick={() => setCaseKey(c.key)}>
+            <FilterChip key={c.key} selected={caseKey === c.key} onClick={() => setCaseKey(caseKey === c.key ? null : c.key)}>
               {c.title}
             </FilterChip>
           ))}
