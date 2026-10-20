@@ -645,7 +645,7 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 text-[13px] text-muted-foreground" aria-live="polite">
-          <Button variant="outline" size="sm" className="border-destructive text-destructive" disabled={resetting} onClick={reset}>
+          <Button variant="destructive" size="sm" disabled={resetting} onClick={reset}>
             Reset interview
           </Button>
           {runningLabel && (
