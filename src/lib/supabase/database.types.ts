@@ -1,3 +1,5 @@
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+
 export type UserRole =
   | "junior_consultant"
   | "consultant"
@@ -1105,6 +1107,62 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["interview_bookings"]["Insert"]>;
         Relationships: [];
       };
+      interview_sessions: {
+        Row: {
+          id: string;
+          booking_id: string | null;
+          applicant_id: string | null;
+          behavioral_keys: string[];
+          research_key: string | null;
+          case_key: string | null;
+          notes: Json;
+          notes_updated_by: string | null;
+          notes_updated_at: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          booking_id?: string | null;
+          applicant_id?: string | null;
+          behavioral_keys?: string[];
+          research_key?: string | null;
+          case_key?: string | null;
+          notes?: Json;
+          notes_updated_by?: string | null;
+          notes_updated_at?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["interview_sessions"]["Insert"]>;
+        Relationships: [];
+      };
+      interview_session_scores: {
+        Row: {
+          id: string;
+          session_id: string;
+          reviewer_id: string;
+          scores: Json;
+          recommendation: string | null;
+          submitted_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          reviewer_id: string;
+          scores?: Json;
+          recommendation?: string | null;
+          submitted_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["interview_session_scores"]["Insert"]>;
+        Relationships: [];
+      };
       client_meeting_availability: {
         Row: { id: string; exec_id: string; date: string; start_time: string; end_time: string; created_at: string };
         Insert: { id?: string; exec_id: string; date: string; start_time: string; end_time: string; created_at?: string };
@@ -1206,6 +1264,10 @@ export interface Database {
       apply_team_plan: {
         Args: { p_plan_id: string };
         Returns: unknown;
+      };
+      merge_interview_notes: {
+        Args: { p_session: string; p_patch: Json };
+        Returns: undefined;
       };
       member_has_history: {
         Args: { target: string };

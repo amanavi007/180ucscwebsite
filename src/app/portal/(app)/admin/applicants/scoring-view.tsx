@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { AnswerKey } from "@/lib/recruit-rubric-levels";
 import { ApplicationCard } from "./application-card";
 import { ScoreForm } from "./score-form";
+import { InterviewsPanel } from "./interviews-panel";
+import type { InterviewWorkspace } from "@/lib/data/interview-sessions";
 import { FilterChip } from "@/components/filter-chip";
 import { cn } from "@/lib/utils";
 
@@ -194,7 +196,7 @@ function StagePanel({ data }: { data: StageData }) {
   );
 }
 
-export function ScoringView({ stages }: { stages: Record<Stage, StageData> }) {
+export function ScoringView({ stages, interviews }: { stages: Record<Stage, StageData>; interviews: InterviewWorkspace }) {
   const [stage, setStage] = useState<Stage>("resume");
   return (
     <div className="space-y-5">
@@ -205,8 +207,8 @@ export function ScoringView({ stages }: { stages: Record<Stage, StageData> }) {
           </FilterChip>
         ))}
       </div>
-      {/* Keyed by stage so each stage keeps its own selection and filter. */}
-      <StagePanel key={stage} data={stages[stage]} />
+      {/* Keyed by stage so each stage keeps its own selection and filter. Interviews have their own workspace. */}
+      {stage === "interview" ? <InterviewsPanel workspace={interviews} /> : <StagePanel key={stage} data={stages[stage]} />}
     </div>
   );
 }
