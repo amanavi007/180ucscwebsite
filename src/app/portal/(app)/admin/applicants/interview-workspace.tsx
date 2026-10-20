@@ -21,7 +21,6 @@ import {
   DEPTHS,
   ELABORATE_PROMPTS,
   RESEARCH_ASKS,
-  RESEARCH_PROMPTS,
   SCRIPT,
   SCRIPT_SECTIONS,
   SUGGESTED_MIX,
@@ -31,6 +30,7 @@ import {
   formatClock,
   timerTargetSeconds,
   type Depth,
+  type ResearchPrompt,
   type RubricSection,
   type ScriptSection,
 } from "@/lib/interview-guide";
@@ -426,19 +426,21 @@ function BehavioralSection({
 }
 
 function ResearchSection({
+  prompts,
   researchKey,
   setResearchKey,
   timers,
   value,
   onNote,
 }: {
+  prompts: ResearchPrompt[];
   researchKey: string | null;
   setResearchKey: (key: string | null) => void;
   timers: Stopwatches;
   value: (key: string) => string;
   onNote: (key: string, v: string) => void;
 }) {
-  const prompt = RESEARCH_PROMPTS.find((r) => r.key === researchKey) ?? null;
+  const prompt = prompts.find((r) => r.key === researchKey) ?? null;
   return (
     <div className="space-y-5">
       <Card>
@@ -447,7 +449,7 @@ function ResearchSection({
       </Card>
       <Card title="Which prompt did they choose?">
         <div role="group" aria-label="Research prompt" className="flex flex-wrap gap-1.5">
-          {RESEARCH_PROMPTS.map((r) => (
+          {prompts.map((r) => (
             <FilterChip key={r.key} selected={researchKey === r.key} onClick={() => setResearchKey(researchKey === r.key ? null : r.key)}>
               {r.title}
             </FilterChip>
@@ -675,7 +677,17 @@ const sectionToRubric: Partial<Record<ScriptSection["key"], RubricSection["key"]
 };
 
 /** The working screen for one interview: script and notes on the left, your scorecard on the right. */
-export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow; session: Session; onBack: () => void }) {
+export function InterviewWorkspace({
+  row,
+  session,
+  researchPrompts,
+  onBack,
+}: {
+  row: InterviewRow;
+  session: Session;
+  researchPrompts: ResearchPrompt[];
+  onBack: () => void;
+}) {
   // The step is in the URL, so a reload lands on the same part of the script.
   const [stepParam, setStep] = useUrlTab(SCRIPT_SECTIONS.map((s) => s.key), "before", "step");
   const section = stepParam as ScriptSection["key"];
@@ -902,7 +914,7 @@ export function InterviewWorkspace({ row, session, onBack }: { row: InterviewRow
             <BehavioralSection keys={behavioralKeys} timers={timers} value={value} onNote={setNote} goBefore={() => setSection("before")} />
           )}
           {section === "research" && (
-            <ResearchSection researchKey={researchKey} setResearchKey={setResearchKey} timers={timers} value={value} onNote={setNote} />
+            <ResearchSection prompts={researchPrompts} researchKey={researchKey} setResearchKey={setResearchKey} timers={timers} value={value} onNote={setNote} />
           )}
           {section === "case" && <CaseSection caseKey={caseKey} setCaseKey={setCaseKey} timers={timers} value={value} onNote={setNote} />}
           {section === "wrapup" && <WrapUpSection value={value} onNote={setNote} />}

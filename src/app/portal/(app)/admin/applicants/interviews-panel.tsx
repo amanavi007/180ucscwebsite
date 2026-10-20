@@ -129,7 +129,7 @@ export function InterviewsPanel({ workspace }: { workspace: InterviewWorkspace }
   }
 
   if (open?.session) {
-    return <Workspace key={open.session.id} row={open} session={open.session} onBack={() => setOpenKey(null)} />;
+    return <Workspace key={open.session.id} row={open} session={open.session} researchPrompts={workspace.researchPrompts} onBack={() => setOpenKey(null)} />;
   }
   if (openKey && starting) return <p className="py-14 text-center text-sm text-muted-foreground">Setting up the interview…</p>;
 

@@ -170,11 +170,12 @@ export interface ResearchPrompt {
   text: string;
 }
 
-export const RESEARCH_PROMPTS: ResearchPrompt[] = [
+/** The prompts used until an exec edits them in Settings. */
+export const DEFAULT_RESEARCH_PROMPTS: ResearchPrompt[] = [
   {
-    key: "disney",
-    title: "Child Disney stars",
-    text: "Provide an analysis of Child Disney Stars and their ability to capitalize on their fame into adulthood. Please include statistics and research with sources. With this knowledge, would you recommend having your kid be a “Disney Child?”",
+    key: "stock",
+    title: "A stock as an investment",
+    text: "Research a company on the stock market that shows its market trends, competitors, strengths, and weaknesses as an investment. Please include necessary statistics and sources for your research. Would you recommend an investor to buy stocks from this company?",
   },
   {
     key: "pop-culture",
@@ -182,11 +183,58 @@ export const RESEARCH_PROMPTS: ResearchPrompt[] = [
     text: "Please research the effects pop culture has on different societal and economic demographics. Be sure to include statistics and research with sources. Would you recommend utilizing pop culture for marketing to companies?",
   },
   {
-    key: "stock",
-    title: "A stock as an investment",
-    text: "Research a company on the stock market that shows its market trends, competitors, strengths, and weaknesses as an investment. Please include necessary statistics and sources for your research. Would you recommend an investor to buy stocks from this company?",
+    key: "disney",
+    title: "Child Disney stars",
+    text: "Provide an analysis of Child Disney Stars and their ability to capitalize on their fame into adulthood. Please include statistics and research with sources. With this knowledge, would you recommend having your kid be a “Disney Child?”",
+  },
+  {
+    key: "nonprofit",
+    title: "A nonprofit or social enterprise",
+    text: "Research a nonprofit or social enterprise and assess its financial health, program outcomes, competition for the same donor dollars, and biggest operational risks. Please include necessary statistics and sources for your research. Would you recommend a major donor give to this organization over a peer organization in the same space?",
+  },
+  {
+    key: "delivery-apps",
+    title: "Delivery apps and restaurants",
+    text: "Provide an analysis of how third-party delivery apps affect independent restaurants, including commission structures, order volume changes, and customer retention. Please include statistics and research with sources. With this knowledge, would you recommend a family-owned restaurant sign onto DoorDash?",
   },
 ];
+
+export const RESEARCH_PROMPT_TITLE_MAX = 80;
+export const RESEARCH_PROMPT_TEXT_MAX = 1500;
+export const RESEARCH_PROMPT_LIMIT = 12;
+
+/** Errors for an edited list of research prompts; null when it can be saved. */
+export function validateResearchPrompts(prompts: ResearchPrompt[]): string | null {
+  if (prompts.length === 0) return "Keep at least one research prompt.";
+  if (prompts.length > RESEARCH_PROMPT_LIMIT) return `Keep it to ${RESEARCH_PROMPT_LIMIT} prompts or fewer.`;
+  const keys = new Set<string>();
+  for (const p of prompts) {
+    if (!p.key || keys.has(p.key)) return "Two prompts share an id. Refresh the page and try again.";
+    keys.add(p.key);
+    if (!p.title.trim()) return "Every prompt needs a short title.";
+    if (!p.text.trim()) return `“${p.title.trim()}” needs its prompt text.`;
+    if (p.title.length > RESEARCH_PROMPT_TITLE_MAX) return `Keep titles under ${RESEARCH_PROMPT_TITLE_MAX} characters.`;
+    if (p.text.length > RESEARCH_PROMPT_TEXT_MAX) return `Keep each prompt under ${RESEARCH_PROMPT_TEXT_MAX} characters.`;
+  }
+  return null;
+}
+
+/** Reads the stored JSON; anything missing or malformed falls back to the defaults. */
+export function parseResearchPrompts(raw: string | null | undefined): ResearchPrompt[] {
+  if (!raw) return DEFAULT_RESEARCH_PROMPTS;
+  try {
+    const data: unknown = JSON.parse(raw);
+    if (!Array.isArray(data)) return DEFAULT_RESEARCH_PROMPTS;
+    const list = data.map((d) => ({
+      key: typeof d?.key === "string" ? d.key : "",
+      title: typeof d?.title === "string" ? d.title : "",
+      text: typeof d?.text === "string" ? d.text : "",
+    }));
+    return validateResearchPrompts(list) === null ? list : DEFAULT_RESEARCH_PROMPTS;
+  } catch {
+    return DEFAULT_RESEARCH_PROMPTS;
+  }
+}
 
 /** Questions to ask during the research portion. */
 export const RESEARCH_ASKS = [

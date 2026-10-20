@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { logAudit } from "@/lib/audit";
-import { invalidateAttendanceThresholdCache } from "@/lib/data/org-settings";
+import { invalidateAttendanceThresholdCache, RESEARCH_PROMPTS_SETTING_KEY } from "@/lib/data/org-settings";
+import { validateResearchPrompts, type ResearchPrompt } from "@/lib/interview-guide";
 
 export interface ActionResult {
   error?: string;
@@ -53,5 +54,26 @@ export async function updateDefaultBulkPassword(password: string): Promise<Actio
   await logAudit(actor.id, "settings.default_password_changed");
 
   revalidatePath("/portal/admin");
+  return {};
+}
+
+/** The research prompts offered in the interview workspace. RLS restricts this to exec. */
+export async function updateResearchPrompts(prompts: ResearchPrompt[]): Promise<ActionResult> {
+  const cleaned = prompts.map((p) => ({ key: p.key, title: p.title.trim(), text: p.text.trim() }));
+  const problem = validateResearchPrompts(cleaned);
+  if (problem) return { error: problem };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("org_settings")
+    .upsert({ key: RESEARCH_PROMPTS_SETTING_KEY, value: JSON.stringify(cleaned) }, { onConflict: "key" });
+
+  if (error) return { error: error.message };
+
+  const actor = await getCurrentProfile();
+  await logAudit(actor.id, "settings.research_prompts_changed", undefined, `${cleaned.length} prompts`);
+
+  revalidatePath("/portal/admin");
+  revalidatePath("/portal/admin/applicants");
   return {};
 }

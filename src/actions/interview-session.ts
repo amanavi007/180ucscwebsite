@@ -4,12 +4,12 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { isExec } from "@/lib/auth/roles";
+import { getResearchPrompts } from "@/lib/data/org-settings";
 import {
   BEHAVIORAL_PICK_MAX,
   BEHAVIORAL_QUESTIONS,
   CASES,
   RECOMMENDATIONS,
-  RESEARCH_PROMPTS,
   RUBRIC_CRITERIA,
   isScoreComplete,
   totalScore,
@@ -104,7 +104,7 @@ export async function saveInterviewPlanAction(input: {
   if (keys.some((k) => !known.has(k))) return { error: "One of those questions is no longer in the list. Refresh the page." };
   // A little over the suggested six is allowed so a swap doesn't have to be done in a strict order.
   if (keys.length > BEHAVIORAL_PICK_MAX + 3) return { error: "That's too many questions for 12 minutes." };
-  if (input.researchKey && !RESEARCH_PROMPTS.some((r) => r.key === input.researchKey)) return { error: "That research prompt isn't in the list." };
+  if (input.researchKey && !(await getResearchPrompts()).some((r) => r.key === input.researchKey)) return { error: "That research prompt isn't in the list." };
   if (input.caseKey && !CASES.some((c) => c.key === input.caseKey)) return { error: "That case isn't in the list." };
 
   const supabase = await createClient();
