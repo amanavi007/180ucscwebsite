@@ -45,7 +45,7 @@ export function TranscriptImport({
       <DialogTrigger render={<Button variant="outline" size="sm" />}>
         <FileText /> {imported ? "Import again" : "Import transcript"}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Import a transcript</DialogTitle>
           <DialogDescription>
@@ -58,7 +58,8 @@ export function TranscriptImport({
         </label>
         <Textarea
           id="transcript-text"
-          rows={14}
+          rows={10}
+          className="field-sizing-fixed max-h-[45vh] overflow-y-auto"
           value={text}
           disabled={busy}
           maxLength={TRANSCRIPT_MAX_CHARS}
