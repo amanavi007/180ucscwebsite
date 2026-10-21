@@ -1,9 +1,9 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Eye, EyeOff, Trash2, XCircle } from "lucide-react";
+import { CalendarClock, Eye, EyeOff, Trash2, XCircle } from "lucide-react";
 import { cancelBookingAsAdminAction, deleteSlotAction, publishSlotAction } from "@/actions/coffee-chat";
 import { cancelInterviewBookingAsAdminAction, deleteInterviewSlotAction, publishInterviewSlotAction } from "@/actions/interview";
 import {
@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { SwapControl } from "../coffee-chats/schedule-view";
 import { PanelControl } from "../interviews/schedule-view";
 import { UrlEditor } from "../client-meetings/bookings-view";
+import { RescheduleDialog } from "./reschedule-dialog";
 import type { SchedulingData } from "./scheduling-workspace";
 
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
@@ -36,6 +37,7 @@ export function SlotPanel({ item, data, onClose }: { item: AgendaItem; data: Sch
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [confirm, confirmDialog] = useConfirm();
+  const [moving, setMoving] = useState(false);
 
   function run(action: () => Promise<{ error?: string }>, success: string, closeAfter = false) {
     startTransition(async () => {
@@ -55,6 +57,7 @@ export function SlotPanel({ item, data, onClose }: { item: AgendaItem; data: Sch
   let cancel: (() => void) | null = null;
   let remove: () => void = () => {};
   let hasBooking = false;
+  let moveDialog: React.ReactNode = null;
 
   if (item.kind === "coffee") {
     const slot = data.coffee.slots.find((s) => s.id === item.slotId);
@@ -157,6 +160,15 @@ export function SlotPanel({ item, data, onClose }: { item: AgendaItem; data: Sch
     publish = () =>
       run(() => publishClientMeetingSlotAction(slot.id, !slot.published), slot.published ? "Hidden from clients." : "Published.");
     if (booking) {
+      moveDialog = moving ? (
+        <RescheduleDialog
+          bookingId={booking.id}
+          businessName={booking.businessName}
+          date={booking.date}
+          startTime={booking.startTime}
+          onClose={() => setMoving(false)}
+        />
+      ) : null;
       cancel = async () => {
         const ok = await confirm({
           title: `Cancel ${booking.businessName}'s meeting?`,
@@ -172,6 +184,7 @@ export function SlotPanel({ item, data, onClose }: { item: AgendaItem; data: Sch
   return (
     <section aria-label={`${AGENDA_KIND_LABEL[item.kind]} details`} className="space-y-5 rounded-[22px] border bg-card p-6">
       {confirmDialog}
+      {moveDialog}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-bold tracking-wider text-muted-foreground uppercase">{AGENDA_KIND_LABEL[item.kind]}</p>
@@ -198,6 +211,12 @@ export function SlotPanel({ item, data, onClose }: { item: AgendaItem; data: Sch
           {published ? <EyeOff /> : <Eye />}
           {published ? "Hide from signups" : "Publish"}
         </Button>
+        {item.kind === "client" && hasBooking && (
+          <Button variant="outline" disabled={isPending} onClick={() => setMoving(true)}>
+            <CalendarClock />
+            Move to another time
+          </Button>
+        )}
         {hasBooking && cancel ? (
           <Button variant="destructive" disabled={isPending} onClick={cancel}>
             <XCircle />

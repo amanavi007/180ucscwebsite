@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeTime } from "@/lib/coffee-chat";
 import {
   buildClientMeetingCancelledEmail,
+  buildClientMeetingConfirmationEmail,
   buildClientMeetingExecBookedEmail,
   buildClientMeetingExecCancelledEmail,
   buildClientMeetingLinkEmail,
@@ -47,7 +48,7 @@ async function loadBookingContext(bookingId: string) {
  */
 export async function notifyClientMeetingExecs(
   bookingId: string,
-  kind: "booked" | "cancelled",
+  kind: "booked" | "cancelled" | "rescheduled",
 ): Promise<{ sentTo: string[]; errors: string[] }> {
   const result = { sentTo: [] as string[], errors: [] as string[] };
   try {
@@ -71,12 +72,13 @@ export async function notifyClientMeetingExecs(
           siteUrl,
         };
         const content =
-          kind === "booked"
-            ? buildClientMeetingExecBookedEmail({
+          kind === "cancelled"
+            ? buildClientMeetingExecCancelledEmail(base)
+            : buildClientMeetingExecBookedEmail({
                 ...base,
                 manageToken: booking.manage_token,
-              })
-            : buildClientMeetingExecCancelledEmail(base);
+                rescheduled: kind === "rescheduled",
+              });
         try {
           await sendEmail({
             to: exec.email,
@@ -146,5 +148,29 @@ export async function emailClientMeetingLink(bookingId: string): Promise<void> {
     });
   } catch (err) {
     console.error("client meeting link email to client failed:", err);
+  }
+}
+
+/** Tells the client an exec moved their meeting to a new time. Best effort. */
+export async function emailClientMeetingRescheduled(bookingId: string): Promise<void> {
+  try {
+    const { booking, when } = await loadBookingContext(bookingId);
+    const content = buildClientMeetingConfirmationEmail({
+      contactName: booking.contact_name,
+      businessName: booking.business_name,
+      manageToken: booking.manage_token,
+      meetingUrl: booking.meeting_url,
+      ...when,
+      siteUrl: process.env.NEXT_PUBLIC_SITE_URL!,
+      rescheduled: true,
+    });
+    await sendEmail({
+      to: booking.email,
+      subject: content.subject,
+      html: content.html,
+      text: content.text,
+    });
+  } catch (err) {
+    console.error("client meeting reschedule email to client failed:", err);
   }
 }
