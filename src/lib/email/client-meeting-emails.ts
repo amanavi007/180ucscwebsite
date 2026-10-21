@@ -44,6 +44,14 @@ export interface ClientMeetingConfirmationEmailInput extends When {
   manageToken: string;
   meetingUrl: string | null;
   siteUrl: string;
+  /** True when an exec moved an existing booking to this time. */
+  rescheduled?: boolean;
+}
+
+function confirmationIntro(input: ClientMeetingConfirmationEmailInput): string {
+  return input.rescheduled
+    ? `Your intro call with 180DC UCSC for ${input.businessName} has moved to the time below:`
+    : `Thanks for booking an intro call with 180DC UCSC for ${input.businessName}. You're confirmed:`;
 }
 
 export function buildClientMeetingConfirmationEmail(
@@ -59,7 +67,7 @@ export function buildClientMeetingConfirmationEmail(
 
   const html = `
     <p>Hi ${escapeHtml(input.contactName)},</p>
-    <p>Thanks for booking an intro call with 180DC UCSC for ${escapeHtml(input.businessName)}. You're confirmed:</p>
+    <p>${escapeHtml(confirmationIntro(input))}</p>
     ${detailsList(input, input.meetingUrl)}
     <p>
       Add it to your calendar:
@@ -73,7 +81,7 @@ export function buildClientMeetingConfirmationEmail(
 
   const text = [
     `Hi ${input.contactName},`,
-    `Thanks for booking an intro call with 180DC UCSC for ${input.businessName}. You're confirmed:`,
+    confirmationIntro(input),
     ...detailsText(input, input.meetingUrl),
     `Add to Google Calendar: ${googleUrl}`,
     `Add to Apple/Outlook: ${ics}`,
@@ -82,7 +90,9 @@ export function buildClientMeetingConfirmationEmail(
   ].join("\n");
 
   return {
-    subject: "You're booked for an intro call with 180DC UCSC",
+    subject: input.rescheduled
+      ? "Your 180DC UCSC intro call was rescheduled"
+      : "You're booked for an intro call with 180DC UCSC",
     html,
     text,
   };
@@ -246,7 +256,7 @@ function execDetailsText(i: ClientMeetingExecEmailInput): string[] {
 }
 
 export function buildClientMeetingExecBookedEmail(
-  input: ClientMeetingExecEmailInput & { manageToken: string },
+  input: ClientMeetingExecEmailInput & { manageToken: string; rescheduled?: boolean },
 ): EmailContent {
   const portalUrl = portalLink(input.siteUrl);
   const googleUrl = buildClientMeetingGoogleCalendarUrl({
@@ -260,7 +270,7 @@ export function buildClientMeetingExecBookedEmail(
 
   const html = `
     <p>Hi ${escapeHtml(input.execName)},</p>
-    <p>${escapeHtml(input.businessName)} booked an intro call with you:</p>
+    <p>${escapeHtml(input.businessName)} ${input.rescheduled ? "has a new time for" : "booked"} an intro call with you:</p>
     ${execDetailsList(input)}
     <p><strong>Rest of the panel:</strong> ${escapeHtml(panelLine(input.otherPanelNames))}</p>${addLinkHtml}
     <p>
@@ -271,7 +281,7 @@ export function buildClientMeetingExecBookedEmail(
 
   const text = [
     `Hi ${input.execName},`,
-    `${input.businessName} booked an intro call with you:`,
+    `${input.businessName} ${input.rescheduled ? "has a new time for" : "booked"} an intro call with you:`,
     ...execDetailsText(input),
     `Rest of the panel: ${panelLine(input.otherPanelNames)}`,
     ...(input.meetingUrl ? [] : ["Please add the video link in the portal."]),
@@ -280,7 +290,9 @@ export function buildClientMeetingExecBookedEmail(
   ].join("\n");
 
   return {
-    subject: `${input.businessName} booked an intro call`,
+    subject: input.rescheduled
+      ? `${input.businessName}'s intro call was rescheduled`
+      : `${input.businessName} booked an intro call`,
     html,
     text,
   };

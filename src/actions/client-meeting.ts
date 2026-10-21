@@ -8,6 +8,7 @@ import { logAudit } from "@/lib/audit";
 import {
   emailClientMeetingCancelled,
   emailClientMeetingLink,
+  emailClientMeetingRescheduled,
   notifyClientMeetingExecs,
 } from "@/lib/email/notify-client-meeting";
 import {
@@ -377,6 +378,92 @@ export async function cancelClientMeetingAsAdminAction(bookingId: string): Promi
   }
 
   await logAudit(profile.id, "client_meeting.booking_cancelled_by_admin", undefined, bookingId);
+  revalidateAdmin();
+  return {};
+}
+
+/**
+ * Moves a confirmed booking to another date and time, for when the client asked by email. Unlike a client's
+ * own reschedule it has no 12-hour cutoff and needs no pre-made slot: an existing slot at that time is reused,
+ * otherwise a hidden one is created. The length stays the same, the video link is kept, and the reminders reset.
+ */
+export async function rescheduleClientMeetingAsAdminAction(
+  bookingId: string,
+  date: string,
+  startTime: string,
+): Promise<ActionResult> {
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error };
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Pick a date." };
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime)) return { error: "Pick a start time." };
+  if (date < getOrgTodayDateString()) return { error: "That date has already passed." };
+
+  const supabase = await createClient();
+  const { data: booking, error: loadError } = await supabase
+    .from("client_meetings")
+    .select("id, status, slot_id")
+    .eq("id", bookingId)
+    .maybeSingle();
+  if (loadError) return { error: loadError.message };
+  if (!booking) return { error: "Booking not found." };
+  if (booking.status !== "confirmed") return { error: "Only confirmed bookings can be moved." };
+
+  const { data: current, error: currentError } = await supabase
+    .from("client_meeting_slots")
+    .select("start_time, end_time")
+    .eq("id", booking.slot_id)
+    .single();
+  if (currentError) return { error: currentError.message };
+
+  const startMinutes = Number(startTime.slice(0, 2)) * 60 + Number(startTime.slice(3, 5));
+  const length =
+    Number(current.end_time.slice(0, 2)) * 60 + Number(current.end_time.slice(3, 5)) -
+    (Number(current.start_time.slice(0, 2)) * 60 + Number(current.start_time.slice(3, 5)));
+  const endMinutes = startMinutes + length;
+  if (endMinutes >= 24 * 60) return { error: "The meeting would run past midnight." };
+  const endTime = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
+
+  const { data: existing, error: existingError } = await supabase
+    .from("client_meeting_slots")
+    .select("id")
+    .eq("date", date)
+    .eq("start_time", startTime)
+    .eq("end_time", endTime)
+    .maybeSingle();
+  if (existingError) return { error: existingError.message };
+
+  let slotId = existing?.id;
+  if (slotId === booking.slot_id) return { error: "That is already the meeting's time." };
+  if (!slotId) {
+    const { data: created, error: createError } = await supabase
+      .from("client_meeting_slots")
+      .insert({ date, start_time: startTime, end_time: endTime, published: false })
+      .select("id")
+      .single();
+    if (createError) return { error: createError.message };
+    slotId = created.id;
+  }
+
+  const { data: moved, error: moveError } = await supabase
+    .from("client_meetings")
+    .update({ slot_id: slotId, reminder_day_before_sent_at: null, reminder_morning_sent_at: null })
+    .eq("id", bookingId)
+    .eq("status", "confirmed")
+    .select("id");
+  if (moveError) {
+    // The partial unique index on confirmed bookings per slot fires when another client already holds that time.
+    if ((moveError as { code?: string }).code === "23505") return { error: "Another meeting is already booked at that time." };
+    return { error: moveError.message };
+  }
+  if (!moved || moved.length === 0) return { error: "That meeting is no longer confirmed." };
+
+  await Promise.all([
+    notifyClientMeetingExecs(bookingId, "rescheduled"),
+    emailClientMeetingRescheduled(bookingId),
+  ]);
+
+  await logAudit(profile.id, "client_meeting.booking_rescheduled_by_admin", undefined, bookingId);
   revalidateAdmin();
   return {};
 }

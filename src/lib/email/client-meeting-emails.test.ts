@@ -17,6 +17,16 @@ describe("client meeting emails", () => {
     expect(e.html).toContain(`${site}/api/client-meeting/tok/calendar.ics`);
     expect(e.text).toContain("send you the video link");
   });
+  it("rescheduled emails say the call moved instead of thanking for booking", () => {
+    const c = buildClientMeetingConfirmationEmail({ ...when, contactName: "Jo", businessName: "Acme", manageToken: "tok", meetingUrl: null, siteUrl: site, rescheduled: true });
+    expect(c.subject).toContain("rescheduled");
+    expect(c.text).not.toContain("Thanks for booking");
+    const e = buildClientMeetingExecBookedEmail({
+      ...when, execName: "Ava", contactName: "Jo", businessName: "Acme", email: "jo@x.com", phone: null,
+      needs: "n", meetingUrl: null, otherPanelNames: ["Ben", "Cy"], siteUrl: site, manageToken: "tok", rescheduled: true,
+    });
+    expect(e.subject).toContain("rescheduled");
+  });
   it("shows the link when present", () => {
     const e = buildClientMeetingConfirmationEmail({ ...when, contactName: "Jo", businessName: "Acme", manageToken: "tok", meetingUrl: "https://zoom.us/j/1", siteUrl: site });
     expect(e.text).toContain("https://zoom.us/j/1");
