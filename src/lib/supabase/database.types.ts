@@ -309,6 +309,138 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["org_settings"]["Insert"]>;
         Relationships: [];
       };
+      outreach_prospects: {
+        Row: {
+          id: string;
+          company: string;
+          website: string | null;
+          niche: string | null;
+          size_stage: string | null;
+          summary: string | null;
+          why_fit: string | null;
+          facts: Json;
+          contact_name: string | null;
+          contact_role: string | null;
+          contact_email: string;
+          contact_domain: string;
+          status: string;
+          status_reason: string | null;
+          step: number;
+          next_action_at: string | null;
+          booking_token: string;
+          last_sent_at: string | null;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company: string;
+          website?: string | null;
+          niche?: string | null;
+          size_stage?: string | null;
+          summary?: string | null;
+          why_fit?: string | null;
+          facts?: Json;
+          contact_name?: string | null;
+          contact_role?: string | null;
+          contact_email: string;
+          contact_domain: string;
+          status?: string;
+          status_reason?: string | null;
+          step?: number;
+          next_action_at?: string | null;
+          booking_token?: string;
+          last_sent_at?: string | null;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["outreach_prospects"]["Insert"]>;
+        Relationships: [];
+      };
+      outreach_messages: {
+        Row: {
+          id: string;
+          prospect_id: string;
+          step: number;
+          subject: string;
+          body_text: string;
+          status: string;
+          resend_id: string | null;
+          scheduled_for: string | null;
+          sent_at: string | null;
+          error: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          prospect_id: string;
+          step: number;
+          subject: string;
+          body_text: string;
+          status?: string;
+          resend_id?: string | null;
+          scheduled_for?: string | null;
+          sent_at?: string | null;
+          error?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["outreach_messages"]["Insert"]>;
+        Relationships: [];
+      };
+      outreach_events: {
+        Row: {
+          id: string;
+          prospect_id: string | null;
+          message_id: string | null;
+          kind: string;
+          detail: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          prospect_id?: string | null;
+          message_id?: string | null;
+          kind: string;
+          detail?: Json;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["outreach_events"]["Insert"]>;
+        Relationships: [];
+      };
+      outreach_suppressions: {
+        Row: { id: string; email: string | null; domain: string | null; reason: string; created_at: string };
+        Insert: { id?: string; email?: string | null; domain?: string | null; reason: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["outreach_suppressions"]["Insert"]>;
+        Relationships: [];
+      };
+      outreach_replies: {
+        Row: {
+          id: string;
+          prospect_id: string | null;
+          resend_email_id: string;
+          from_email: string;
+          subject: string;
+          snippet: string;
+          classification: string;
+          forwarded_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          prospect_id?: string | null;
+          resend_email_id: string;
+          from_email: string;
+          subject: string;
+          snippet: string;
+          classification: string;
+          forwarded_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["outreach_replies"]["Insert"]>;
+        Relationships: [];
+      };
       quick_links: {
         Row: {
           id: string;

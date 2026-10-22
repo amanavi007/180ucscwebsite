@@ -94,3 +94,20 @@ describe("buildAttentionItems", () => {
     expect(items[1].href).toBe("/portal/admin/team-builder");
   });
 });
+
+describe("outreach attention items", () => {
+  const base = { quarterId: null, lowAttendance: null, draftUnfinalized: null, pendingTeamSubmissions: null };
+  it("adds an item for replies waiting", () => {
+    const items = buildAttentionItems({ ...base, outreachReplies: 2 });
+    expect(items).toEqual([
+      { kind: "outreach-replies", label: "2 outreach replies are waiting for an exec", actionLabel: "Open outreach", href: "/portal/admin/outreach?stage=needs-you" },
+    ]);
+  });
+  it("adds an item for prospects that need a look, singular and plural", () => {
+    expect(buildAttentionItems({ ...base, outreachNeedsAttention: 1 })[0].label).toBe("1 outreach prospect needs a look");
+    expect(buildAttentionItems({ ...base, outreachNeedsAttention: 3 })[0].label).toBe("3 outreach prospects need a look");
+  });
+  it("adds nothing for zero or unknown", () => {
+    expect(buildAttentionItems({ ...base, outreachReplies: 0, outreachNeedsAttention: null })).toEqual([]);
+  });
+});

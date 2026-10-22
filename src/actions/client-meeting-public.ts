@@ -14,6 +14,7 @@ import {
 } from "@/lib/client-meeting";
 import { CLIENT_MEETING_SETTING_KEYS } from "@/lib/data/client-meeting-public";
 import { verifyTurnstileToken } from "@/lib/turnstile";
+import { markProspectBooked } from "@/lib/data/outreach";
 import { buildClientMeetingConfirmationEmail } from "@/lib/email/client-meeting-emails";
 import { sendEmail } from "@/lib/email/send";
 import {
@@ -34,6 +35,8 @@ export interface CreateClientMeetingInput {
   turnstileToken: string;
   /** The manage token of the booking this one replaces (set by "Reschedule"). */
   rescheduleFromToken?: string;
+  /** From an outreach email's booking link (`?lead=`); marks that prospect as booked. */
+  leadToken?: string;
 }
 
 export interface CreateClientMeetingResult {
@@ -230,6 +233,7 @@ export async function createClientMeetingAction(
   }
 
   await notifyClientMeetingExecs(inserted.id, "booked");
+  await markProspectBooked({ leadToken: input.leadToken, email });
 
   revalidatePath("/services/book");
   revalidatePath("/portal/admin/client-meetings");

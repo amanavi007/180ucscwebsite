@@ -153,8 +153,8 @@ Every page also has: a loading state shaped like the page, an empty state (one s
 ## 7. Navigation
 
 - Member rail: Home, Projects, Calendar, Directory, Resources. Tasks (under Projects), Attendance (from Home's check-in) and Quick links (under Resources) are reached from those pages and from ⌘K. Execs get an Admin switch at the bottom of the rail.
-- Admin rail: Today, Recruiting, Scheduling, People, Setup, and a Portal switch back to the member side.
-- Views per admin place: Today (Today, Activity), Recruiting (Applicants, My reviews, Team progress, Attendance, all tabs on one page), Scheduling (one page), People (Roster, Teams, Stats, Team page), Setup (Quarters, Recruiting, Meeting days, Settings).
+- Admin rail: Today, Recruiting, Scheduling, Outreach, People, Setup, and a Portal switch back to the member side. Outreach is its own place because it is a daily-monitored workflow (replies to answer, a sender to watch) that does not fit under any existing place.
+- Views per admin place: Today (Today, Activity), Recruiting (Applicants, My reviews, Team progress, Attendance, all tabs on one page), Scheduling (one page), Outreach (Pipeline, Settings), People (Roster, Teams, Stats, Team page), Setup (Quarters, Recruiting, Meeting days, Settings).
 - New feature? It becomes a **view** inside an existing place, a **filter**, or a **panel**. A new rail item needs a written reason and exec sign-off.
 - Maximum two levels: place, then view.
 - The URL holds the view and quarter (`?tab=` or the route, plus `?quarter=`). Reloading or sharing a link lands in the same spot. Use `UrlTabs` / `useUrlTab` from `src/components/url-tabs.tsx`.

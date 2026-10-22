@@ -27,6 +27,22 @@
     {
       "path": "/api/cron/chat-prune",
       "schedule": "30 11 * * *"
+    },
+    {
+      "path": "/api/cron/outreach-prepare",
+      "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/outreach-prepare",
+      "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/outreach-send",
+      "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/outreach-send",
+      "schedule": "0 16 * * *"
     }
   ]
 }

@@ -12,6 +12,7 @@ export const ADMIN_AREA_LABELS: Record<string, string> = {
   "admin-today": "Today",
   "admin-recruiting": "Recruiting",
   "admin-scheduling": "Scheduling",
+  "admin-outreach": "Outreach",
   "admin-people": "People",
   "admin-setup": "Setup",
 };
