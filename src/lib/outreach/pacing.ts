@@ -24,7 +24,7 @@ export function dailyCap(startedOn: string | null, today: string, override: numb
 }
 
 /** The UTC instant at which a Pacific wall clock reads `date` `hour`:00. */
-function pacificInstant(date: string, hour: number): Date {
+export function pacificInstant(date: string, hour: number): Date {
   const [y, m, d] = date.split("-").map(Number);
   const guess = Date.UTC(y, m - 1, d, hour, 0);
   const parts = Object.fromEntries(
