@@ -64,3 +64,21 @@ describe("parseProspectCsv", () => {
     expect(parseProspectCsv("")).toEqual({ rows: [], errors: [{ line: 1, message: "The file is empty." }] });
   });
 });
+
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+describe("docs/outreach-research-prompt.md", () => {
+  it("asks for exactly the headers the importer accepts", () => {
+    const doc = readFileSync(join(process.cwd(), "docs/outreach-research-prompt.md"), "utf8");
+    const header = doc.split("\n").find((line) => line.startsWith("Company,Website,"));
+    expect(header).toBeTruthy();
+    const columns = header!.split(",").length;
+    const row = ["Acme", "https://acme.com", "Does things", "10", "Seed", "tech", "Jo", "CEO", "jo@acme.com", "Needs help", "https://acme.com/about"];
+    expect(row).toHaveLength(columns);
+    const { rows, errors } = parseProspectCsv(`${header}\n${row.join(",")}`);
+    expect(errors).toEqual([]);
+    expect(rows[0]).toMatchObject({ company: "Acme", contactEmail: "jo@acme.com", niche: "tech", sizeStage: "10, Seed", summary: "Does things", whyFit: "Needs help" });
+    expect(rows[0].facts[0].sourceUrl).toBe("https://acme.com/about");
+  });
+});
