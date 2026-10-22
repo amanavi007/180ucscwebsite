@@ -9,7 +9,7 @@ import { cancelScheduledOutreachEmail, sendOutreachEmail } from "@/lib/email/out
 import { buildBrakeAlertEmail } from "@/lib/email/outreach-emails";
 import { draftWithModel } from "@/lib/outreach/draft-model";
 import { attributeBooking } from "@/lib/outreach/booking-attribution";
-import { pacificInstant } from "@/lib/outreach/pacing";
+import { dailyCap, pacificInstant } from "@/lib/outreach/pacing";
 import {
   OUTREACH_SETTING_KEYS,
   parseOutreachSettings,
@@ -475,4 +475,149 @@ export async function markProspectBooked(args: { leadToken?: string | null; emai
       await recordOutreachEvent(admin, { prospectId: id, kind: "booked" });
     },
   });
+}
+
+/** How many outreach prospects replied, and how many were stopped for a human look. For the Admin Today list. */
+export async function getOutreachAttentionCounts(): Promise<{ replies: number; needsAttention: number }> {
+  const supabase = await createClient();
+  const count = async (status: string) => {
+    const { count: n, error } = await supabase.from("outreach_prospects").select("id", { count: "exact", head: true }).eq("status", status);
+    if (error) throw error;
+    return n ?? 0;
+  };
+  const [replies, needsAttention] = await Promise.all([count("replied"), count("needs_attention")]);
+  return { replies, needsAttention };
+}
+
+export interface ProspectView {
+  id: string;
+  company: string;
+  website: string | null;
+  niche: string | null;
+  sizeStage: string | null;
+  summary: string | null;
+  whyFit: string | null;
+  facts: ProspectFact[];
+  contactName: string | null;
+  contactRole: string | null;
+  contactEmail: string;
+  status: string;
+  statusReason: string | null;
+  step: number;
+  nextActionAt: string | null;
+  lastSentAt: string | null;
+}
+
+export interface MessageView {
+  id: string;
+  prospectId: string;
+  step: number;
+  subject: string;
+  bodyText: string;
+  status: string;
+  scheduledFor: string | null;
+  sentAt: string | null;
+  error: string | null;
+}
+
+export interface ReplyView {
+  id: string;
+  prospectId: string | null;
+  fromEmail: string;
+  subject: string;
+  snippet: string;
+  classification: string;
+  createdAt: string;
+}
+
+export interface EventView {
+  id: string;
+  prospectId: string;
+  kind: string;
+  createdAt: string;
+}
+
+export interface OutreachOverview {
+  prospects: ProspectView[];
+  messages: MessageView[];
+  replies: ReplyView[];
+  events: EventView[];
+  settings: OutreachSettings;
+  health: { sent: number; bounced: number; complained: number };
+  sentToday: number;
+  cap: number;
+  bookingOpen: boolean;
+}
+
+/** Everything the Outreach screen needs, read as the signed-in exec (RLS keeps everyone else out). */
+export async function getOutreachOverview(now = new Date()): Promise<OutreachOverview> {
+  const supabase = await createClient();
+  const [prospects, messages, replies, events, settingRows, booking] = await Promise.all([
+    supabase.from("outreach_prospects").select("*").order("created_at", { ascending: false }).limit(1000),
+    supabase.from("outreach_messages").select("*").order("step", { ascending: true }).limit(4000),
+    supabase.from("outreach_replies").select("*").order("created_at", { ascending: false }).limit(500),
+    supabase.from("outreach_events").select("id, prospect_id, kind, created_at").order("created_at", { ascending: false }).limit(2000),
+    supabase.from("org_settings").select("key, value").in("key", OUTREACH_SETTING_KEYS),
+    supabase.from("org_settings").select("value").eq("key", "client_meeting_booking_open").maybeSingle(),
+  ]);
+  for (const r of [prospects, messages, replies, events, settingRows]) if (r.error) throw r.error;
+
+  const settings = parseOutreachSettings(settingRows.data ?? []);
+  const today = formatOrgDate(now);
+  const since7 = now.getTime() - 7 * DAY_MS;
+  const startOfToday = pacificInstant(today, 0).getTime();
+  const msgs = messages.data ?? [];
+  const evs = events.data ?? [];
+  const inWindow = (iso: string | null, from: number) => !!iso && new Date(iso).getTime() >= from;
+
+  return {
+    prospects: (prospects.data ?? []).map((p) => ({
+      id: p.id,
+      company: p.company,
+      website: p.website,
+      niche: p.niche,
+      sizeStage: p.size_stage,
+      summary: p.summary,
+      whyFit: p.why_fit,
+      facts: factsFromJson(p.facts),
+      contactName: p.contact_name,
+      contactRole: p.contact_role,
+      contactEmail: p.contact_email,
+      status: p.status,
+      statusReason: p.status_reason,
+      step: p.step,
+      nextActionAt: p.next_action_at,
+      lastSentAt: p.last_sent_at,
+    })),
+    messages: msgs.map((m) => ({
+      id: m.id,
+      prospectId: m.prospect_id,
+      step: m.step,
+      subject: m.subject,
+      bodyText: m.body_text,
+      status: m.status,
+      scheduledFor: m.scheduled_for,
+      sentAt: m.sent_at,
+      error: m.error,
+    })),
+    replies: (replies.data ?? []).map((r) => ({
+      id: r.id,
+      prospectId: r.prospect_id,
+      fromEmail: r.from_email,
+      subject: r.subject,
+      snippet: r.snippet,
+      classification: r.classification,
+      createdAt: r.created_at,
+    })),
+    events: evs.flatMap((e) => (e.prospect_id ? [{ id: e.id, prospectId: e.prospect_id, kind: e.kind, createdAt: e.created_at }] : [])),
+    settings,
+    health: {
+      sent: msgs.filter((m) => ["scheduled", "sent"].includes(m.status) && inWindow(m.scheduled_for, since7)).length,
+      bounced: evs.filter((e) => e.kind === "bounced" && inWindow(e.created_at, since7)).length,
+      complained: evs.filter((e) => e.kind === "complained" && inWindow(e.created_at, since7)).length,
+    },
+    sentToday: msgs.filter((m) => ["scheduled", "sent"].includes(m.status) && inWindow(m.scheduled_for, startOfToday)).length,
+    cap: dailyCap(settings.startedOn, today, settings.dailyCapOverride),
+    bookingOpen: booking.data?.value === "true",
+  };
 }

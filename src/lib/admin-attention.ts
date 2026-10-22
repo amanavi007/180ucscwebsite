@@ -1,6 +1,14 @@
 import { withQuarterParam } from "./admin-nav";
 
-export type AttentionKind = "marks" | "reviewers" | "interview-slots" | "attendance" | "draft" | "team-page";
+export type AttentionKind =
+  | "marks"
+  | "reviewers"
+  | "interview-slots"
+  | "attendance"
+  | "draft"
+  | "team-page"
+  | "outreach-replies"
+  | "outreach-attention";
 
 export interface AttentionItem {
   kind: AttentionKind;
@@ -21,6 +29,10 @@ export interface AttentionCounts {
   applicantsWithoutReviewer?: number | null;
   /** Invitees still waiting to book, minus open interview slots. Only positive when slots are short. */
   interviewSlotShortfall?: number | null;
+  /** Outreach prospects who replied and have not been followed up on. */
+  outreachReplies?: number | null;
+  /** Outreach prospects stopped for a human look (thin research, a failed draft, a manual stop). */
+  outreachNeedsAttention?: number | null;
 }
 
 export function countBelowThreshold(rows: { attendanceRate: number | null }[], threshold: number): number {
@@ -37,6 +49,23 @@ function plural(n: number, one: string, many: string): string {
 
 export function buildAttentionItems(counts: AttentionCounts): AttentionItem[] {
   const items: AttentionItem[] = [];
+
+  if (counts.outreachReplies && counts.outreachReplies > 0) {
+    items.push({
+      kind: "outreach-replies",
+      label: `${plural(counts.outreachReplies, "outreach reply is", "outreach replies are")} waiting for an exec`,
+      actionLabel: "Open outreach",
+      href: "/portal/admin/outreach?stage=needs-you",
+    });
+  }
+  if (counts.outreachNeedsAttention && counts.outreachNeedsAttention > 0) {
+    items.push({
+      kind: "outreach-attention",
+      label: `${plural(counts.outreachNeedsAttention, "outreach prospect needs", "outreach prospects need")} a look`,
+      actionLabel: "Open outreach",
+      href: "/portal/admin/outreach?stage=needs-you",
+    });
+  }
 
   if (counts.bookingsToMark && counts.bookingsToMark > 0) {
     items.push({

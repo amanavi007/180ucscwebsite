@@ -18,9 +18,16 @@ import {
   ListOrdered,
   House,
   UserSearch,
+  Send,
 } from "lucide-react";
 
-export type AdminGroup = "admin-today" | "admin-recruiting" | "admin-scheduling" | "admin-people" | "admin-setup";
+export type AdminGroup =
+  | "admin-today"
+  | "admin-recruiting"
+  | "admin-scheduling"
+  | "admin-outreach"
+  | "admin-people"
+  | "admin-setup";
 
 export interface NavLink {
   href: string;
@@ -121,11 +128,12 @@ export const NAV_LINKS: NavLink[] = [
   },
 ];
 
-/** The five places on the admin rail. `href` is where the place opens. */
+/** The six places on the admin rail. `href` is where the place opens. */
 export const ADMIN_PLACES: { key: AdminGroup; label: string; href: string; icon: LucideIcon }[] = [
   { key: "admin-today", label: "Today", href: "/portal/admin", icon: House },
   { key: "admin-recruiting", label: "Recruiting", href: "/portal/admin/applicants", icon: UserSearch },
   { key: "admin-scheduling", label: "Scheduling", href: "/portal/admin/scheduling", icon: CalendarDays },
+  { key: "admin-outreach", label: "Outreach", href: "/portal/admin/outreach", icon: Send },
   { key: "admin-people", label: "People", href: "/portal/admin/members", icon: Users2 },
   { key: "admin-setup", label: "Setup", href: "/portal/admin/quarters", icon: SlidersHorizontal },
 ];
@@ -165,6 +173,24 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     execOnly: true,
     keywords: "agenda slots bookings availability coffee chats interviews invitees client calls clients meetings panel calendar feed",
     group: "admin-scheduling",
+  },
+  {
+    href: "/portal/admin/outreach",
+    label: "Outreach",
+    viewLabel: "Pipeline",
+    icon: Send,
+    execOnly: true,
+    keywords: "clients prospects companies cold email emails follow up replies leads startups sales",
+    group: "admin-outreach",
+  },
+  {
+    href: "/portal/admin/outreach/settings",
+    label: "Outreach Settings",
+    viewLabel: "Settings",
+    icon: SlidersHorizontal,
+    execOnly: true,
+    keywords: "outreach pause pace daily limit send window sender address follow up days test mode",
+    group: "admin-outreach",
   },
   {
     href: "/portal/admin/members",

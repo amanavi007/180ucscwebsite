@@ -11,6 +11,8 @@ const CHIP: Record<AttentionKind, { label: string; variant: "warn" | "bad" | "in
   attendance: { label: "Check in", variant: "warn" },
   draft: { label: "Stuck", variant: "warn" },
   "team-page": { label: "Review", variant: "info" },
+  "outreach-replies": { label: "Replied", variant: "warn" },
+  "outreach-attention": { label: "Review", variant: "info" },
 };
 
 /** The queue of things that need an exec, one row each with the button that fixes it. */
