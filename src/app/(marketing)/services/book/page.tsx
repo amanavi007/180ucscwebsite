@@ -7,7 +7,8 @@ export const metadata: Metadata = { title: "Book an Intro Call" };
 // Availability depends on the clock (24h lead time) and other clients' bookings, so never serve statically.
 export const dynamic = "force-dynamic";
 
-export default async function BookIntroCallPage() {
+export default async function BookIntroCallPage({ searchParams }: { searchParams: Promise<{ lead?: string }> }) {
+  const { lead } = await searchParams;
   const { bookingOpen, slots } = await getPublicClientMeetingState();
 
   return (
@@ -15,6 +16,7 @@ export default async function BookIntroCallPage() {
       bookingOpen={bookingOpen}
       slots={slots}
       turnstileSiteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+      leadToken={typeof lead === "string" ? lead : undefined}
       intro={
         <>
           <h1 className="font-brand text-4xl leading-[1.05] font-bold tracking-tight text-balance sm:text-5xl">

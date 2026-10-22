@@ -8,6 +8,7 @@ import { formatOrgDate } from "@/lib/date";
 import { cancelScheduledOutreachEmail, sendOutreachEmail } from "@/lib/email/outreach-send";
 import { buildBrakeAlertEmail } from "@/lib/email/outreach-emails";
 import { draftWithModel } from "@/lib/outreach/draft-model";
+import { attributeBooking } from "@/lib/outreach/booking-attribution";
 import { pacificInstant } from "@/lib/outreach/pacing";
 import {
   OUTREACH_SETTING_KEYS,
@@ -450,4 +451,28 @@ export async function unsubscribeProspect(prospectId: string, reason = "Unsubscr
     .update({ status: "unsubscribed", status_reason: reason, next_action_at: null })
     .eq("id", prospectId);
   await recordOutreachEvent(admin, { prospectId, kind: "unsubscribed", detail: { reason } });
+}
+
+/** Called after a successful intro-call booking. Safe to call for any booking; non-outreach bookings match nothing. */
+export async function markProspectBooked(args: { leadToken?: string | null; email: string }): Promise<void> {
+  const admin = createAdminClient();
+  await attributeBooking(args, {
+    findByToken: async (token) => {
+      const { data } = await admin.from("outreach_prospects").select("id").eq("booking_token", token).maybeSingle();
+      return data;
+    },
+    findByEmail: async (email) => {
+      const { data } = await admin.from("outreach_prospects").select("id").eq("contact_email", email).maybeSingle();
+      return data;
+    },
+    markBooked: async (id) => {
+      await admin
+        .from("outreach_prospects")
+        .update({ status: "booked", status_reason: null, next_action_at: null })
+        .eq("id", id)
+        .not("status", "in", "(unsubscribed,bounced)");
+      await cancelScheduledMessages(admin, id);
+      await recordOutreachEvent(admin, { prospectId: id, kind: "booked" });
+    },
+  });
 }

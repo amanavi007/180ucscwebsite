@@ -71,11 +71,14 @@ export function ClientMeetingBookingForm({
   slots,
   turnstileSiteKey,
   intro,
+  leadToken,
 }: {
   bookingOpen: boolean;
   slots: PublicClientMeetingSlot[];
   turnstileSiteKey: string;
   intro: ReactNode;
+  /** From an outreach email's booking link, so the booking is credited to that prospect. */
+  leadToken?: string;
 }) {
   const [isPending, startTransition] = useTransition();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -228,6 +231,7 @@ export function ClientMeetingBookingForm({
         needs,
         turnstileToken,
         rescheduleFromToken,
+        leadToken,
       });
       if (result.error) {
         // Turnstile tokens are single-use and the server has spent this one: get a fresh challenge.
