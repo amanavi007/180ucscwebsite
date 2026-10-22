@@ -47,16 +47,20 @@ export function buildWebhookDeps(): WebhookDeps {
     repliesAddress,
     unsubscribeAddress: `unsubscribe@${domain}`,
 
-    verify: (rawBody, headers) =>
-      resend.webhooks.verify({
+    verify: (rawBody, headers) => {
+      // Fail closed: with no secret configured, nothing may be accepted as genuine.
+      const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
+      if (!webhookSecret) throw new Error("RESEND_WEBHOOK_SECRET is not set.");
+      return resend.webhooks.verify({
         payload: rawBody,
         headers: {
           id: headers.get("svix-id") ?? "",
           timestamp: headers.get("svix-timestamp") ?? "",
           signature: headers.get("svix-signature") ?? "",
         },
-        webhookSecret: process.env.RESEND_WEBHOOK_SECRET ?? "",
-      }) as unknown as WebhookEvent,
+        webhookSecret,
+      }) as unknown as WebhookEvent;
+    },
 
     findMessageByResendId: async (resendId) => {
       const { data, error } = await admin.from("outreach_messages").select("id, prospect_id").eq("resend_id", resendId).maybeSingle();

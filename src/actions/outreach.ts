@@ -19,7 +19,8 @@ import {
 import { parseProspectCsv, type CsvError } from "@/lib/outreach/csv";
 import { partitionImport, type SkipReason } from "@/lib/outreach/verify";
 import { runPrepare, type PrepareResult } from "@/lib/outreach/runner";
-import { parseOutreachSettings } from "@/lib/outreach/settings";
+import { parseOutreachSettings, shouldRestartRamp } from "@/lib/outreach/settings";
+import { loadOutreachSettings } from "@/lib/data/outreach";
 
 export interface ActionResult {
   error?: string;
@@ -206,7 +207,9 @@ export async function updateOutreachSettingsAction(input: OutreachSettingsInput)
 
   const admin = createAdminClient();
   try {
+    const previous = await loadOutreachSettings(admin);
     for (const { key, value } of rows) await setOutreachSetting(admin, key, value);
+    if (shouldRestartRamp(previous.mode, parsed.mode)) await setOutreachSetting(admin, "outreach_started_on", "");
   } catch (err) {
     console.error("outreach settings save failed:", err);
     return { error: "The settings didn't save. Try again." };

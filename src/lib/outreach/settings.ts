@@ -77,3 +77,11 @@ export function parseOutreachSettings(rows: { key: string; value: string }[]): O
     followupDays: followupDays(get.outreach_followup_days) ?? d.followupDays,
   };
 }
+
+/**
+ * Switching on after being fully off starts the slow ramp again, so a long break never
+ * turns into a full-speed restart from a cold sender.
+ */
+export function shouldRestartRamp(previous: OutreachMode, next: OutreachMode): boolean {
+  return previous === "off" && next === "live";
+}

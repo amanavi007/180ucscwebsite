@@ -60,3 +60,18 @@ describe("parseOutreachSettings", () => {
     expect(OUTREACH_SETTING_KEYS).toContain("outreach_mode");
   });
 });
+
+import { shouldRestartRamp } from "./settings";
+
+describe("shouldRestartRamp", () => {
+  it("restarts the slow ramp when outreach goes from off to live", () => {
+    expect(shouldRestartRamp("off", "live")).toBe(true);
+  });
+  it("does not restart it for pausing, testing or staying live", () => {
+    expect(shouldRestartRamp("live", "live")).toBe(false);
+    expect(shouldRestartRamp("live", "off")).toBe(false);
+    expect(shouldRestartRamp("dry_run", "live")).toBe(false);
+    expect(shouldRestartRamp("exec_only", "live")).toBe(false);
+    expect(shouldRestartRamp("off", "dry_run")).toBe(false);
+  });
+});
