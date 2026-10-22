@@ -437,3 +437,17 @@ export async function insertProspects(rows: ProspectDraftRow[], createdBy: strin
   if (error) throw error;
   return rows.length;
 }
+
+/** Opt-out: the address goes on the permanent do-not-contact list and nothing more is sent. Safe to repeat. */
+export async function unsubscribeProspect(prospectId: string, reason = "Unsubscribed from an email."): Promise<void> {
+  const admin = createAdminClient();
+  const { data: prospect } = await admin.from("outreach_prospects").select("contact_email").eq("id", prospectId).maybeSingle();
+  if (!prospect) return;
+  await addSuppression(admin, prospect.contact_email, reason);
+  await cancelScheduledMessages(admin, prospectId);
+  await admin
+    .from("outreach_prospects")
+    .update({ status: "unsubscribed", status_reason: reason, next_action_at: null })
+    .eq("id", prospectId);
+  await recordOutreachEvent(admin, { prospectId, kind: "unsubscribed", detail: { reason } });
+}
