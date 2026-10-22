@@ -214,6 +214,29 @@ export async function saveScorecardAction(input: {
   return { mirrored: mirror.done };
 }
 
+/** A submitted score means the interview happened, so the booking is marked attended (replacing a no-show or excused mark). */
+async function markAttended(bookingId: string, applicantId: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data: link } = await supabase
+    .from("recruit_booking_links")
+    .select("status")
+    .eq("booking_kind", "interview")
+    .eq("booking_id", bookingId)
+    .maybeSingle();
+  if (link?.status === "attended") return {};
+
+  const { error } = await supabase.rpc("mark_recruit_booking", {
+    p_kind: "interview",
+    p_booking: bookingId,
+    p_applicant: applicantId,
+    p_status: "attended",
+    p_category: null,
+    p_points: null,
+    p_reason: null,
+  });
+  return error ? { error: error.message } : {};
+}
+
 async function mirrorToReview(
   sessionId: string,
   reviewerId: string,
@@ -248,6 +271,11 @@ async function mirrorToReview(
   }
   // Not an error: the score is saved, there is just no applicant record to attach a review to yet.
   if (!applicantId) return { done: false };
+
+  if (session.booking_id) {
+    const marked = await markAttended(session.booking_id, applicantId);
+    if (marked.error) return { done: false, error: marked.error };
+  }
 
   const { data: rubric } = await supabase.from("recruit_rubrics").select("id").eq("stage", "interview").maybeSingle();
   if (!rubric) return { done: false };
