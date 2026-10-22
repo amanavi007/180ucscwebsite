@@ -25,8 +25,8 @@ describe("unsubscribe urls and headers", () => {
     expect(oneClickUrl("tok", "https://ucsc180dc.org")).toBe("https://ucsc180dc.org/api/outreach/unsubscribe?token=tok");
   });
   it("sets the one-click headers", () => {
-    expect(listUnsubscribeHeaders("https://x/api/outreach/unsubscribe?token=t", "unsubscribe@partners.ucsc180dc.org")).toEqual({
-      "List-Unsubscribe": "<https://x/api/outreach/unsubscribe?token=t>, <mailto:unsubscribe@partners.ucsc180dc.org>",
+    expect(listUnsubscribeHeaders("https://x/api/outreach/unsubscribe?token=t", "unsubscribe@consulting.ucsc180dc.org")).toEqual({
+      "List-Unsubscribe": "<https://x/api/outreach/unsubscribe?token=t>, <mailto:unsubscribe@consulting.ucsc180dc.org>",
       "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
     });
   });

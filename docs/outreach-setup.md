@@ -12,11 +12,11 @@ Until it is applied, the Outreach page shows "The outreach list didn't load".
 
 ## 2. Resend: the outreach subdomain
 
-Outreach sends from `partners.ucsc180dc.org` on your existing Resend account, so a problem there stays away from `ucsc180dc.org` itself (booking confirmations, recruitment mail).
+Outreach sends from `consulting.ucsc180dc.org` on your existing Resend account, so a problem there stays away from `ucsc180dc.org` itself (booking confirmations, recruitment mail).
 
-1. Resend dashboard > **Domains** > **Add Domain** > `partners.ucsc180dc.org`.
+1. Resend dashboard > **Domains** > **Add Domain** > `consulting.ucsc180dc.org`.
 2. Add the DNS records Resend shows at your domain host: SPF, DKIM, and the **MX record for receiving** (so replies reach Resend). Use only the records on the **subdomain**; do not change MX on `ucsc180dc.org` itself.
-3. Add a DMARC record for the subdomain: a TXT record named `_dmarc.partners` with value `v=DMARC1; p=none; rua=mailto:<an exec inbox>`. Start with `p=none`.
+3. Add a DMARC record for the subdomain: a TXT record named `_dmarc.consulting` with value `v=DMARC1; p=none; rua=mailto:<an exec inbox>`. Start with `p=none`.
 4. Wait until Resend shows the domain as **Verified** for sending and receiving. Everything must be verified before the first email: fixing authentication after sending starts resets your reputation.
 5. Check your Resend plan allows a second domain and the daily volume you want. Check this on Resend's pricing page; I could not verify the limits.
 
@@ -37,8 +37,8 @@ Set these locally (`.env.local`) and in Vercel project settings (see `.env.local
 | Variable | Value |
 | --- | --- |
 | `OUTREACH_RESEND_API_KEY` | the `outreach` key from step 3 |
-| `OUTREACH_FROM` | `180 Degrees Consulting at UCSC <team@partners.ucsc180dc.org>` |
-| `OUTREACH_REPLY_TO` | `replies@partners.ucsc180dc.org` |
+| `OUTREACH_FROM` | `180 Degrees Consulting at UCSC <team@consulting.ucsc180dc.org>` |
+| `OUTREACH_REPLY_TO` | `replies@consulting.ucsc180dc.org` |
 | `RESEND_WEBHOOK_SECRET` | the webhook signing secret |
 | `OUTREACH_UNSUBSCRIBE_SECRET` | any long random string (`openssl rand -hex 32`) |
 | `CRON_SECRET`, `NEXT_PUBLIC_SITE_URL` | already set |

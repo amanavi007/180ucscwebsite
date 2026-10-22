@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** A portal pipeline that imports researched prospects, verifies contacts, drafts personalized emails with AI, sends them slowly from `partners.ucsc180dc.org` via Resend, follows up, detects replies (forwarding every one to all execs), and flags execs when a human is needed.
+**Goal:** A portal pipeline that imports researched prospects, verifies contacts, drafts personalized emails with AI, sends them slowly from `consulting.ucsc180dc.org` via Resend, follows up, detects replies (forwarding every one to all execs), and flags execs when a human is needed.
 
 **Architecture:** Pure, unit-tested logic lives in `src/lib/outreach/*` (CSV, verification, pacing, sequence, drafts, replies). A Supabase data layer and server actions back a new admin place `/portal/admin/outreach`. Two daily Vercel crons prepare (verify + draft) and send (plan the day's batch and hand each email to Resend with `scheduledAt` at a randomized time inside the send window). A Resend webhook route handles inbound replies, bounces and complaints. Daily crons are deliberate: `vercel.json` today only uses once-a-day schedules, so the plan does not assume sub-daily crons.
 
@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Sender: `180 Degrees Consulting at UCSC <team@partners.ucsc180dc.org>`; Reply-To `replies@partners.ucsc180dc.org`; signed as "The 180 Degrees Consulting UCSC team". Footer postal address (setting, default): `1156 High St, Santa Cruz, CA 95064`.
+- Sender: `180 Degrees Consulting at UCSC <team@consulting.ucsc180dc.org>`; Reply-To `replies@consulting.ucsc180dc.org`; signed as "The 180 Degrees Consulting UCSC team". Footer postal address (setting, default): `1156 High St, Santa Cruz, CA 95064`.
 - Outreach uses its own Resend API key env var (`OUTREACH_RESEND_API_KEY`), never `RESEND_API_KEY`. The existing `sendEmail` in `src/lib/email/send.ts` must not be used for outreach (it prefers Gmail and uses the bookings sender).
 - Starting pace: 5-10 emails/day for the first 14 days, then a gradual ramp toward ~30-40/day; all pace values are settings. Weekday business hours Pacific only (`ORG_TIME_ZONE` from `src/lib/date.ts`). One email per company domain at a time. Randomized gaps.
 - Follow-ups at about business day 4, 9, then a closing note at about 15. Sequence stops on reply, booking, unsubscribe, bounce, manual stop.
@@ -271,7 +271,7 @@ Screen contract (rulebook "List and panel" body):
 
 **Interfaces / content:**
 - `outreach-research-prompt.md`: a paste-ready Claude Research prompt that asks for ~25 rows per run for a named niche (strategy / tech / med-tech) of Bay Area startups and small for-profit companies, instructs it to use only publicly listed business contact info, prefer a named decision maker with a published email over generic inboxes, cite a source URL for every fact, exclude past clients and nonprofits unless asked, skip anyone who could not be verified, and output **only** a CSV with the exact headers `Company,Website,What they do,Size,Stage,Niche,Contact name,Contact role,Contact email,Why they'd need consulting,Source URLs`. Header names must match `parseProspectCsv`.
-- `outreach-setup.md`: Resend steps (add `partners.ucsc180dc.org` as a domain on the existing account; SPF/DKIM/DMARC; MX for receiving; create the `email.received`/`bounced`/`complained`/`delivered` webhook to `/api/webhooks/resend` and copy the signing secret; create a separate API key; check the plan's domain and daily send limits), env vars, and the rollout steps (dry run → exec-only → pilot of 10-20 → ramp) with what to check at each stage.
+- `outreach-setup.md`: Resend steps (add `consulting.ucsc180dc.org` as a domain on the existing account; SPF/DKIM/DMARC; MX for receiving; create the `email.received`/`bounced`/`complained`/`delivered` webhook to `/api/webhooks/resend` and copy the signing secret; create a separate API key; check the plan's domain and daily send limits), env vars, and the rollout steps (dry run → exec-only → pilot of 10-20 → ramp) with what to check at each stage.
 - `.env.local.example`: add `OUTREACH_RESEND_API_KEY`, `OUTREACH_FROM`, `OUTREACH_REPLY_TO`, `RESEND_WEBHOOK_SECRET`, `OUTREACH_UNSUBSCRIBE_SECRET`, with one-line comments.
 
 - [ ] **Step 1: Write both docs and the env additions.**

@@ -73,9 +73,9 @@ function sendDeps(store: Store, over: Partial<SendDeps> = {}, s = settings()): S
     today: "2026-10-21",
     siteUrl: "https://ucsc180dc.org",
     unsubscribeSecret: "secret",
-    unsubscribeMailto: "unsubscribe@partners.ucsc180dc.org",
-    fromAddress: "180 Degrees Consulting at UCSC <team@partners.ucsc180dc.org>",
-    replyTo: "replies@partners.ucsc180dc.org",
+    unsubscribeMailto: "unsubscribe@consulting.ucsc180dc.org",
+    fromAddress: "180 Degrees Consulting at UCSC <team@consulting.ucsc180dc.org>",
+    replyTo: "replies@consulting.ucsc180dc.org",
     rng: () => 0.5,
     dueDrafts: async (_now, limit) =>
       [...store.messages.values()]
@@ -132,7 +132,7 @@ describe("runSend", () => {
     for (const s of store.sends) {
       expect(s.scheduledAt!.getTime()).toBeGreaterThan(WED_7AM.getTime());
       expect(s.to).toHaveLength(1);
-      expect(s.replyTo).toBe("replies@partners.ucsc180dc.org");
+      expect(s.replyTo).toBe("replies@consulting.ucsc180dc.org");
       expect(s.headers["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
       expect(s.text).toContain("/services/book?lead=tok");
       expect(s.text).toContain("1156 High St, Santa Cruz, CA 95064");

@@ -43,7 +43,7 @@ Build a pipeline inside the portal that takes a list of researched prospects and
 - **Human review:** none per email, once the system has been tested and the output looks good.
 - **Replies:** every reply is forwarded to all execs.
 - **Mailing address for the footer:** 1156 High St, Santa Cruz, CA 95064 (stored as a setting). User confirmed this is the club's official address.
-- **Resend account and domain:** the existing Resend account (domain `ucsc180dc.org`) is used; no second account. Outreach uses the subdomain `partners.ucsc180dc.org` (user chose a professional name over `hello`; sender `180 Degrees Consulting at UCSC <team@partners.ucsc180dc.org>`, Reply-To `replies@partners.ucsc180dc.org`). Reasons for a subdomain: (reputation isolation, and an MX record for inbound replies that won't affect any real inboxes on the root domain). Resend's domain-count limit on the user's plan is unverified.
+- **Resend account and domain:** the existing Resend account (domain `ucsc180dc.org`) is used; no second account. Outreach uses the subdomain `consulting.ucsc180dc.org` (user chose a professional name over `hello`; sender `180 Degrees Consulting at UCSC <team@consulting.ucsc180dc.org>`, Reply-To `replies@consulting.ucsc180dc.org`). Reasons for a subdomain: (reputation isolation, and an MX record for inbound replies that won't affect any real inboxes on the root domain). Resend's domain-count limit on the user's plan is unverified.
 - **Outside rules:** the user says there are no 180 Degrees Consulting national rules restricting cold outreach.
 - **Target market:** for-profit startups and small Bay Area companies first; nonprofits remain in scope. Niches: strategy, tech, med-tech consulting.
 

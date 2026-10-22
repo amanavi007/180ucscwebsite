@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { handleResendWebhook, type WebhookDeps } from "./webhook-handler";
 
-const REPLIES = "replies@partners.ucsc180dc.org";
+const REPLIES = "replies@consulting.ucsc180dc.org";
 
 function deps(over: Partial<WebhookDeps> = {}): WebhookDeps & { calls: string[] } {
   const calls: string[] = [];
@@ -12,7 +12,7 @@ function deps(over: Partial<WebhookDeps> = {}): WebhookDeps & { calls: string[] 
     });
   const d: WebhookDeps = {
     repliesAddress: REPLIES,
-    unsubscribeAddress: "unsubscribe@partners.ucsc180dc.org",
+    unsubscribeAddress: "unsubscribe@consulting.ucsc180dc.org",
     verify: (raw) => JSON.parse(raw),
     findMessageByResendId: track("findMessage", null),
     fetchReceived: track("fetch", {
@@ -131,13 +131,13 @@ describe("handleResendWebhook", () => {
 
   it("treats mail to the unsubscribe address as an unsubscribe from the sender", async () => {
     const d = deps({ fetchReceived: vi.fn(async () => ({ from: "jo@acme.com", subject: "unsubscribe", text: "", headers: null })) });
-    await handleResendWebhook(post(received(["unsubscribe@partners.ucsc180dc.org"])), d);
+    await handleResendWebhook(post(received(["unsubscribe@consulting.ucsc180dc.org"])), d);
     expect(d.unsubscribe).toHaveBeenCalledWith("p1", expect.any(String));
   });
 
   it("ignores inbound mail addressed to anything else", async () => {
     const d = deps();
-    await handleResendWebhook(post(received(["someone-else@partners.ucsc180dc.org"])), d);
+    await handleResendWebhook(post(received(["someone-else@consulting.ucsc180dc.org"])), d);
     expect(d.fetchReceived).not.toHaveBeenCalled();
     expect(d.forward).not.toHaveBeenCalled();
   });
