@@ -2,14 +2,19 @@ import { ORG_TIME_ZONE } from "./date";
 
 export const INTERVIEW_REMINDER_HOUR = 8;
 
-/** True when `now` falls in the 8am hour in the org's time zone (DST-aware). */
-export function isInterviewReminderHour(now: Date): boolean {
+/** True when `now` falls in the given hour (0-23) in the org's time zone (DST-aware). */
+export function isPacificHour(now: Date, targetHour: number): boolean {
   const hour = new Intl.DateTimeFormat("en-US", {
     timeZone: ORG_TIME_ZONE,
     hourCycle: "h23",
     hour: "2-digit",
   }).format(now);
-  return Number(hour) === INTERVIEW_REMINDER_HOUR;
+  return Number(hour) === targetHour;
+}
+
+/** True when `now` falls in the 8am hour in the org's time zone (DST-aware). */
+export function isInterviewReminderHour(now: Date): boolean {
+  return isPacificHour(now, INTERVIEW_REMINDER_HOUR);
 }
 
 export interface ReminderBooking {
