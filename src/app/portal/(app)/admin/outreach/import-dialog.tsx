@@ -5,7 +5,9 @@ import { toast } from "sonner";
 import { commitImportAction, previewImportAction, type ImportPreview } from "@/actions/outreach";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { buildResearchPrompt } from "@/lib/outreach/research-prompt";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const SKIP_REASONS: Record<string, string> = {
@@ -21,6 +23,18 @@ export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChan
   const [csv, setCsv] = useState("");
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [niche, setNiche] = useState("");
+  const [needs, setNeeds] = useState("");
+  const [exclude, setExclude] = useState("");
+
+  async function onCopyPrompt() {
+    try {
+      await navigator.clipboard.writeText(buildResearchPrompt({ niche, needs, exclude }));
+      toast.success("Prompt copied. Paste it into Claude Research.");
+    } catch {
+      toast.error("Couldn't copy. Allow clipboard access and try again.");
+    }
+  }
 
   function reset(next: boolean) {
     if (!next) {
@@ -62,10 +76,37 @@ export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChan
         <DialogHeader>
           <DialogTitle>Import prospects</DialogTitle>
           <DialogDescription>
-            Upload the CSV from the research prompt (see docs/outreach-research-prompt.md). Past clients, duplicates and anyone who opted out are skipped.
+            Get a research prompt below, run it in Claude Research, then upload the CSV it gives you. Past clients, duplicates and anyone who opted out are skipped.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+          <section aria-labelledby="research-prompt-heading" className="space-y-3 rounded-[18px] border p-4">
+            <h3 id="research-prompt-heading" className="text-base">
+              1. Get the research prompt
+            </h3>
+            <div className="space-y-1.5">
+              <Label htmlFor="research-niche">Who to look for</Label>
+              <Input
+                id="research-niche"
+                value={niche}
+                onChange={(e) => setNiche(e.target.value)}
+                placeholder="Seed to Series A med-tech startups in the Bay Area, 5 to 50 employees"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="research-needs">What they might need</Label>
+              <Input id="research-needs" value={needs} onChange={(e) => setNeeds(e.target.value)} placeholder="A go-to-market plan, market research or pricing" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="research-exclude">Companies to skip (optional)</Label>
+              <Input id="research-exclude" value={exclude} onChange={(e) => setExclude(e.target.value)} placeholder="Past clients, separated by commas" />
+            </div>
+            <Button variant="outline" onClick={() => void onCopyPrompt()}>
+              Copy prompt
+            </Button>
+          </section>
+
+          <h3 className="text-base">2. Upload what it found</h3>
           <div className="space-y-1.5">
             <Label htmlFor="outreach-csv-file">CSV file</Label>
             <input

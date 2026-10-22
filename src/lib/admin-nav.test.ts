@@ -29,6 +29,16 @@ describe("getAdminLocation", () => {
     expect(getAdminLocation("/portal/admin/members/anything", LINKS)?.page.label).toBe("Members");
   });
 
+  it("picks the most specific page when one page's address sits inside another's", () => {
+    const links: AdminNavItem[] = [
+      { href: "/portal/admin/outreach", label: "Pipeline", group: "admin-outreach" },
+      { href: "/portal/admin/outreach/settings", label: "Settings", group: "admin-outreach" },
+    ];
+    expect(getAdminLocation("/portal/admin/outreach/settings", links)?.page.label).toBe("Settings");
+    expect(getAdminLocation("/portal/admin/outreach", links)?.page.label).toBe("Pipeline");
+    expect(getAdminLocation("/portal/admin/outreach/other", links)?.page.label).toBe("Pipeline");
+  });
+
   it("returns a single-page area with itself as the only sibling", () => {
     expect(getAdminLocation("/portal/admin/coffee-chats", LINKS)?.siblings).toHaveLength(1);
   });

@@ -26,7 +26,10 @@ export interface AdminLocation<T extends AdminNavItem> {
 
 export function getAdminLocation<T extends AdminNavItem>(pathname: string, links: T[]): AdminLocation<T> | null {
   // The hub only matches exactly, otherwise it would match every admin path.
-  const page = links.find((l) => pathname === l.href || (l.href !== ADMIN_HUB_HREF && pathname.startsWith(`${l.href}/`)));
+  // The most specific match wins, so /outreach/settings is not mistaken for its parent /outreach.
+  const page = links
+    .filter((l) => pathname === l.href || (l.href !== ADMIN_HUB_HREF && pathname.startsWith(`${l.href}/`)))
+    .sort((a, b) => b.href.length - a.href.length)[0];
   if (!page || !page.group) return null;
   return {
     areaKey: page.group,

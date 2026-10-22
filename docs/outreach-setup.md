@@ -58,7 +58,7 @@ Sending pauses itself, and execs are emailed, if bounces pass 2% (at least 2), i
 
 ## 6. Rollout: do not skip steps
 
-1. **Test drafts.** Settings > Mode > *Test drafts*. Import a small CSV (see `docs/outreach-research-prompt.md`), press **Generate drafts**, and read every draft with its sources in the side panel. Fix the club wording in `src/lib/outreach/club-facts.ts` if drafts say anything off. Do not move on until you would be happy to sign them.
+1. **Test drafts.** Settings > Mode > *Test drafts*. Get the research prompt from the Import dialog (Copy prompt), run it in Claude Research, and import the CSV it gives you (a small one first), press **Generate drafts**, and read every draft with its sources in the side panel. Fix the club wording in `src/lib/outreach/club-facts.ts` if drafts say anything off. Do not move on until you would be happy to sign them.
 2. **Send to execs only.** Mode > *Send to execs only*. Up to five test emails arrive in all exec inboxes. Check, in Gmail and in Outlook if possible: it lands in the inbox, the footer shows the postal address, the Unsubscribe link works, the booking link opens `/services/book` (open the booking page's toggle first), and replying to a test email reaches every exec through the webhook.
 3. **Pilot.** Mode > *Live* with 10 to 20 prospects. It starts at 5 a day. Watch the health strip on the Outreach page daily: bounce rate and spam complaints should stay at zero or close to it.
 4. **Ramp.** After two weeks the limit rises by 2 a day to 40. You can set a lower daily limit in Settings at any time, or pause.
