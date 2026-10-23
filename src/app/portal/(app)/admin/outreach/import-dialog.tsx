@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { commitImportAction, previewImportAction, type ImportPreview } from "@/actions/outreach";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { buildResearchPrompt } from "@/lib/outreach/research-prompt";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+const PROMPT_STORAGE_KEY = "outreach-research-prompt";
 
 const SKIP_REASONS: Record<string, string> = {
   duplicate_email: "Already in the pipeline",
@@ -26,6 +28,39 @@ export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChan
   const [niche, setNiche] = useState("");
   const [needs, setNeeds] = useState("");
   const [exclude, setExclude] = useState("");
+  const [checking, setChecking] = useState(false);
+  const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewRequest = useRef(0);
+
+  // The prompt boxes remember what was typed, so closing the dialog or reloading never loses them. Browser storage can be
+  // blocked, so every read and write is guarded and the dialog works without it.
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(PROMPT_STORAGE_KEY) ?? "{}") as Record<string, string>;
+      /* eslint-disable react-hooks/set-state-in-effect -- one-time restore from browser storage on mount */
+      if (saved.niche) setNiche(saved.niche);
+      if (saved.needs) setNeeds(saved.needs);
+      if (saved.exclude) setExclude(saved.exclude);
+      /* eslint-enable react-hooks/set-state-in-effect */
+    } catch {
+      // No saved prompt: start empty.
+    }
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (previewTimer.current) clearTimeout(previewTimer.current);
+    },
+    [],
+  );
+
+  function remember(next: { niche: string; needs: string; exclude: string }) {
+    try {
+      localStorage.setItem(PROMPT_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // Not saved; nothing else depends on it.
+    }
+  }
 
   async function onCopyPrompt() {
     try {
@@ -38,25 +73,53 @@ export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 
   function reset(next: boolean) {
     if (!next) {
+      if (previewTimer.current) clearTimeout(previewTimer.current);
+      previewRequest.current++;
       setCsv("");
       setPreview(null);
+      setChecking(false);
     }
     onOpenChange(next);
   }
 
-  async function onFile(file: File | undefined) {
-    if (!file) return;
-    setCsv(await file.text());
+  /** Checks the CSV a moment after it stops changing, so there is no separate Preview step to remember. */
+  function schedulePreview(text: string) {
+    if (previewTimer.current) clearTimeout(previewTimer.current);
+    const request = ++previewRequest.current;
     setPreview(null);
-  }
-
-  function onPreview() {
-    startTransition(async () => {
-      const result = await previewImportAction(csv);
+    if (text.trim() === "") {
+      setChecking(false);
+      return;
+    }
+    setChecking(true);
+    previewTimer.current = setTimeout(async () => {
+      const result = await previewImportAction(text);
+      if (request !== previewRequest.current) return; // the text changed while this was running
+      setChecking(false);
       if (result.error) toast.error(result.error);
       else setPreview(result);
-    });
+    }, 500);
   }
+
+  function onCsvChange(text: string) {
+    setCsv(text);
+    schedulePreview(text);
+  }
+
+  async function onFile(file: File | undefined) {
+    if (file) onCsvChange(await file.text());
+  }
+
+  const readyToImport = !checking && !!preview && (preview.willImport ?? 0) > 0;
+  const importHint = checking
+    ? "Checking the file..."
+    : csv.trim() === ""
+      ? "Paste or choose a CSV to import."
+      : !preview
+        ? "The file couldn't be checked. Edit it and try again."
+        : (preview.willImport ?? 0) === 0
+          ? "Nothing in this file can be imported. See why above."
+          : null;
 
   function onImport() {
     startTransition(async () => {
@@ -89,17 +152,26 @@ export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChan
               <Input
                 id="research-niche"
                 value={niche}
-                onChange={(e) => setNiche(e.target.value)}
+                onChange={(e) => {
+                  setNiche(e.target.value);
+                  remember({ niche: e.target.value, needs, exclude });
+                }}
                 placeholder="Seed to Series A med-tech startups in the Bay Area, 5 to 50 employees"
               />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="research-needs">What they might need</Label>
-              <Input id="research-needs" value={needs} onChange={(e) => setNeeds(e.target.value)} placeholder="A go-to-market plan, market research or pricing" />
+              <Input id="research-needs" value={needs} onChange={(e) => {
+                  setNeeds(e.target.value);
+                  remember({ niche, needs: e.target.value, exclude });
+                }} placeholder="A go-to-market plan, market research or pricing" />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="research-exclude">Companies to skip (optional)</Label>
-              <Input id="research-exclude" value={exclude} onChange={(e) => setExclude(e.target.value)} placeholder="Past clients, separated by commas" />
+              <Input id="research-exclude" value={exclude} onChange={(e) => {
+                  setExclude(e.target.value);
+                  remember({ niche, needs, exclude: e.target.value });
+                }} placeholder="Past clients, separated by commas" />
             </div>
             <Button variant="outline" onClick={() => void onCopyPrompt()}>
               Copy prompt
@@ -123,10 +195,7 @@ export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChan
               id="outreach-csv-text"
               rows={5}
               value={csv}
-              onChange={(e) => {
-                setCsv(e.target.value);
-                setPreview(null);
-              }}
+              onChange={(e) => onCsvChange(e.target.value)}
               placeholder="Company,Website,What they do,Size,Stage,Niche,Contact name,Contact role,Contact email,..."
             />
           </div>
@@ -157,11 +226,11 @@ export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChan
             </div>
           )}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onPreview} disabled={isPending || csv.trim() === ""}>
-            Preview import
-          </Button>
-          <Button onClick={onImport} disabled={isPending || !preview || (preview.willImport ?? 0) === 0}>
+        <DialogFooter className="items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground" aria-live="polite">
+            {importHint}
+          </p>
+          <Button onClick={onImport} disabled={isPending || !readyToImport}>
             {preview?.willImport ? `Import ${preview.willImport} prospect${preview.willImport === 1 ? "" : "s"}` : "Import prospects"}
           </Button>
         </DialogFooter>
