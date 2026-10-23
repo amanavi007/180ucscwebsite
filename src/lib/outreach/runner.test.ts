@@ -124,11 +124,11 @@ function sendDeps(store: Store, over: Partial<SendDeps> = {}, s = settings()): S
 describe("runSend", () => {
   it("schedules emails up to the daily cap and marks prospects queued", async () => {
     const store = new Store();
-    for (let n = 1; n <= 8; n++) store.addDrafted(n);
+    for (let n = 1; n <= 20; n++) store.addDrafted(n);
     const result = await runSend(sendDeps(store));
-    expect(result).toEqual({ scheduled: 5, skipped: null }); // day 2 of the ramp: cap 5
-    expect(store.sends).toHaveLength(5);
-    expect([...store.prospects.values()].filter((p) => p.status === "queued")).toHaveLength(5);
+    expect(result).toEqual({ scheduled: 15, skipped: null }); // early in the ramp: cap 15
+    expect(store.sends).toHaveLength(15);
+    expect([...store.prospects.values()].filter((p) => p.status === "queued")).toHaveLength(15);
     for (const s of store.sends) {
       expect(s.scheduledAt!.getTime()).toBeGreaterThan(WED_7AM.getTime());
       expect(s.to).toHaveLength(1);
@@ -143,11 +143,11 @@ describe("runSend", () => {
 
   it("does not send more when run again the same day (double-fired cron)", async () => {
     const store = new Store();
-    for (let n = 1; n <= 8; n++) store.addDrafted(n);
+    for (let n = 1; n <= 20; n++) store.addDrafted(n);
     await runSend(sendDeps(store));
     const second = await runSend(sendDeps(store));
     expect(second).toEqual({ scheduled: 0, skipped: "cap_reached" });
-    expect(store.sends).toHaveLength(5);
+    expect(store.sends).toHaveLength(15);
   });
 
   it("skips a prospect that replied between planning and scheduling", async () => {

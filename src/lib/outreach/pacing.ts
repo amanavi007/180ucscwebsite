@@ -3,9 +3,9 @@ import type { OutreachSettings } from "./settings";
 
 const MIN_GAP_MS = 3 * 60_000;
 const LEAD_MS = 2 * 60_000;
-const RAMP_START_CAP = 5;
-const RAMP_HOLD_DAYS = 14;
-const RAMP_STEP = 2;
+const RAMP_START_CAP = 15;
+const RAMP_HOLD_DAYS = 5;
+const RAMP_STEP = 5;
 const RAMP_MAX_CAP = 40;
 const OVERRIDE_MAX = 100;
 
@@ -14,7 +14,7 @@ const dayNumber = (date: string) => {
   return Math.floor(Date.UTC(y, m - 1, d) / 86_400_000);
 };
 
-/** How many emails may go out today. Holds at 5 for two weeks, then +2 a day up to 40. */
+/** How many emails may go out today. Holds at 15 for five days, then +5 a day up to 40. */
 export function dailyCap(startedOn: string | null, today: string, override: number | null): number {
   if (!startedOn) return 0;
   if (override !== null) return Math.min(override, OVERRIDE_MAX);

@@ -8,10 +8,11 @@ describe("dailyCap", () => {
     expect(dailyCap(null, "2026-10-26", null)).toBe(0);
     expect(dailyCap(null, "2026-10-26", 20)).toBe(0);
   });
-  it("holds at 5 for the first 14 days, then ramps by 2 a day up to 40", () => {
-    expect(dailyCap("2026-10-26", "2026-10-26", null)).toBe(5);
-    expect(dailyCap("2026-10-26", "2026-11-08", null)).toBe(5); // day 13
-    expect(dailyCap("2026-10-26", "2026-11-09", null)).toBe(7); // day 14
+  it("holds at 15 for the first 5 days, then ramps by 5 a day up to 40", () => {
+    expect(dailyCap("2026-10-26", "2026-10-26", null)).toBe(15);
+    expect(dailyCap("2026-10-26", "2026-10-30", null)).toBe(15); // day 4
+    expect(dailyCap("2026-10-26", "2026-10-31", null)).toBe(20); // day 5
+    expect(dailyCap("2026-10-26", "2026-11-04", null)).toBe(40); // day 9
     expect(dailyCap("2026-10-26", "2027-03-01", null)).toBe(40);
   });
   it("honors an override but never above 100", () => {
