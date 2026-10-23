@@ -3,11 +3,13 @@ import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { getCurrentProfile } from "@/lib/data/profile";
-import { getMyTaskReviews, type MyTaskReview } from "@/lib/data/task-reviews";
+import { getExecReviewLoad, getMyTaskReviews, type MyTaskReview } from "@/lib/data/task-reviews";
+import { getApprovedPhotoUrls } from "@/lib/data/team-page";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MarkReviewedButton } from "./mark-reviewed-button";
+import { ReviewLoad } from "./review-load";
 
 export const metadata: Metadata = { title: "Admin · Task Reviews" };
 
@@ -43,7 +45,13 @@ function ReviewRow({ review }: { review: MyTaskReview }) {
 
 export default async function TaskReviewsPage() {
   const profile = await getCurrentProfile();
-  const reviews = await getMyTaskReviews(profile.id);
+  const isSuperAdmin = profile.role === "director_of_projects";
+  const [reviews, load, photos] = await Promise.all([
+    getMyTaskReviews(profile.id),
+    // The load overview is a nice-to-have: a failure must not hide the reviews this exec owes.
+    isSuperAdmin ? getExecReviewLoad().catch((error) => (console.error("Review load failed:", error), null)) : null,
+    isSuperAdmin ? getApprovedPhotoUrls() : {},
+  ]);
   const owed = reviews.filter((r) => !r.reviewedAt);
   const done = reviews.filter((r) => r.reviewedAt);
 
@@ -84,6 +92,8 @@ export default async function TaskReviewsPage() {
           </ul>
         </section>
       )}
+
+      {load && <ReviewLoad rows={load} photos={photos} />}
     </div>
   );
 }

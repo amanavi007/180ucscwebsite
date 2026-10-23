@@ -1,5 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { EXEC_ROLES, compareByRole } from "@/lib/auth/roles";
+import type { UserRole } from "@/lib/supabase/database.types";
 
 export interface MyTaskReview {
   taskId: string;
@@ -66,4 +68,80 @@ export async function getMyTaskReviews(execId: string): Promise<MyTaskReview[]> 
 export async function getPendingTaskReviewCount(execId: string): Promise<number> {
   const reviews = await getMyTaskReviews(execId);
   return reviews.filter((r) => !r.reviewedAt).length;
+}
+
+export interface ExecReviewLoadItem {
+  taskId: string;
+  taskName: string;
+  projectId: string;
+  clientName: string;
+  consultantName: string;
+  assignedAt: string;
+}
+
+export interface ExecReviewLoad {
+  execId: string;
+  name: string;
+  role: UserRole;
+  /** Assigned and not yet marked reviewed, on tasks still awaiting exec revision. */
+  waiting: ExecReviewLoadItem[];
+  /** Reviews this exec has marked done, ever. */
+  reviewedCount: number;
+}
+
+interface LoadRow {
+  exec_id: string;
+  assigned_at: string;
+  reviewed_at: string | null;
+  task: {
+    id: string;
+    task_name: string;
+    project_id: string;
+    stage_step: string | null;
+    assignee: { name: string } | null;
+    project: { client_name: string } | null;
+  } | null;
+}
+
+/**
+ * Every active exec with their pending and finished exec reviews, so the Director of
+ * Projects can check the auto-assignment is splitting work evenly. Execs with nothing
+ * assigned are included (a 0 is the point). Most waiting first.
+ */
+export async function getExecReviewLoad(): Promise<ExecReviewLoad[]> {
+  const supabase = await createClient();
+  const [execs, reviews] = await Promise.all([
+    supabase.from("profiles").select("id, name, role").in("role", EXEC_ROLES).is("archived_at", null),
+    supabase
+      .from("task_exec_reviews")
+      .select(
+        "exec_id, assigned_at, reviewed_at, task:tasks!inner(id, task_name, project_id, stage_step, assignee:profiles!tasks_assignee_id_fkey(name), project:projects(client_name))",
+      )
+      .order("assigned_at", { ascending: true }),
+  ]);
+  if (execs.error) throw execs.error;
+  if (reviews.error) throw reviews.error;
+
+  const byExec = new Map<string, ExecReviewLoad>(
+    (execs.data ?? []).map((e) => [e.id, { execId: e.id, name: e.name, role: e.role, waiting: [], reviewedCount: 0 }]),
+  );
+  for (const r of (reviews.data ?? []) as unknown as LoadRow[]) {
+    const exec = byExec.get(r.exec_id);
+    if (!exec || !r.task) continue;
+    if (r.reviewed_at) {
+      exec.reviewedCount += 1;
+    } else if (r.task.stage_step === "awaiting_exec_revision") {
+      exec.waiting.push({
+        taskId: r.task.id,
+        taskName: r.task.task_name,
+        projectId: r.task.project_id,
+        clientName: r.task.project?.client_name ?? "Unknown client",
+        consultantName: r.task.assignee?.name ?? "A consultant",
+        assignedAt: r.assigned_at,
+      });
+    }
+  }
+  return [...byExec.values()].sort(
+    (a, b) => b.waiting.length - a.waiting.length || compareByRole(a, b),
+  );
 }
