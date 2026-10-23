@@ -8,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   addSuppression,
   buildPrepareDeps,
+  buildSendDeps,
   cancelScheduledMessages,
   insertProspects,
   loadExistingProspectData,
@@ -18,7 +19,7 @@ import {
 } from "@/lib/data/outreach";
 import { parseProspectCsv, type CsvError } from "@/lib/outreach/csv";
 import { partitionImport, type SkipReason } from "@/lib/outreach/verify";
-import { runPrepare, type PrepareResult } from "@/lib/outreach/runner";
+import { runPrepare, runSend, type PrepareResult } from "@/lib/outreach/runner";
 import { parseOutreachSettings, shouldRestartRamp } from "@/lib/outreach/settings";
 import { loadOutreachSettings } from "@/lib/data/outreach";
 
@@ -156,6 +157,23 @@ export async function runPrepareNowAction(): Promise<ActionResult & { result?: P
   } catch (err) {
     console.error("outreach prepare (manual) failed:", err);
     return { error: err instanceof Error && err.message.startsWith("Outreach is not configured") ? err.message : "Drafting didn't finish. Try again in a minute." };
+  }
+}
+
+/** Test modes only: the daily 8am job is the only other thing that sends, and live sends must stay paced. */
+export async function runSendTestNowAction(): Promise<ActionResult & { sent?: number; skipped?: string | null }> {
+  const { error } = await requireExec();
+  if (error) return { error };
+  try {
+    const deps = await buildSendDeps();
+    if (deps.settings.mode !== "self_only" && deps.settings.mode !== "exec_only") {
+      return { error: "Test sends only work in a test mode. Change the mode in Settings." };
+    }
+    const result = await runSend(deps);
+    return { sent: result.scheduled, skipped: result.skipped };
+  } catch (err) {
+    console.error("outreach send (manual test) failed:", err);
+    return { error: err instanceof Error && err.message.startsWith("Outreach is not configured") ? err.message : "The test didn't send. Try again in a minute." };
   }
 }
 

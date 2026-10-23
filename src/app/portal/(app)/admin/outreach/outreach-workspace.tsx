@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { runPrepareNowAction } from "@/actions/outreach";
+import { runPrepareNowAction, runSendTestNowAction } from "@/actions/outreach";
 import { FilterChip } from "@/components/filter-chip";
 import { ListSearch } from "@/components/list-search";
 import { PageHeader } from "@/components/page-header";
@@ -19,6 +19,12 @@ import { ImportDialog } from "./import-dialog";
 import { ProspectPanel } from "./prospect-panel";
 
 const SEARCH_FIELDS: ((p: ProspectView) => string)[] = [(p) => p.company, (p) => p.contactName ?? "", (p) => p.contactEmail];
+
+const SKIP_MESSAGES: Record<string, string> = {
+  nothing_due: "No drafts are ready to send. Generate drafts first.",
+  no_test_recipient: "No test inbox yet. Save the mode again in Settings.",
+  paused: "Outreach is paused. Unpause it in Settings.",
+};
 
 /** The prospect list with filters, the health strip above it, and the panel beside it. */
 export function OutreachWorkspace({ overview }: { overview: OutreachOverview }) {
@@ -65,6 +71,17 @@ export function OutreachWorkspace({ overview }: { overview: OutreachOverview }) 
     });
   }
 
+  function onSendTest() {
+    startTransition(async () => {
+      const result = await runSendTestNowAction();
+      if (result.error) toast.error(result.error);
+      else if (result.sent) toast.success(`Sent ${result.sent} test email${result.sent === 1 ? "" : "s"}. Check your inbox.`);
+      else toast.message(SKIP_MESSAGES[result.skipped ?? ""] ?? "Nothing was sent.");
+    });
+  }
+
+  const testMode = overview.settings.mode === "self_only" || overview.settings.mode === "exec_only";
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -75,6 +92,11 @@ export function OutreachWorkspace({ overview }: { overview: OutreachOverview }) 
             <Button variant="outline" size="lg" onClick={onGenerate} disabled={isPending || overview.settings.mode === "off"}>
               Generate drafts
             </Button>
+            {testMode && (
+              <Button variant="outline" size="lg" onClick={onSendTest} disabled={isPending}>
+                Send test emails
+              </Button>
+            )}
             <Button size="lg" onClick={() => setImportOpen(true)}>
               Import prospects
             </Button>
