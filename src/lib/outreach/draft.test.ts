@@ -47,8 +47,8 @@ describe("checkDraft", () => {
     expect(checkDraft({ ...good, body: good.body + " Just circling back." }, row).ok).toBe(false);
     expect(checkDraft({ ...good, body: "I hope this finds you well. Acme Health is great." }, row).ok).toBe(false);
   });
-  it("fails a first email over 120 words but allows a follow-up only up to 70", () => {
-    const long = { ...good, body: `Acme Health ${"word ".repeat(130)}` };
+  it("fails a first email over 170 words but allows a follow-up only up to 70", () => {
+    const long = { ...good, body: `Acme Health ${"word ".repeat(180)}` };
     expect(checkDraft(long, row, "first").ok).toBe(false);
     const mid = { ...good, body: `Acme Health ${"word ".repeat(80)}` };
     expect(checkDraft(mid, row, "first").ok).toBe(true);

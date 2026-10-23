@@ -3,12 +3,13 @@
 import { useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { runPrepareNowAction, runSendTestNowAction } from "@/actions/outreach";
+import { regenerateDraftsAction, runPrepareNowAction, runSendTestNowAction } from "@/actions/outreach";
 import { FilterChip } from "@/components/filter-chip";
 import { ListSearch } from "@/components/list-search";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { OutreachOverview, ProspectView } from "@/lib/data/outreach";
 import { useFilteredList } from "@/lib/use-filtered-list";
@@ -26,6 +27,9 @@ const SKIP_MESSAGES: Record<string, string> = {
   paused: "Outreach is paused. Unpause it in Settings.",
 };
 
+/** An unsent first email: the only kind that can be rewritten. */
+const canRewrite = (p: ProspectView) => p.step === 0 && ["drafted", "needs_attention"].includes(p.status);
+
 /** The prospect list with filters, the health strip above it, and the panel beside it. */
 export function OutreachWorkspace({ overview }: { overview: OutreachOverview }) {
   const router = useRouter();
@@ -33,6 +37,7 @@ export function OutreachWorkspace({ overview }: { overview: OutreachOverview }) 
   const params = useSearchParams();
   const [importOpen, setImportOpen] = useState(false);
   const [niche, setNiche] = useState("");
+  const [checked, setChecked] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
 
   const stage = params.get("stage") ?? "all";
@@ -56,6 +61,34 @@ export function OutreachWorkspace({ overview }: { overview: OutreachOverview }) 
     () => filterByStage(searched, stage).filter((p) => !niche || p.niche === niche),
     [searched, stage, niche],
   );
+
+  const rewritable = useMemo(() => visible.filter(canRewrite).map((p) => p.id), [visible]);
+  const checkedIds = [...checked].filter((id) => overview.prospects.some((p) => p.id === id && canRewrite(p)));
+  const allChecked = rewritable.length > 0 && rewritable.every((id) => checked.has(id));
+
+  function toggle(id: string, on: boolean) {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  function onRewriteChecked() {
+    startTransition(async () => {
+      const reset = await regenerateDraftsAction(checkedIds);
+      if (reset.error) return void toast.error(reset.error);
+      setChecked(new Set());
+      const result = await runPrepareNowAction();
+      if (result.error) toast.error(result.error);
+      else if (result.result) {
+        const r = result.result;
+        toast.success(`Rewrote ${reset.rewritten}. ${r.drafted} drafted, ${r.needsAttention} need a look.`);
+      }
+      router.refresh();
+    });
+  }
 
   const selected = overview.prospects.find((p) => p.id === selectedId) ?? null;
 
@@ -139,9 +172,29 @@ export function OutreachWorkspace({ overview }: { overview: OutreachOverview }) 
             )}
           </div>
 
+          {checkedIds.length > 0 && (
+            <div className="flex flex-wrap items-center gap-3 rounded-[10px] border bg-muted/40 px-3 py-2 text-sm">
+              <span className="font-medium">{checkedIds.length} selected</span>
+              <Button variant="outline" size="sm" onClick={onRewriteChecked} disabled={isPending}>
+                Rewrite selected
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setChecked(new Set())} disabled={isPending}>
+                Clear
+              </Button>
+            </div>
+          )}
+
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={allChecked}
+                    disabled={rewritable.length === 0}
+                    onCheckedChange={(on) => setChecked(on === true ? new Set([...checked, ...rewritable]) : new Set([...checked].filter((id) => !rewritable.includes(id))))}
+                    aria-label="Select all drafts that can be rewritten"
+                  />
+                </TableHead>
                 <TableHead>Company</TableHead>
                 <TableHead>Niche</TableHead>
                 <TableHead>Next step</TableHead>
@@ -151,7 +204,7 @@ export function OutreachWorkspace({ overview }: { overview: OutreachOverview }) 
             <TableBody>
               {visible.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
                     {overview.prospects.length === 0
                       ? "No prospects yet. Import the CSV from the research prompt to fill this list."
                       : "No one matches that."}
@@ -176,6 +229,11 @@ export function OutreachWorkspace({ overview }: { overview: OutreachOverview }) 
                     }}
                     className="cursor-pointer outline-none focus-visible:bg-muted/60"
                   >
+                    <TableCell onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                      {canRewrite(p) && (
+                        <Checkbox checked={checked.has(p.id)} onCheckedChange={(on) => toggle(p.id, on === true)} aria-label={`Select ${p.company}`} />
+                      )}
+                    </TableCell>
                     <TableCell>
                       <span className="block font-semibold">{p.company}</span>
                       <span className="block text-sm text-muted-foreground">

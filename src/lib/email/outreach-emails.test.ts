@@ -17,8 +17,8 @@ describe("buildOutreachEmail", () => {
     expect(email.text).toContain("Saw Acme's new clinic partnerships.");
     expect(email.html).toContain("Saw Acme&#39;s new clinic partnerships.");
   });
-  it("shows a short booking link but keeps the lead token in the clickable one", () => {
-    expect(email.html).toContain(`href="${args.bookingUrl}">ucsc180dc.org/services/book</a>`);
+  it("hides the booking link behind words in the html and keeps the lead token in it", () => {
+    expect(email.html).toContain(`<a href="${args.bookingUrl}">Book a discovery call here</a>`);
     expect(email.text).toContain("https://ucsc180dc.org/services/book\n");
     expect(email.text).not.toContain("lead=");
   });

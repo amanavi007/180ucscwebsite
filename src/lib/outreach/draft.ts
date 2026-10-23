@@ -16,7 +16,8 @@ export function parseDraftOutput(raw: unknown): DraftOutput | null {
 }
 
 const KIND_INSTRUCTIONS: Record<DraftKind, string> = {
-  first: "This is the FIRST email to this person. Maximum 120 words.",
+  first:
+    "This is the FIRST email to this person. Maximum 170 words. Follow this shape, in short paragraphs separated by a blank line: (1) greeting, then one sentence introducing the club; (2) one warm, specific sentence about what the company does that genuinely stands out to us, taken from the prospect data; (3) what a project with us looks like and that it is free, using the donation wording below; (4) one friendly sentence saying you are happy to find a time to talk whenever suits them.",
   follow_up:
     "This is a short follow-up to an earlier email that got no reply. Add one new, specific reason it could be useful; do not just bump the thread. Maximum 70 words.",
   closing:
@@ -34,14 +35,17 @@ export function buildDraftPrompt(args: {
   const { row } = args;
   const facts = row.facts.map((f) => `- ${f.text}`).join("\n") || "(none)";
   const lines = [
-    "You write short cold emails for 180 Degrees Consulting at UCSC, a student-run consulting group, to a possible client.",
+    "You write short, warm cold emails for 180 Degrees Consulting at UCSC, a student-run consulting group, to a possible client.",
+    "You write on behalf of the team, not as one named person: say 'we' and 'our team', never 'I', and never invent or use a person's name for us. Sound like a friendly, genuine student group that admires their work, not like a sales pitch.",
     KIND_INSTRUCTIONS[args.step],
     "Rules:",
     "- Plain text, no markdown, no bullet lists, no emojis, no exclamation marks in the subject.",
-    "- Start with one specific, true observation about the company, taken only from the prospect data below.",
+    "- Be specific and sincere about the company, using only the prospect data below. Warm is good; flattery and hype are not.",
+    "- Donation wording: for a nonprofit, say services are free and voluntary donations are welcome but never required. For a for-profit company, say the project is free for them, and that donations are very much appreciated because they keep the club's resources and future projects alive; say it kindly, as a real way to help, not as a demand. If you cannot tell which kind of organization it is, use the nonprofit wording.",
     "- State nothing about the company that is not in the prospect data. State nothing about the club that is not in the club facts.",
     "- One ask only: a short intro call. Never write a URL, link or booking instructions; a booking link is added automatically.",
-    "- Do not sign off or add a signature; it is added automatically. Do not invent a person's name for us.",
+    "- You may name one or two organizations from the past clients list in the club facts, picking the ones closest to this company's field or size. Name only organizations on that list, never describe their projects beyond the club facts, and skip this if none is a fair match.",
+    "- Do not sign off or add a signature; it is added automatically.",
     "- No hype, no fake urgency, no flattery, and avoid phrases like 'I hope this finds you well', 'circling back' and 'just checking in'.",
     "- Address the contact by first name if given, otherwise use 'Hi there'.",
     "- Write it differently from the earlier subject lines listed below.",
@@ -70,7 +74,7 @@ export function buildDraftPrompt(args: {
 }
 
 const FORBIDDEN_PHRASES = ["i hope this finds you well", "circling back", "just checking in", "touching base", "per my last email"];
-const WORD_LIMITS: Record<DraftKind, number> = { first: 120, follow_up: 70, closing: 70 };
+const WORD_LIMITS: Record<DraftKind, number> = { first: 170, follow_up: 70, closing: 70 };
 
 const wordCount = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
 

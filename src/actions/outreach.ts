@@ -141,10 +141,33 @@ export async function regenerateDraftAction(prospectId: string): Promise<ActionR
   if (prospect.step !== 0 || !["drafted", "needs_attention"].includes(prospect.status)) {
     return { error: "Only an unsent first email can be rewritten." };
   }
-  await admin.from("outreach_messages").update({ status: "cancelled" }).eq("prospect_id", prospectId).eq("status", "draft");
-  await admin.from("outreach_prospects").update({ status: "verified", status_reason: null }).eq("id", prospectId);
+  await resetForRewrite(admin, [prospectId]);
   revalidatePath(OUTREACH_PORTAL_PATH);
   return {};
+}
+
+/** Rewrites several unsent first emails at once. Anyone already sent or not yet drafted is skipped. */
+export async function regenerateDraftsAction(prospectIds: string[]): Promise<ActionResult & { rewritten?: number }> {
+  const { error } = await requireExec();
+  if (error) return { error };
+  if (prospectIds.length === 0) return { error: "Select at least one prospect." };
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("outreach_prospects")
+    .select("id")
+    .in("id", prospectIds)
+    .eq("step", 0)
+    .in("status", ["drafted", "needs_attention"]);
+  const ids = (data ?? []).map((p) => p.id);
+  if (ids.length === 0) return { error: "None of those can be rewritten. Only unsent first emails can." };
+  await resetForRewrite(admin, ids);
+  revalidatePath(OUTREACH_PORTAL_PATH);
+  return { rewritten: ids.length };
+}
+
+async function resetForRewrite(admin: ReturnType<typeof createAdminClient>, ids: string[]) {
+  await admin.from("outreach_messages").update({ status: "cancelled" }).in("prospect_id", ids).eq("status", "draft");
+  await admin.from("outreach_prospects").update({ status: "verified", status_reason: null }).in("id", ids);
 }
 
 export async function runPrepareNowAction(): Promise<ActionResult & { result?: PrepareResult }> {

@@ -1,6 +1,6 @@
 import { escapeHtml, type EmailContent } from "./coffee-chat-confirmation";
 
-const SIGNATURE = "The 180 Degrees Consulting UCSC team";
+const SIGNATURE_LINES = ["The 180 Degrees Consulting UCSC team"];
 
 export interface OutreachEmailInput {
   subject: string;
@@ -17,7 +17,7 @@ const paragraphs = (text: string) =>
     .map((p) => `<p>${escapeHtml(p.trim()).replace(/\n/g, "<br>")}</p>`)
     .join("\n");
 
-/** The booking link without its `?lead=` token, for text people read. The full link still goes in the href. */
+/** The booking link without its `?lead=` token, for the plain-text version, which cannot hide a long link behind words. */
 const plainLink = (url: string) => url.split("?")[0];
 
 /** Plain, personal-looking email: no images, no tracking, booking link, opt-out line and postal address. */
@@ -25,10 +25,10 @@ export function buildOutreachEmail(input: OutreachEmailInput): EmailContent {
   const text = [
     input.bodyText.trim(),
     "",
-    `Pick a time that works for a 30-minute intro call: ${plainLink(input.bookingUrl)}`,
+    `Book a discovery call here: ${plainLink(input.bookingUrl)}`,
     "",
     "Best,",
-    SIGNATURE,
+    ...SIGNATURE_LINES,
     "",
     "--",
     `${input.senderName}, ${input.postalAddress}`,
@@ -37,8 +37,8 @@ export function buildOutreachEmail(input: OutreachEmailInput): EmailContent {
 
   const html = `
     ${paragraphs(input.bodyText)}
-    <p>Pick a time that works for a 30-minute intro call: <a href="${escapeHtml(input.bookingUrl)}">${escapeHtml(plainLink(input.bookingUrl).replace(/^https?:\/\//, ""))}</a></p>
-    <p>Best,<br>${escapeHtml(SIGNATURE)}</p>
+    <p><a href="${escapeHtml(input.bookingUrl)}">Book a discovery call here</a></p>
+    <p>Best,<br>${SIGNATURE_LINES.map(escapeHtml).join("<br>")}</p>
     <p style="color:#666;font-size:12px">${escapeHtml(input.senderName)}, ${escapeHtml(input.postalAddress)}<br>
     Not interested? <a href="${escapeHtml(input.unsubscribeUrl)}">Unsubscribe here</a> and we won't email you again.</p>
   `.trim();
