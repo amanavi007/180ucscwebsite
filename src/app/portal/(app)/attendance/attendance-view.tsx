@@ -21,6 +21,7 @@ export function AttendanceView({
   canSubmit,
   roster,
   history,
+  meetingDates,
   today,
   initialSession,
 }: {
@@ -29,6 +30,7 @@ export function AttendanceView({
   canSubmit: boolean;
   roster: MembershipWithProfile[];
   history: AttendanceHistoryRow[];
+  meetingDates: string[];
   today: string;
   initialSession: SessionWithMarks | null;
 }) {
@@ -76,7 +78,7 @@ export function AttendanceView({
             </TabsContent>
           )}
           <TabsContent value="history">
-            <HistoryList history={history} />
+            <HistoryList history={history} meetingDates={meetingDates} today={today} />
           </TabsContent>
         </UrlTabs>
       )}

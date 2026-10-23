@@ -117,6 +117,7 @@ export default async function AttendancePage({
           canSubmit={canSubmit}
           roster={roster}
           history={history}
+          meetingDates={meetingDates}
           today={today}
           initialSession={todaySession}
         />
