@@ -39,8 +39,11 @@ export async function updateSession(request: NextRequest) {
   // Only /portal (the member operations tool) requires auth -- everything
   // else (marketing site, login) is public by default.
   if (!userId && isPortalPath) {
+    // Leftover Supabase auth cookies mean they were signed in and the session ran out,
+    // as opposed to someone who never signed in.
+    const hadSession = request.cookies.getAll().some((c) => c.name.startsWith("sb-") && c.name.includes("auth-token"));
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = hadSession ? "/session-expired" : "/login";
     return NextResponse.redirect(url);
   }
 
