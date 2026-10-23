@@ -26,7 +26,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TaskRow } from "@/components/task-row";
 import { AddTaskDialog } from "./add-task-dialog";
-import { bulkDeleteTasks, bulkReassignTasks } from "@/actions/tasks";
+import { bulkDeleteTasks, bulkReassignTasks, deleteAllTasksForPerson } from "@/actions/tasks";
+import { useConfirm } from "@/components/confirm-dialog";
 import { cn } from "@/lib/utils";
 import type { TaskWithAssignee } from "@/lib/data/types";
 
@@ -46,12 +47,15 @@ export function TaskList({
   projectId,
   tasks,
   canManage,
+  isExec = false,
   currentUserId,
   rosterProfiles,
 }: {
   projectId: string;
   tasks: TaskWithAssignee[];
   canManage: boolean;
+  /** Exec can wipe a whole person's tasks from the project. */
+  isExec?: boolean;
   currentUserId: string;
   rosterProfiles: { id: string; name: string }[];
 }) {
@@ -65,6 +69,25 @@ export function TaskList({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [reassignValue, setReassignValue] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [confirm, confirmDialog] = useConfirm();
+
+  async function onDeleteAllFor(personId: string, name: string, count: number) {
+    const ok = await confirm({
+      title: `Delete all of ${name}'s tasks?`,
+      description: `Removes ${count} task${count === 1 ? "" : "s"} and any 1:1 agenda items for ${name} on this project. This can't be undone.`,
+      confirmLabel: `Delete ${name}'s tasks`,
+      cancelLabel: "Keep them",
+    });
+    if (!ok) return;
+    startTransition(async () => {
+      const result = await deleteAllTasksForPerson(projectId, personId);
+      if (result?.error) toast.error(result.error);
+      else {
+        toast.success(`Deleted ${name}'s tasks.`);
+        router.refresh();
+      }
+    });
+  }
 
   function toggleSelectMode() {
     setSelectMode((v) => !v);
@@ -242,6 +265,19 @@ export function TaskList({
                     </span>
                   </>
                 )}
+                {isExec && total > 0 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={isPending}
+                    className="ml-auto text-destructive"
+                    onClick={() => onDeleteAllFor(section.id, section.name, total)}
+                  >
+                    <Trash2 className="size-3.5" />
+                    Delete all tasks
+                  </Button>
+                )}
               </div>
               <div className="overflow-hidden rounded-md border">
                 {section.tasks.length === 0 && (
@@ -299,6 +335,7 @@ export function TaskList({
         )}
       </CardContent>
 
+      {confirmDialog}
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

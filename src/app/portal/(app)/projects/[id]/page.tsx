@@ -72,6 +72,7 @@ export default async function ProjectDetailPage({
         projectId={id}
         tasks={visibleTasks}
         canManage={canEdit}
+        isExec={isExec(profile.role)}
         currentUserId={profile.id}
         rosterProfiles={members.map((m) => m.profile).filter((p): p is NonNullable<typeof p> => !!p)}
       />

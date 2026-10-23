@@ -1419,6 +1419,10 @@ export interface Database {
       };
     };
     Functions: {
+      remove_member_work: {
+        Args: { p_project_id: string; p_user_id: string };
+        Returns: undefined;
+      };
       assign_task_exec_reviewers: {
         Args: { p_task_id: string };
         Returns: Database["public"]["Tables"]["task_exec_reviews"]["Row"][];

@@ -352,3 +352,24 @@ export async function deleteTask(taskId: string, projectId: string): Promise<Act
   revalidatePath("/portal/tasks");
   return {};
 }
+
+/**
+ * Exec-only cleanup: deletes every task one person has on a project (plus their
+ * 1:1 agenda items there). For people who left or moved teams and still clutter
+ * the list. Leads can delete tasks one by one; wiping a whole person is exec's call.
+ */
+export async function deleteAllTasksForPerson(projectId: string, userId: string): Promise<ActionResult> {
+  const profile = await getCurrentProfile();
+  if (!isExec(profile.role)) return { error: "Only exec can delete everything for a person." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("remove_member_work", {
+    p_project_id: projectId,
+    p_user_id: userId,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath(`/portal/projects/${projectId}`);
+  revalidatePath("/portal/tasks");
+  return {};
+}

@@ -252,6 +252,14 @@ export async function removeMember(projectId: string, userId: string): Promise<A
     .eq("user_id", userId);
   if (error) return { error: error.message };
 
+  // Their tasks and 1:1 agenda items go with them, so they stop showing up.
+  const { error: cleanupError } = await supabase.rpc("remove_member_work", {
+    p_project_id: projectId,
+    p_user_id: userId,
+  });
+  if (cleanupError) return { error: cleanupError.message };
+
   revalidatePath(`/portal/projects/${projectId}`);
+  revalidatePath("/portal/tasks");
   return {};
 }
