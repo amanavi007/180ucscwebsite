@@ -65,6 +65,12 @@ Rules:
 - Spacing steps: 4, 8, 12, 16, 20, 24, 32, 40. Page gutter is 40px on desktop.
 - Cards have a 1px `--border` and no shadow. The only shadow in the product is the main button's hard 3px edge and the "your own" card on the Projects board. Popovers and dialogs have one soft shadow.
 - A table inside a card does not draw its own border (a global rule removes it).
+- **Nothing grows past the page.** Anything a person can type or paste into, and anything that holds a list that can get long, must stop at a maximum height and scroll inside itself. The page, a dialog or a panel must never get taller than the screen because of what is in it.
+  - Text areas: use the shared `Textarea`. It grows with the text up to 40% of the screen height (`max-h-[40dvh]`), then scrolls. Never remove that limit. If a field needs more room, give it a bigger `max-h-` and a reason, and keep it under the screen height.
+  - Dialogs: use the shared `DialogContent`. It is capped to the screen height and scrolls inside. Do not override its `max-h` or `overflow`.
+  - Panels and lists inside a dialog (previews, error lists, results) get their own `max-h-` and `overflow-auto`.
+  - Never use `field-sizing-content` on anything without a `max-h-` next to it.
+  - A page built later must be tested with a very long paste (500 lines) before it is called done. The buttons must still be on screen.
 
 ## 5. Components (reuse these, don't restyle)
 
@@ -199,6 +205,9 @@ for d in $(find src/app/portal -name page.tsx | xargs -n1 dirname); do grep -rqE
 # 5. Lime text is only for forest backgrounds (expect only: selected pills in link-switch.tsx, admin-breadcrumb.tsx,
 #    application-card.tsx, segmented.tsx, ui/tabs.tsx, and the meeting card in home-sidebar.tsx)
 grep -rnE "(^|[^-a-z])text-primary([^-]|$)" src/app/portal src/app/login src/components --include='*.tsx' --exclude-dir=marketing
+
+# 6. Nothing that auto-sizes to its content may grow past the page (expect no output)
+grep -rl "field-sizing-content" src --include='*.tsx' | xargs grep -L "max-h-"
 ```
 
 ## 11. PR checklist
@@ -210,6 +219,7 @@ grep -rnE "(^|[^-a-z])text-primary([^-]|$)" src/app/portal src/app/login src/com
 - [ ] Page title through `PageHeader`; loading, empty and error states considered
 - [ ] View and quarter are in the URL; the page is in the nav config so ⌘K finds it
 - [ ] Keyboard path works; icon-only buttons are labeled
+- [ ] Pasted-in long text scrolls inside its box and the page never grows past the screen (check 6 is clean)
 - [ ] If a rule here was wrong, the rule is updated in this PR
 
 ## 12. Known gaps (what is not done yet)
