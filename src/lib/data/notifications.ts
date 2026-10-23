@@ -116,7 +116,7 @@ export async function getMyNotifications(
       ? supabase
           .from("task_exec_reviews")
           .select(
-            "assigned_at, task:tasks!inner(id, task_name, project_id, stage_step, assignee:profiles(name), project:projects(client_name))",
+            "assigned_at, task:tasks!inner(id, task_name, project_id, stage_step, assignee:profiles!tasks_assignee_id_fkey(name), project:projects(client_name))",
           )
           .eq("exec_id", userId)
           .is("reviewed_at", null)
@@ -130,7 +130,7 @@ export async function getMyNotifications(
     leadProjectIds.length > 0
       ? await supabase
           .from("tasks")
-          .select("id, task_name, project_id, updated_at, assignee:profiles(name), project:projects(client_name)")
+          .select("id, task_name, project_id, updated_at, assignee:profiles!tasks_assignee_id_fkey(name), project:projects(client_name)")
           .in("project_id", leadProjectIds)
           .eq("stage_step", "pm_sc_comments")
           .neq("assignee_id", userId)

@@ -40,7 +40,7 @@ export async function getMyTaskReviews(execId: string): Promise<MyTaskReview[]> 
   const { data, error } = await supabase
     .from("task_exec_reviews")
     .select(
-      "task_id, assigned_at, reviewed_at, task:tasks!inner(id, task_name, project_id, stage_step, assignee:profiles(name), project:projects(client_name), reviews:task_exec_reviews(exec_id, reviewed_at, exec:profiles(name)))",
+      "task_id, assigned_at, reviewed_at, task:tasks!inner(id, task_name, project_id, stage_step, assignee:profiles!tasks_assignee_id_fkey(name), project:projects(client_name), reviews:task_exec_reviews(exec_id, reviewed_at, exec:profiles(name)))",
     )
     .eq("exec_id", execId)
     .eq("task.stage_step", "awaiting_exec_revision")
