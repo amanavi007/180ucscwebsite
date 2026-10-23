@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { ErrorScreen } from "@/components/error-screen";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { isExec } from "@/lib/auth/roles";
 import { getPendingTeamSubmissionCount } from "@/lib/data/team-page";
@@ -9,7 +9,7 @@ import { AdminBreadcrumb } from "./admin-breadcrumb";
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const profile = await getCurrentProfile();
   if (!isExec(profile.role)) {
-    redirect("/portal");
+    return <ErrorScreen variant="forbidden" action={{ href: "/portal" }} inShell />;
   }
   const [pendingTeamCount, quarters] = await Promise.all([
     // A failing count must not take down every admin page.

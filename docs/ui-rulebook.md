@@ -10,7 +10,7 @@ Scope: the portal (`/portal`, `/login`). The public marketing site has its own l
 2. **Show it, then say it.** Status is always a word in a chip. Never color alone.
 3. **Stay where you are.** Details open in a panel beside the list, not on a new page. (Known exception: the Applicants list still opens a sheet that slides over the page.)
 4. **Two levels deep.** Place, then view. Nothing deeper is a page. Anything that would be a third level is a filter chip or a panel.
-5. **Friendly, not cute.** Plain words, short sentences, no jokes in error messages.
+5. **Friendly, not cute.** Plain words, short sentences. The one place for a joke is a full-page error screen (404, 500, 403, signed out), which uses `ErrorScreen` and the globe. Inline errors (toasts, form errors, failed saves) stay plain, with no jokes.
 6. **Tokens, never colors.** Pages never name a color. See section 2.
 
 ## 2. Color

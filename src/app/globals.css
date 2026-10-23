@@ -483,3 +483,74 @@
   border-radius: 0;
   background: transparent;
 }
+
+/* Error screens: the globe is the mascot. Each state gets one slow, looping
+   motion; reduced motion shows it standing still. */
+@keyframes error-roll-in {
+  0% {
+    transform: translateX(-120px) rotate(-240deg);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes error-wobble {
+  0%,
+  100% {
+    transform: rotate(-8deg);
+  }
+  50% {
+    transform: rotate(8deg);
+  }
+}
+
+@keyframes error-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes error-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.error-globe-lost {
+  animation:
+    error-roll-in 1.2s ease-out both,
+    error-wobble 2.4s ease-in-out 1.2s infinite;
+}
+
+.error-globe-broken {
+  animation: error-spin 3s linear infinite;
+}
+
+.error-globe-locked {
+  filter: grayscale(1) opacity(0.7);
+  animation: error-bob 2.5s ease-in-out infinite;
+}
+
+.error-globe-idle {
+  animation: error-bob 2.5s ease-in-out infinite;
+}
+
+.error-globe-crashed {
+  transform: rotate(35deg) translateY(10px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .error-globe-lost,
+  .error-globe-broken,
+  .error-globe-locked,
+  .error-globe-idle {
+    animation: none;
+  }
+}
