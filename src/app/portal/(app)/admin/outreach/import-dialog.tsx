@@ -135,15 +135,16 @@ export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChan
 
   return (
     <Dialog open={open} onOpenChange={reset}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>Import prospects</DialogTitle>
           <DialogDescription>
             Get a research prompt below, run it in Claude Research, then upload the CSV it gives you. Past clients, duplicates and anyone who opted out are skipped.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <section aria-labelledby="research-prompt-heading" className="space-y-3 rounded-[18px] border p-4">
+        {/* Two steps side by side so the whole dialog fits on one screen, with nothing to scroll sideways. */}
+        <div className="grid gap-4 md:grid-cols-2 md:gap-6">
+          <section aria-labelledby="research-prompt-heading" className="min-w-0 space-y-3 rounded-[18px] border p-4">
             <h3 id="research-prompt-heading" className="text-base">
               1. Get the research prompt
             </h3>
@@ -156,75 +157,90 @@ export function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChan
                   setNiche(e.target.value);
                   remember({ niche: e.target.value, needs, exclude });
                 }}
-                placeholder="Seed to Series A med-tech startups in the Bay Area, 5 to 50 employees"
+                placeholder="Seed to Series A med-tech startups in the Bay Area"
               />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="research-needs">What they might need</Label>
-              <Input id="research-needs" value={needs} onChange={(e) => {
+              <Input
+                id="research-needs"
+                value={needs}
+                onChange={(e) => {
                   setNeeds(e.target.value);
                   remember({ niche, needs: e.target.value, exclude });
-                }} placeholder="A go-to-market plan, market research or pricing" />
+                }}
+                placeholder="A go-to-market plan, market research or pricing"
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="research-exclude">Companies to skip (optional)</Label>
-              <Input id="research-exclude" value={exclude} onChange={(e) => {
+              <Input
+                id="research-exclude"
+                value={exclude}
+                onChange={(e) => {
                   setExclude(e.target.value);
                   remember({ niche, needs, exclude: e.target.value });
-                }} placeholder="Past clients, separated by commas" />
+                }}
+                placeholder="Past clients, separated by commas"
+              />
             </div>
             <Button variant="outline" onClick={() => void onCopyPrompt()}>
               Copy prompt
             </Button>
           </section>
 
-          <h3 className="text-base">2. Upload what it found</h3>
-          <div className="space-y-1.5">
-            <Label htmlFor="outreach-csv-file">CSV file</Label>
-            <input
-              id="outreach-csv-file"
-              type="file"
-              accept=".csv,text/csv"
-              onChange={(e) => void onFile(e.target.files?.[0])}
-              className="block w-full text-sm file:mr-3 file:rounded-[10px] file:border file:border-input file:bg-card file:px-3 file:py-1.5 file:text-sm file:font-semibold"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="outreach-csv-text">Or paste it here</Label>
-            <Textarea
-              id="outreach-csv-text"
-              rows={5}
-              value={csv}
-              onChange={(e) => onCsvChange(e.target.value)}
-              placeholder="Company,Website,What they do,Size,Stage,Niche,Contact name,Contact role,Contact email,..."
-            />
-          </div>
-
-          {preview && (
-            <div className="space-y-3 rounded-[18px] border p-4" aria-live="polite">
-              <p className="font-semibold">
-                {preview.willImport} will be imported · {preview.skipped?.length ?? 0} skipped · {preview.errors?.length ?? 0} rows with problems
-              </p>
-              {(preview.skipped?.length ?? 0) > 0 && (
-                <ul className="max-h-40 space-y-1 overflow-auto text-sm text-muted-foreground">
-                  {preview.skipped!.map((s, i) => (
-                    <li key={`${s.email}-${i}`}>
-                      {s.company} ({s.email}): {SKIP_REASONS[s.reason] ?? s.reason}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {(preview.errors?.length ?? 0) > 0 && (
-                <ul className="max-h-32 space-y-1 overflow-auto text-sm text-muted-foreground">
-                  {preview.errors!.map((e, i) => (
-                    <li key={i}>
-                      Line {e.line}: {e.message}
-                    </li>
-                  ))}
-                </ul>
-              )}
+          <section aria-labelledby="upload-heading" className="min-w-0 space-y-3">
+            <h3 id="upload-heading" className="text-base">
+              2. Upload what it found
+            </h3>
+            <div className="space-y-1.5">
+              <Label htmlFor="outreach-csv-file">CSV file</Label>
+              <input
+                id="outreach-csv-file"
+                type="file"
+                accept=".csv,text/csv"
+                onChange={(e) => void onFile(e.target.files?.[0])}
+                className="block w-full min-w-0 text-sm file:mr-3 file:rounded-[10px] file:border file:border-input file:bg-card file:px-3 file:py-1.5 file:text-sm file:font-semibold"
+              />
             </div>
-          )}
+            <div className="space-y-1.5">
+              <Label htmlFor="outreach-csv-text">Or paste it here</Label>
+              <Textarea
+                id="outreach-csv-text"
+                rows={4}
+                className="max-h-32 min-w-0"
+                value={csv}
+                onChange={(e) => onCsvChange(e.target.value)}
+                placeholder="Company,Website,What they do,Size,Stage,Niche,..."
+              />
+            </div>
+
+            {preview && (
+              <div className="min-w-0 space-y-2 rounded-[18px] border p-3.5" aria-live="polite">
+                <p className="font-semibold">
+                  {preview.willImport} will be imported · {preview.skipped?.length ?? 0} skipped · {preview.errors?.length ?? 0} with problems
+                </p>
+                {(preview.skipped?.length ?? 0) > 0 && (
+                  <ul className="max-h-24 space-y-1 overflow-y-auto text-sm break-words text-muted-foreground">
+                    {preview.skipped!.map((s, i) => (
+                      <li key={`${s.email}-${i}`}>
+                        {s.company} ({s.email}): {SKIP_REASONS[s.reason] ?? s.reason}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {(preview.errors?.length ?? 0) > 0 && (
+                  <ul className="max-h-24 space-y-1 overflow-y-auto text-sm break-words text-muted-foreground">
+                    {preview.errors!.map((e, i) => (
+                      <li key={i}>
+                        Line {e.line}: {e.message}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </section>
         </div>
         <DialogFooter className="items-center sm:justify-between">
           <p className="text-sm text-muted-foreground" aria-live="polite">

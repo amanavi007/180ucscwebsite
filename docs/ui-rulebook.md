@@ -67,7 +67,8 @@ Rules:
 - A table inside a card does not draw its own border (a global rule removes it).
 - **Nothing grows past the page.** Anything a person can type or paste into, and anything that holds a list that can get long, must stop at a maximum height and scroll inside itself. The page, a dialog or a panel must never get taller than the screen because of what is in it.
   - Text areas: use the shared `Textarea`. It grows with the text up to 40% of the screen height (`max-h-[40dvh]`), then scrolls. Never remove that limit. If a field needs more room, give it a bigger `max-h-` and a reason, and keep it under the screen height.
-  - Dialogs: use the shared `DialogContent`. It is capped to the screen height and scrolls inside. Do not override its `max-h` or `overflow`.
+  - Dialogs: use the shared `DialogContent`. It is capped to the screen height, scrolls up and down inside, and never scrolls sideways (`overflow-x-hidden`, and a `minmax(0,1fr)` column so no child can push it wider). Do not override those. Give every flex or grid child that holds text or an input `min-w-0`, and `break-words` on lists of emails or URLs. A dialog with two steps puts them side by side from `md` up (see the outreach import dialog) so it fits one screen.
+  - Nothing in the portal scrolls sideways except a wide table, which scrolls inside its own card.
   - Panels and lists inside a dialog (previews, error lists, results) get their own `max-h-` and `overflow-auto`.
   - Never use `field-sizing-content` on anything without a `max-h-` next to it.
   - A page built later must be tested with a very long paste (500 lines) before it is called done. The buttons must still be on screen.

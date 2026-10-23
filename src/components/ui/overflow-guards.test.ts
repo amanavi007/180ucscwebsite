@@ -27,6 +27,13 @@ describe("overflow guards", () => {
     expect(content).toMatch(/overflow-y-auto/);
   });
 
+  it("the shared DialogContent never scrolls sideways: it hides horizontal overflow and its column cannot exceed the dialog", () => {
+    const src = read("src/components/ui/dialog.tsx");
+    const content = src.slice(src.indexOf("function DialogContent"), src.indexOf("function DialogHeader"));
+    expect(content).toMatch(/overflow-x-hidden/);
+    expect(content).toMatch(/grid-cols-\[minmax\(0,1fr\)\]/);
+  });
+
   it("any other element that auto-sizes to its content also has a maximum height", () => {
     const offenders = sourceFiles(join(process.cwd(), "src"))
       .filter((f) => !f.endsWith("ui/textarea.tsx"))
