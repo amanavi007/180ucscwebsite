@@ -134,7 +134,8 @@ describe("runSend", () => {
       expect(s.to).toHaveLength(1);
       expect(s.replyTo).toBe("replies@consulting.ucsc180dc.org");
       expect(s.headers["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
-      expect(s.text).toContain("/services/book?lead=tok");
+      expect(s.text).toContain("/services/book");
+      expect(s.html).toContain("/services/book?lead=tok");
       expect(s.text).toContain("1156 High St, Santa Cruz, CA 95064");
     }
     const token = /unsubscribe\?token=([^>]+)>/.exec(store.sends[0].headers["List-Unsubscribe"])![1];

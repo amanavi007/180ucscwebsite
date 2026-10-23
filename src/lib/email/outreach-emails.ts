@@ -17,12 +17,15 @@ const paragraphs = (text: string) =>
     .map((p) => `<p>${escapeHtml(p.trim()).replace(/\n/g, "<br>")}</p>`)
     .join("\n");
 
+/** The booking link without its `?lead=` token, for text people read. The full link still goes in the href. */
+const plainLink = (url: string) => url.split("?")[0];
+
 /** Plain, personal-looking email: no images, no tracking, booking link, opt-out line and postal address. */
 export function buildOutreachEmail(input: OutreachEmailInput): EmailContent {
   const text = [
     input.bodyText.trim(),
     "",
-    `Pick a time that works for a 30-minute intro call: ${input.bookingUrl}`,
+    `Pick a time that works for a 30-minute intro call: ${plainLink(input.bookingUrl)}`,
     "",
     "Best,",
     SIGNATURE,
@@ -34,10 +37,10 @@ export function buildOutreachEmail(input: OutreachEmailInput): EmailContent {
 
   const html = `
     ${paragraphs(input.bodyText)}
-    <p>Pick a time that works for a 30-minute intro call: <a href="${escapeHtml(input.bookingUrl)}">${escapeHtml(input.bookingUrl)}</a></p>
+    <p>Pick a time that works for a 30-minute intro call: <a href="${escapeHtml(input.bookingUrl)}">${escapeHtml(plainLink(input.bookingUrl).replace(/^https?:\/\//, ""))}</a></p>
     <p>Best,<br>${escapeHtml(SIGNATURE)}</p>
     <p style="color:#666;font-size:12px">${escapeHtml(input.senderName)}, ${escapeHtml(input.postalAddress)}<br>
-    Not interested? <a href="${escapeHtml(input.unsubscribeUrl)}">Unsubscribe here</a> and we won't email you again: ${escapeHtml(input.unsubscribeUrl)}</p>
+    Not interested? <a href="${escapeHtml(input.unsubscribeUrl)}">Unsubscribe here</a> and we won't email you again.</p>
   `.trim();
 
   return { subject: input.subject, text, html };

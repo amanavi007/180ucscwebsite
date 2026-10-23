@@ -17,10 +17,18 @@ describe("buildOutreachEmail", () => {
     expect(email.text).toContain("Saw Acme's new clinic partnerships.");
     expect(email.html).toContain("Saw Acme&#39;s new clinic partnerships.");
   });
-  it("includes the booking link, unsubscribe link, address and team signature in both versions", () => {
+  it("shows a short booking link but keeps the lead token in the clickable one", () => {
+    expect(email.html).toContain(`href="${args.bookingUrl}">ucsc180dc.org/services/book</a>`);
+    expect(email.text).toContain("https://ucsc180dc.org/services/book\n");
+    expect(email.text).not.toContain("lead=");
+  });
+  it("shows the unsubscribe URL as text only in the plain version", () => {
+    expect(email.text).toContain(args.unsubscribeUrl);
+    expect(email.html).toContain(`href="${args.unsubscribeUrl}"`);
+    expect(email.html).not.toContain(`${args.unsubscribeUrl}</`);
+  });
+  it("includes the address and team signature in both versions", () => {
     for (const part of [email.text, email.html]) {
-      expect(part).toContain(args.bookingUrl);
-      expect(part).toContain(args.unsubscribeUrl);
       expect(part).toContain("1156 High St, Santa Cruz, CA 95064");
       expect(part).toContain("The 180 Degrees Consulting UCSC team");
     }
