@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeTime } from "@/lib/coffee-chat";
 import { EXEC_ROLES } from "@/lib/auth/roles";
+import { fetchAllPages } from "@/lib/paginate";
 
 export interface AvailabilityRow {
   id: string;
@@ -14,12 +15,15 @@ export interface AvailabilityRow {
 
 export async function getAllAvailability(): Promise<AvailabilityRow[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("coffee_chat_availability")
-    .select("id, exec_id, date, start_time, end_time, exec:profiles(name)")
-    .order("date", { ascending: true })
-    .order("start_time", { ascending: true });
-  if (error) throw error;
+  const data = await fetchAllPages((from, to) =>
+    supabase
+      .from("coffee_chat_availability")
+      .select("id, exec_id, date, start_time, end_time, exec:profiles(name)")
+      .order("date", { ascending: true })
+      .order("start_time", { ascending: true })
+      .order("id")
+      .range(from, to),
+  );
 
   return (
     (data ?? []) as unknown as {
@@ -72,28 +76,30 @@ export interface SlotRow {
 
 export async function getAllSlots(): Promise<SlotRow[]> {
   const supabase = await createClient();
-  const { data: slots, error } = await supabase
-    .from("coffee_chat_slots")
-    .select("id, date, start_time, end_time, location, published, exec_id_1, exec_id_2")
-    .order("date", { ascending: true })
-    .order("start_time", { ascending: true });
-  if (error) throw error;
-  const slotRows = slots ?? [];
+  const slotRows = await fetchAllPages((from, to) =>
+    supabase
+      .from("coffee_chat_slots")
+      .select("id, date, start_time, end_time, location, published, exec_id_1, exec_id_2")
+      .order("date", { ascending: true })
+      .order("start_time", { ascending: true })
+      .order("id")
+      .range(from, to),
+  );
   if (slotRows.length === 0) return [];
 
   const execIds = [...new Set(slotRows.flatMap((s) => [s.exec_id_1, s.exec_id_2]).filter((id): id is string => !!id))];
   const namesByExecId = await lookupProfileNames(supabase, execIds);
 
-  const { data: bookings, error: bookingsError } = await supabase
-    .from("coffee_chat_bookings")
-    .select("slot_id, applicant_name")
-    .eq("status", "confirmed")
-    .in(
-      "slot_id",
-      slotRows.map((s) => s.id),
-    );
-  if (bookingsError) throw bookingsError;
-  const applicantBySlotId = new Map((bookings ?? []).map((b) => [b.slot_id, b.applicant_name]));
+  // Read the whole table page by page rather than building an IN list of every slot id, which overflows the request URL.
+  const bookings = await fetchAllPages((from, to) =>
+    supabase
+      .from("coffee_chat_bookings")
+      .select("slot_id, applicant_name")
+      .eq("status", "confirmed")
+      .order("id")
+      .range(from, to),
+  );
+  const applicantBySlotId = new Map(bookings.map((b) => [b.slot_id, b.applicant_name]));
 
   return slotRows.map((s) => ({
     id: s.id,
@@ -131,24 +137,27 @@ export interface BookingRow {
 
 export async function getAllBookings(): Promise<BookingRow[]> {
   const supabase = await createClient();
-  const { data: bookings, error } = await supabase
-    .from("coffee_chat_bookings")
-    .select("id, slot_id, applicant_name, applicant_email, status, location, created_at, cancelled_at")
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  const bookingRows = bookings ?? [];
+  const bookingRows = await fetchAllPages((from, to) =>
+    supabase
+      .from("coffee_chat_bookings")
+      .select("id, slot_id, applicant_name, applicant_email, status, location, created_at, cancelled_at")
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(from, to),
+  );
   if (bookingRows.length === 0) return [];
 
-  const slotIds = [...new Set(bookingRows.map((b) => b.slot_id))];
-  const { data: slots, error: slotsError } = await supabase
-    .from("coffee_chat_slots")
-    .select("id, date, start_time, end_time, location, exec_id_1, exec_id_2")
-    .in("id", slotIds);
-  if (slotsError) throw slotsError;
-  const slotsById = new Map((slots ?? []).map((s) => [s.id, s]));
+  const slots = await fetchAllPages((from, to) =>
+    supabase
+      .from("coffee_chat_slots")
+      .select("id, date, start_time, end_time, location, exec_id_1, exec_id_2")
+      .order("id")
+      .range(from, to),
+  );
+  const slotsById = new Map(slots.map((s) => [s.id, s]));
 
   const execIds = [
-    ...new Set((slots ?? []).flatMap((s) => [s.exec_id_1, s.exec_id_2]).filter((id): id is string => !!id)),
+    ...new Set(slots.flatMap((s) => [s.exec_id_1, s.exec_id_2]).filter((id): id is string => !!id)),
   ];
   const namesByExecId = await lookupProfileNames(supabase, execIds);
 
