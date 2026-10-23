@@ -8,7 +8,7 @@ export async function getTasksForProject(projectId: string): Promise<TaskWithAss
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("tasks")
-    .select("*, assignee:profiles(id,name)")
+    .select("*, assignee:profiles(id,name), exec_reviews:task_exec_reviews(exec_id,reviewed_at,exec:profiles(id,name))")
     .eq("project_id", projectId)
     .order("created_at", { ascending: true });
 
@@ -31,7 +31,7 @@ export async function getVisibleTasks(filters: TaskFilters = {}): Promise<TaskWi
   // any rows a left join would have kept.
   let query = supabase
     .from("tasks")
-    .select("*, assignee:profiles(id,name), project:projects!inner(id,client_name,quarter_id)")
+    .select("*, assignee:profiles(id,name), exec_reviews:task_exec_reviews(exec_id,reviewed_at,exec:profiles(id,name)), project:projects!inner(id,client_name,quarter_id)")
     .order("due_date", { ascending: true, nullsFirst: false });
 
   if (filters.assigneeId) query = query.eq("assignee_id", filters.assigneeId);

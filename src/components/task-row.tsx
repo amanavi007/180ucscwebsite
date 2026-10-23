@@ -55,6 +55,7 @@ export function TaskRow({
   projectId,
   canManage,
   isOwn,
+  currentUserId,
   rosterProfiles,
   showAssignee = true,
   showDeleteColumn = true,
@@ -66,6 +67,8 @@ export function TaskRow({
   projectId: string;
   canManage: boolean;
   isOwn: boolean;
+  /** Lets an assigned exec reviewer see their "Mark reviewed" button. */
+  currentUserId?: string;
   rosterProfiles?: { id: string; name: string }[];
   showAssignee?: boolean;
   showDeleteColumn?: boolean;
@@ -219,6 +222,8 @@ export function TaskRow({
           projectId={projectId}
           currentStep={task.stage_step}
           editable={canEditFields}
+          execReviews={task.exec_reviews}
+          currentUserId={currentUserId}
         />
       ) : isStepped ? (
         canEditFields ? (

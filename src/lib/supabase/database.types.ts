@@ -32,8 +32,8 @@ export type TaskType = "preliminary_research" | "implementables" | "deliverable"
 
 export type TaskStageStep =
   | "draft_in_progress"
-  | "draft_complete"
-  | "revisions_in_progress"
+  | "pm_sc_comments"
+  | "awaiting_exec_revision"
   | "complete";
 
 export type MeetingNoteType = "client_call" | "officer_meeting" | "team_checkin";
@@ -213,6 +213,22 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["tasks"]["Insert"]>;
+        Relationships: [];
+      };
+      task_exec_reviews: {
+        Row: {
+          task_id: string;
+          exec_id: string;
+          assigned_at: string;
+          reviewed_at: string | null;
+        };
+        Insert: {
+          task_id: string;
+          exec_id: string;
+          assigned_at?: string;
+          reviewed_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["task_exec_reviews"]["Insert"]>;
         Relationships: [];
       };
       meeting_notes: {
@@ -1403,6 +1419,10 @@ export interface Database {
       };
     };
     Functions: {
+      assign_task_exec_reviewers: {
+        Args: { p_task_id: string };
+        Returns: Database["public"]["Tables"]["task_exec_reviews"]["Row"][];
+      };
       apply_team_plan: {
         Args: { p_plan_id: string };
         Returns: unknown;

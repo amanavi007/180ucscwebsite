@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import type { AttentionItem, AttentionKind } from "@/lib/admin-attention";
 
 const CHIP: Record<AttentionKind, { label: string; variant: "warn" | "bad" | "info" }> = {
+  "task-reviews": { label: "Review", variant: "warn" },
   marks: { label: "Late", variant: "bad" },
   reviewers: { label: "Stuck", variant: "warn" },
   "interview-slots": { label: "Soon", variant: "info" },

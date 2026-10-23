@@ -25,27 +25,30 @@ export const TASK_TYPES: TaskType[] = [
   "other",
 ];
 
-/** Task types that track progress via a 4-step timeline instead of a plain status. */
+/** Task types that track progress via a review timeline instead of a plain status. */
 export const STEPPED_TASK_TYPES: TaskType[] = ["preliminary_research", "deliverable"];
+
+/** How many execs are auto-assigned to review a task once PM/SC revisions are done. */
+export const EXEC_REVIEWERS_PER_TASK = 2;
 
 export const TASK_STAGE_STEPS: TaskStageStep[] = [
   "draft_in_progress",
-  "draft_complete",
-  "revisions_in_progress",
+  "pm_sc_comments",
+  "awaiting_exec_revision",
   "complete",
 ];
 
 export const TASK_STAGE_STEP_LABELS: Record<TaskStageStep, string> = {
-  draft_in_progress: "Draft in progress",
-  draft_complete: "Draft complete (awaiting revision)",
-  revisions_in_progress: "Revisions in progress",
-  complete: "Complete",
+  draft_in_progress: "Draft",
+  pm_sc_comments: "PM/SC comments",
+  awaiting_exec_revision: "PM/SC revision done (awaiting exec revision)",
+  complete: "Exec revision done (complete)",
 };
 
 export const TASK_STAGE_STEP_SHORT_LABELS: Record<TaskStageStep, string> = {
   draft_in_progress: "Draft",
-  draft_complete: "Awaiting revision",
-  revisions_in_progress: "Revising",
+  pm_sc_comments: "PM/SC comments",
+  awaiting_exec_revision: "Awaiting exec",
   complete: "Complete",
 };
 

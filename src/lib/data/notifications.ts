@@ -104,6 +104,40 @@ export async function getMyNotifications(
       : Promise.resolve({ data: null }),
   ]);
 
+  // Review pipeline: PM/SC hear when a draft is ready for their comments, and
+  // execs hear when they're auto-assigned to review a finished PM/SC revision.
+  const [{ data: leadMemberships }, { data: execReviews }] = await Promise.all([
+    supabase
+      .from("memberships")
+      .select("project_id")
+      .eq("user_id", userId)
+      .in("team_role", ["pm", "sc"]),
+    isExecUser
+      ? supabase
+          .from("task_exec_reviews")
+          .select(
+            "assigned_at, task:tasks!inner(id, task_name, project_id, stage_step, assignee:profiles(name), project:projects(client_name))",
+          )
+          .eq("exec_id", userId)
+          .is("reviewed_at", null)
+          .order("assigned_at", { ascending: false })
+          .limit(15)
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const leadProjectIds = (leadMemberships ?? []).map((m) => m.project_id);
+  const { data: commentTasks } =
+    leadProjectIds.length > 0
+      ? await supabase
+          .from("tasks")
+          .select("id, task_name, project_id, updated_at, assignee:profiles(name), project:projects(client_name)")
+          .in("project_id", leadProjectIds)
+          .eq("stage_step", "pm_sc_comments")
+          .neq("assignee_id", userId)
+          .order("updated_at", { ascending: false })
+          .limit(15)
+      : { data: null };
+
   const items: NotificationItem[] = [];
 
   for (const t of (tasks ?? []) as unknown as {
@@ -118,6 +152,43 @@ export async function getMyNotifications(
       message: `You're assigned "${t.task_name}"${t.project ? ` for ${t.project.client_name}` : ""}.`,
       href: `/portal/projects/${t.project_id}`,
       occurredAt: t.updated_at,
+    });
+  }
+
+  for (const t of (commentTasks ?? []) as unknown as {
+    id: string;
+    task_name: string;
+    project_id: string;
+    updated_at: string;
+    assignee: { name: string } | null;
+    project: { client_name: string } | null;
+  }[]) {
+    items.push({
+      id: `pm-sc-comments-${t.id}`,
+      message: `${t.assignee?.name ?? "A consultant"}'s "${t.task_name}"${t.project ? ` for ${t.project.client_name}` : ""} is ready for PM/SC comments.`,
+      href: `/portal/projects/${t.project_id}`,
+      occurredAt: t.updated_at,
+    });
+  }
+
+  for (const r of (execReviews ?? []) as unknown as {
+    assigned_at: string;
+    task: {
+      id: string;
+      task_name: string;
+      project_id: string;
+      stage_step: string | null;
+      assignee: { name: string } | null;
+      project: { client_name: string } | null;
+    } | null;
+  }[]) {
+    // A task sent back a step keeps its stale assignment rows; only live reviews notify.
+    if (!r.task || r.task.stage_step !== "awaiting_exec_revision") continue;
+    items.push({
+      id: `exec-review-${r.task.id}`,
+      message: `Review ${r.task.assignee?.name ?? "a consultant"}'s "${r.task.task_name}"${r.task.project ? ` for ${r.task.project.client_name}` : ""}.`,
+      href: `/portal/projects/${r.task.project_id}`,
+      occurredAt: r.assigned_at,
     });
   }
 

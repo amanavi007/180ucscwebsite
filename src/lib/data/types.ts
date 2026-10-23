@@ -20,8 +20,16 @@ export interface ProjectWithQuarter extends ProjectWithRelations {
   quarter: { id: string; name: string } | null;
 }
 
+export interface TaskExecReview {
+  exec_id: string;
+  reviewed_at: string | null;
+  exec: { id: string; name: string } | null;
+}
+
 export interface TaskWithAssignee extends Task {
   assignee: NamedProfile;
+  /** Execs assigned to review this task (only populated at the awaiting-exec step). */
+  exec_reviews: TaskExecReview[];
 }
 
 export interface TaskWithProject extends TaskWithAssignee {

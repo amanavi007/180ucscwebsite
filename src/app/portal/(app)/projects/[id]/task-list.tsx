@@ -254,6 +254,7 @@ export function TaskList({
                     projectId={projectId}
                     canManage={canManage}
                     isOwn={isOwn}
+                    currentUserId={currentUserId}
                     rosterProfiles={rosterProfiles}
                     selectable={canManage && selectMode}
                     selected={selectedIds.has(task.id)}
@@ -286,6 +287,7 @@ export function TaskList({
                   projectId={projectId}
                   canManage={canManage}
                   isOwn={false}
+                  currentUserId={currentUserId}
                   rosterProfiles={rosterProfiles}
                   selectable={canManage && selectMode}
                   selected={selectedIds.has(task.id)}

@@ -1,6 +1,7 @@
 import { withQuarterParam } from "./admin-nav";
 
 export type AttentionKind =
+  | "task-reviews"
   | "marks"
   | "reviewers"
   | "interview-slots"
@@ -29,6 +30,8 @@ export interface AttentionCounts {
   applicantsWithoutReviewer?: number | null;
   /** Invitees still waiting to book, minus open interview slots. Only positive when slots are short. */
   interviewSlotShortfall?: number | null;
+  /** Task reviews (prelim research / deliverable) assigned to the viewing exec and not yet marked done. */
+  taskReviews?: number | null;
   /** Outreach prospects who replied and have not been followed up on. */
   outreachReplies?: number | null;
   /** Outreach prospects stopped for a human look (thin research, a failed draft, a manual stop). */
@@ -50,6 +53,14 @@ function plural(n: number, one: string, many: string): string {
 export function buildAttentionItems(counts: AttentionCounts): AttentionItem[] {
   const items: AttentionItem[] = [];
 
+  if (counts.taskReviews && counts.taskReviews > 0) {
+    items.push({
+      kind: "task-reviews",
+      label: `${plural(counts.taskReviews, "consultant task is", "consultant tasks are")} waiting for your review`,
+      actionLabel: "Review",
+      href: "/portal/admin/task-reviews",
+    });
+  }
   if (counts.outreachReplies && counts.outreachReplies > 0) {
     items.push({
       kind: "outreach-replies",

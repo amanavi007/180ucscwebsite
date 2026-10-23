@@ -150,6 +150,15 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     group: "admin-today",
   },
   {
+    href: "/portal/admin/task-reviews",
+    label: "Task Reviews",
+    viewLabel: "Reviews",
+    icon: ClipboardCheck,
+    execOnly: true,
+    keywords: "review prelim research deliverable consultant tasks assigned exec revision comments",
+    group: "admin-today",
+  },
+  {
     href: "/portal/admin/activity",
     label: "Activity",
     icon: History,

@@ -188,6 +188,7 @@ export function TasksView({
                     projectId={task.project_id}
                     canManage={canManageProject(task.project_id)}
                     isOwn={task.assignee_id === currentUserId}
+                    currentUserId={currentUserId}
                     showAssignee={!mine}
                     showDeleteColumn={false}
                   />

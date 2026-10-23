@@ -4,6 +4,8 @@ import { getAttendanceAlertThreshold } from "@/lib/data/org-settings";
 import { getPlansForQuarter } from "@/lib/data/team-builder";
 import { getPendingTeamSubmissionCount } from "@/lib/data/team-page";
 import { getOutreachAttentionCounts } from "@/lib/data/outreach";
+import { getPendingTaskReviewCount } from "@/lib/data/task-reviews";
+import { getCurrentProfile } from "@/lib/data/profile";
 import {
   buildAttentionItems,
   countBelowThreshold,
@@ -26,13 +28,14 @@ export async function getAdminAttentionItems(
   /** Recruiting numbers the page has already fetched, so they are not fetched twice. */
   recruiting: { bookingsToMark?: number | null; applicantsWithoutReviewer?: number | null; interviewSlotShortfall?: number | null } = {},
 ): Promise<AttentionItem[]> {
-  const [stats, plans, pending, outreach] = await Promise.allSettled([
+  const [stats, plans, pending, outreach, taskReviews] = await Promise.allSettled([
     quarterId
       ? Promise.all([getConsultantStatsRollup(quarterId), getAttendanceAlertThreshold(true)])
       : Promise.resolve(null),
     quarterId ? getPlansForQuarter(quarterId) : Promise.resolve(null),
     getPendingTeamSubmissionCount(),
     getOutreachAttentionCounts(),
+    getCurrentProfile().then((p) => getPendingTaskReviewCount(p.id)),
   ]);
 
   const statsValue = valueOrNull(stats);
@@ -44,6 +47,7 @@ export async function getAdminAttentionItems(
     lowAttendance: statsValue ? countBelowThreshold(statsValue[0], statsValue[1]) : null,
     draftUnfinalized: plansValue ? hasUnfinalizedDraft(plansValue) : null,
     pendingTeamSubmissions: valueOrNull(pending),
+    taskReviews: valueOrNull(taskReviews),
     outreachReplies: outreachValue?.replies ?? null,
     outreachNeedsAttention: outreachValue?.needsAttention ?? null,
     ...recruiting,

@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { isExec } from "@/lib/auth/roles";
 import { isProjectLead } from "@/lib/auth/project-access";
-import { statusForStageStep } from "@/lib/project-labels";
+import { EXEC_REVIEWERS_PER_TASK, TASK_STAGE_STEPS, statusForStageStep } from "@/lib/project-labels";
 import type {
   Database,
   TaskPriority,
@@ -132,19 +132,102 @@ export async function updateTaskDueDate(
   return {};
 }
 
-/** Advances/sets a stepped task's position on its 4-step timeline; keeps `status` in sync. */
+export interface StageStepResult extends ActionResult {
+  /** Non-error heads-up to show the user (e.g. fewer exec reviewers were available than usual). */
+  notice?: string;
+}
+
+/**
+ * Moves a stepped task along its review timeline; keeps `status` in sync.
+ *
+ * The consultant (assignee) drives their own task one step at a time. PM/SC and
+ * execs can jump to any step. Entering "awaiting exec revision" auto-assigns the
+ * exec reviewers (fewest open reviews first, see `assign_task_exec_reviewers`);
+ * "complete" is blocked until every assigned exec has marked their review done
+ * (an exec may override it).
+ */
 export async function updateTaskStageStep(
   taskId: string,
   projectId: string,
   step: TaskStageStep,
-): Promise<ActionResult> {
+): Promise<StageStepResult> {
+  const profile = await getCurrentProfile();
+  const exec = isExec(profile.role);
+  const leads = await canLeadProject(projectId, profile.id, exec);
+
   const supabase = await createClient();
+  const { data: task } = await supabase
+    .from("tasks")
+    .select("assignee_id, stage_step")
+    .eq("id", taskId)
+    .single();
+  if (!task) return { error: "Task not found." };
+
+  const currentIndex = task.stage_step ? TASK_STAGE_STEPS.indexOf(task.stage_step) : -1;
+  const targetIndex = TASK_STAGE_STEPS.indexOf(step);
+
+  if (!leads) {
+    if (task.assignee_id !== profile.id) return { error: "Only the assignee or a PM/SC can change this." };
+    if (targetIndex !== currentIndex + 1) {
+      return { error: "Move forward one step at a time. Ask your PM/SC to move it back." };
+    }
+  }
+
+  let notice: string | undefined;
+
+  if (step === "complete") {
+    const { data: reviews } = await supabase
+      .from("task_exec_reviews")
+      .select("reviewed_at, exec:profiles(name)")
+      .eq("task_id", taskId);
+    const waiting = ((reviews ?? []) as unknown as { reviewed_at: string | null; exec: { name: string } | null }[])
+      .filter((r) => !r.reviewed_at)
+      .map((r) => r.exec?.name ?? "an exec");
+    if (waiting.length > 0 && !exec) {
+      return { error: `Waiting on exec review from ${waiting.join(" and ")}.` };
+    }
+  }
+
+  if (step === "awaiting_exec_revision" && task.stage_step !== "awaiting_exec_revision") {
+    const { data: assigned, error: rpcError } = await supabase.rpc("assign_task_exec_reviewers", {
+      p_task_id: taskId,
+    });
+    if (rpcError) return { error: rpcError.message };
+    const count = assigned?.length ?? 0;
+    if (count < EXEC_REVIEWERS_PER_TASK) {
+      notice =
+        count === 0
+          ? "No exec was free to review this. Ask the Director of Projects."
+          : `Only ${count} exec was available to review this.`;
+    }
+  }
+
   const { error } = await supabase
     .from("tasks")
     .update({ stage_step: step, status: statusForStageStep(step) })
     .eq("id", taskId);
 
   if (error) return { error: error.message };
+
+  revalidatePath(`/portal/projects/${projectId}`);
+  revalidatePath("/portal/tasks");
+  return { notice };
+}
+
+/** An assigned exec marks their own review of a task as done (their comments are in). */
+export async function markExecReviewDone(taskId: string, projectId: string): Promise<ActionResult> {
+  const profile = await getCurrentProfile();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("task_exec_reviews")
+    .update({ reviewed_at: new Date().toISOString() })
+    .eq("task_id", taskId)
+    .eq("exec_id", profile.id)
+    .is("reviewed_at", null)
+    .select("task_id");
+
+  if (error) return { error: error.message };
+  if (!data || data.length === 0) return { error: "You aren't assigned to review this task." };
 
   revalidatePath(`/portal/projects/${projectId}`);
   revalidatePath("/portal/tasks");

@@ -111,3 +111,17 @@ describe("outreach attention items", () => {
     expect(buildAttentionItems({ ...base, outreachReplies: 0, outreachNeedsAttention: null })).toEqual([]);
   });
 });
+
+describe("task review attention item", () => {
+  it("leads the list and links to the Task Reviews view", () => {
+    const items = buildAttentionItems({ ...CLEAR, taskReviews: 2, lowAttendance: 1 });
+    expect(items.map((i) => i.kind)).toEqual(["task-reviews", "attendance"]);
+    expect(items[0].label).toBe("2 consultant tasks are waiting for your review");
+    expect(items[0].href).toBe("/portal/admin/task-reviews");
+  });
+  it("is singular for one and omitted for zero or unavailable", () => {
+    expect(buildAttentionItems({ ...CLEAR, taskReviews: 1 })[0].label).toBe("1 consultant task is waiting for your review");
+    expect(buildAttentionItems({ ...CLEAR, taskReviews: 0 })).toEqual([]);
+    expect(buildAttentionItems({ ...CLEAR, taskReviews: null })).toEqual([]);
+  });
+});
