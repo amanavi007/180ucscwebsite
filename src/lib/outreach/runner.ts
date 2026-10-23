@@ -261,7 +261,7 @@ export async function runSend(deps: SendDeps): Promise<SendResult> {
     return { scheduled: 0, skipped: reason };
   }
 
-  const execOnly = settings.mode === "exec_only";
+  const execOnly = settings.mode === "exec_only" || settings.mode === "self_only";
   let startedOn = settings.startedOn;
   if (!startedOn && !execOnly) {
     startedOn = today;
@@ -290,7 +290,11 @@ export async function runSend(deps: SendDeps): Promise<SendResult> {
     ? picked.map(() => undefined)
     : planSendTimes({ now, count: picked.length, windowStartHour: settings.windowStartHour, windowEndHour: settings.windowEndHour, rng: deps.rng });
   if (times.length === 0) return { scheduled: 0, skipped: "no_send_times" };
-  const execs = execOnly ? await deps.execEmails() : [];
+  const testRecipients =
+    settings.mode === "self_only"
+      ? settings.testRecipient ? [settings.testRecipient] : []
+      : execOnly ? await deps.execEmails() : [];
+  if (execOnly && testRecipients.length === 0) return { scheduled: 0, skipped: "no_test_recipient" };
 
   let scheduled = 0;
   for (let i = 0; i < times.length; i++) {
@@ -322,7 +326,7 @@ export async function runSend(deps: SendDeps): Promise<SendResult> {
     });
     try {
       const { resendId } = await deps.send({
-        to: execOnly ? execs : [prospect.contactEmail],
+        to: execOnly ? testRecipients : [prospect.contactEmail],
         from: deps.fromAddress,
         replyTo: deps.replyTo,
         subject: email.subject,

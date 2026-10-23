@@ -21,6 +21,7 @@ const SECTIONS = [
 const MODES: { value: OutreachMode; label: string; description: string }[] = [
   { value: "off", label: "Off", description: "Nothing is drafted or sent." },
   { value: "dry_run", label: "Test drafts", description: "Drafts are written so you can read them. Nothing is sent." },
+  { value: "self_only", label: "Send to me only", description: "Emails go only to your inbox (the person who saves this), not to prospects or the other execs. Use this to test without spamming everyone." },
   { value: "exec_only", label: "Send to execs only", description: "Emails go to the execs' inboxes, not to prospects, so you can check how they look and arrive." },
   { value: "live", label: "Live", description: "Emails go to prospects, slowly, within the daily limit." },
 ];

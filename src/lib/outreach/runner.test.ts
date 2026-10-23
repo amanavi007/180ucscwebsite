@@ -196,6 +196,23 @@ describe("runSend", () => {
     expect([...store.messages.values()].every((m) => m.status === "draft")).toBe(true);
   });
 
+  it("in self_only mode emails only the test recipient, not the execs", async () => {
+    const store = new Store();
+    store.addDrafted(1);
+    const result = await runSend(sendDeps(store, {}, settings({ mode: "self_only", testRecipient: "aman@x.com" })));
+    expect(result.scheduled).toBe(1);
+    expect(store.sends[0].to).toEqual(["aman@x.com"]);
+    expect([...store.prospects.values()].every((p) => p.status === "drafted")).toBe(true);
+  });
+
+  it("in self_only mode with no recipient sends nothing", async () => {
+    const store = new Store();
+    store.addDrafted(1);
+    const result = await runSend(sendDeps(store, {}, settings({ mode: "self_only" })));
+    expect(result).toEqual({ scheduled: 0, skipped: "no_test_recipient" });
+    expect(store.sends).toHaveLength(0);
+  });
+
   it.each([
     ["off", settings({ mode: "off" }), "mode_off"],
     ["dry_run", settings({ mode: "dry_run" }), "dry_run"],

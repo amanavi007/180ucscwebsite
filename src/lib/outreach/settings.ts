@@ -1,8 +1,10 @@
-export type OutreachMode = "off" | "dry_run" | "exec_only" | "live";
+export type OutreachMode = "off" | "dry_run" | "self_only" | "exec_only" | "live";
 
 export interface OutreachSettings {
   mode: OutreachMode;
   paused: boolean;
+  /** Inbox that "self_only" test sends go to: whoever last switched that mode on. */
+  testRecipient: string | null;
   dailyCapOverride: number | null;
   /** "YYYY-MM-DD" (Pacific) of the first day outreach left `off`; the ramp counts from here. */
   startedOn: string | null;
@@ -17,6 +19,7 @@ export interface OutreachSettings {
 export const DEFAULT_OUTREACH_SETTINGS: OutreachSettings = {
   mode: "off",
   paused: false,
+  testRecipient: null,
   dailyCapOverride: null,
   startedOn: null,
   windowStartHour: 9,
@@ -29,6 +32,7 @@ export const DEFAULT_OUTREACH_SETTINGS: OutreachSettings = {
 export const OUTREACH_SETTING_KEYS = [
   "outreach_mode",
   "outreach_paused",
+  "outreach_test_recipient",
   "outreach_daily_cap_override",
   "outreach_started_on",
   "outreach_window_start_hour",
@@ -38,7 +42,7 @@ export const OUTREACH_SETTING_KEYS = [
   "outreach_followup_days",
 ];
 
-const MODES: OutreachMode[] = ["off", "dry_run", "exec_only", "live"];
+const MODES: OutreachMode[] = ["off", "dry_run", "self_only", "exec_only", "live"];
 
 function hour(value: string | undefined): number | null {
   if (value === undefined || value.trim() === "") return null;
@@ -67,6 +71,7 @@ export function parseOutreachSettings(rows: { key: string; value: string }[]): O
   return {
     mode: MODES.includes(get.outreach_mode as OutreachMode) ? (get.outreach_mode as OutreachMode) : d.mode,
     paused: get.outreach_paused === "true",
+    testRecipient: get.outreach_test_recipient?.trim() || null,
     dailyCapOverride:
       get.outreach_daily_cap_override && Number.isInteger(cap) && cap >= 0 ? cap : d.dailyCapOverride,
     startedOn,

@@ -187,7 +187,7 @@ export async function updateOutreachSettingsAction(input: OutreachSettingsInput)
 
   // Bad values silently fall back to defaults when read, so reject them here instead.
   const parsed = parseOutreachSettings(rows);
-  if (!["off", "dry_run", "exec_only", "live"].includes(input.mode)) return { error: "Pick one of the four modes." };
+  if (!["off", "dry_run", "self_only", "exec_only", "live"].includes(input.mode)) return { error: "Pick one of the modes." };
   if (parsed.windowStartHour !== Number(input.windowStartHour) || parsed.windowEndHour !== Number(input.windowEndHour)) {
     return { error: "The send window needs whole hours (0 to 23), with the end later than the start." };
   }
@@ -197,7 +197,7 @@ export async function updateOutreachSettingsAction(input: OutreachSettingsInput)
     return { error: "The sender name and postal address can't be empty. Every email must carry a postal address." };
   }
 
-  if (input.mode === "exec_only" || input.mode === "live") {
+  if (input.mode === "self_only" || input.mode === "exec_only" || input.mode === "live") {
     try {
       outreachEnv(parsed);
     } catch (err) {
@@ -209,6 +209,7 @@ export async function updateOutreachSettingsAction(input: OutreachSettingsInput)
   try {
     const previous = await loadOutreachSettings(admin);
     for (const { key, value } of rows) await setOutreachSetting(admin, key, value);
+    if (parsed.mode === "self_only") await setOutreachSetting(admin, "outreach_test_recipient", profile.email);
     if (shouldRestartRamp(previous.mode, parsed.mode)) await setOutreachSetting(admin, "outreach_started_on", "");
   } catch (err) {
     console.error("outreach settings save failed:", err);

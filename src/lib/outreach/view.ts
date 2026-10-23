@@ -60,6 +60,7 @@ export function senderState(args: {
   const { settings } = args;
   if (settings.mode === "off") return { label: "Off", variant: "muted", detail: "Nothing is being drafted or sent. Turn it on in Settings." };
   if (settings.mode === "dry_run") return { label: "Test mode", variant: "info", detail: "Drafts are written but nothing is sent." };
+  if (settings.mode === "self_only") return { label: "Test mode", variant: "info", detail: "Emails go only to the person who turned this on, not to prospects or the other execs." };
   if (settings.mode === "exec_only") return { label: "Test mode", variant: "info", detail: "Emails go to the execs only, not to prospects." };
   if (settings.paused) return { label: "Paused", variant: "warn", detail: "Sending is paused. Turn Pause off in Settings to resume." };
   const verdict = evaluateBrakes({ ...args.health, settings, bookingOpen: args.bookingOpen, resendAccountError: false });

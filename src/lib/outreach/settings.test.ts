@@ -28,10 +28,12 @@ describe("parseOutreachSettings", () => {
       ["outreach_sender_name", "Team X"],
       ["outreach_postal_address", "1 Main St"],
       ["outreach_followup_days", "3, 7, 14"],
+      ["outreach_test_recipient", "aman@x.com"],
     ].map(([key, value]) => ({ key, value }));
     expect(parseOutreachSettings(rows)).toEqual({
       mode: "live",
       paused: true,
+      testRecipient: "aman@x.com",
       dailyCapOverride: 12,
       startedOn: "2026-10-26",
       windowStartHour: 10,
@@ -56,7 +58,7 @@ describe("parseOutreachSettings", () => {
   });
 
   it("lists every key it reads", () => {
-    expect(OUTREACH_SETTING_KEYS).toHaveLength(9);
+    expect(OUTREACH_SETTING_KEYS).toHaveLength(10);
     expect(OUTREACH_SETTING_KEYS).toContain("outreach_mode");
   });
 });
