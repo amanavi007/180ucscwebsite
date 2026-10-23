@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAllProfiles } from "./members";
 import { isExec } from "@/lib/auth/roles";
 import type { LeadCandidateRole, MembershipTeamRole, UserRole } from "@/lib/supabase/database.types";
+import { fetchInChunks } from "@/lib/paginate";
 
 export interface BoardProfile {
   id: string;
@@ -95,12 +96,15 @@ export async function getPlanBoard(planId: string, quarterId: string): Promise<T
   const planTeamIds = (planTeams ?? []).map((t) => t.id);
 
   if (planTeamIds.length > 0) {
-    const { data: placements, error: placementsError } = await supabase
-      .from("team_plan_placements")
-      .select("plan_team_id, team_role, profile:profiles(id,name,role)")
-      .in("plan_team_id", planTeamIds)
-      .order("created_at", { ascending: true });
-    if (placementsError) throw placementsError;
+    const placements = await fetchInChunks(planTeamIds, (chunk, from, to) =>
+      supabase
+        .from("team_plan_placements")
+        .select("plan_team_id, team_role, profile:profiles(id,name,role)")
+        .in("plan_team_id", chunk)
+        .order("created_at", { ascending: true })
+        .order("id")
+        .range(from, to),
+    );
 
     for (const p of placements as unknown as {
       plan_team_id: string;

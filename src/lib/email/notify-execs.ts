@@ -43,7 +43,7 @@ export async function notifyExecsOfBooking(
     const { data: execs, error: execError } = await supabase
       .from("profiles")
       .select("id, name, email")
-      .in("id", execIds);
+      .in("id", execIds); // in-ok: exec ids
     if (execError) throw execError;
 
     await Promise.all(

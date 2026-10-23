@@ -25,6 +25,7 @@ import type {
   SendDeps,
 } from "@/lib/outreach/runner";
 import type { ProspectDraftRow, ProspectFact } from "@/lib/outreach/types";
+import { fetchInChunks } from "@/lib/paginate";
 
 type Admin = ReturnType<typeof createAdminClient>;
 type ProspectRow = Database["public"]["Tables"]["outreach_prospects"]["Row"];
@@ -82,15 +83,20 @@ function toRunnerProspect(row: ProspectRow, firstSentAt: Date | null): RunnerPro
 
 async function runnerProspects(admin: Admin, rows: ProspectRow[]): Promise<RunnerProspect[]> {
   if (rows.length === 0) return [];
-  const { data, error } = await admin
-    .from("outreach_messages")
-    .select("prospect_id, sent_at, scheduled_for")
-    .in("prospect_id", rows.map((r) => r.id))
-    .eq("step", 0)
-    .in("status", ["scheduled", "sent"]);
-  if (error) throw error;
+  const data = await fetchInChunks(
+    rows.map((r) => r.id),
+    (chunk, from, to) =>
+      admin
+        .from("outreach_messages")
+        .select("prospect_id, sent_at, scheduled_for")
+        .in("prospect_id", chunk)
+        .eq("step", 0)
+        .in("status", ["scheduled", "sent"])
+        .order("id")
+        .range(from, to),
+  );
   const first = new Map<string, Date>();
-  for (const m of data ?? []) {
+  for (const m of data) {
     const at = m.sent_at ?? m.scheduled_for;
     if (at) first.set(m.prospect_id, new Date(at));
   }
@@ -143,7 +149,7 @@ function casDeps(admin: Admin) {
         .from("outreach_prospects")
         .update(prospectPatchToRow(patch))
         .eq("id", id)
-        .in("status", from)
+        .in("status", from) // in-ok: short list of statuses
         .select("id");
       if (error) throw error;
       return (data?.length ?? 0) > 0;
@@ -153,7 +159,7 @@ function casDeps(admin: Admin) {
         .from("outreach_messages")
         .update(messagePatchToRow(patch))
         .eq("id", id)
-        .in("status", from)
+        .in("status", from) // in-ok: short list of statuses
         .select("id");
       if (error) throw error;
       return (data?.length ?? 0) > 0;
@@ -171,7 +177,7 @@ export async function buildPrepareDeps(now = new Date()): Promise<PrepareDeps> {
       const { data, error } = await admin
         .from("outreach_prospects")
         .select("*")
-        .in("status", statuses)
+        .in("status", statuses) // in-ok: short list of statuses
         .order("created_at", { ascending: true })
         .limit(limit);
       if (error) throw error;
@@ -221,12 +227,11 @@ export async function buildPrepareDeps(now = new Date()): Promise<PrepareDeps> {
       if (error) throw error;
       const messages = data ?? [];
       if (messages.length === 0) return [];
-      const { data: rows, error: prospectError } = await admin
-        .from("outreach_prospects")
-        .select("*")
-        .in("id", [...new Set(messages.map((m) => m.prospect_id))]);
-      if (prospectError) throw prospectError;
-      const prospects = new Map((await runnerProspects(admin, rows ?? [])).map((p) => [p.id, p]));
+      const rows = await fetchInChunks(
+        messages.map((m) => m.prospect_id),
+        (chunk, from, to) => admin.from("outreach_prospects").select("*").in("id", chunk).order("id").range(from, to),
+      );
+      const prospects = new Map((await runnerProspects(admin, rows)).map((p) => [p.id, p]));
       return messages.flatMap((m) => {
         const prospect = prospects.get(m.prospect_id);
         return prospect && m.scheduled_for
@@ -337,12 +342,11 @@ export async function buildSendDeps(now = new Date()): Promise<SendDeps> {
         .limit(500);
       if (error) throw error;
       if (!drafts || drafts.length === 0) return [];
-      const { data: rows, error: prospectError } = await admin
-        .from("outreach_prospects")
-        .select("*")
-        .in("id", [...new Set(drafts.map((d) => d.prospect_id))]);
-      if (prospectError) throw prospectError;
-      const prospects = new Map((await runnerProspects(admin, rows ?? [])).map((p) => [p.id, p]));
+      const rows = await fetchInChunks(
+        drafts.map((d) => d.prospect_id),
+        (chunk, from, to) => admin.from("outreach_prospects").select("*").in("id", chunk).order("id").range(from, to),
+      );
+      const prospects = new Map((await runnerProspects(admin, rows)).map((p) => [p.id, p]));
       const due = [];
       for (const d of drafts) {
         const prospect = prospects.get(d.prospect_id);

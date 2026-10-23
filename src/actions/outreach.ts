@@ -22,6 +22,7 @@ import { partitionImport, type SkipReason } from "@/lib/outreach/verify";
 import { runPrepare, runSend, type PrepareResult } from "@/lib/outreach/runner";
 import { parseOutreachSettings, shouldRestartRamp } from "@/lib/outreach/settings";
 import { loadOutreachSettings } from "@/lib/data/outreach";
+import { fetchInChunks, runInChunks } from "@/lib/paginate";
 
 export interface ActionResult {
   error?: string;
@@ -152,13 +153,17 @@ export async function regenerateDraftsAction(prospectIds: string[]): Promise<Act
   if (error) return { error };
   if (prospectIds.length === 0) return { error: "Select at least one prospect." };
   const admin = createAdminClient();
-  const { data } = await admin
-    .from("outreach_prospects")
-    .select("id")
-    .in("id", prospectIds)
-    .eq("step", 0)
-    .in("status", ["drafted", "needs_attention"]);
-  const ids = (data ?? []).map((p) => p.id);
+  const data = await fetchInChunks(prospectIds, (chunk, from, to) =>
+    admin
+      .from("outreach_prospects")
+      .select("id")
+      .in("id", chunk)
+      .eq("step", 0)
+      .in("status", ["drafted", "needs_attention"])
+      .order("id")
+      .range(from, to),
+  );
+  const ids = data.map((p) => p.id);
   if (ids.length === 0) return { error: "None of those can be rewritten. Only unsent first emails can." };
   await resetForRewrite(admin, ids);
   revalidatePath(OUTREACH_PORTAL_PATH);
@@ -166,8 +171,12 @@ export async function regenerateDraftsAction(prospectIds: string[]): Promise<Act
 }
 
 async function resetForRewrite(admin: ReturnType<typeof createAdminClient>, ids: string[]) {
-  await admin.from("outreach_messages").update({ status: "cancelled" }).in("prospect_id", ids).eq("status", "draft");
-  await admin.from("outreach_prospects").update({ status: "verified", status_reason: null }).in("id", ids);
+  await runInChunks(ids, (chunk) =>
+    admin.from("outreach_messages").update({ status: "cancelled" }).in("prospect_id", chunk).eq("status", "draft"),
+  );
+  await runInChunks(ids, (chunk) =>
+    admin.from("outreach_prospects").update({ status: "verified", status_reason: null }).in("id", chunk),
+  );
 }
 
 export async function runPrepareNowAction(): Promise<ActionResult & { result?: PrepareResult }> {

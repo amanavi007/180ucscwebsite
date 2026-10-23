@@ -129,7 +129,7 @@ export async function setApplicantReviewersAction(input: {
       .delete()
       .eq("applicant_id", input.applicantId)
       .eq("stage", "resume")
-      .in("reviewer_id", removing);
+      .in("reviewer_id", removing); // in-ok: reviewers are execs
     if (delError) return { error: delError.message };
   }
   if (adding.length > 0) {

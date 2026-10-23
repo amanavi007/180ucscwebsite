@@ -4,6 +4,7 @@ import { buildInterviewReminderEmail } from "@/lib/email/interview-emails";
 import { isInterviewReminderHour, selectInterviewReminders, type ReminderBooking } from "@/lib/interview-reminders";
 import { normalizeTime } from "@/lib/coffee-chat";
 import { formatOrgDate } from "@/lib/date";
+import { fetchInChunks } from "@/lib/paginate";
 
 // Always run fresh; this reads the clock and the database.
 export const dynamic = "force-dynamic";
@@ -31,16 +32,24 @@ export async function GET(request: Request) {
   if (!slots || slots.length === 0) return Response.json({ sent: 0, failed: 0 });
   const slotsById = new Map(slots.map((s) => [s.id, s]));
 
-  const { data: bookingRows, error: bookingsError } = await supabase
-    .from("interview_bookings")
-    .select(
-      "id, slot_id, status, applicant_name, applicant_email, manage_token, reminder_day_before_sent_at, reminder_morning_sent_at",
-    )
-    .eq("status", "confirmed")
-    .in("slot_id", [...slotsById.keys()]);
-  if (bookingsError) return Response.json({ error: bookingsError.message }, { status: 500 });
+  let bookingRows;
+  try {
+    bookingRows = await fetchInChunks([...slotsById.keys()], (chunk, from, to) =>
+      supabase
+        .from("interview_bookings")
+        .select(
+          "id, slot_id, status, applicant_name, applicant_email, manage_token, reminder_day_before_sent_at, reminder_morning_sent_at",
+        )
+        .eq("status", "confirmed")
+        .in("slot_id", chunk)
+        .order("id")
+        .range(from, to),
+    );
+  } catch (e) {
+    return Response.json({ error: e instanceof Error ? e.message : "Could not load bookings" }, { status: 500 });
+  }
 
-  const bookings: ReminderBooking[] = (bookingRows ?? []).flatMap((b) => {
+  const bookings: ReminderBooking[] = bookingRows.flatMap((b) => {
     const slot = slotsById.get(b.slot_id);
     if (!slot) return [];
     return [

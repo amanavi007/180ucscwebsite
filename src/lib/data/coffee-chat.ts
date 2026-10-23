@@ -54,7 +54,7 @@ async function lookupProfileNames(
   ids: string[],
 ): Promise<Map<string, string>> {
   if (ids.length === 0) return new Map();
-  const { data, error } = await supabase.from("profiles").select("id, name").in("id", ids);
+  const { data, error } = await supabase.from("profiles").select("id, name").in("id", ids); // in-ok: profile ids of execs
   if (error) throw error;
   return new Map(((data ?? []) as ProfileNameLookup[]).map((p) => [p.id, p.name]));
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fetchAllPages } from "./paginate";
+import { chunkIds, fetchAllPages, fetchInChunks, ID_CHUNK, runInChunks } from "./paginate";
 
 function fakeTable(total: number) {
   const calls: [number, number][] = [];
@@ -39,5 +39,36 @@ describe("fetchAllPages", () => {
 
   it("throws the query error", async () => {
     await expect(fetchAllPages(async () => ({ data: null, error: new Error("boom") }))).rejects.toThrow("boom");
+  });
+});
+
+describe("id chunking", () => {
+  const ids = Array.from({ length: ID_CHUNK * 2 + 5 }, (_, i) => `id-${i}`);
+
+  it("splits a long id list so no single .in() filter is longer than ID_CHUNK", () => {
+    const chunks = chunkIds(ids);
+    expect(chunks.map((c) => c.length)).toEqual([ID_CHUNK, ID_CHUNK, 5]);
+    expect(chunks.flat()).toEqual(ids);
+    expect(chunkIds([])).toEqual([]);
+  });
+
+  it("fetchInChunks queries each chunk, pages within it, and drops duplicate ids", async () => {
+    const seen: string[][] = [];
+    const rows = await fetchInChunks([...ids, ...ids], async (chunk) => {
+      seen.push(chunk);
+      return { data: chunk.map((id) => ({ id })), error: null };
+    });
+    expect(seen.every((c) => c.length <= ID_CHUNK)).toBe(true);
+    expect(rows).toHaveLength(ids.length);
+  });
+
+  it("runInChunks stops at the first error", async () => {
+    let calls = 0;
+    const error = await runInChunks(ids, async () => {
+      calls += 1;
+      return { error: calls === 2 ? { message: "nope" } : null };
+    });
+    expect(error).toEqual({ message: "nope" });
+    expect(calls).toBe(2);
   });
 });

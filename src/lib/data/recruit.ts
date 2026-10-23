@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import { fetchAllPages } from "@/lib/paginate";
+import { fetchAllPages, fetchInChunks } from "@/lib/paginate";
 import { getQuarters } from "@/lib/data/quarters";
 import { sumPoints, undoableMergeIds, type RecruitSection } from "@/lib/recruit";
 import { pairKey, type MatchableApplicant } from "@/lib/recruit-matching";
@@ -106,7 +106,7 @@ export async function getRecruitEvents(quarterId: string): Promise<RecruitEvent[
 
 async function lookupProfileNames(supabase: Supabase, ids: string[]): Promise<Map<string, string>> {
   if (ids.length === 0) return new Map();
-  const { data, error } = await supabase.from("profiles").select("id, name").in("id", ids);
+  const { data, error } = await supabase.from("profiles").select("id, name").in("id", ids); // in-ok: profile ids of execs
   if (error) throw error;
   return new Map((data ?? []).map((p) => [p.id, p.name]));
 }
@@ -174,10 +174,11 @@ export async function getApplicantRows(quarterId: string): Promise<ApplicantRow[
   const previousIds = [...new Set(applicants.map((a) => a.previous_applicant_id).filter((x): x is string => !!x))];
   const previousQuarterById = new Map<string, string>();
   if (previousIds.length > 0) {
-    const { data, error } = await supabase.from("recruit_applicants").select("id, quarter_id").in("id", previousIds);
-    if (error) throw error;
+    const data = await fetchInChunks(previousIds, (chunk, from, to) =>
+      supabase.from("recruit_applicants").select("id, quarter_id").in("id", chunk).order("id").range(from, to),
+    );
     const quarterName = new Map(quarters.map((q) => [q.id, q.name]));
-    for (const row of data ?? []) {
+    for (const row of data) {
       const name = quarterName.get(row.quarter_id);
       if (name) previousQuarterById.set(row.id, name);
     }
@@ -284,12 +285,10 @@ export async function getRecentMerges(quarterId: string): Promise<MergeLogRow[]>
   if (!logs || logs.length === 0) return [];
 
   const ids = [...new Set(logs.flatMap((l) => [l.survivor_id, l.absorbed_id]))];
-  const { data: people, error: peopleError } = await supabase
-    .from("recruit_applicants")
-    .select("id, name, quarter_id")
-    .in("id", ids);
-  if (peopleError) throw peopleError;
-  const byId = new Map((people ?? []).map((p) => [p.id, p]));
+  const people = await fetchInChunks(ids, (chunk, from, to) =>
+    supabase.from("recruit_applicants").select("id, name, quarter_id").in("id", chunk).order("id").range(from, to),
+  );
+  const byId = new Map(people.map((p) => [p.id, p]));
 
   const undoable = undoableMergeIds(
     logs.map((l) => ({ id: l.id, survivorId: l.survivor_id, createdAt: l.created_at, undoneAt: null })),

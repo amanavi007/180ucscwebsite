@@ -18,6 +18,7 @@ import {
   emailApplicantInterviewCancelled,
   notifyInterviewExecs,
 } from "@/lib/email/notify-interview";
+import { fetchInChunks, runInChunks } from "@/lib/paginate";
 
 const UNIQUE_VIOLATION = "23505";
 
@@ -52,27 +53,20 @@ async function retirePastBookings(
     .eq("status", "confirmed");
   if (!confirmed || confirmed.length === 0) return;
 
-  const { data: slots } = await supabase
-    .from("interview_slots")
-    .select("id, date, end_time")
-    .in(
-      "id",
-      confirmed.map((b) => b.slot_id),
-    );
+  const slots = await fetchInChunks(
+    confirmed.map((b) => b.slot_id),
+    (chunk, from, to) => supabase.from("interview_slots").select("id, date, end_time").in("id", chunk).order("id").range(from, to),
+  );
   const now = new Date();
   const pastSlotIds = new Set(
-    (slots ?? [])
+    slots
       .filter((s) => isInterviewPast(s.date, s.end_time, now))
       .map((s) => s.id),
   );
   const retire = confirmed
     .filter((b) => pastSlotIds.has(b.slot_id))
     .map((b) => b.id);
-  if (retire.length > 0)
-    await supabase
-      .from("interview_bookings")
-      .update({ status: "completed" })
-      .in("id", retire);
+  if (retire.length > 0) await runInChunks(retire, (chunk) => supabase.from("interview_bookings").update({ status: "completed" }).in("id", chunk));
 }
 
 export async function createInterviewBookingAction(

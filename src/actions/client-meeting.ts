@@ -25,6 +25,7 @@ import {
   generateClientMeetingSlots,
   validateMeetingUrl,
 } from "@/lib/client-meeting";
+import { runInChunks } from "@/lib/paginate";
 
 export interface ActionResult {
   error?: string;
@@ -193,7 +194,9 @@ export async function removeClientMeetingAvailabilityAction(
     const deletable = affected.filter((s) => s.bookingStatus === "open").map((s) => s.id);
     keptBookedCount = affected.length - deletable.length;
     if (deletable.length > 0) {
-      const { error: slotDeleteError } = await supabase.from("client_meeting_slots").delete().in("id", deletable);
+      const slotDeleteError = await runInChunks(deletable, (chunk) =>
+        supabase.from("client_meeting_slots").delete().in("id", chunk),
+      );
       if (slotDeleteError) return { error: slotDeleteError.message };
       removedSlotCount = deletable.length;
     }
@@ -248,7 +251,7 @@ async function syncClientMeetingSlots(
     if (slotError) return { error: slotError.message };
   }
   if (staleIds.length > 0) {
-    const { error: deleteError } = await supabase.from("client_meeting_slots").delete().in("id", staleIds);
+    const deleteError = await runInChunks(staleIds, (chunk) => supabase.from("client_meeting_slots").delete().in("id", chunk));
     if (deleteError) return { error: deleteError.message };
   }
 

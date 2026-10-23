@@ -5,6 +5,7 @@ import { normalizeTime } from "@/lib/coffee-chat";
 import { buildIcsCalendar, type CoffeeChatBookingForInvite } from "@/lib/calendar-invite";
 import { buildInterviewFeedEvents } from "@/lib/interview-feed";
 import { buildClientMeetingFeedEvents } from "@/lib/client-meeting-feed";
+import { fetchInChunks } from "@/lib/paginate";
 
 /** Unguessable per-exec signature, derived from the service key so no extra storage or secret is needed. */
 function signExecId(execId: string): string {
@@ -37,21 +38,22 @@ async function buildCoffeeChatEvents(execId: string): Promise<(CoffeeChatBooking
       (slots ?? []).map((s) => (s.exec_id_1 === execId ? s.exec_id_2 : s.exec_id_1)).filter((id): id is string => !!id),
     ),
   ];
-  const { data: profiles, error: profilesError } =
-    otherExecIds.length > 0
-      ? await supabase.from("profiles").select("id, name").in("id", otherExecIds)
-      : { data: [], error: null };
-  if (profilesError) throw profilesError;
-  const namesById = new Map((profiles ?? []).map((p) => [p.id, p.name]));
+  const profiles = await fetchInChunks(otherExecIds, (chunk, from, to) =>
+    supabase.from("profiles").select("id, name").in("id", chunk).order("id").range(from, to),
+  );
+  const namesById = new Map(profiles.map((p) => [p.id, p.name]));
 
-  const { data: bookings, error: bookingsError } = await supabase
-    .from("coffee_chat_bookings")
-    .select("id, slot_id, applicant_name, location")
-    .eq("status", "confirmed")
-    .in("slot_id", [...slotsById.keys()]);
-  if (bookingsError) throw bookingsError;
+  const bookings = await fetchInChunks([...slotsById.keys()], (chunk, from, to) =>
+    supabase
+      .from("coffee_chat_bookings")
+      .select("id, slot_id, applicant_name, location")
+      .eq("status", "confirmed")
+      .in("slot_id", chunk)
+      .order("id")
+      .range(from, to),
+  );
 
-  return (bookings ?? []).flatMap((b) => {
+  return bookings.flatMap((b) => {
       const slot = slotsById.get(b.slot_id);
       if (!slot) return [];
       return [

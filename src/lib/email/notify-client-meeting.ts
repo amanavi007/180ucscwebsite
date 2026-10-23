@@ -29,7 +29,7 @@ async function loadBookingContext(bookingId: string) {
   const { data: execs, error: execsError } = await supabase
     .from("profiles")
     .select("id, name, email")
-    .in("id", booking.panel_exec_ids);
+    .in("id", booking.panel_exec_ids); // in-ok: one meeting panel
   if (execsError) throw execsError;
   return {
     booking,

@@ -3,6 +3,7 @@ import { sendEmail } from "@/lib/email/send";
 import { buildAttendanceReminderEmail } from "@/lib/email/attendance-reminder";
 import { isReminderHour, selectReminders, type ReminderLead } from "@/lib/attendance-reminders";
 import { formatOrgDate } from "@/lib/date";
+import { fetchInChunks } from "@/lib/paginate";
 
 // Always run fresh; this reads the clock and the database.
 export const dynamic = "force-dynamic";
@@ -46,19 +47,25 @@ export async function GET(request: Request) {
   const projectIds = projectRows.map((p) => p.id);
   if (!projectIds.length) return Response.json({ sent: 0, failed: 0 });
 
-  const { data: sessionRows, error: sessionError } = await supabase
-    .from("attendance_sessions")
-    .select("project_id")
-    .eq("date", today)
-    .in("project_id", projectIds);
-  if (sessionError) return Response.json({ error: sessionError.message }, { status: 500 });
-
-  const { data: leadRows, error: leadError } = await supabase
-    .from("memberships")
-    .select("project_id, profiles(email, archived_at)")
-    .in("team_role", ["pm", "sc"])
-    .in("project_id", projectIds);
-  if (leadError) return Response.json({ error: leadError.message }, { status: 500 });
+  let sessionRows, leadRows;
+  try {
+    [sessionRows, leadRows] = await Promise.all([
+      fetchInChunks(projectIds, (chunk, from, to) =>
+        supabase.from("attendance_sessions").select("project_id").eq("date", today).in("project_id", chunk).order("id").range(from, to),
+      ),
+      fetchInChunks(projectIds, (chunk, from, to) =>
+        supabase
+          .from("memberships")
+          .select("project_id, profiles(email, archived_at)")
+          .in("team_role", ["pm", "sc"])
+          .in("project_id", chunk)
+          .order("id")
+          .range(from, to),
+      ),
+    ]);
+  } catch (e) {
+    return Response.json({ error: e instanceof Error ? e.message : "Could not load attendance data" }, { status: 500 });
+  }
 
   const leads: ReminderLead[] = leadRows.map((row) => {
     // The embedded relation is a single profile row (user_id is a many-to-one FK).

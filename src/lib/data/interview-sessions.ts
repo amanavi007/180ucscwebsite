@@ -96,12 +96,12 @@ export async function getInterviewWorkspace(quarterId: string, viewerId: string,
   // A session is found by its booking or by its applicant, since a manual interview has no booking.
   const [byBooking, byApplicant] = await Promise.all([
     chunked(bookingIds, async (ids) => {
-      const { data, error } = await supabase.from("interview_sessions").select("*").in("booking_id", ids);
+      const { data, error } = await supabase.from("interview_sessions").select("*").in("booking_id", ids); // in-ok: already one chunked() slice
       if (error) throw error;
       return data ?? [];
     }),
     chunked(applicants.map((a) => a.id), async (ids) => {
-      const { data, error } = await supabase.from("interview_sessions").select("*").in("applicant_id", ids);
+      const { data, error } = await supabase.from("interview_sessions").select("*").in("applicant_id", ids); // in-ok: already one chunked() slice
       if (error) throw error;
       return data ?? [];
     }),
@@ -118,7 +118,7 @@ export async function getInterviewWorkspace(quarterId: string, viewerId: string,
   ];
   const names = new Map<string, string>();
   if (profileIds.length > 0) {
-    const { data, error } = await supabase.from("profiles").select("id, name").in("id", profileIds);
+    const { data, error } = await supabase.from("profiles").select("id, name").in("id", profileIds); // in-ok: profile ids of execs
     if (error) throw error;
     for (const p of data ?? []) names.set(p.id, p.name);
   }
@@ -129,7 +129,7 @@ export async function getInterviewWorkspace(quarterId: string, viewerId: string,
     const { data, error } = await supabase
       .from("recruit_applicant_answers")
       .select("applicant_id, resume_url, essay_why, essay_teamwork, essay_bring")
-      .in("applicant_id", ids);
+      .in("applicant_id", ids); // in-ok: already one chunked() slice
     if (error) throw error;
     return data ?? [];
   })) {

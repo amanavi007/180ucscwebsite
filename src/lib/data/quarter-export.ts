@@ -6,6 +6,7 @@ import { getQuarterAttendanceRates } from "@/lib/data/attendance";
 import { statusLabel, HEALTH_LABELS } from "@/lib/project-labels";
 import { roleLabel } from "@/lib/auth/roles";
 import type { MembershipTeamRole } from "@/lib/supabase/database.types";
+import { fetchInChunks } from "@/lib/paginate";
 
 export interface QuarterExportRow {
   name: string;
@@ -44,22 +45,23 @@ export async function getQuarterExportRows(quarterId: string): Promise<QuarterEx
   const teamRoleByUser = new Map<string, MembershipTeamRole>();
 
   if (projectIds.length > 0) {
-    const [{ data: tasks, error: tasksError }, { data: memberships, error: membershipsError }] =
-      await Promise.all([
-        supabase.from("tasks").select("assignee_id, status").in("project_id", projectIds),
-        supabase.from("memberships").select("user_id, team_role").in("project_id", projectIds),
-      ]);
-    if (tasksError) throw tasksError;
-    if (membershipsError) throw membershipsError;
+    const [tasks, memberships] = await Promise.all([
+      fetchInChunks(projectIds, (chunk, from, to) =>
+        supabase.from("tasks").select("assignee_id, status").in("project_id", chunk).order("id").range(from, to),
+      ),
+      fetchInChunks(projectIds, (chunk, from, to) =>
+        supabase.from("memberships").select("user_id, team_role").in("project_id", chunk).order("id").range(from, to),
+      ),
+    ]);
 
-    for (const t of tasks ?? []) {
+    for (const t of tasks) {
       if (!t.assignee_id) continue;
       const entry = taskCounts.get(t.assignee_id) ?? { done: 0, total: 0 };
       entry.total += 1;
       if (t.status === "done") entry.done += 1;
       taskCounts.set(t.assignee_id, entry);
     }
-    for (const m of memberships ?? []) {
+    for (const m of memberships) {
       teamRoleByUser.set(m.user_id, m.team_role);
     }
   }

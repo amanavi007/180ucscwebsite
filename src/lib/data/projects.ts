@@ -5,6 +5,7 @@ import { computeProjectHealth } from "@/lib/project-health";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, MembershipTeamRole, TaskStatus } from "@/lib/supabase/database.types";
 import type { ProjectWithRelations, ProjectWithQuarter, MembershipWithProfile } from "./types";
+import { fetchInChunks } from "@/lib/paginate";
 
 /**
  * The stored `health` column is only ever set at insert time and never kept
@@ -17,17 +18,14 @@ async function withComputedHealth<T extends ProjectWithRelations>(
 ): Promise<T[]> {
   if (projects.length === 0) return projects;
 
-  const { data: tasks, error } = await supabase
-    .from("tasks")
-    .select("project_id, status, due_date")
-    .in(
-      "project_id",
-      projects.map((p) => p.id),
-    );
-  if (error) throw error;
+  const tasks = await fetchInChunks(
+    projects.map((p) => p.id),
+    (chunk, from, to) =>
+      supabase.from("tasks").select("project_id, status, due_date").in("project_id", chunk).order("id").range(from, to),
+  );
 
   const tasksByProject = new Map<string, { status: TaskStatus; due_date: string | null }[]>();
-  for (const task of tasks ?? []) {
+  for (const task of tasks) {
     const list = tasksByProject.get(task.project_id) ?? [];
     list.push(task);
     tasksByProject.set(task.project_id, list);
@@ -46,19 +44,21 @@ async function withLeadIds<T extends ProjectWithRelations>(
 ): Promise<T[]> {
   if (projects.length === 0) return projects;
 
-  const { data: leads, error } = await supabase
-    .from("memberships")
-    .select("project_id, user_id, team_role, profile:profiles(name)")
-    .in(
-      "project_id",
-      projects.map((p) => p.id),
-    )
-    .in("team_role", ["pm", "sc"]);
-  if (error) throw error;
+  const leads = await fetchInChunks(
+    projects.map((p) => p.id),
+    (chunk, from, to) =>
+      supabase
+        .from("memberships")
+        .select("project_id, user_id, team_role, profile:profiles(name)")
+        .in("project_id", chunk)
+        .in("team_role", ["pm", "sc"])
+        .order("id")
+        .range(from, to),
+  );
 
   const leadsByProject = new Map<string, string[]>();
   const pmsByProject = new Map<string, { id: string; name: string }[]>();
-  for (const lead of (leads ?? []) as unknown as {
+  for (const lead of leads as unknown as {
     project_id: string;
     user_id: string;
     team_role: MembershipTeamRole;

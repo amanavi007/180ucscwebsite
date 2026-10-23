@@ -13,6 +13,7 @@ import type {
   TaskStatus,
   TaskType,
 } from "@/lib/supabase/database.types";
+import { fetchInChunks, runInChunks } from "@/lib/paginate";
 
 type TaskUpdate = Database["public"]["Tables"]["tasks"]["Update"];
 
@@ -250,7 +251,7 @@ export async function resetTaskStage(taskId: string, projectId: string): Promise
 }
 
 /**
- * Bulk version of `deleteTask` -- one batched `.in("id", ...)` delete instead
+ * Bulk version of `deleteTask` -- one batched delete by id instead
  * of a loop, so reassigning/deleting a handful of tasks at once (e.g. moving
  * everything off someone who just left) doesn't fire N separate DB writes.
  * Gating mirrors `deleteTask`: leads may delete anything, everyone else only
@@ -266,10 +267,9 @@ export async function bulkDeleteTasks(taskIds: string[], projectId: string): Pro
   const supabase = await createClient();
 
   if (!leads) {
-    const { data: rows } = await supabase
-      .from("tasks")
-      .select("id, assignee_id, is_default_task")
-      .in("id", taskIds);
+    const rows = await fetchInChunks(taskIds, (chunk, from, to) =>
+      supabase.from("tasks").select("id, assignee_id, is_default_task").in("id", chunk).order("id").range(from, to),
+    );
 
     const allDeletable =
       !!rows &&
@@ -281,7 +281,7 @@ export async function bulkDeleteTasks(taskIds: string[], projectId: string): Pro
     }
   }
 
-  const { error } = await supabase.from("tasks").delete().in("id", taskIds);
+  const error = await runInChunks(taskIds, (chunk) => supabase.from("tasks").delete().in("id", chunk));
   if (error) return { error: error.message };
 
   revalidatePath(`/portal/projects/${projectId}`);
@@ -312,10 +312,9 @@ export async function bulkReassignTasks(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("tasks")
-    .update({ assignee_id: newAssigneeId })
-    .in("id", taskIds);
+  const error = await runInChunks(taskIds, (chunk) =>
+    supabase.from("tasks").update({ assignee_id: newAssigneeId }).in("id", chunk),
+  );
   if (error) return { error: error.message };
 
   revalidatePath(`/portal/projects/${projectId}`);

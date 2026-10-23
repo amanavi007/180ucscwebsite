@@ -393,7 +393,7 @@ export async function resetInterviewSessionAction(sessionId: string): Promise<Se
         .delete()
         .eq("applicant_id", session.applicant_id)
         .eq("stage", "interview")
-        .in("reviewer_id", reviewerIds);
+        .in("reviewer_id", reviewerIds); // in-ok: reviewers are execs
       if (reviewError) return { error: reviewError.message };
     }
   }

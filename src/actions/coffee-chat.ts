@@ -17,6 +17,7 @@ import {
   type ExistingSlotAssignment,
   type TimeBlockInput,
 } from "@/lib/coffee-chat";
+import { fetchInChunks, runInChunks } from "@/lib/paginate";
 
 export interface ActionResult {
   error?: string;
@@ -92,17 +93,25 @@ export async function removeAvailabilityBlockAction(
     );
 
     if (affected.length > 0) {
-      const { data: bookings } = await supabase
-        .from("coffee_chat_bookings")
-        .select("slot_id")
-        .eq("status", "confirmed")
-        .in("slot_id", affected.map((s) => s.id));
-      const bookedIds = new Set((bookings ?? []).map((b) => b.slot_id));
+      const bookings = await fetchInChunks(
+        affected.map((s) => s.id),
+        (chunk, from, to) =>
+          supabase
+            .from("coffee_chat_bookings")
+            .select("slot_id")
+            .eq("status", "confirmed")
+            .in("slot_id", chunk)
+            .order("id")
+            .range(from, to),
+      );
+      const bookedIds = new Set(bookings.map((b) => b.slot_id));
       const deletableIds = affected.filter((s) => !bookedIds.has(s.id)).map((s) => s.id);
       keptBookedCount = affected.length - deletableIds.length;
 
       if (deletableIds.length > 0) {
-        const { error: slotDeleteError } = await supabase.from("coffee_chat_slots").delete().in("id", deletableIds);
+        const slotDeleteError = await runInChunks(deletableIds, (chunk) =>
+          supabase.from("coffee_chat_slots").delete().in("id", chunk),
+        );
         if (slotDeleteError) return { error: slotDeleteError.message };
         removedSlotCount = deletableIds.length;
       }

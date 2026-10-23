@@ -23,6 +23,7 @@ import {
   parseInviteeList,
   type InterviewSlotAssignment,
 } from "@/lib/interview";
+import { fetchInChunks, runInChunks } from "@/lib/paginate";
 
 export interface ActionResult {
   error?: string;
@@ -47,15 +48,16 @@ export async function addInviteesAction(text: string): Promise<ActionResult & { 
   if (invitees.length === 0) return { error: errors[0] ?? "Paste at least one UCSC email.", errors };
 
   const supabase = await createClient();
-  const { data: existing, error: existingError } = await supabase
-    .from("interview_invitees")
-    .select("email")
-    .in(
-      "email",
+  let existing;
+  try {
+    existing = await fetchInChunks(
       invitees.map((i) => i.email),
+      (chunk, from, to) => supabase.from("interview_invitees").select("email").in("email", chunk).order("email").range(from, to),
     );
-  if (existingError) return { error: existingError.message };
-  const known = new Set((existing ?? []).map((e) => e.email));
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Could not check existing invitees." };
+  }
+  const known = new Set(existing.map((e) => e.email));
   const fresh = invitees.filter((i) => !known.has(i.email));
 
   if (fresh.length > 0) {
@@ -90,12 +92,16 @@ export async function inviteAboveCutoffAction(
 
   const byEmail = new Map(eligible.map((r) => [normalizeInviteeEmail(r.email), r.name]));
   const supabase = await createClient();
-  const { data: existing, error: existingError } = await supabase
-    .from("interview_invitees")
-    .select("email")
-    .in("email", [...byEmail.keys()]);
-  if (existingError) return { error: existingError.message };
-  const known = new Set((existing ?? []).map((e) => e.email));
+  let existing;
+  try {
+    existing = await fetchInChunks(
+      [...byEmail.keys()],
+      (chunk, from, to) => supabase.from("interview_invitees").select("email").in("email", chunk).order("email").range(from, to),
+    );
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Could not check existing invitees." };
+  }
+  const known = new Set(existing.map((e) => e.email));
   const fresh = [...byEmail].filter(([email]) => !known.has(email)).map(([email, name]) => ({ email, name }));
 
   if (fresh.length > 0) {
@@ -197,7 +203,7 @@ export async function removeInterviewAvailabilityAction(
     const deletable = affected.filter((s) => s.bookingStatus === "open").map((s) => s.id);
     keptBookedCount = affected.length - deletable.length;
     if (deletable.length > 0) {
-      const { error: slotDeleteError } = await supabase.from("interview_slots").delete().in("id", deletable);
+      const slotDeleteError = await runInChunks(deletable, (chunk) => supabase.from("interview_slots").delete().in("id", chunk));
       if (slotDeleteError) return { error: slotDeleteError.message };
       removedSlotCount = deletable.length;
     }
@@ -272,7 +278,10 @@ async function generateMissingInterviewSlots(
       .insert(withIds.flatMap((g) => g.execIds.map((execId) => ({ slot_id: g.id, exec_id: execId }))));
     if (linkError) {
       // Don't leave staffless slots behind.
-      await supabase.from("interview_slots").delete().in("id", withIds.map((g) => g.id));
+      await runInChunks(
+        withIds.map((g) => g.id),
+        (chunk) => supabase.from("interview_slots").delete().in("id", chunk),
+      );
       return { error: linkError.message };
     }
   }
@@ -280,7 +289,7 @@ async function generateMissingInterviewSlots(
   // New slots are in; now drop the unbooked ones they replace.
   if (staleIds.length > 0) {
     const supabase = await createClient();
-    const { error: deleteError } = await supabase.from("interview_slots").delete().in("id", staleIds);
+    const deleteError = await runInChunks(staleIds, (chunk) => supabase.from("interview_slots").delete().in("id", chunk));
     if (deleteError) return { error: deleteError.message };
   }
 

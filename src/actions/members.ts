@@ -267,7 +267,7 @@ export async function archiveMember(userId: string, input: ArchiveMemberInput): 
     const current = ((rows ?? []) as unknown as { id: string; project_id: string; project: { quarter_id: string } | null }[])
       .filter((r) => r.project?.quarter_id === activeQuarter.id);
     if (current.length > 0) {
-      await supabase.from("memberships").delete().in("id", current.map((r) => r.id));
+      await supabase.from("memberships").delete().in("id", current.map((r) => r.id)); // in-ok: one person's memberships in one quarter
       // Their tasks on those teams go too, so nobody chases someone who left.
       await Promise.all(
         current.map((r) => supabase.rpc("remove_member_work", { p_project_id: r.project_id, p_user_id: userId })),

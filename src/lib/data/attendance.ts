@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { computeAttendanceRate, type AttendanceRateResult } from "@/lib/attendance";
 import { getMeetingDatesForQuarter } from "@/lib/data/meeting-dates";
 import type { AttendanceMark } from "@/lib/supabase/database.types";
+import { fetchInChunks } from "@/lib/paginate";
 
 /** Distinct session dates logged org-wide for a quarter -- the shared rate denominator. */
 export async function getQuarterSessionDates(quarterId: string): Promise<string[]> {
@@ -210,17 +211,14 @@ export async function getTeamAttendanceStatus(
   const allMeetingDates = await getMeetingDatesForQuarter(quarterId);
   const expectedDates = allMeetingDates.filter((d) => d <= today);
 
-  const { data: sessions, error: sessionsError } = await supabase
-    .from("attendance_sessions")
-    .select("project_id, date")
-    .in(
-      "project_id",
-      projects.map((p) => p.id),
-    );
-  if (sessionsError) throw sessionsError;
+  const sessions = await fetchInChunks(
+    projects.map((p) => p.id),
+    (chunk, from, to) =>
+      supabase.from("attendance_sessions").select("project_id, date").in("project_id", chunk).order("id").range(from, to),
+  );
 
   const datesByProject = new Map<string, Set<string>>();
-  for (const s of sessions ?? []) {
+  for (const s of sessions) {
     const set = datesByProject.get(s.project_id) ?? new Set<string>();
     set.add(s.date);
     datesByProject.set(s.project_id, set);

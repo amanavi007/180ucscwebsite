@@ -10,6 +10,7 @@ import {
   type ReviewKind,
   type Rubric,
 } from "@/lib/prelim-review/rubric";
+import { fetchInChunks } from "@/lib/paginate";
 
 /** Latest saved version, or the built-in starter rubric until an exec saves one. */
 export async function getCurrentRubric(kind: ReviewKind): Promise<Rubric> {
@@ -60,14 +61,18 @@ export async function listReviews(): Promise<PrelimReviewRow[]> {
   const authorIds = [...new Set(rows.map((r) => r.created_by))];
   const names = new Map<string, string>();
   if (authorIds.length > 0) {
-    const { data: people } = await supabase.from("profiles").select("id, name").in("id", authorIds);
-    for (const p of people ?? []) names.set(p.id, p.name);
+    const people = await fetchInChunks(authorIds, (chunk, from, to) =>
+      supabase.from("profiles").select("id, name").in("id", chunk).order("id").range(from, to),
+    );
+    for (const p of people) names.set(p.id, p.name);
   }
   const projectIds = [...new Set(rows.map((r) => r.project_id))];
   const projectNames = new Map<string, string>();
   if (projectIds.length > 0) {
-    const { data: projects } = await supabase.from("projects").select("id, client_name").in("id", projectIds);
-    for (const p of projects ?? []) projectNames.set(p.id, p.client_name);
+    const projects = await fetchInChunks(projectIds, (chunk, from, to) =>
+      supabase.from("projects").select("id, client_name").in("id", chunk).order("id").range(from, to),
+    );
+    for (const p of projects) projectNames.set(p.id, p.client_name);
   }
   return rows.map((r) => {
     const results = z.array(criterionResultSchema).safeParse(r.result);

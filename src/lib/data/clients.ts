@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { fetchInChunks } from "@/lib/paginate";
 
 export interface ClientListRow {
   id: string;
@@ -40,20 +41,22 @@ export async function getClients(): Promise<ClientListRow[]> {
   if (error) throw error;
   if (!clients || clients.length === 0) return [];
 
-  const [{ data: projects, error: projectsError }, { data: activeQuarter }] = await Promise.all([
-    supabase
-      .from("projects")
-      .select("client_id, quarter:quarters(id, name, start_date)")
-      .in(
-        "client_id",
-        clients.map((c) => c.id),
-      ),
+  const [projects, { data: activeQuarter }] = await Promise.all([
+    fetchInChunks(
+      clients.map((c) => c.id),
+      (chunk, from, to) =>
+        supabase
+          .from("projects")
+          .select("client_id, quarter:quarters(id, name, start_date)")
+          .in("client_id", chunk)
+          .order("id")
+          .range(from, to),
+    ),
     supabase.from("quarters").select("id").eq("is_active", true).maybeSingle(),
   ]);
-  if (projectsError) throw projectsError;
 
   const byClient = new Map<string, { id: string; name: string; start_date: string | null }[]>();
-  for (const p of (projects ?? []) as unknown as {
+  for (const p of projects as unknown as {
     client_id: string | null;
     quarter: { id: string; name: string; start_date: string | null } | null;
   }[]) {

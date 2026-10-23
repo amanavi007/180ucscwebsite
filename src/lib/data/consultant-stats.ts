@@ -5,6 +5,7 @@ import { getQuarterAttendanceRates } from "@/lib/data/attendance";
 import { getOrgTodayDateString } from "@/lib/date";
 import { roleLabel, isExec } from "@/lib/auth/roles";
 import type { AttendanceRateResult } from "@/lib/attendance";
+import { fetchInChunks } from "@/lib/paginate";
 
 export interface ConsultantStatsRow {
   userId: string;
@@ -38,13 +39,11 @@ export async function getConsultantStatsRollup(quarterId: string): Promise<Consu
   const taskCounts = new Map<string, { done: number; total: number; overdue: number }>();
 
   if (projectIds.length > 0) {
-    const { data: tasks, error } = await supabase
-      .from("tasks")
-      .select("assignee_id, status, due_date")
-      .in("project_id", projectIds);
-    if (error) throw error;
+    const tasks = await fetchInChunks(projectIds, (chunk, from, to) =>
+      supabase.from("tasks").select("assignee_id, status, due_date").in("project_id", chunk).order("id").range(from, to),
+    );
 
-    for (const t of tasks ?? []) {
+    for (const t of tasks) {
       if (!t.assignee_id) continue;
       const entry = taskCounts.get(t.assignee_id) ?? { done: 0, total: 0, overdue: 0 };
       entry.total += 1;

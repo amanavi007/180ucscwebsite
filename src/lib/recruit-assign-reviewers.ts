@@ -43,7 +43,7 @@ export async function assignReviewersForQuarter(
         .select("applicant_id, reviewer_id")
         .eq("stage", "resume")
         .not("submitted_at", "is", null)
-        .in("reviewer_id", [...new Set(stale.map((s) => s.reviewerId))])
+        .in("reviewer_id", [...new Set(stale.map((s) => s.reviewerId))]) // in-ok: reviewers are execs
         .order("id")
         .range(from, to),
     );

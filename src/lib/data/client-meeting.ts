@@ -15,7 +15,7 @@ async function lookupProfileNames(
   const { data, error } = await supabase
     .from("profiles")
     .select("id, name")
-    .in("id", ids);
+    .in("id", ids); // in-ok: profile ids of execs
   if (error) throw error;
   return new Map((data ?? []).map((p) => [p.id, p.name]));
 }

@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeTime } from "@/lib/coffee-chat";
 import { clientMeetingEventLines } from "@/lib/client-meeting-invite";
+import { fetchInChunks } from "@/lib/paginate";
 
 /** VEVENT lines for every confirmed client meeting this exec is on (per the booking's panel snapshot). */
 export async function buildClientMeetingFeedEvents(execId: string): Promise<string[]> {
@@ -14,18 +15,18 @@ export async function buildClientMeetingFeedEvents(execId: string): Promise<stri
   if (error) throw error;
   if (!meetings || meetings.length === 0) return [];
 
-  const { data: slots, error: slotsError } = await supabase
-    .from("client_meeting_slots")
-    .select("id, date, start_time, end_time")
-    .in("id", meetings.map((m) => m.slot_id));
-  if (slotsError) throw slotsError;
-  const slotsById = new Map((slots ?? []).map((s) => [s.id, s]));
+  const slots = await fetchInChunks(
+    meetings.map((m) => m.slot_id),
+    (chunk, from, to) =>
+      supabase.from("client_meeting_slots").select("id, date, start_time, end_time").in("id", chunk).order("id").range(from, to),
+  );
+  const slotsById = new Map(slots.map((s) => [s.id, s]));
 
   const otherIds = [...new Set(meetings.flatMap((m) => m.panel_exec_ids).filter((id) => id !== execId))];
-  const { data: profiles, error: profilesError } =
-    otherIds.length > 0 ? await supabase.from("profiles").select("id, name").in("id", otherIds) : { data: [], error: null };
-  if (profilesError) throw profilesError;
-  const names = new Map((profiles ?? []).map((p) => [p.id, p.name]));
+  const profiles = await fetchInChunks(otherIds, (chunk, from, to) =>
+    supabase.from("profiles").select("id, name").in("id", chunk).order("id").range(from, to),
+  );
+  const names = new Map(profiles.map((p) => [p.id, p.name]));
 
   return meetings.flatMap((m) => {
     const slot = slotsById.get(m.slot_id);

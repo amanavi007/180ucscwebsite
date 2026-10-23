@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllPages, chunkIds } from "@/lib/paginate";
 
 export interface NotificationItem {
   id: string;
@@ -83,15 +84,29 @@ export async function getMyNotifications(
       : Promise.resolve({ data: null }),
     isExecUser
       ? (async () => {
-          const { data: mine } = await supabase.from("interview_slot_execs").select("slot_id").eq("exec_id", userId);
-          const slotIds = (mine ?? []).map((r) => r.slot_id);
+          const mine = await fetchAllPages((from, to) =>
+            supabase.from("interview_slot_execs").select("slot_id").eq("exec_id", userId).order("slot_id").range(from, to),
+          );
+          const slotIds = mine.map((r) => r.slot_id);
           if (slotIds.length === 0) return { data: [] };
-          return supabase
-            .from("interview_bookings")
-            .select("id, applicant_name, status, created_at, cancelled_at")
-            .in("slot_id", slotIds)
-            .order("created_at", { ascending: false })
-            .limit(15);
+          // Newest 15 per chunk of slot ids, then the newest 15 overall.
+          const perChunk = await Promise.all(
+            chunkIds(slotIds).map((chunk) =>
+              supabase
+                .from("interview_bookings")
+                .select("id, applicant_name, status, created_at, cancelled_at")
+                .in("slot_id", chunk)
+                .order("created_at", { ascending: false })
+                .limit(15),
+            ),
+          );
+          const failed = perChunk.find((r) => r.error);
+          if (failed) return { data: null, error: failed.error };
+          const data = perChunk
+            .flatMap((r) => r.data ?? [])
+            .sort((a, b) => b.created_at.localeCompare(a.created_at))
+            .slice(0, 15);
+          return { data };
         })()
       : Promise.resolve({ data: null }),
     isExecUser
@@ -126,17 +141,25 @@ export async function getMyNotifications(
   ]);
 
   const leadProjectIds = (leadMemberships ?? []).map((m) => m.project_id);
-  const { data: commentTasks } =
-    leadProjectIds.length > 0
-      ? await supabase
-          .from("tasks")
-          .select("id, task_name, project_id, updated_at, assignee:profiles!tasks_assignee_id_fkey(name), project:projects(client_name)")
-          .in("project_id", leadProjectIds)
-          .eq("stage_step", "pm_sc_comments")
-          .neq("assignee_id", userId)
-          .order("updated_at", { ascending: false })
-          .limit(15)
-      : { data: null };
+  const commentTaskChunks = await Promise.all(
+    chunkIds(leadProjectIds).map((chunk) =>
+      supabase
+        .from("tasks")
+        .select("id, task_name, project_id, updated_at, assignee:profiles!tasks_assignee_id_fkey(name), project:projects(client_name)")
+        .in("project_id", chunk)
+        .eq("stage_step", "pm_sc_comments")
+        .neq("assignee_id", userId)
+        .order("updated_at", { ascending: false })
+        .limit(15),
+    ),
+  );
+  const commentTasks =
+    commentTaskChunks.length > 0
+      ? commentTaskChunks
+          .flatMap((r) => r.data ?? [])
+          .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+          .slice(0, 15)
+      : null;
 
   const items: NotificationItem[] = [];
 

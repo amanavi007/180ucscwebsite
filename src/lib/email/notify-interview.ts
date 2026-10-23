@@ -30,7 +30,7 @@ async function loadBookingContext(bookingId: string) {
   const { data: execs, error: execsError } = await supabase
     .from("profiles")
     .select("id, name, email")
-    .in(
+    .in( // in-ok: one interview panel
       "id",
       (links ?? []).map((l) => l.exec_id),
     );
