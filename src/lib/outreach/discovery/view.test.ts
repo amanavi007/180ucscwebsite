@@ -36,8 +36,8 @@ describe("filterByOutcome", () => {
   const rows = [c("added"), c("no_email"), c("duplicate"), c("unreachable"), c("no_facts"), c("error")];
   it("returns everything for all", () => expect(filterByOutcome(rows, "all")).toHaveLength(6));
   it("returns one outcome", () => expect(filterByOutcome(rows, "added").map((r) => r.outcome)).toEqual(["added"]));
-  it("groups what discovery is still working on under Retrying", () => {
-    expect(filterByOutcome(rows, "retrying").map((r) => r.outcome).sort()).toEqual(["error", "no_email", "unreachable"]);
+  it("groups everything discovery set aside under Skipped", () => {
+    expect(filterByOutcome(rows, "skipped").map((r) => r.outcome).sort()).toEqual(["duplicate", "error", "no_email", "no_facts", "unreachable"]);
   });
   it("offers an All chip first", () => expect(OUTCOME_FILTERS[0].key).toBe("all"));
 });
@@ -46,13 +46,12 @@ describe("outcomesForFilter and countsByFilter", () => {
   it("maps a filter to the database outcomes it covers, and all to none", () => {
     expect(outcomesForFilter("all")).toBeNull();
     expect(outcomesForFilter("ready")).toEqual(["ready"]);
-    expect(outcomesForFilter("retrying")).toEqual(["no_email", "unreachable", "error"]);
-    expect(outcomesForFilter("gave_up")).toEqual(["failed", "no_facts"]);
+    expect(outcomesForFilter("skipped")).toEqual(["duplicate", "no_email", "unreachable", "error", "failed", "no_facts"]);
     expect(outcomesForFilter("nonsense")).toBeNull();
   });
   it("totals each filter from the per-outcome counts", () => {
     const counts = countsByFilter({ ready: 400, added: 12, no_email: 300, duplicate: 3, unreachable: 5, error: 1 });
-    expect(counts).toMatchObject({ all: 721, ready: 400, added: 12, duplicate: 3, retrying: 306, gave_up: 0 });
+    expect(counts).toMatchObject({ all: 721, ready: 400, added: 12, skipped: 309 });
   });
   it("has a Ready filter after All", () => {
     expect(OUTCOME_FILTERS.map((f) => f.key).slice(0, 2)).toEqual(["all", "ready"]);

@@ -41,10 +41,8 @@ export const OUTCOME_FILTERS: { key: string; label: string; outcomes: string[] }
   { key: "all", label: "All", outcomes: [] },
   { key: "ready", label: "Ready", outcomes: ["ready"] },
   { key: "added", label: "Added", outcomes: ["added"] },
-  { key: "duplicate", label: "Already known", outcomes: ["duplicate"] },
-  // Discovery works on these by itself (a deeper search, another try, a look for a new website). Nothing to do by hand.
-  { key: "retrying", label: "Retrying", outcomes: ["no_email", "unreachable", "error"] },
-  { key: "gave_up", label: "Gave up", outcomes: ["failed", "no_facts"] },
+  // Everything discovery set aside. Each row's chip says why (Already known, Retrying, Gave up); none of it needs doing by hand.
+  { key: "skipped", label: "Skipped", outcomes: ["duplicate", "no_email", "unreachable", "error", "failed", "no_facts"] },
 ];
 
 /** Every outcome the database can hold, for counting. */

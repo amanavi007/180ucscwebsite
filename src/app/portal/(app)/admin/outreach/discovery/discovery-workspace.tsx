@@ -148,11 +148,9 @@ export function DiscoveryWorkspace({ overview }: { overview: DiscoveryOverview }
               ))}
             </div>
           </div>
-          {(outcome === "retrying" || outcome === "gave_up") && (
+          {outcome === "skipped" && (
             <p className="text-sm text-muted-foreground">
-              {outcome === "retrying"
-                ? "Discovery is working on these by itself: another look at the website, a search for a new one, a deeper read for an email. Nothing to do here."
-                : "Discovery tried and moved on: no working website, no public email, or the site asks bots to stay out. Nothing to do here. You can still add an email yourself if you happen to know one."}
+              Companies discovery set aside. &quot;Retrying&quot; ones it is still working on by itself; &quot;Gave up&quot; ones had no working website or no public email. Nothing to do here. Open one to add an email yourself, or to overrule &quot;Already known&quot;.
             </p>
           )}
 
