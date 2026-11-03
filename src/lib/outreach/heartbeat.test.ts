@@ -7,22 +7,22 @@ const hoursAgo = (h: number) => new Date(now.getTime() - h * 3_600_000).toISOStr
 describe("heartbeatKey", () => {
   it("names a setting per job", () => {
     expect(heartbeatKey("prepare")).toBe("outreach_heartbeat_prepare");
-    expect(HEARTBEAT_JOBS).toEqual(["discover", "repair", "prepare", "send"]);
+    expect(HEARTBEAT_JOBS).toEqual(["discover", "repair", "prepare", "send", "agent"]);
   });
 });
 
 describe("staleSiblings", () => {
   it("flags another job whose last run is more than 30 hours old", () => {
-    expect(staleSiblings(now, { discover: hoursAgo(10), repair: hoursAgo(9), prepare: hoursAgo(9), send: hoursAgo(40) }, "prepare")).toEqual(["send"]);
+    expect(staleSiblings(now, { discover: hoursAgo(10), repair: hoursAgo(9), prepare: hoursAgo(9), send: hoursAgo(40), agent: null }, "prepare")).toEqual(["send"]);
   });
   it("never flags the job doing the checking", () => {
-    expect(staleSiblings(now, { discover: hoursAgo(100), repair: hoursAgo(1), prepare: hoursAgo(100), send: hoursAgo(1) }, "discover")).toEqual(["prepare"]);
+    expect(staleSiblings(now, { discover: hoursAgo(100), repair: hoursAgo(1), prepare: hoursAgo(100), send: hoursAgo(1), agent: null }, "discover")).toEqual(["prepare"]);
   });
   it("ignores a job that has never reported, since a new job has no history yet", () => {
-    expect(staleSiblings(now, { discover: null, repair: null, prepare: hoursAgo(5), send: null }, "send")).toEqual([]);
+    expect(staleSiblings(now, { discover: null, repair: null, prepare: hoursAgo(5), send: null, agent: null }, "send")).toEqual([]);
   });
   it("is quiet when everything ran in the last day", () => {
-    expect(staleSiblings(now, { discover: hoursAgo(10), repair: hoursAgo(9), prepare: hoursAgo(9), send: hoursAgo(8) }, "send")).toEqual([]);
+    expect(staleSiblings(now, { discover: hoursAgo(10), repair: hoursAgo(9), prepare: hoursAgo(9), send: hoursAgo(8), agent: null }, "send")).toEqual([]);
   });
 });
 

@@ -25,7 +25,7 @@ export function normalizeManualEmail(input: string): { email: string } | { error
 }
 
 /** Inboxes that are not for a business conversation, so we never write to them. */
-const NOT_FOR_BUSINESS = new Set([
+export const NOT_FOR_BUSINESS = new Set([
   "careers", "career", "jobs", "job", "hiring", "recruiting", "recruiter", "hr", "people", "talent",
   "security", "abuse", "privacy", "legal", "compliance", "dmca", "billing", "accounts", "invoices", "payments",
   "support", "help", "helpdesk", "customerservice", "service", "sales", "press", "media", "pr", "partners",
@@ -34,17 +34,18 @@ const NOT_FOR_BUSINESS = new Set([
   "noreply", "no-reply", "donotreply", "do-not-reply", "mailer-daemon", "postmaster", "webmaster", "unsubscribe", "bounce", "bounces",
 ]);
 
+/** Whether an address is one we may write to: not a role inbox like sales@ or careers@. A named person, founders@, hello@, contact@ and info@ all pass. */
+export function isBusinessInbox(email: string): boolean {
+  const local = email.trim().toLowerCase().split("@")[0] ?? "";
+  return local.length > 0 && local.length <= 30 && !NOT_FOR_BUSINESS.has(local) && !NOT_FOR_BUSINESS.has(local.split(/[._+-]/)[0]);
+}
+
 /** Generic inboxes, best first. Anything not listed here is treated as a named person's inbox. */
 const GENERIC_ORDER = ["founders", "founder", "hello", "hey", "hi", "contact", "team", "info", "general", "office", "mail", "admin", "inquiries", "enquiries"];
 
-const firstToken = (local: string) => local.split(/[._+-]/)[0];
-
 /** The one address worth writing to: a named inbox, else the friendliest generic one; null when only role inboxes exist. */
 export function pickBestEmail(emails: string[]): string | null {
-  const usable = emails.filter((email) => {
-    const local = email.split("@")[0];
-    return local.length <= 30 && !NOT_FOR_BUSINESS.has(local) && !NOT_FOR_BUSINESS.has(firstToken(local));
-  });
+  const usable = emails.filter(isBusinessInbox);
   const rank = (email: string) => {
     const index = GENERIC_ORDER.indexOf(email.split("@")[0]);
     return index === -1 ? -1 : index;

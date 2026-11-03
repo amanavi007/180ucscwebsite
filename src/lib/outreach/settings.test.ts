@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_OUTREACH_SETTINGS, OUTREACH_SETTING_KEYS, buildFromAddress, parseOutreachSettings, replyForwardRecipients } from "./settings";
+import { DEFAULT_AGENT_TARGETS, DEFAULT_OUTREACH_SETTINGS, OUTREACH_SETTING_KEYS, buildFromAddress, parseOutreachSettings, replyForwardRecipients } from "./settings";
 
 describe("parseOutreachSettings", () => {
   it("returns the defaults for no rows", () => {
@@ -36,6 +36,9 @@ describe("parseOutreachSettings", () => {
       ["outreach_discovery_regions", "Oakland, Berkeley"],
       ["outreach_discovery_industries", "Healthcare; Engineering, Product and Design"],
       ["outreach_discovery_max_team", "30"],
+      ["outreach_agent_enabled", "true"],
+      ["outreach_agent_daily_target", "8"],
+      ["outreach_agent_targets", JSON.stringify([{ segment: "nonprofit", niche: "strategy", regions: ["Santa Cruz"], minSize: 5, maxSize: 50, share: 100, needs: "operations" }])],
     ].map(([key, value]) => ({ key, value }));
     expect(parseOutreachSettings(rows)).toEqual({
       mode: "live",
@@ -55,7 +58,18 @@ describe("parseOutreachSettings", () => {
       discoveryMaxTeam: 30,
       postalAddress: "1 Main St",
       followupDays: [3, 7, 14],
+      agentEnabled: true,
+      agentDailyTarget: 8,
+      agentTargets: [{ segment: "nonprofit", niche: "strategy", regions: ["Santa Cruz"], minSize: 5, maxSize: 50, share: 100, needs: "operations" }],
     });
+  });
+
+  it("keeps the agent off and on the default targets until told otherwise", () => {
+    const s = parseOutreachSettings([{ key: "outreach_agent_targets", value: "not json" }]);
+    expect(s.agentEnabled).toBe(false);
+    expect(s.agentDailyTarget).toBe(15);
+    expect(s.agentTargets).toEqual(DEFAULT_AGENT_TARGETS);
+    expect(s.agentTargets.map((t) => t.share)).toEqual([40, 40, 20]);
   });
 
   it("falls back to defaults for bad values", () => {
@@ -72,7 +86,7 @@ describe("parseOutreachSettings", () => {
   });
 
   it("lists every key it reads", () => {
-    expect(OUTREACH_SETTING_KEYS).toHaveLength(17);
+    expect(OUTREACH_SETTING_KEYS).toHaveLength(20);
     expect(OUTREACH_SETTING_KEYS).toContain("outreach_mode");
   });
 });

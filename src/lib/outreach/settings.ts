@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export type OutreachMode = "off" | "dry_run" | "self_only" | "exec_only" | "live";
 
 export interface OutreachSettings {
@@ -30,6 +32,69 @@ export interface OutreachSettings {
   postalAddress: string;
   /** Business days after the first send for each follow-up, ascending. */
   followupDays: number[];
+  /** Master switch for the external research agent's API. */
+  agentEnabled: boolean;
+  /** Net-new prospects the agent should supply per run day. */
+  agentDailyTarget: number;
+  /** Who the agent should look for, by segment. */
+  agentTargets: AgentTarget[];
+}
+
+export const AGENT_SEGMENTS = ["nonprofit", "startup", "small_business", "other"] as const;
+export type AgentSegment = (typeof AGENT_SEGMENTS)[number];
+
+export const agentTargetSchema = z.object({
+  segment: z.enum(AGENT_SEGMENTS),
+  niche: z.enum(["med-tech", "tech", "strategy", "other"]),
+  regions: z.array(z.string().trim().min(1).max(60)).min(1).max(30),
+  minSize: z.number().int().min(0).max(100_000),
+  maxSize: z.number().int().min(1).max(100_000),
+  /** Share of the daily target, as a percentage; approximate over a week. */
+  share: z.number().min(0).max(100),
+  needs: z.string().trim().min(1).max(600),
+});
+export const agentTargetsSchema = z.array(agentTargetSchema).min(1).max(10);
+export type AgentTarget = z.infer<typeof agentTargetSchema>;
+
+export const DEFAULT_AGENT_TARGETS: AgentTarget[] = [
+  {
+    segment: "nonprofit",
+    niche: "strategy",
+    regions: ["Santa Cruz", "Monterey", "San Francisco", "Oakland", "San Jose", "Berkeley"],
+    minSize: 5,
+    maxSize: 200,
+    share: 40,
+    needs: "program growth, fundraising strategy, community outreach, operations, impact measurement",
+  },
+  {
+    segment: "startup",
+    niche: "tech",
+    regions: ["San Francisco", "Palo Alto", "Mountain View", "San Jose", "Berkeley", "Oakland", "Menlo Park", "Redwood City", "Sunnyvale", "Santa Cruz"],
+    minSize: 5,
+    maxSize: 50,
+    share: 40,
+    needs: "product and go-to-market strategy, user/market research, data and technical projects — the chapter has many technically strong consultants",
+  },
+  {
+    segment: "small_business",
+    niche: "other",
+    regions: ["Santa Cruz", "San Francisco", "Oakland", "Berkeley", "San Jose"],
+    minSize: 5,
+    maxSize: 200,
+    share: 20,
+    needs: "growth strategy, marketing, operations",
+  },
+];
+
+/** The targets saved as JSON, or the defaults when nothing valid is saved. */
+export function parseAgentTargets(raw: string | undefined): AgentTarget[] {
+  if (!raw?.trim()) return DEFAULT_AGENT_TARGETS;
+  try {
+    const parsed = agentTargetsSchema.safeParse(JSON.parse(raw));
+    return parsed.success && parsed.data.every((t) => t.maxSize >= t.minSize) ? parsed.data : DEFAULT_AGENT_TARGETS;
+  } catch {
+    return DEFAULT_AGENT_TARGETS;
+  }
 }
 
 export const DEFAULT_OUTREACH_SETTINGS: OutreachSettings = {
@@ -50,6 +115,9 @@ export const DEFAULT_OUTREACH_SETTINGS: OutreachSettings = {
   discoveryMaxTeam: 50,
   postalAddress: "1156 High St, Santa Cruz, CA 95064",
   followupDays: [4, 9, 15],
+  agentEnabled: false,
+  agentDailyTarget: 15,
+  agentTargets: DEFAULT_AGENT_TARGETS,
 };
 
 export const OUTREACH_SETTING_KEYS = [
@@ -70,6 +138,9 @@ export const OUTREACH_SETTING_KEYS = [
   "outreach_discovery_max_team",
   "outreach_postal_address",
   "outreach_followup_days",
+  "outreach_agent_enabled",
+  "outreach_agent_daily_target",
+  "outreach_agent_targets",
 ];
 
 const MODES: OutreachMode[] = ["off", "dry_run", "self_only", "exec_only", "live"];
@@ -128,6 +199,9 @@ export function parseOutreachSettings(rows: { key: string; value: string }[]): O
     discoveryMaxTeam: wholeNumber(get.outreach_discovery_max_team, 1, 1000) ?? d.discoveryMaxTeam,
     postalAddress: get.outreach_postal_address?.trim() || d.postalAddress,
     followupDays: followupDays(get.outreach_followup_days) ?? d.followupDays,
+    agentEnabled: get.outreach_agent_enabled === "true",
+    agentDailyTarget: wholeNumber(get.outreach_agent_daily_target, 0, 100) ?? d.agentDailyTarget,
+    agentTargets: parseAgentTargets(get.outreach_agent_targets),
   };
 }
 

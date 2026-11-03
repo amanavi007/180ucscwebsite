@@ -21,7 +21,7 @@ import { factsToJson, loadOutreachSettings } from "./outreach";
 type Admin = ReturnType<typeof createAdminClient>;
 
 /** Prospects waiting to be sent above this many mean discovery is outrunning sending (three times the top daily cap of 40). */
-const BACKLOG_LIMIT = 120;
+export const BACKLOG_LIMIT = 120;
 const MAX_ATTEMPTS_PER_RUN = 60;
 const BUDGET_MS = 240_000;
 
@@ -35,6 +35,16 @@ async function discoveryOwner(admin: Admin): Promise<string> {
   const { data, error } = await admin.from("profiles").select("id").in("role", EXEC_ROLES).order("created_at").limit(1);
   if (error || !data?.[0]) throw new Error("No exec profile to create discovered prospects under.");
   return data[0].id;
+}
+
+/** Prospects waiting to be sent: what discovery and the research agent hold back for. */
+export async function countBacklog(admin: Admin): Promise<number> {
+  const { count, error } = await admin
+    .from("outreach_prospects")
+    .select("id", { count: "exact", head: true })
+    .in("status", ["new", "verified", "drafted"]); // in-ok: short list of statuses
+  if (error) throw error;
+  return count ?? 0;
 }
 
 type CandidateRow = Database["public"]["Tables"]["outreach_discovery_candidates"]["Row"];
@@ -54,6 +64,7 @@ export function recordToRow(r: CandidateRecord): CandidateInsert {
     email_source_url: r.emailSourceUrl,
     founders: r.founders as unknown as Json,
     payload: r.payload as unknown as Json,
+    segment: r.payload?.prospect.segment ?? null,
   };
 }
 
@@ -127,14 +138,7 @@ export async function buildDiscoveryDeps(): Promise<DiscoveryDeps> {
       return count ?? 0;
     },
 
-    backlog: async () => {
-      const { count, error } = await admin
-        .from("outreach_prospects")
-        .select("id", { count: "exact", head: true })
-        .in("status", ["new", "verified", "drafted"]); // in-ok: short list of statuses
-      if (error) throw error;
-      return count ?? 0;
-    },
+    backlog: () => countBacklog(admin),
 
     findDuplicate: async ({ domain, name }) => {
       if (await prospectBy("contact_domain", domain)) return "Already a prospect.";
@@ -169,6 +173,7 @@ export async function buildDiscoveryDeps(): Promise<DiscoveryDeps> {
           company: p.company,
           website: p.website,
           niche: p.niche,
+          segment: p.segment ?? null,
           size_stage: p.sizeStage,
           summary: p.summary,
           facts: factsToJson(p.facts),

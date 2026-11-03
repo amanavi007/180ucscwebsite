@@ -331,6 +331,7 @@ export interface Database {
           company: string;
           website: string | null;
           niche: string | null;
+          segment: string | null;
           size_stage: string | null;
           summary: string | null;
           why_fit: string | null;
@@ -356,6 +357,7 @@ export interface Database {
           company: string;
           website?: string | null;
           niche?: string | null;
+          segment?: string | null;
           size_stage?: string | null;
           summary?: string | null;
           why_fit?: string | null;
@@ -447,6 +449,11 @@ export interface Database {
           created_at: string;
           attempts: number;
           last_attempt_at: string | null;
+          agent_claimed_at: string | null;
+          agent_claim_token: string | null;
+          agent_attempts: number;
+          agent_last_reason: string | null;
+          segment: string | null;
         };
         Insert: {
           id?: string;
@@ -465,8 +472,67 @@ export interface Database {
           created_at?: string;
           attempts?: number;
           last_attempt_at?: string | null;
+          agent_claimed_at?: string | null;
+          agent_claim_token?: string | null;
+          agent_attempts?: number;
+          agent_last_reason?: string | null;
+          segment?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["outreach_discovery_candidates"]["Insert"]>;
+        Relationships: [];
+      };
+      outreach_agent_keys: {
+        Row: {
+          id: string;
+          label: string;
+          key_hash: string;
+          key_prefix: string;
+          scopes: string[];
+          created_by: string;
+          last_used_at: string | null;
+          revoked_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          label: string;
+          key_hash: string;
+          key_prefix: string;
+          scopes?: string[];
+          created_by: string;
+          last_used_at?: string | null;
+          revoked_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["outreach_agent_keys"]["Insert"]>;
+        Relationships: [];
+      };
+      outreach_agent_runs: {
+        Row: {
+          id: string;
+          key_id: string | null;
+          idempotency_key: string | null;
+          kind: string;
+          evaluated: number;
+          submitted: number;
+          accepted: number;
+          skipped: Json;
+          detail: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          key_id?: string | null;
+          idempotency_key?: string | null;
+          kind: string;
+          evaluated?: number;
+          submitted?: number;
+          accepted?: number;
+          skipped?: Json;
+          detail?: Json;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["outreach_agent_runs"]["Insert"]>;
         Relationships: [];
       };
       outreach_suppressions: {
@@ -1463,6 +1529,10 @@ export interface Database {
       };
     };
     Functions: {
+      claim_outreach_agent_tasks: {
+        Args: { p_limit: number };
+        Returns: Database["public"]["Tables"]["outreach_discovery_candidates"]["Row"][];
+      };
       remove_member_work: {
         Args: { p_project_id: string; p_user_id: string };
         Returns: undefined;

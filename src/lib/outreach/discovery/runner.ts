@@ -23,6 +23,8 @@ export interface NewProspect {
   company: string;
   website: string;
   niche: "med-tech" | "tech" | "strategy" | "other" | null;
+  /** Unset on prospects stored before segments existed. */
+  segment?: "nonprofit" | "startup" | "small_business" | "other" | null;
   sizeStage: string | null;
   summary: string | null;
   facts: ProspectFact[];
@@ -110,6 +112,7 @@ export function prospectFromYc(c: YcCompany, email: string, extraFacts: Prospect
     company: c.name,
     website: c.website ?? "",
     niche: nicheForIndustries(c.industries),
+    segment: c.nonprofit ? "nonprofit" : "startup",
     sizeStage: size > 0 ? `${size} people${c.batch ? `, YC ${c.batch}` : ""}` : c.batch ? `YC ${c.batch}` : null,
     summary: c.one_liner?.trim() || null,
     facts: [...ycFacts(c), ...extraFacts],

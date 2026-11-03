@@ -470,6 +470,96 @@ export async function loadExistingProspectData(): Promise<ExistingProspectData> 
   };
 }
 
+/**
+ * Same as loadExistingProspectData, for callers with no signed-in exec (the agent API). Reads with the service role and
+ * pages through every row, since the agent dedupes against all of them.
+ */
+export async function loadExistingProspectDataAdmin(admin: Admin = createAdminClient()): Promise<ExistingProspectData> {
+  const [prospects, clients, suppressions] = await Promise.all([
+    fetchAllPages((from, to) => admin.from("outreach_prospects").select("contact_email, contact_domain").order("id").range(from, to)),
+    fetchAllPages((from, to) => admin.from("clients").select("name").order("id").range(from, to)),
+    fetchAllPages((from, to) => admin.from("outreach_suppressions").select("email, domain").order("id").range(from, to)),
+  ]);
+  return {
+    emails: new Set(prospects.map((p) => p.contact_email)),
+    companyDomains: new Set(prospects.map((p) => p.contact_domain)),
+    clientNames: new Set([...CLIENTS.map((c) => c.name), ...clients.map((c) => c.name)].map((n) => n.trim().toLowerCase())),
+    suppressedEmails: new Set(suppressions.flatMap((s) => (s.email ? [s.email] : []))),
+    suppressedDomains: new Set(suppressions.flatMap((s) => (s.domain ? [s.domain] : []))),
+  };
+}
+
+function prospectInsertRow(r: ProspectDraftRow, createdBy: string): Database["public"]["Tables"]["outreach_prospects"]["Insert"] {
+  return {
+    company: r.company,
+    website: r.website,
+    niche: r.niche,
+    segment: r.segment ?? null,
+    size_stage: r.sizeStage,
+    summary: r.summary,
+    why_fit: r.whyFit,
+    facts: factsToJson(r.facts),
+    contact_name: r.contactName,
+    contact_role: r.contactRole,
+    contact_email: r.contactEmail,
+    contact_domain: emailDomain(r.contactEmail),
+    created_by: createdBy,
+  };
+}
+
+/**
+ * Adds prospects with the service role. Returns each address with its new id, or null when that address already exists
+ * (someone added it between the check and the insert). One taken address never blocks the rest.
+ */
+export async function insertProspectsAdmin(rows: ProspectDraftRow[], createdBy: string, admin: Admin = createAdminClient()): Promise<{ email: string; id: string | null }[]> {
+  if (rows.length === 0) return [];
+  const all = await admin.from("outreach_prospects").insert(rows.map((r) => prospectInsertRow(r, createdBy))).select("id, contact_email");
+  if (!all.error) return (all.data ?? []).map((p) => ({ email: p.contact_email, id: p.id }));
+  if (all.error.code !== UNIQUE_VIOLATION) throw all.error;
+  // The batch insert is all-or-nothing, so retry one by one to find which address was taken.
+  const out: { email: string; id: string | null }[] = [];
+  for (const r of rows) {
+    const one = await admin.from("outreach_prospects").insert(prospectInsertRow(r, createdBy)).select("id").single();
+    if (one.error && one.error.code !== UNIQUE_VIOLATION) throw one.error;
+    out.push({ email: r.contactEmail, id: one.data?.id ?? null });
+  }
+  return out;
+}
+
+/**
+ * A discovery candidate that was missing an email becomes a prospect, and is marked added. Works for any candidate
+ * (a directory company or a pasted/researched one): the prospect is built by the caller from what is stored on the
+ * candidate plus whatever was just found. `duplicate` means the address already belongs to another prospect.
+ */
+export async function promoteCandidate(
+  candidateId: string,
+  prospect: ProspectDraftRow,
+  createdBy: string,
+  opts: { reason?: string; emailSourceUrl?: string | null } = {},
+  admin: Admin = createAdminClient(),
+): Promise<{ prospectId: string } | { duplicate: true }> {
+  const { data: created, error } = await admin.from("outreach_prospects").insert(prospectInsertRow(prospect, createdBy)).select("id").single();
+  if (error) {
+    if (error.code === UNIQUE_VIOLATION) return { duplicate: true };
+    throw error;
+  }
+  const { error: updateError } = await admin
+    .from("outreach_discovery_candidates")
+    .update({
+      outcome: "added",
+      reason: opts.reason ?? "Email added by hand.",
+      prospect_id: created.id,
+      email: prospect.contactEmail,
+      email_source_url: opts.emailSourceUrl ?? null,
+      segment: prospect.segment ?? null,
+      agent_claimed_at: null,
+      agent_claim_token: null,
+    })
+    .eq("id", candidateId);
+  if (updateError) throw updateError;
+  return { prospectId: created.id };
+}
+
 export async function insertProspects(rows: ProspectDraftRow[], createdBy: string): Promise<number> {
   if (rows.length === 0) return 0;
   const supabase = await createClient();
@@ -478,6 +568,7 @@ export async function insertProspects(rows: ProspectDraftRow[], createdBy: strin
       company: r.company,
       website: r.website,
       niche: r.niche,
+      segment: r.segment ?? null,
       size_stage: r.sizeStage,
       summary: r.summary,
       why_fit: r.whyFit,
@@ -635,7 +726,7 @@ export async function getOutreachOverview(now = new Date()): Promise<OutreachOve
   const inWindow = (iso: string | null, from: number) => !!iso && new Date(iso).getTime() >= from;
   const beats = Object.fromEntries(HEARTBEAT_JOBS.map((job) => [job, (settingRows.data ?? []).find((r) => r.key === heartbeatKey(job))?.value || null])) as Heartbeats;
   const oldestProspectAt = (prospects.data ?? []).reduce<string | null>((oldest, p) => (oldest === null || p.created_at < oldest ? p.created_at : oldest), null);
-  const jobs = Object.fromEntries(HEARTBEAT_JOBS.map((job) => [job, jobHealth(now, beats[job], { mode: settings.mode, oldestProspectAt })])) as Record<HeartbeatJob, JobHealth>;
+  const jobs = Object.fromEntries(HEARTBEAT_JOBS.map((job) => [job, jobHealth(now, beats[job], { mode: job === "agent" && !settings.agentEnabled ? "off" : settings.mode, oldestProspectAt, job })])) as Record<HeartbeatJob, JobHealth>;
 
   return {
     prospects: (prospects.data ?? []).map((p) => ({
@@ -699,6 +790,8 @@ export async function recordJobRun(job: HeartbeatJob, now = new Date(), result?:
     if (result !== undefined) await setOutreachSetting(admin, lastRunKey(job), summarizeRun(job, result));
     const { data } = await admin.from("org_settings").select("key, value").in("key", HEARTBEAT_JOBS.map(heartbeatKey));
     const beats = Object.fromEntries(HEARTBEAT_JOBS.map((j) => [j, (data ?? []).find((r) => r.key === heartbeatKey(j))?.value || null])) as Heartbeats;
+    // A switched-off agent is not "dead": it is not expected to report.
+    if (!(await loadOutreachSettings(admin)).agentEnabled) beats.agent = null;
     for (const stale of staleSiblings(now, beats, job)) await alertExecsOfBrake(admin, `job_stale_${stale}`);
   } catch (err) {
     console.error("outreach heartbeat failed:", err);

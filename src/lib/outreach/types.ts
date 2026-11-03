@@ -8,6 +8,8 @@ export interface ProspectDraftRow {
   company: string;
   website: string | null;
   niche: string | null;
+  /** nonprofit, startup, small_business or other; the CSV import leaves it unset. */
+  segment?: "nonprofit" | "startup" | "small_business" | "other" | null;
   sizeStage: string | null;
   summary: string | null;
   whyFit: string | null;

@@ -2,19 +2,22 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { updateOutreachSettingsAction } from "@/actions/outreach";
+import { generateAgentKeyAction, revokeAgentKeyAction, updateOutreachSettingsAction } from "@/actions/outreach";
 import { useConfirm } from "@/components/confirm-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { OutreachMode, OutreachSettings } from "@/lib/outreach/settings";
+import type { AgentOverview } from "@/lib/data/outreach-agent";
 import { cn } from "@/lib/utils";
 
 const SECTIONS = [
   { key: "sending", label: "Sending" },
   { key: "discovery", label: "Discovery" },
+  { key: "agent", label: "Research agent" },
   { key: "pace", label: "Pace" },
   { key: "sequence", label: "Follow-ups" },
   { key: "sender", label: "Sender" },
@@ -28,8 +31,13 @@ const MODES: { value: OutreachMode; label: string; description: string }[] = [
   { value: "live", label: "Live", description: "Emails go to prospects, slowly, within the daily limit." },
 ];
 
+function when(iso: string | null): string {
+  if (!iso) return "never";
+  return new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(iso));
+}
+
 /** Outreach settings: sections on the left, one at a time on the right, saved together with one button. */
-export function SettingsForm({ settings }: { settings: OutreachSettings }) {
+export function SettingsForm({ settings, agent }: { settings: OutreachSettings; agent: AgentOverview }) {
   const [section, setSection] = useState<(typeof SECTIONS)[number]["key"]>("sending");
   const [mode, setMode] = useState<OutreachMode>(settings.mode);
   const [paused, setPaused] = useState(settings.paused);
@@ -46,6 +54,11 @@ export function SettingsForm({ settings }: { settings: OutreachSettings }) {
   const [maxTeam, setMaxTeam] = useState(String(settings.discoveryMaxTeam));
   const [regions, setRegions] = useState(settings.discoveryRegions.join(", "));
   const [industries, setIndustries] = useState(settings.discoveryIndustries.join("; "));
+  const [agentOn, setAgentOn] = useState(settings.agentEnabled);
+  const [agentPerDay, setAgentPerDay] = useState(String(settings.agentDailyTarget));
+  const [agentTargets, setAgentTargets] = useState(JSON.stringify(settings.agentTargets, null, 2));
+  const [keyLabel, setKeyLabel] = useState("Muse");
+  const [newKey, setNewKey] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [confirm, confirmDialog] = useConfirm();
 
@@ -76,10 +89,45 @@ export function SettingsForm({ settings }: { settings: OutreachSettings }) {
         discoveryMaxTeam: maxTeam,
         discoveryRegions: regions,
         discoveryIndustries: industries,
+        agentEnabled: agentOn,
+        agentDailyTarget: agentPerDay,
+        agentTargets,
       });
       if (result.error) toast.error(result.error);
       else toast.success("Outreach settings saved.");
     });
+  }
+
+  function onGenerateKey() {
+    startTransition(async () => {
+      const result = await generateAgentKeyAction(keyLabel);
+      if (result.error) toast.error(result.error);
+      else setNewKey(result.key ?? null);
+    });
+  }
+
+  async function onRevokeKey(id: string, label: string) {
+    const ok = await confirm({
+      title: `Revoke the key "${label}"?`,
+      description: "The agent stops working with it right away. This can't be undone.",
+      confirmLabel: "Revoke key",
+      cancelLabel: "Keep it",
+    });
+    if (!ok) return;
+    startTransition(async () => {
+      const result = await revokeAgentKeyAction(id);
+      if (result.error) toast.error(result.error);
+      else toast.success("Key revoked.");
+    });
+  }
+
+  async function onCopyKey() {
+    try {
+      await navigator.clipboard.writeText(newKey ?? "");
+      toast.success("Key copied.");
+    } catch {
+      toast.error("Couldn't copy. Select the key and copy it by hand.");
+    }
   }
 
   return (
@@ -161,6 +209,88 @@ export function SettingsForm({ settings }: { settings: OutreachSettings }) {
               <FieldDescription>Separated by semicolons, using Y Combinator&apos;s names, for example Healthcare; B2B; Fintech; Infrastructure; Consumer; Security.</FieldDescription>
             </Field>
             <p className="text-sm text-muted-foreground">Discovery pauses by itself while a lot of prospects are still waiting to be sent, so it never gets ahead of the daily limit.</p>
+          </>
+        )}
+
+        {section === "agent" && (
+          <>
+            <h2 className="text-lg">Research agent</h2>
+            <label className="flex items-start gap-3">
+              <Checkbox checked={agentOn} onCheckedChange={(v) => setAgentOn(v === true)} className="mt-0.5" />
+              <span>
+                <span className="block font-semibold">Let the research agent add prospects</span>
+                <span className="block text-sm text-muted-foreground">
+                  An outside AI agent researches companies on the web and sends them here with a published email and its source. It can&apos;t send email, change settings or see anything else. New prospects are saved under your name and follow the mode and pace settings.
+                </span>
+              </span>
+            </label>
+            <Field className="w-60">
+              <FieldLabel htmlFor="outreach-agent-per-day">Prospects to find per day</FieldLabel>
+              <Input id="outreach-agent-per-day" inputMode="numeric" value={agentPerDay} onChange={(e) => setAgentPerDay(e.target.value)} />
+              <FieldDescription>Whole number, 0 to 100. It stops asking while many prospects are still waiting to be sent.</FieldDescription>
+            </Field>
+            <Field className="max-w-2xl">
+              <FieldLabel htmlFor="outreach-agent-targets">Who to look for</FieldLabel>
+              <Textarea id="outreach-agent-targets" value={agentTargets} rows={10} className="font-mono text-sm" onChange={(e) => setAgentTargets(e.target.value)} />
+              <FieldDescription>
+                One entry per kind of company: segment, regions, size range, share (percent of the daily number) and what they need help with. The agent reads this on every run.
+              </FieldDescription>
+            </Field>
+
+            <div className="space-y-1.5 border-t pt-5 text-sm">
+              <h3 className="text-base font-semibold">Last run</h3>
+              <p className="text-muted-foreground">
+                Reported {when(agent.lastRunAt)}. Added {agent.acceptedToday} today.
+                {agent.topSkips.length > 0 && <> Skipped most often: {agent.topSkips.map((t) => `${t.reason.replace(/_/g, " ")} (${t.count})`).join(", ")}.</>}
+              </p>
+              {agent.lastError && <p className="break-words">Last error: {agent.lastError}</p>}
+            </div>
+
+            <div className="space-y-3 border-t pt-5">
+              <h3 className="text-base font-semibold">Keys</h3>
+              {agent.keys.length === 0 && <p className="text-sm text-muted-foreground">No keys yet.</p>}
+              <ul className="max-h-64 space-y-2 overflow-auto">
+                {agent.keys.map((k) => (
+                  <li key={k.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-2xl border p-3">
+                    <span className="min-w-0 break-words font-semibold">{k.label}</span>
+                    <code className="text-sm text-muted-foreground">{k.prefix}…</code>
+                    <Badge variant={k.revokedAt ? "muted" : "ok"}>{k.revokedAt ? "Revoked" : "Active"}</Badge>
+                    <span className="text-sm text-muted-foreground tabular-nums">last used {when(k.lastUsedAt)}</span>
+                    {!k.revokedAt && (
+                      <Button variant="outline" size="sm" className="ml-auto text-destructive" disabled={isPending} onClick={() => onRevokeKey(k.id, k.label)}>
+                        Revoke key
+                      </Button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              {newKey ? (
+                <div className="space-y-2 rounded-2xl bg-accent p-4 text-accent-foreground">
+                  <p className="font-semibold">Copy this key now. It won&apos;t be shown again.</p>
+                  <code className="block max-h-24 overflow-auto break-all rounded-[10px] bg-card p-3 text-sm">{newKey}</code>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={onCopyKey}>
+                      Copy key
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setNewKey(null)}>
+                      I&apos;ve saved it
+                    </Button>
+                  </div>
+                  <p className="text-sm">Give it to the agent through its secure credential entry, never in chat or email.</p>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-end gap-3">
+                  <Field className="w-56">
+                    <FieldLabel htmlFor="outreach-agent-key-label">Key name</FieldLabel>
+                    <Input id="outreach-agent-key-label" value={keyLabel} maxLength={60} onChange={(e) => setKeyLabel(e.target.value)} />
+                  </Field>
+                  <Button variant="outline" disabled={isPending} onClick={onGenerateKey}>
+                    Generate agent key
+                  </Button>
+                </div>
+              )}
+              <p className="text-sm text-muted-foreground">Two keys can be active at once, so you can swap keys without a gap: make the new one, give it to the agent, then revoke the old one.</p>
+            </div>
           </>
         )}
 

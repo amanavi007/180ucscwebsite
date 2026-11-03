@@ -14,13 +14,15 @@ import {
   loadExistingProspectData,
   OUTREACH_PORTAL_PATH,
   outreachEnv,
+  promoteCandidate,
   recordOutreachEvent,
   setOutreachSetting,
 } from "@/lib/data/outreach";
 import { parseProspectCsv, type CsvError } from "@/lib/outreach/csv";
 import { emailDomain, partitionImport, type SkipReason } from "@/lib/outreach/verify";
 import { runPrepare, runSend, type PrepareResult } from "@/lib/outreach/runner";
-import { parseOutreachSettings, shouldRestartRamp } from "@/lib/outreach/settings";
+import { agentTargetsSchema, parseOutreachSettings, shouldRestartRamp } from "@/lib/outreach/settings";
+import { generateAgentKey } from "@/lib/outreach/agent-auth";
 import { loadOutreachSettings } from "@/lib/data/outreach";
 import { buildDiscoveryDeps, recordToRow } from "@/lib/data/outreach-discovery";
 import { normalizeManualEmail } from "@/lib/outreach/discovery/emails";
@@ -267,32 +269,32 @@ export async function addCandidateEmailAction(candidateId: string, rawEmail: str
   const prospect = prospectFromYc(company, email, [], matchFounderToEmail(email, founders));
   if (prospect.facts.length === 0) return { error: "There's nothing sourced to say about this company." };
 
-  const { data: created, error: insertError } = await admin
-    .from("outreach_prospects")
-    .insert({
-      company: prospect.company,
-      website: prospect.website,
-      niche: prospect.niche,
-      size_stage: prospect.sizeStage,
-      summary: prospect.summary,
-      facts: factsToJson(prospect.facts),
-      contact_name: prospect.contactName,
-      contact_role: prospect.contactRole,
-      contact_email: email,
-      contact_domain: emailDomain(email),
-      created_by: profile.id,
-    })
-    .select("id")
-    .single();
-  if (insertError) {
-    if (insertError.code === UNIQUE_VIOLATION) return { error: "That address is already a prospect." };
-    console.error("add candidate email failed:", insertError);
+  let promoted;
+  try {
+    promoted = await promoteCandidate(
+      candidate.id,
+      {
+        company: prospect.company,
+        website: prospect.website,
+        niche: prospect.niche,
+        segment: prospect.segment ?? null,
+        sizeStage: prospect.sizeStage,
+        summary: prospect.summary,
+        whyFit: null,
+        facts: prospect.facts,
+        contactName: prospect.contactName,
+        contactRole: prospect.contactRole,
+        contactEmail: email,
+      },
+      profile.id,
+      { reason: "Email added by hand.", emailSourceUrl: null },
+      admin,
+    );
+  } catch (err) {
+    console.error("add candidate email failed:", err);
     return { error: "Couldn't add it. Try again." };
   }
-  await admin
-    .from("outreach_discovery_candidates")
-    .update({ outcome: "added", reason: "Email added by hand.", prospect_id: created.id, email, email_source_url: null })
-    .eq("id", candidate.id);
+  if ("duplicate" in promoted) return { error: "That address is already a prospect." };
   await logAudit(profile.id, "outreach.discovery_email", `${prospect.company} ${email}`);
   revalidatePath(DISCOVERY_PORTAL_PATH);
   revalidatePath(OUTREACH_PORTAL_PATH);
@@ -376,6 +378,27 @@ export interface OutreachSettingsInput {
   discoveryMaxTeam: string;
   discoveryRegions: string;
   discoveryIndustries: string;
+  agentEnabled: boolean;
+  agentDailyTarget: string;
+  /** The targets as JSON text. */
+  agentTargets: string;
+}
+
+/** The targets text as validated, minified JSON; or what is wrong with it. */
+function checkAgentTargets(text: string): { json: string } | { error: string } {
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    return { error: "The agent's targets aren't valid JSON." };
+  }
+  const result = agentTargetsSchema.safeParse(value);
+  if (!result.success) {
+    const issue = result.error.issues[0];
+    return { error: `The agent's targets need fixing: ${issue.path.join(".") || "targets"} ${issue.message.toLowerCase()}.` };
+  }
+  if (result.data.some((t) => t.maxSize < t.minSize)) return { error: "In the agent's targets, maxSize can't be smaller than minSize." };
+  return { json: JSON.stringify(result.data) };
 }
 
 export async function updateOutreachSettingsAction(input: OutreachSettingsInput): Promise<ActionResult> {
@@ -398,6 +421,8 @@ export async function updateOutreachSettingsAction(input: OutreachSettingsInput)
     ["outreach_discovery_max_team", input.discoveryMaxTeam.trim()],
     ["outreach_discovery_regions", input.discoveryRegions.trim()],
     ["outreach_discovery_industries", input.discoveryIndustries.trim()],
+    ["outreach_agent_enabled", input.agentEnabled ? "true" : "false"],
+    ["outreach_agent_daily_target", input.agentDailyTarget.trim()],
   ].map(([key, value]) => ({ key, value }));
 
   // Bad values silently fall back to defaults when read, so reject them here instead.
@@ -415,6 +440,10 @@ export async function updateOutreachSettingsAction(input: OutreachSettingsInput)
   if (parsed.discoveryPerDay !== Number(input.discoveryPerDay) || input.discoveryPerDay.trim() === "") return { error: "Companies to find per day must be a whole number from 0 to 50." };
   if (parsed.discoveryMaxTeam !== Number(input.discoveryMaxTeam) || input.discoveryMaxTeam.trim() === "") return { error: "The biggest team size must be a whole number of at least 1." };
   if (input.discoveryRegions.trim() === "" || input.discoveryIndustries.trim() === "") return { error: "Add at least one city and one industry for discovery." };
+  if (parsed.agentDailyTarget !== Number(input.agentDailyTarget) || input.agentDailyTarget.trim() === "") return { error: "Prospects for the agent to find per day must be a whole number from 0 to 100." };
+  const targets = checkAgentTargets(input.agentTargets);
+  if ("error" in targets) return { error: targets.error };
+  rows.push({ key: "outreach_agent_targets", value: targets.json });
   if (input.signature.length > 600) return { error: "The signature is too long. Keep it under 600 characters." };
 
   if (input.mode === "self_only" || input.mode === "exec_only" || input.mode === "live") {
@@ -432,6 +461,8 @@ export async function updateOutreachSettingsAction(input: OutreachSettingsInput)
     if (parsed.mode === "self_only") await setOutreachSetting(admin, "outreach_test_recipient", profile.email);
     // Discovered prospects are created under whoever switched discovery on.
     if (parsed.discoveryEnabled && !previous.discoveryEnabled) await setOutreachSetting(admin, "outreach_discovery_enabled_by", profile.id);
+    // Agent prospects are created under whoever switched the agent on.
+    if (parsed.agentEnabled && !previous.agentEnabled) await setOutreachSetting(admin, "outreach_agent_owner", profile.id);
     if (shouldRestartRamp(previous.mode, parsed.mode)) await setOutreachSetting(admin, "outreach_started_on", "");
   } catch (err) {
     console.error("outreach settings save failed:", err);
@@ -439,5 +470,48 @@ export async function updateOutreachSettingsAction(input: OutreachSettingsInput)
   }
   await logAudit(profile.id, "outreach.settings", `mode ${input.mode}${input.paused ? ", paused" : ""}`);
   revalidatePath(OUTREACH_PORTAL_PATH);
+  return {};
+}
+
+const MAX_ACTIVE_AGENT_KEYS = 2;
+
+/** Makes a key for the research agent. The key is returned once, here, and never stored: only its hash is. */
+export async function generateAgentKeyAction(label: string): Promise<ActionResult & { key?: string; prefix?: string }> {
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error };
+  const name = label.trim();
+  if (name.length < 1 || name.length > 60) return { error: "Give the key a name of up to 60 characters." };
+  const admin = createAdminClient();
+  const { count, error: countError } = await admin.from("outreach_agent_keys").select("id", { count: "exact", head: true }).is("revoked_at", null);
+  if (countError) return { error: "That didn't work. Try again." };
+  if ((count ?? 0) >= MAX_ACTIVE_AGENT_KEYS) return { error: "Two keys are already active. Revoke the old one first." };
+  const { key, hash, prefix } = generateAgentKey();
+  const { error: insertError } = await admin
+    .from("outreach_agent_keys")
+    .insert({ label: name, key_hash: hash, key_prefix: prefix, scopes: ["outreach:read", "outreach:submit", "outreach:enrich"], created_by: profile.id });
+  if (insertError) {
+    console.error("agent key create failed:", insertError);
+    return { error: "The key wasn't created. If the agent tables aren't set up yet, run the latest migration." };
+  }
+  await logAudit(profile.id, "outreach.agent_key_create", prefix);
+  revalidatePath(`${OUTREACH_PORTAL_PATH}/settings`);
+  return { key, prefix };
+}
+
+/** Kills a key immediately. The agent's next call with it gets a 401. */
+export async function revokeAgentKeyAction(keyId: string): Promise<ActionResult> {
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error };
+  const admin = createAdminClient();
+  const { data, error: updateError } = await admin
+    .from("outreach_agent_keys")
+    .update({ revoked_at: new Date().toISOString() })
+    .eq("id", keyId)
+    .is("revoked_at", null)
+    .select("key_prefix");
+  if (updateError) return { error: "That didn't save. Try again." };
+  if (!data?.[0]) return { error: "That key was already revoked." };
+  await logAudit(profile.id, "outreach.agent_key_revoke", data[0].key_prefix);
+  revalidatePath(`${OUTREACH_PORTAL_PATH}/settings`);
   return {};
 }

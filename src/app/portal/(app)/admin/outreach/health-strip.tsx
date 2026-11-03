@@ -3,7 +3,7 @@ import type { OutreachOverview } from "@/lib/data/outreach";
 import { HEARTBEAT_JOBS, type HeartbeatJob } from "@/lib/outreach/heartbeat";
 import { senderState } from "@/lib/outreach/view";
 
-const JOB_LABELS: Record<HeartbeatJob, string> = { discover: "Discovery", repair: "Repair", prepare: "Drafting", send: "Sending" };
+const JOB_LABELS: Record<HeartbeatJob, string> = { discover: "Discovery", repair: "Repair", prepare: "Drafting", send: "Sending", agent: "Research agent" };
 
 function when(iso: string | null): string {
   if (!iso) return "never";
@@ -48,7 +48,7 @@ export function HealthStrip({ overview }: { overview: OutreachOverview }) {
       <div className="border-t pt-4 text-sm sm:col-span-4">
         <p className="text-muted-foreground">Daily jobs</p>
         <ul className="mt-1.5 flex flex-wrap gap-x-6 gap-y-2">
-          {HEARTBEAT_JOBS.map((job) => {
+          {HEARTBEAT_JOBS.filter((job) => job !== "agent" || settings.agentEnabled).map((job) => {
             const j = overview.jobs[job];
             return (
               <li key={job} className="flex items-center gap-2">

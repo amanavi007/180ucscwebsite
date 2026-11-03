@@ -1,7 +1,7 @@
 import type { OutreachMode } from "./settings";
 
 /** The daily jobs. Each records when it last ran, so a job that quietly stops can be noticed. */
-export const HEARTBEAT_JOBS = ["discover", "repair", "prepare", "send"] as const;
+export const HEARTBEAT_JOBS = ["discover", "repair", "prepare", "send", "agent"] as const;
 export type HeartbeatJob = (typeof HEARTBEAT_JOBS)[number];
 export type Heartbeats = Record<HeartbeatJob, string | null>;
 
@@ -24,6 +24,7 @@ export function summarizeRun(job: HeartbeatJob, result: unknown): string {
   if (job === "send") {
     return typeof r.skipped === "string" && r.skipped ? `sent none (${r.skipped.replace(/_/g, " ")})` : `scheduled ${plural(num("scheduled"), "email")}`;
   }
+  if (job === "agent") return `evaluated ${num("evaluated")}, submitted ${num("submitted")}, accepted ${num("accepted")}`;
   if (job === "repair") return `tried ${num("tried")}, recovered ${num("recovered")}, gave up on ${num("gaveUp")}, still trying ${num("stillTrying")}`;
   return typeof r.skipped === "string" && r.skipped ? `added none (${r.skipped.replace(/_/g, " ")})` : `added ${plural(num("added"), "company", "companies")}, ${num("fromPool")} from the pool`;
 }
@@ -34,9 +35,19 @@ const HOUR_MS = 3_600_000;
 
 const ageHours = (now: Date, iso: string) => (now.getTime() - new Date(iso).getTime()) / HOUR_MS;
 
+/**
+ * The outreach agent runs on weekdays only, so a run on a Friday (or any weekend day) is not overdue until Monday's run
+ * has had its chance. Every other job runs daily.
+ */
+function staleAfterHours(job: HeartbeatJob, lastRunAt: string): number {
+  if (job !== "agent") return STALE_AFTER_HOURS;
+  const weekday = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", weekday: "short" }).format(new Date(lastRunAt));
+  return ["Fri", "Sat", "Sun"].includes(weekday) ? STALE_AFTER_HOURS + 48 : STALE_AFTER_HOURS;
+}
+
 /** Other jobs that have reported before but not within 30 hours. A job that never reported is not flagged: it has no history yet. */
 export function staleSiblings(now: Date, beats: Heartbeats, self: HeartbeatJob): HeartbeatJob[] {
-  return HEARTBEAT_JOBS.filter((job) => job !== self && beats[job] !== null && ageHours(now, beats[job]!) > STALE_AFTER_HOURS);
+  return HEARTBEAT_JOBS.filter((job) => job !== self && beats[job] !== null && beats[job] !== undefined && ageHours(now, beats[job]!) > staleAfterHours(job, beats[job]!));
 }
 
 export interface JobHealth {
@@ -48,9 +59,13 @@ export interface JobHealth {
  * For the portal: is this job running as it should? Checked on the read side so it works even when every job is dead.
  * Nothing is overdue while outreach is off. A missing heartbeat only counts once there have been prospects for over a day.
  */
-export function jobHealth(now: Date, lastRunAt: string | null, context: { mode: OutreachMode; oldestProspectAt: string | null }): JobHealth {
+export function jobHealth(
+  now: Date,
+  lastRunAt: string | null,
+  context: { mode: OutreachMode; oldestProspectAt: string | null; job?: HeartbeatJob },
+): JobHealth {
   if (context.mode === "off") return { state: "ok", lastRunAt };
-  if (lastRunAt) return { state: ageHours(now, lastRunAt) > STALE_AFTER_HOURS ? "overdue" : "ok", lastRunAt };
+  if (lastRunAt) return { state: ageHours(now, lastRunAt) > staleAfterHours(context.job ?? "discover", lastRunAt) ? "overdue" : "ok", lastRunAt };
   const waited = context.oldestProspectAt !== null && ageHours(now, context.oldestProspectAt) > 24;
   return { state: waited ? "never_ran" : "ok", lastRunAt: null };
 }
