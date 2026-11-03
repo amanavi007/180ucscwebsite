@@ -474,9 +474,11 @@ export async function updateOutreachSettingsAction(input: OutreachSettingsInput)
 }
 
 const MAX_ACTIVE_AGENT_KEYS = 2;
+const BASE_AGENT_SCOPES = ["outreach:read", "outreach:submit", "outreach:enrich"];
+const AUDIT_SCOPE = "outreach:audit";
 
 /** Makes a key for the research agent. The key is returned once, here, and never stored: only its hash is. */
-export async function generateAgentKeyAction(label: string): Promise<ActionResult & { key?: string; prefix?: string }> {
+export async function generateAgentKeyAction(label: string, audit = false): Promise<ActionResult & { key?: string; prefix?: string }> {
   const { profile, error } = await requireExec();
   if (error || !profile) return { error };
   const name = label.trim();
@@ -488,7 +490,7 @@ export async function generateAgentKeyAction(label: string): Promise<ActionResul
   const { key, hash, prefix } = generateAgentKey();
   const { error: insertError } = await admin
     .from("outreach_agent_keys")
-    .insert({ label: name, key_hash: hash, key_prefix: prefix, scopes: ["outreach:read", "outreach:submit", "outreach:enrich"], created_by: profile.id });
+    .insert({ label: name, key_hash: hash, key_prefix: prefix, scopes: audit ? [...BASE_AGENT_SCOPES, AUDIT_SCOPE] : BASE_AGENT_SCOPES, created_by: profile.id });
   if (insertError) {
     console.error("agent key create failed:", insertError);
     return { error: "The key wasn't created. If the agent tables aren't set up yet, run the latest migration." };
@@ -496,6 +498,22 @@ export async function generateAgentKeyAction(label: string): Promise<ActionResul
   await logAudit(profile.id, "outreach.agent_key_create", prefix);
   revalidatePath(`${OUTREACH_PORTAL_PATH}/settings`);
   return { key, prefix };
+}
+
+/** Gives an active key audit access (full reads plus three narrow repairs), or takes it away again. Takes effect on the next call. */
+export async function setAgentKeyAuditAction(keyId: string, enabled: boolean): Promise<ActionResult> {
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error };
+  const admin = createAdminClient();
+  const { data: key, error: readError } = await admin.from("outreach_agent_keys").select("scopes, key_prefix, revoked_at").eq("id", keyId).maybeSingle();
+  if (readError) return { error: "That didn't save. Try again." };
+  if (!key || key.revoked_at) return { error: "That key was already revoked." };
+  const scopes = [...new Set([...key.scopes.filter((x) => x !== AUDIT_SCOPE), ...(enabled ? [AUDIT_SCOPE] : [])])];
+  const { error: updateError } = await admin.from("outreach_agent_keys").update({ scopes }).eq("id", keyId).is("revoked_at", null);
+  if (updateError) return { error: "That didn't save. If the latest migration isn't applied yet, run it first." };
+  await logAudit(profile.id, enabled ? "outreach.agent_key_audit_on" : "outreach.agent_key_audit_off", key.key_prefix);
+  revalidatePath(`${OUTREACH_PORTAL_PATH}/settings`);
+  return {};
 }
 
 /** Kills a key immediately. The agent's next call with it gets a 401. */

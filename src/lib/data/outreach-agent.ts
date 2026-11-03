@@ -237,6 +237,15 @@ export interface AgentKeyView {
   lastUsedAt: string | null;
   revokedAt: string | null;
   createdAt: string;
+  /** Whether the key may read all discovery data and make the audit repairs. */
+  audit: boolean;
+}
+
+export interface AgentCorrection {
+  at: string;
+  action: string;
+  company: string;
+  summary: string;
 }
 
 export interface AgentOverview {
@@ -246,6 +255,8 @@ export interface AgentOverview {
   /** The most common reasons the agent's rows were skipped over the last 7 days. */
   topSkips: { reason: string; count: number }[];
   lastError: string | null;
+  /** The agent's most recent audit repairs: website fixes, added facts, requeues. */
+  corrections: AgentCorrection[];
 }
 
 export async function getAgentOverview(now = new Date()): Promise<AgentOverview> {
@@ -253,7 +264,7 @@ export async function getAgentOverview(now = new Date()): Promise<AgentOverview>
   const since = new Date(now.getTime() - 7 * 86_400_000).toISOString();
   const today = pacificInstant(formatOrgDate(now), 0).getTime();
   const [keys, beat, runs] = await Promise.all([
-    supabase.from("outreach_agent_keys").select("id, label, key_prefix, last_used_at, revoked_at, created_at").order("created_at", { ascending: false }),
+    supabase.from("outreach_agent_keys").select("id, label, key_prefix, scopes, last_used_at, revoked_at, created_at").order("created_at", { ascending: false }),
     supabase.from("org_settings").select("value").eq("key", heartbeatKey("agent")).maybeSingle(),
     supabase.from("outreach_agent_runs").select("kind, idempotency_key, accepted, skipped, detail, created_at").gte("created_at", since).order("created_at", { ascending: false }).limit(500),
   ]);
@@ -265,8 +276,13 @@ export async function getAgentOverview(now = new Date()): Promise<AgentOverview>
     for (const [reason, n] of Object.entries((run.skipped ?? {}) as Record<string, number>)) skips[reason] = (skips[reason] ?? 0) + n;
   }
   const failed = (runs.data ?? []).find((r) => typeof (r.detail as { error?: unknown } | null)?.error === "string");
+  const corrections = (runs.data ?? [])
+    .filter((r) => r.kind === "correction")
+    .slice(0, 8)
+    .map((r) => describeCorrection(r.detail as Record<string, unknown> | null, r.created_at));
   return {
-    keys: (keys.data ?? []).map((k) => ({ id: k.id, label: k.label, prefix: k.key_prefix, lastUsedAt: k.last_used_at, revokedAt: k.revoked_at, createdAt: k.created_at })),
+    corrections,
+    keys: (keys.data ?? []).map((k) => ({ id: k.id, label: k.label, prefix: k.key_prefix, lastUsedAt: k.last_used_at, revokedAt: k.revoked_at, createdAt: k.created_at, audit: k.scopes.includes("outreach:audit") })),
     lastRunAt: beat.data?.value || null,
     acceptedToday,
     topSkips: Object.entries(skips)
@@ -275,4 +291,17 @@ export async function getAgentOverview(now = new Date()): Promise<AgentOverview>
       .map(([reason, count]) => ({ reason, count })),
     lastError: failed ? ((failed.detail as { error: string }).error).slice(0, 200) : null,
   };
+}
+
+function describeCorrection(detail: Record<string, unknown> | null, at: string): AgentCorrection {
+  const d = detail ?? {};
+  const action = String(d.action ?? "change");
+  const company = String(d.company ?? "a company");
+  const summary =
+    action === "website"
+      ? `Website changed from ${d.oldDomain ?? "?"} to ${d.newDomain ?? "?"}. ${d.note ?? ""}`
+      : action === "facts"
+        ? `Added ${d.added ?? 0} sourced fact(s).`
+        : `Handed back to discovery. ${d.note ?? ""}`;
+  return { at, action, company, summary: summary.trim().slice(0, 240) };
 }

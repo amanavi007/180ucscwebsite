@@ -16,7 +16,7 @@ export default async function OutreachSettingsPage() {
   // Settings must still open before the agent migration has run.
   const agent = await getAgentOverview().catch((err) => {
     console.error("agent overview failed:", err);
-    return { keys: [], lastRunAt: null, acceptedToday: 0, topSkips: [], lastError: null };
+    return { keys: [], lastRunAt: null, acceptedToday: 0, topSkips: [], lastError: null, corrections: [] };
   });
   return (
     <div className="space-y-6">

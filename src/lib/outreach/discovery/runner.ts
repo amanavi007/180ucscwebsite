@@ -103,7 +103,7 @@ export function hostOf(website: string | null): string | null {
   }
 }
 
-const isPlatform = (host: string) => PLATFORM_HOSTS.some((p) => host === p || host.endsWith(`.${p}`));
+export const isPlatform = (host: string) => PLATFORM_HOSTS.some((p) => host === p || host.endsWith(`.${p}`));
 
 /** The prospect to add for a directory company and the email chosen for it; used by discovery and by adding an email by hand. */
 export function prospectFromYc(c: YcCompany, email: string, extraFacts: ProspectFact[] = [], founder: Founder | null = null): NewProspect {

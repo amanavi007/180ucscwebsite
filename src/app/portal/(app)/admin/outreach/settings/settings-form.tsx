@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { generateAgentKeyAction, revokeAgentKeyAction, updateOutreachSettingsAction } from "@/actions/outreach";
+import { generateAgentKeyAction, revokeAgentKeyAction, setAgentKeyAuditAction, updateOutreachSettingsAction } from "@/actions/outreach";
 import { useConfirm } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,7 @@ export function SettingsForm({ settings, agent }: { settings: OutreachSettings; 
   const [agentPerDay, setAgentPerDay] = useState(String(settings.agentDailyTarget));
   const [agentTargets, setAgentTargets] = useState(JSON.stringify(settings.agentTargets, null, 2));
   const [keyLabel, setKeyLabel] = useState("Muse");
+  const [keyAudit, setKeyAudit] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [confirm, confirmDialog] = useConfirm();
@@ -100,9 +101,17 @@ export function SettingsForm({ settings, agent }: { settings: OutreachSettings; 
 
   function onGenerateKey() {
     startTransition(async () => {
-      const result = await generateAgentKeyAction(keyLabel);
+      const result = await generateAgentKeyAction(keyLabel, keyAudit);
       if (result.error) toast.error(result.error);
       else setNewKey(result.key ?? null);
+    });
+  }
+
+  function onToggleAudit(id: string, enabled: boolean) {
+    startTransition(async () => {
+      const result = await setAgentKeyAuditAction(id, enabled);
+      if (result.error) toast.error(result.error);
+      else toast.success(enabled ? "Audit access on." : "Audit access off.");
     });
   }
 
@@ -244,6 +253,18 @@ export function SettingsForm({ settings, agent }: { settings: OutreachSettings; 
                 {agent.topSkips.length > 0 && <> Skipped most often: {agent.topSkips.map((t) => `${t.reason.replace(/_/g, " ")} (${t.count})`).join(", ")}.</>}
               </p>
               {agent.lastError && <p className="break-words">Last error: {agent.lastError}</p>}
+              {agent.corrections.length > 0 && (
+                <div>
+                  <p className="font-semibold text-foreground">Recent audit changes</p>
+                  <ul className="max-h-40 space-y-1 overflow-auto">
+                    {agent.corrections.map((c, i) => (
+                      <li key={`${c.at}-${i}`} className="break-words">
+                        {c.company}: {c.summary} <span className="tabular-nums">({when(c.at)})</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3 border-t pt-5">
@@ -255,9 +276,15 @@ export function SettingsForm({ settings, agent }: { settings: OutreachSettings; 
                     <span className="min-w-0 break-words font-semibold">{k.label}</span>
                     <code className="text-sm text-muted-foreground">{k.prefix}…</code>
                     <Badge variant={k.revokedAt ? "muted" : "ok"}>{k.revokedAt ? "Revoked" : "Active"}</Badge>
+                    <span className="text-sm text-muted-foreground">read, submit, enrich{k.audit ? ", audit" : ""}</span>
                     <span className="text-sm text-muted-foreground tabular-nums">last used {when(k.lastUsedAt)}</span>
                     {!k.revokedAt && (
-                      <Button variant="outline" size="sm" className="ml-auto text-destructive" disabled={isPending} onClick={() => onRevokeKey(k.id, k.label)}>
+                      <Button variant="outline" size="sm" className="ml-auto" disabled={isPending} onClick={() => onToggleAudit(k.id, !k.audit)}>
+                        {k.audit ? "Remove audit access" : "Allow audit access"}
+                      </Button>
+                    )}
+                    {!k.revokedAt && (
+                      <Button variant="outline" size="sm" className="text-destructive" disabled={isPending} onClick={() => onRevokeKey(k.id, k.label)}>
                         Revoke key
                       </Button>
                     )}
@@ -284,6 +311,10 @@ export function SettingsForm({ settings, agent }: { settings: OutreachSettings; 
                     <FieldLabel htmlFor="outreach-agent-key-label">Key name</FieldLabel>
                     <Input id="outreach-agent-key-label" value={keyLabel} maxLength={60} onChange={(e) => setKeyLabel(e.target.value)} />
                   </Field>
+                  <label className="flex max-w-sm items-start gap-2 text-sm">
+                    <Checkbox checked={keyAudit} onCheckedChange={(v) => setKeyAudit(v === true)} className="mt-0.5" />
+                    <span>Audit access: read all discovery and prospect data, fix a company&apos;s website, add sourced facts, hand a company back to discovery. Never sends, deletes or changes settings.</span>
+                  </label>
                   <Button variant="outline" disabled={isPending} onClick={onGenerateKey}>
                     Generate agent key
                   </Button>

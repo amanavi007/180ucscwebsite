@@ -20,6 +20,18 @@ export async function readJson(request: Request): Promise<unknown> {
   }
 }
 
+/** Like readJson, but an empty body is an empty object (for calls whose body is all optional). */
+export async function readOptionalJson(request: Request): Promise<unknown> {
+  const raw = await request.text();
+  if (raw.trim() === "") return {};
+  if (raw.length > MAX_BODY_CHARS) throw new BadBody("too large");
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new BadBody("not json");
+  }
+}
+
 /**
  * Wraps an agent endpoint: checks the key and its scope, then runs the handler. Errors never leak details to the caller.
  * No CORS headers are sent: the agent is a server, not a browser page.

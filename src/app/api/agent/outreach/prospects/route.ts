@@ -1,4 +1,6 @@
 import { buildSubmitDeps } from "@/lib/data/outreach-agent";
+import { listProspects } from "@/lib/data/outreach-agent-audit";
+import { parseListQuery } from "@/lib/outreach/agent-audit";
 import { MAX_BATCH, submitBodySchema, submitProspects } from "@/lib/outreach/agent";
 import { agentRoute, readJson } from "@/lib/outreach/agent-route";
 
@@ -16,5 +18,14 @@ export async function POST(request: Request) {
     const outcome = await submitProspects({ batchId: parsed.data.batchId, rows: parsed.data.prospects }, await buildSubmitDeps(admin, keyId));
     if (outcome.kind === "in_progress") return Response.json({ error: "batch_in_progress" }, { status: 409 });
     return Response.json(outcome.body);
+  });
+}
+
+/** Audit read of the prospects: contact, status and the full fact list with sources, as drafting sees it. */
+export async function GET(request: Request) {
+  return agentRoute(request, "outreach:audit", async ({ admin }) => {
+    const parsed = parseListQuery(new URL(request.url).searchParams, ["status"]);
+    if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
+    return Response.json(await listProspects(admin, parsed.query));
   });
 }
