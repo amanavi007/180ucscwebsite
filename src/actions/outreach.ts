@@ -216,6 +216,8 @@ export interface OutreachSettingsInput {
   windowStartHour: string;
   windowEndHour: string;
   senderName: string;
+  fromName: string;
+  signature: string;
   postalAddress: string;
   followupDays: string;
 }
@@ -231,6 +233,8 @@ export async function updateOutreachSettingsAction(input: OutreachSettingsInput)
     ["outreach_window_start_hour", input.windowStartHour.trim()],
     ["outreach_window_end_hour", input.windowEndHour.trim()],
     ["outreach_sender_name", input.senderName.trim()],
+    ["outreach_from_name", input.fromName.trim()],
+    ["outreach_signature", input.signature.trim()],
     ["outreach_postal_address", input.postalAddress.trim()],
     ["outreach_followup_days", input.followupDays.trim()],
   ].map(([key, value]) => ({ key, value }));
@@ -246,6 +250,8 @@ export async function updateOutreachSettingsAction(input: OutreachSettingsInput)
   if (!parsed.senderName || !parsed.postalAddress || input.senderName.trim() === "" || input.postalAddress.trim() === "") {
     return { error: "The sender name and postal address can't be empty. Every email must carry a postal address." };
   }
+
+  if (input.signature.length > 600) return { error: "The signature is too long. Keep it under 600 characters." };
 
   if (input.mode === "self_only" || input.mode === "exec_only" || input.mode === "live") {
     try {

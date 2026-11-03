@@ -323,6 +323,7 @@ export async function runSend(deps: SendDeps): Promise<SendResult> {
       unsubscribeUrl: unsubscribeUrl(token, deps.siteUrl),
       senderName: settings.senderName,
       postalAddress: settings.postalAddress,
+      signature: settings.signature,
     });
     try {
       const { resendId } = await deps.send({

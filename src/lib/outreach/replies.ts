@@ -22,13 +22,40 @@ function hasAutoHeaders(headers: Record<string, string> | null): boolean {
   return ["auto_reply", "auto-reply", "bulk", "junk"].includes(h["precedence"] ?? "");
 }
 
+const QUOTE_STARTS = [
+  /^On [\s\S]{0,400}?wrote:\s*$/m, // Gmail and Apple Mail, which may wrap the header over two lines
+  /^-{2,}\s*Original Message\s*-{2,}/im,
+  /^_{5,}\s*$/m, // Outlook separator
+  /^From:.*\n(?:Sent|Date):/m, // Outlook header block
+];
+
+/**
+ * Only what the person just wrote: drops the quoted copy of our own email below it. Without this the
+ * "Unsubscribe here... we won't email you again" footer in that quote reads as an opt-out request.
+ */
+export function stripQuotedReply(text: string): string {
+  const normalized = text.replace(/\r\n/g, "\n");
+  let cut = normalized.length;
+  for (const start of QUOTE_STARTS) {
+    const hit = start.exec(normalized);
+    if (hit && hit.index < cut) cut = hit.index;
+  }
+  return normalized
+    .slice(0, cut)
+    .split("\n")
+    .filter((line) => !line.trimStart().startsWith(">"))
+    .join("\n")
+    .trim();
+}
+
 /** A first guess at what a reply is. Humans still read every one; this decides what happens to the sequence. */
 export function classifyReply(args: { subject: string; text: string; headers: Record<string, string> | null }): ReplyClass {
   if (hasAutoHeaders(args.headers) || AUTO_SUBJECT.test(args.subject.trim())) return "auto_reply";
-  if (UNSUBSCRIBE.test(args.text)) return "unsubscribe";
-  if (NOT_INTERESTED.test(args.text)) return "not_interested";
-  if (INTERESTED.test(args.text)) return "interested";
-  if (args.text.includes("?")) return "question";
+  const text = stripQuotedReply(args.text);
+  if (UNSUBSCRIBE.test(text)) return "unsubscribe";
+  if (NOT_INTERESTED.test(text)) return "not_interested";
+  if (INTERESTED.test(text)) return "interested";
+  if (text.includes("?")) return "question";
   return "other";
 }
 

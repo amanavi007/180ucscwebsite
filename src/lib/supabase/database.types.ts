@@ -425,6 +425,38 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["outreach_events"]["Insert"]>;
         Relationships: [];
       };
+      outreach_discovery_candidates: {
+        Row: {
+          id: string;
+          source: string;
+          source_ref: string | null;
+          company: string;
+          website: string | null;
+          domain: string;
+          outcome: string;
+          reason: string | null;
+          prospect_id: string | null;
+          email: string | null;
+          email_source_url: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          source?: string;
+          source_ref?: string | null;
+          company: string;
+          website?: string | null;
+          domain: string;
+          outcome: string;
+          reason?: string | null;
+          prospect_id?: string | null;
+          email?: string | null;
+          email_source_url?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["outreach_discovery_candidates"]["Insert"]>;
+        Relationships: [];
+      };
       outreach_suppressions: {
         Row: { id: string; email: string | null; domain: string | null; reason: string; created_at: string };
         Insert: { id?: string; email?: string | null; domain?: string | null; reason: string; created_at?: string };

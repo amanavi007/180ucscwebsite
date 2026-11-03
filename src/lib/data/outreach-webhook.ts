@@ -6,6 +6,7 @@ import { sendOutreachEmail } from "@/lib/email/outreach-send";
 import { evaluateBrakes } from "@/lib/outreach/pacing";
 import { extractEmail, matchReplyToProspect } from "@/lib/outreach/replies";
 import type { WebhookDeps, WebhookEvent } from "@/lib/outreach/webhook-handler";
+import { replyForwardRecipients } from "@/lib/outreach/settings";
 import { emailDomain } from "@/lib/outreach/verify";
 import {
   addSuppression,
@@ -142,7 +143,7 @@ export function buildWebhookDeps(): WebhookDeps {
     },
 
     forward: async (args) => {
-      const to = await execEmails(admin);
+      const to = replyForwardRecipients(await loadOutreachSettings(admin), await execEmails(admin));
       if (to.length === 0) throw new Error("No exec email addresses to forward to.");
       const portalUrl = `${process.env.NEXT_PUBLIC_SITE_URL}${OUTREACH_PORTAL_PATH}${args.prospectId ? `?prospect=${args.prospectId}` : ""}`;
       const email = buildReplyForwardEmail({

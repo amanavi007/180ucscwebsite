@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyReply, matchReplyToProspect } from "./replies";
+import { classifyReply, matchReplyToProspect, stripQuotedReply } from "./replies";
 
 const base = { subject: "Re: Helping Acme", headers: null as Record<string, string> | null };
 
@@ -32,6 +32,48 @@ describe("classifyReply", () => {
   it("calls other questions questions and everything else other", () => {
     expect(classifyReply({ ...base, text: "Who pays for this?", headers: null })).toBe("question");
     expect(classifyReply({ ...base, text: "Forwarding to my cofounder.", headers: null })).toBe("other");
+  });
+});
+
+const OUR_EMAIL_QUOTED = `On Tue, Nov 3, 2026 at 11:22 AM 180 Degrees Consulting at UCSC <
+team@consulting.ucsc180dc.org> wrote:
+
+> Hi Test, we're 180 Degrees Consulting at UCSC.
+>
+> Best,
+> The 180 Degrees Consulting UCSC team
+>
+> 180 Degrees Consulting at UCSC, 1156 High St, Santa Cruz, CA 95064
+> Not interested? Unsubscribe here
+> <https://www.ucsc180dc.org/unsubscribe?token=abc>
+> and we won't email you again.
+`;
+
+describe("stripQuotedReply", () => {
+  it("drops the Gmail quote block and keeps only what the person wrote", () => {
+    expect(stripQuotedReply(`this sounds interesting, can we talk?\n\n${OUR_EMAIL_QUOTED}`)).toBe("this sounds interesting, can we talk?");
+  });
+  it("drops Outlook-style original message blocks", () => {
+    expect(stripQuotedReply("Sure, Thursday works.\n\n-----Original Message-----\nFrom: team\nNot interested? Unsubscribe")).toBe("Sure, Thursday works.");
+    expect(stripQuotedReply("Sure.\n\nFrom: 180 Degrees Consulting\nSent: Tuesday\nTo: me\nUnsubscribe here")).toBe("Sure.");
+  });
+  it("drops lines that start with > but keeps inline answers", () => {
+    expect(stripQuotedReply("> Would a call help?\nYes, it would.")).toBe("Yes, it would.");
+  });
+  it("leaves a plain reply alone", () => {
+    expect(stripQuotedReply("  Forwarding to my cofounder.  ")).toBe("Forwarding to my cofounder.");
+  });
+});
+
+describe("classifyReply with quoted text", () => {
+  it("is not fooled by the unsubscribe line in our own quoted email", () => {
+    expect(classifyReply({ ...base, text: `this sounds interesting, can we talk?\n\n${OUR_EMAIL_QUOTED}`, headers: null })).toBe("interested");
+  });
+  it("still sees a real unsubscribe request above the quote", () => {
+    expect(classifyReply({ ...base, text: `please unsubscribe me\n\n${OUR_EMAIL_QUOTED}`, headers: null })).toBe("unsubscribe");
+  });
+  it("calls a reply that is only a quote 'other'", () => {
+    expect(classifyReply({ ...base, text: OUR_EMAIL_QUOTED, headers: null })).toBe("other");
   });
 });
 

@@ -1,4 +1,4 @@
-import { classifyReply, extractEmail, type ReplyClass } from "./replies";
+import { classifyReply, extractEmail, stripQuotedReply, type ReplyClass } from "./replies";
 
 export interface WebhookEvent {
   type: string;
@@ -61,13 +61,15 @@ async function handleReceived(data: Record<string, unknown>, deps: WebhookDeps) 
   const fromEmail = extractEmail(mail.from);
   const classification: ReplyClass = isUnsubscribe ? "unsubscribe" : classifyReply({ subject: mail.subject, text: mail.text, headers: mail.headers });
   const prospect = await deps.matchProspect(fromEmail);
+  // What they wrote, without our own email quoted underneath it.
+  const message = stripQuotedReply(mail.text) || mail.text;
 
   await deps.saveReply({
     resendEmailId: emailId,
     prospectId: prospect?.id ?? null,
     fromEmail,
     subject: mail.subject,
-    snippet: mail.text.slice(0, 500),
+    snippet: message.slice(0, 500),
     classification,
   });
 
@@ -87,7 +89,7 @@ async function handleReceived(data: Record<string, unknown>, deps: WebhookDeps) 
     fromEmail,
     classification,
     subject: mail.subject,
-    text: mail.text,
+    text: message,
     prospectId: prospect?.id ?? null,
     unmatched: !prospect,
   });

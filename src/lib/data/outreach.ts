@@ -11,10 +11,13 @@ import { draftWithModel } from "@/lib/outreach/draft-model";
 import { attributeBooking } from "@/lib/outreach/booking-attribution";
 import { dailyCap, pacificInstant } from "@/lib/outreach/pacing";
 import {
+  buildFromAddress,
   OUTREACH_SETTING_KEYS,
   parseOutreachSettings,
+  replyForwardRecipients,
   type OutreachSettings,
 } from "@/lib/outreach/settings";
+import { type WebhookHealthDeps } from "@/lib/outreach/webhook-health";
 import { checkMx, emailDomain, type ExistingProspectData } from "@/lib/outreach/verify";
 import type {
   MessagePatch,
@@ -137,7 +140,7 @@ export function outreachEnv(settings: OutreachSettings, now = new Date()): Runne
     siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
     unsubscribeSecret: secret,
     unsubscribeMailto: `unsubscribe@${replyTo.split("@")[1]}`,
-    fromAddress: from,
+    fromAddress: buildFromAddress(from, settings.fromName),
     replyTo,
   };
 }
@@ -242,6 +245,26 @@ export async function buildPrepareDeps(now = new Date()): Promise<PrepareDeps> {
   };
 }
 
+/** Resend's webhook list and repair, using the outreach key (full access is needed to manage webhooks). */
+export function buildWebhookHealthDeps(): WebhookHealthDeps {
+  const key = process.env.OUTREACH_RESEND_API_KEY;
+  const headers = { Authorization: `Bearer ${key}`, "Content-Type": "application/json" };
+  return {
+    expectedEndpoint: `${process.env.NEXT_PUBLIC_SITE_URL}/api/webhooks/resend`,
+    list: async () => {
+      const res = await fetch("https://api.resend.com/webhooks", { headers, cache: "no-store" });
+      if (!res.ok) throw new Error(`Resend webhooks list failed: ${res.status}`);
+      const body = (await res.json()) as { data?: { id: string; endpoint: string; status: string }[] };
+      return body.data ?? [];
+    },
+    update: async (id, patch) => {
+      const res = await fetch(`https://api.resend.com/webhooks/${id}`, { method: "PATCH", headers, body: JSON.stringify(patch) });
+      if (!res.ok) throw new Error(`Resend webhook update failed: ${res.status}`);
+    },
+    notify: (reason) => alertExecsOfBrake(createAdminClient(), reason),
+  };
+}
+
 export async function execEmails(admin: Admin = createAdminClient()): Promise<string[]> {
   const { data, error } = await admin.from("profiles").select("email").in("role", EXEC_ROLES);
   if (error) throw error;
@@ -254,7 +277,7 @@ export async function alertExecsOfBrake(admin: Admin, reason: string): Promise<v
   const already = (data ?? []).some((e) => (e.detail as { reason?: string } | null)?.reason === reason);
   if (already) return;
   await admin.from("outreach_events").insert({ kind: "brake", detail: { reason } });
-  const to = await execEmails(admin);
+  const to = replyForwardRecipients(await loadOutreachSettings(admin), await execEmails(admin));
   if (to.length === 0) return;
   const portalUrl = `${process.env.NEXT_PUBLIC_SITE_URL}${OUTREACH_PORTAL_PATH}`;
   const email = buildBrakeAlertEmail(reason, portalUrl);

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import type { OutreachMode, OutreachSettings } from "@/lib/outreach/settings";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +37,8 @@ export function SettingsForm({ settings }: { settings: OutreachSettings }) {
   const [endHour, setEndHour] = useState(String(settings.windowEndHour));
   const [followups, setFollowups] = useState(settings.followupDays.join(", "));
   const [senderName, setSenderName] = useState(settings.senderName);
+  const [fromName, setFromName] = useState(settings.fromName);
+  const [signature, setSignature] = useState(settings.signature);
   const [address, setAddress] = useState(settings.postalAddress);
   const [isPending, startTransition] = useTransition();
   const [confirm, confirmDialog] = useConfirm();
@@ -58,6 +61,8 @@ export function SettingsForm({ settings }: { settings: OutreachSettings }) {
         windowStartHour: startHour,
         windowEndHour: endHour,
         senderName,
+        fromName,
+        signature,
         postalAddress: address,
         followupDays: followups,
       });
@@ -152,6 +157,16 @@ export function SettingsForm({ settings }: { settings: OutreachSettings }) {
               <FieldLabel htmlFor="outreach-name">Sender name</FieldLabel>
               <Input id="outreach-name" value={senderName} onChange={(e) => setSenderName(e.target.value)} />
               <FieldDescription>Shown at the bottom of every email. The address emails come from is set in the environment, not here.</FieldDescription>
+            </Field>
+            <Field className="max-w-md">
+              <FieldLabel htmlFor="outreach-from-name">Sent by (full name)</FieldLabel>
+              <Input id="outreach-from-name" value={fromName} placeholder="Aman Avinash" onChange={(e) => setFromName(e.target.value)} />
+              <FieldDescription>The name people see as the sender. The email address uses the first name, so &quot;Aman Avinash&quot; sends from aman@ on the outreach domain. Leave empty to send as the team.</FieldDescription>
+            </Field>
+            <Field className="max-w-md">
+              <FieldLabel htmlFor="outreach-signature">Signature</FieldLabel>
+              <Textarea id="outreach-signature" value={signature} rows={6} placeholder={"Best regards,\n\nAman Avinash\nDirector of Projects | 180 Degrees Consulting"} onChange={(e) => setSignature(e.target.value)} />
+              <FieldDescription>Everything after the message, starting with the closing line. Write a link as [Learn more](https://ucsc180dc.org) and it shows as a clickable word. Leave empty to sign as the team.</FieldDescription>
             </Field>
             <Field className="max-w-md">
               <FieldLabel htmlFor="outreach-address">Postal address</FieldLabel>

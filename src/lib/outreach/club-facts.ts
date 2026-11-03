@@ -13,7 +13,7 @@ export const CLUB_FACTS = `
 - We are an international, university-based consultancy: 180 Degrees Consulting is a global network, and the UCSC branch is run by students.
 - Past work includes marketing strategy, community engagement initiatives and new program design, for local and Bay Area organizations (see the past clients list below).
 - An engagement is a ten-week project on one specific challenge or opportunity. The scope is agreed together with the client first, and our team then delivers data-informed recommendations.
-- Services are free. Voluntary donations are welcome but never required.
+- Services cost the client nothing.
 - A prospect can book a 30-minute intro call with our exec team through the booking link that is added to every email.
 
 - Past clients, from our website: ${CLIENTS.map((c) => c.name).join("; ")}.

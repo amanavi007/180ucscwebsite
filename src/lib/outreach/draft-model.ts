@@ -2,7 +2,7 @@ import "server-only";
 import { generateText, Output } from "ai";
 import { buildModel } from "@/lib/assistant/provider";
 import { CLUB_FACTS } from "./club-facts";
-import { draftOutputSchema, generateDraft, type DraftKind, type DraftOutput } from "./draft";
+import { draftModelSchema, generateDraft, type DraftKind, type DraftOutput } from "./draft";
 import type { ProspectDraftRow } from "./types";
 
 /** A prompt-in, JSON-out function backed by the portal's AI providers (BayLeaf first: UCSC-run, free, zero data retention). */
@@ -10,7 +10,7 @@ export function modelGenerate(env: Record<string, string | undefined> = process.
   const model = buildModel({ ...env, ASSISTANT_PRIMARY: "bayleaf" });
   if (!model) throw new Error("The AI helper isn't set up. Add an AI key.");
   return async (prompt) => {
-    const { output } = await generateText({ model, output: Output.object({ schema: draftOutputSchema }), prompt });
+    const { output } = await generateText({ model, output: Output.object({ schema: draftModelSchema }), prompt });
     return output;
   };
 }
