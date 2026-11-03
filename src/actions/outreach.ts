@@ -22,6 +22,8 @@ import { partitionImport, type SkipReason } from "@/lib/outreach/verify";
 import { runPrepare, runSend, type PrepareResult } from "@/lib/outreach/runner";
 import { parseOutreachSettings, shouldRestartRamp } from "@/lib/outreach/settings";
 import { loadOutreachSettings } from "@/lib/data/outreach";
+import { buildDiscoveryDeps } from "@/lib/data/outreach-discovery";
+import { runDiscovery, type DiscoveryResult } from "@/lib/outreach/discovery/runner";
 import { fetchInChunks, runInChunks } from "@/lib/paginate";
 
 export interface ActionResult {
@@ -209,6 +211,25 @@ export async function runSendTestNowAction(): Promise<ActionResult & { sent?: nu
   }
 }
 
+const DISCOVERY_PORTAL_PATH = `${OUTREACH_PORTAL_PATH}/discovery`;
+
+/** Looks at a handful of companies now instead of waiting for the 6am run. Works even while the daily job is switched off. */
+export async function runDiscoveryNowAction(): Promise<ActionResult & { result?: DiscoveryResult }> {
+  const { error } = await requireExec();
+  if (error) return { error };
+  try {
+    const deps = await buildDiscoveryDeps();
+    // A manual run is a deliberate request: ignore the on/off switch, but keep it short enough for one request.
+    const result = await runDiscovery({ ...deps, enabled: true, maxAttempts: 25, budgetMs: 45_000 });
+    revalidatePath(DISCOVERY_PORTAL_PATH);
+    revalidatePath(OUTREACH_PORTAL_PATH);
+    return { result };
+  } catch (err) {
+    console.error("outreach discovery (manual) failed:", err);
+    return { error: "Discovery didn't finish. If the discovery table isn't set up yet, run the latest migration, then try again." };
+  }
+}
+
 export interface OutreachSettingsInput {
   mode: string;
   paused: boolean;
@@ -220,6 +241,11 @@ export interface OutreachSettingsInput {
   signature: string;
   postalAddress: string;
   followupDays: string;
+  discoveryEnabled: boolean;
+  discoveryPerDay: string;
+  discoveryMaxTeam: string;
+  discoveryRegions: string;
+  discoveryIndustries: string;
 }
 
 export async function updateOutreachSettingsAction(input: OutreachSettingsInput): Promise<ActionResult> {
@@ -237,6 +263,11 @@ export async function updateOutreachSettingsAction(input: OutreachSettingsInput)
     ["outreach_signature", input.signature.trim()],
     ["outreach_postal_address", input.postalAddress.trim()],
     ["outreach_followup_days", input.followupDays.trim()],
+    ["outreach_discovery_enabled", input.discoveryEnabled ? "true" : "false"],
+    ["outreach_discovery_per_day", input.discoveryPerDay.trim()],
+    ["outreach_discovery_max_team", input.discoveryMaxTeam.trim()],
+    ["outreach_discovery_regions", input.discoveryRegions.trim()],
+    ["outreach_discovery_industries", input.discoveryIndustries.trim()],
   ].map(([key, value]) => ({ key, value }));
 
   // Bad values silently fall back to defaults when read, so reject them here instead.
@@ -251,6 +282,9 @@ export async function updateOutreachSettingsAction(input: OutreachSettingsInput)
     return { error: "The sender name and postal address can't be empty. Every email must carry a postal address." };
   }
 
+  if (parsed.discoveryPerDay !== Number(input.discoveryPerDay) || input.discoveryPerDay.trim() === "") return { error: "Companies to find per day must be a whole number from 0 to 50." };
+  if (parsed.discoveryMaxTeam !== Number(input.discoveryMaxTeam) || input.discoveryMaxTeam.trim() === "") return { error: "The biggest team size must be a whole number of at least 1." };
+  if (input.discoveryRegions.trim() === "" || input.discoveryIndustries.trim() === "") return { error: "Add at least one city and one industry for discovery." };
   if (input.signature.length > 600) return { error: "The signature is too long. Keep it under 600 characters." };
 
   if (input.mode === "self_only" || input.mode === "exec_only" || input.mode === "live") {
@@ -266,6 +300,8 @@ export async function updateOutreachSettingsAction(input: OutreachSettingsInput)
     const previous = await loadOutreachSettings(admin);
     for (const { key, value } of rows) await setOutreachSetting(admin, key, value);
     if (parsed.mode === "self_only") await setOutreachSetting(admin, "outreach_test_recipient", profile.email);
+    // Discovered prospects are created under whoever switched discovery on.
+    if (parsed.discoveryEnabled && !previous.discoveryEnabled) await setOutreachSetting(admin, "outreach_discovery_enabled_by", profile.id);
     if (shouldRestartRamp(previous.mode, parsed.mode)) await setOutreachSetting(admin, "outreach_started_on", "");
   } catch (err) {
     console.error("outreach settings save failed:", err);

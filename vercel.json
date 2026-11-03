@@ -44,6 +44,14 @@
     {
       "path": "/api/cron/outreach-send",
       "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/cron/outreach-discover",
+      "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/outreach-discover",
+      "schedule": "0 14 * * *"
     }
   ]
 }

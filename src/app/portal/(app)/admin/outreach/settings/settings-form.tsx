@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 
 const SECTIONS = [
   { key: "sending", label: "Sending" },
+  { key: "discovery", label: "Discovery" },
   { key: "pace", label: "Pace" },
   { key: "sequence", label: "Follow-ups" },
   { key: "sender", label: "Sender" },
@@ -40,6 +41,11 @@ export function SettingsForm({ settings }: { settings: OutreachSettings }) {
   const [fromName, setFromName] = useState(settings.fromName);
   const [signature, setSignature] = useState(settings.signature);
   const [address, setAddress] = useState(settings.postalAddress);
+  const [discoveryOn, setDiscoveryOn] = useState(settings.discoveryEnabled);
+  const [perDay, setPerDay] = useState(String(settings.discoveryPerDay));
+  const [maxTeam, setMaxTeam] = useState(String(settings.discoveryMaxTeam));
+  const [regions, setRegions] = useState(settings.discoveryRegions.join(", "));
+  const [industries, setIndustries] = useState(settings.discoveryIndustries.join("; "));
   const [isPending, startTransition] = useTransition();
   const [confirm, confirmDialog] = useConfirm();
 
@@ -65,6 +71,11 @@ export function SettingsForm({ settings }: { settings: OutreachSettings }) {
         signature,
         postalAddress: address,
         followupDays: followups,
+        discoveryEnabled: discoveryOn,
+        discoveryPerDay: perDay,
+        discoveryMaxTeam: maxTeam,
+        discoveryRegions: regions,
+        discoveryIndustries: industries,
       });
       if (result.error) toast.error(result.error);
       else toast.success("Outreach settings saved.");
@@ -114,6 +125,42 @@ export function SettingsForm({ settings }: { settings: OutreachSettings }) {
                 </span>
               </span>
             </label>
+          </>
+        )}
+
+        {section === "discovery" && (
+          <>
+            <h2 className="text-lg">Discovery</h2>
+            <label className="flex items-start gap-3">
+              <Checkbox checked={discoveryOn} onCheckedChange={(v) => setDiscoveryOn(v === true)} className="mt-0.5" />
+              <span>
+                <span className="block font-semibold">Find new companies automatically</span>
+                <span className="block text-sm text-muted-foreground">
+                  Every morning around 6am it looks for companies that fit, reads their websites and adds the ones that publish an email as new prospects. It never emails anyone itself; sending follows the mode and pace settings.
+                </span>
+              </span>
+            </label>
+            <div className="flex flex-wrap gap-4">
+              <Field className="w-52">
+                <FieldLabel htmlFor="outreach-discovery-per-day">Companies to find per day</FieldLabel>
+                <Input id="outreach-discovery-per-day" inputMode="numeric" value={perDay} onChange={(e) => setPerDay(e.target.value)} />
+              </Field>
+              <Field className="w-52">
+                <FieldLabel htmlFor="outreach-discovery-team">Biggest team size</FieldLabel>
+                <Input id="outreach-discovery-team" inputMode="numeric" value={maxTeam} onChange={(e) => setMaxTeam(e.target.value)} />
+              </Field>
+            </div>
+            <Field className="max-w-xl">
+              <FieldLabel htmlFor="outreach-discovery-regions">Cities</FieldLabel>
+              <Input id="outreach-discovery-regions" value={regions} onChange={(e) => setRegions(e.target.value)} />
+              <FieldDescription>Separated by commas. A company counts if any of its locations includes one of these.</FieldDescription>
+            </Field>
+            <Field className="max-w-xl">
+              <FieldLabel htmlFor="outreach-discovery-industries">Industries</FieldLabel>
+              <Input id="outreach-discovery-industries" value={industries} onChange={(e) => setIndustries(e.target.value)} />
+              <FieldDescription>Separated by semicolons, using Y Combinator&apos;s names, for example Healthcare; B2B; Fintech; Infrastructure; Consumer; Security.</FieldDescription>
+            </Field>
+            <p className="text-sm text-muted-foreground">Discovery pauses by itself while a lot of prospects are still waiting to be sent, so it never gets ahead of the daily limit.</p>
           </>
         )}
 

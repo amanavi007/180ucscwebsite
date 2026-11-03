@@ -10,6 +10,7 @@ import {
   CalendarRange,
   CalendarClock,
   SlidersHorizontal,
+  Compass,
   Users2,
   History,
   Link2,
@@ -190,6 +191,15 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     icon: Send,
     execOnly: true,
     keywords: "clients prospects companies cold email emails follow up replies leads startups sales",
+    group: "admin-outreach",
+  },
+  {
+    href: "/portal/admin/outreach/discovery",
+    label: "Outreach Discovery",
+    viewLabel: "Discovery",
+    icon: Compass,
+    execOnly: true,
+    keywords: "outreach discovery find companies startups prospects automatic search y combinator yc skipped no email",
     group: "admin-outreach",
   },
   {
