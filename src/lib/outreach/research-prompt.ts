@@ -31,3 +31,42 @@ export function buildResearchPrompt(args: { niche: string; needs: string; exclud
     "Put double quotes around any cell that contains a comma. In \"Source URLs\", list the pages the facts came from, separated by semicolons. \"Niche\" must be one of: strategy, tech, med-tech, other.",
   ].join("\n");
 }
+
+export const COMPANY_LIST_CSV_HEADER = "Company,Website,What they do,Niche,Source URLs";
+
+/**
+ * A prompt for Claude Research that asks only for company names and websites. Contact details are left to the portal,
+ * which reads each company's own site, so no email address is ever the model's guess.
+ */
+export function buildCompanyListPrompt(args: { niche: string; region: string; needs: string; exclude: string }): string {
+  const niche = args.niche.trim() || "[describe the kind of company]";
+  const region = args.region.trim() || "the San Francisco Bay Area";
+  const needs = args.needs.trim() || "[what they might need]";
+  const exclude = args.exclude.trim() || "none";
+  return [
+    "You are building a list of possible clients for 180 Degrees Consulting at UCSC, a student-run consulting group at UC Santa Cruz. A dedicated student team works with a client for one academic quarter on a real strategic challenge, free of charge.",
+    "",
+    "Find 40 companies that fit this description:",
+    niche,
+    "",
+    `Where: ${region}.`,
+    "",
+    "What they might need from a consulting team:",
+    needs,
+    "",
+    "Rules:",
+    "- Use only public sources you actually opened: the company's own website, news, funding announcements, accelerator and incubator portfolio pages, public directories. Give the URL of each page your facts came from.",
+    "- Only real, currently operating companies that have their own website. Never invent a company or a website. If you are not sure a company exists, leave it out.",
+    "- Never include email addresses, phone numbers or people's names. Contact details are collected separately from each company's own website, so do not look for them and never guess one.",
+    "- Prefer small and mid-sized companies (about 5 to 200 people) that are growing, over very early two-person teams and over large corporations.",
+    "- Skip nonprofits, schools, government bodies and consultancies.",
+    `- Skip these companies we have already worked with or contacted: ${exclude}.`,
+    "- \"What they do\" is one plain sentence taken from what you read. No flattery, no hype.",
+    "",
+    "Output ONLY a CSV, with no commentary before or after it, using exactly this header row on the first line:",
+    "",
+    COMPANY_LIST_CSV_HEADER,
+    "",
+    "Put double quotes around any cell that contains a comma. \"Website\" is the company's own homepage. \"Niche\" must be one of: strategy, tech, med-tech, other. In \"Source URLs\", list the pages the facts came from, separated by semicolons.",
+  ].join("\n");
+}

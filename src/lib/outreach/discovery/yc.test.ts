@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nicheForIndustries, rankYcCompanies, ycFacts, type YcCompany } from "./yc";
+import { interleaveMedTech, matchesFilter, nicheForIndustries, rankYcCompanies, ycFacts, ycMeta, ycPriority, type YcCompany } from "./yc";
 
 const base: YcCompany = {
   id: 1,
@@ -45,6 +45,15 @@ describe("rankYcCompanies", () => {
     const rows = [co({ id: 10, batch: "Winter 2021" }), co({ id: 11, batch: "Summer 2026" }), co({ id: 12, batch: "Winter 2026" })];
     expect(rankYcCompanies(rows, config).map((c) => c.id)).toEqual([11, 12, 10]);
   });
+  it("puts teams of five or more ahead of tiny ones, newest first within each", () => {
+    const rows = [
+      co({ id: 30, batch: "Summer 2027", team_size: 2 }),
+      co({ id: 31, batch: "Winter 2022", team_size: 12 }),
+      co({ id: 32, batch: "Summer 2025", team_size: 8 }),
+      co({ id: 33, batch: "Winter 2027", team_size: 3 }),
+    ];
+    expect(rankYcCompanies(rows, config).map((c) => c.id)).toEqual([32, 31, 30, 33]);
+  });
   it("alternates healthcare companies with the rest, so med-tech is not crowded out by newer batches", () => {
     const rows = [
       co({ id: 20, batch: "Winter 2027", industries: ["B2B"] }),
@@ -86,5 +95,43 @@ describe("nicheForIndustries", () => {
     expect(nicheForIndustries(["Healthcare", "Healthcare IT"])).toBe("med-tech");
     expect(nicheForIndustries(["B2B"])).toBe("tech");
     expect(nicheForIndustries([])).toBe("tech");
+  });
+});
+
+describe("ycPriority", () => {
+  it("scores a five-person team above a tiny newer one", () => {
+    expect(ycPriority(co({ team_size: 12, batch: "Winter 2022" }))).toBeGreaterThan(ycPriority(co({ team_size: 2, batch: "Summer 2027" })));
+  });
+  it("scores newer batches higher among teams of the same kind", () => {
+    expect(ycPriority(co({ batch: "Summer 2026" }))).toBeGreaterThan(ycPriority(co({ batch: "Winter 2024" })));
+  });
+});
+
+describe("ycMeta and matchesFilter", () => {
+  it("keeps what a later filter needs", () => {
+    expect(ycMeta(base)).toEqual({ industries: ["Healthcare", "Healthcare IT"], locations: "San Francisco, CA, USA; Remote", teamSize: 19 });
+  });
+  it("applies today's settings to a company stored earlier", () => {
+    const meta = ycMeta(base);
+    expect(matchesFilter(meta, config)).toBe(true);
+    expect(matchesFilter(meta, { ...config, regions: ["Austin"] })).toBe(false);
+    expect(matchesFilter(meta, { ...config, industries: ["Fintech"] })).toBe(false);
+    expect(matchesFilter(meta, { ...config, maxTeamSize: 10 })).toBe(false);
+  });
+  it("lets a company with no directory data through, as pasted companies have none", () => {
+    expect(matchesFilter(null, config)).toBe(true);
+  });
+});
+
+describe("interleaveMedTech", () => {
+  it("alternates med-tech with the rest, keeping each group's order", () => {
+    const rows = [
+      { id: 1, medTech: false },
+      { id: 2, medTech: false },
+      { id: 3, medTech: false },
+      { id: 4, medTech: true },
+      { id: 5, medTech: true },
+    ];
+    expect(interleaveMedTech(rows, (r) => r.medTech).map((r) => r.id)).toEqual([4, 1, 5, 2, 3]);
   });
 });

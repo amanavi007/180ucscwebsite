@@ -14,7 +14,8 @@ import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { DiscoveryOverview } from "@/lib/data/outreach-discovery";
-import { OUTCOME_FILTERS, filterByOutcome, outcomeChip, type CandidateView } from "@/lib/outreach/discovery/view";
+import { OUTCOME_FILTERS, countsByFilter, outcomeChip, type CandidateView } from "@/lib/outreach/discovery/view";
+import { CompanyListDialog } from "./company-list-dialog";
 import { formatWhen } from "@/lib/outreach/view";
 import { useFilteredList } from "@/lib/use-filtered-list";
 import { cn } from "@/lib/utils";
@@ -54,11 +55,10 @@ export function DiscoveryWorkspace({ overview }: { overview: DiscoveryOverview }
   }
 
   const { query, setQuery, filtered: searched } = useFilteredList<CandidateView>(overview.candidates, SEARCH_FIELDS);
-  const counts = useMemo(
-    () => Object.fromEntries(OUTCOME_FILTERS.map((f) => [f.key, filterByOutcome(overview.candidates, f.key).length])),
-    [overview.candidates],
-  );
-  const visible = useMemo(() => filterByOutcome(searched, outcome), [searched, outcome]);
+  // The server already narrowed the list by result; the search box only filters what it sent.
+  const counts = useMemo(() => countsByFilter(overview.counts), [overview.counts]);
+  const visible = searched;
+  const [listOpen, setListOpen] = useState(false);
   const selected = overview.candidates.find((c) => c.id === selectedId) ?? null;
 
   const full = overview.backlog > overview.backlogLimit;
@@ -85,9 +85,14 @@ export function DiscoveryWorkspace({ overview }: { overview: DiscoveryOverview }
         title="Discovery"
         description="Finds companies that fit, reads their own websites, and adds the ones that publish an email. Nothing here sends an email."
         actions={
-          <Button size="lg" onClick={onFindNow} disabled={isPending}>
-            {isPending ? "Looking..." : "Find companies now"}
-          </Button>
+          <>
+            <Button variant="outline" size="lg" onClick={() => setListOpen(true)}>
+              Add companies
+            </Button>
+            <Button size="lg" onClick={onFindNow} disabled={isPending}>
+              {isPending ? "Looking..." : "Find companies now"}
+            </Button>
+          </>
         }
       />
 
@@ -106,9 +111,9 @@ export function DiscoveryWorkspace({ overview }: { overview: DiscoveryOverview }
           </p>
         </div>
         <div>
-          <p className="text-sm text-muted-foreground">Looked at, last 7 days</p>
-          <p className="mt-1 font-heading text-3xl tabular-nums">{summary.lookedAtWeek}</p>
-          <p className="text-sm text-muted-foreground tabular-nums">{summary.addedWeek} added</p>
+          <p className="text-sm text-muted-foreground">Ready to add</p>
+          <p className="mt-1 font-heading text-3xl tabular-nums">{overview.counts.ready ?? 0}</p>
+          <p className="text-sm text-muted-foreground tabular-nums">{summary.addedWeek} added in the last 7 days</p>
         </div>
         <div>
           <p className="text-sm text-muted-foreground">Last run</p>
@@ -116,6 +121,8 @@ export function DiscoveryWorkspace({ overview }: { overview: DiscoveryOverview }
           <p className="text-sm text-muted-foreground tabular-nums">{summary.lastRunAt ? lastRun(summary.lastRunAt) : "Nothing looked at yet."}</p>
         </div>
       </section>
+
+      <CompanyListDialog open={listOpen} onOpenChange={setListOpen} />
 
       <div className={cn("grid items-start gap-6", selected && "xl:grid-cols-[minmax(0,1fr)_420px]")}>
         <div className="min-w-0 space-y-4">
@@ -144,7 +151,9 @@ export function DiscoveryWorkspace({ overview }: { overview: DiscoveryOverview }
                 <TableRow>
                   <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
                     {overview.candidates.length === 0
-                      ? "Nothing yet. Turn discovery on in Settings, or press Find companies now."
+                      ? outcome === "all"
+                        ? "Nothing yet. Turn discovery on in Settings, press Find companies now, or add a list of companies."
+                        : "Nothing with that result."
                       : "No one matches that."}
                   </TableCell>
                 </TableRow>
@@ -237,6 +246,30 @@ function CandidatePanel({ candidate, onClose }: { candidate: CandidateView; onCl
           <dd className="tabular-nums">{lastRun(candidate.createdAt)}</dd>
         </div>
       </dl>
+
+      {candidate.founders.length > 0 && (
+        <section aria-labelledby="founders-heading" className="space-y-2">
+          <h3 id="founders-heading" className="text-base">
+            Founders
+          </h3>
+          <ul className="space-y-1.5 text-sm">
+            {candidate.founders.map((f) => (
+              <li key={f.name} className="min-w-0">
+                <span className="font-semibold">{f.name}</span>
+                {f.title && <span className="text-muted-foreground"> · {f.title}</span>}
+                {f.linkedinUrl && (
+                  <>
+                    {" · "}
+                    <a href={f.linkedinUrl} target="_blank" rel="noreferrer" className="text-link underline-offset-4 hover:underline">
+                      LinkedIn
+                    </a>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {["no_email", "unreachable"].includes(candidate.outcome) && <AddEmailForm candidate={candidate} />}
 

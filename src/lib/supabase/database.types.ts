@@ -438,6 +438,8 @@ export interface Database {
           prospect_id: string | null;
           email: string | null;
           email_source_url: string | null;
+          founders: Json;
+          payload: Json | null;
           created_at: string;
         };
         Insert: {
@@ -452,6 +454,8 @@ export interface Database {
           prospect_id?: string | null;
           email?: string | null;
           email_source_url?: string | null;
+          founders?: Json;
+          payload?: Json | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["outreach_discovery_candidates"]["Insert"]>;

@@ -24,7 +24,9 @@ import { parseOutreachSettings, shouldRestartRamp } from "@/lib/outreach/setting
 import { loadOutreachSettings } from "@/lib/data/outreach";
 import { buildDiscoveryDeps } from "@/lib/data/outreach-discovery";
 import { normalizeManualEmail } from "@/lib/outreach/discovery/emails";
-import { prospectFromYc, runDiscovery, type DiscoveryResult } from "@/lib/outreach/discovery/runner";
+import { matchFounderToEmail, type Founder } from "@/lib/outreach/discovery/founders";
+import { parseCompanyList, type ListError } from "@/lib/outreach/discovery/list";
+import { prospectFromYc, runDiscovery, stageLeads, type DiscoveryResult } from "@/lib/outreach/discovery/runner";
 import { loadYcDataset } from "@/lib/outreach/discovery/web";
 import { factsToJson } from "@/lib/data/outreach";
 import { fetchInChunks, runInChunks } from "@/lib/paginate";
@@ -261,7 +263,8 @@ export async function addCandidateEmailAction(candidateId: string, rawEmail: str
     return { error: "Couldn't reach the company directory just now. Try again in a minute." };
   }
   if (!company) return { error: "That company is no longer in the directory, so there are no facts to write from." };
-  const prospect = prospectFromYc(company, email);
+  const founders = Array.isArray(candidate.founders) ? (candidate.founders as unknown as Founder[]) : [];
+  const prospect = prospectFromYc(company, email, [], matchFounderToEmail(email, founders));
   if (prospect.facts.length === 0) return { error: "There's nothing sourced to say about this company." };
 
   const { data: created, error: insertError } = await admin
@@ -273,6 +276,8 @@ export async function addCandidateEmailAction(candidateId: string, rawEmail: str
       size_stage: prospect.sizeStage,
       summary: prospect.summary,
       facts: factsToJson(prospect.facts),
+      contact_name: prospect.contactName,
+      contact_role: prospect.contactRole,
       contact_email: email,
       contact_domain: emailDomain(email),
       created_by: profile.id,
@@ -292,6 +297,33 @@ export async function addCandidateEmailAction(candidateId: string, rawEmail: str
   revalidatePath(DISCOVERY_PORTAL_PATH);
   revalidatePath(OUTREACH_PORTAL_PATH);
   return {};
+}
+
+export interface CompanyListResult {
+  /** Companies read and now waiting in the pool. */
+  staged?: number;
+  skippedKnown?: number;
+  /** Companies not reached before time ran out: paste the same list again to carry on. */
+  notReached?: number;
+  byOutcome?: Record<string, number>;
+  problems?: ListError[];
+}
+
+/** Reads each pasted company's own website for its published email and facts, and stores the result in the pool. */
+export async function addCompanyListAction(text: string): Promise<ActionResult & CompanyListResult> {
+  const { error } = await requireExec();
+  if (error) return { error };
+  if (text.length > 200_000) return { error: "That list is too long. Paste fewer companies at a time." };
+  const { leads, errors } = parseCompanyList(text);
+  if (leads.length === 0) return { error: errors[0]?.message ?? "No companies found in that list.", problems: errors };
+  try {
+    const result = await stageLeads(leads, await buildDiscoveryDeps(), { concurrency: 5, budgetMs: 45_000 });
+    revalidatePath(DISCOVERY_PORTAL_PATH);
+    return { ...result, problems: errors };
+  } catch (err) {
+    console.error("outreach company list failed:", err);
+    return { error: "The list couldn't be read. If the discovery table isn't up to date, run the latest migration, then try again." };
+  }
 }
 
 export interface OutreachSettingsInput {

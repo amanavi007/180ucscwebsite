@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildResearchPrompt, RESEARCH_CSV_HEADER } from "./research-prompt";
+import { buildCompanyListPrompt, buildResearchPrompt, COMPANY_LIST_CSV_HEADER, RESEARCH_CSV_HEADER } from "./research-prompt";
+import { parseCompanyList } from "./discovery/list";
 import { parseProspectCsv } from "./csv";
 
 describe("RESEARCH_CSV_HEADER", () => {
@@ -34,5 +35,32 @@ describe("buildResearchPrompt", () => {
     const blank = buildResearchPrompt({ niche: "  ", needs: "", exclude: "" });
     expect(blank).toContain("[describe the kind of company]");
     expect(blank).toContain("[what they might need]");
+  });
+});
+
+describe("buildCompanyListPrompt", () => {
+  const prompt = buildCompanyListPrompt({ niche: "Med-tech startups", region: "the San Francisco Bay Area", needs: "go-to-market planning", exclude: "Acme" });
+
+  it("asks only for names and websites, and forbids emails outright", () => {
+    expect(prompt).toContain(COMPANY_LIST_CSV_HEADER);
+    expect(prompt).toMatch(/never (include|write|guess|invent)[^.]*email/i);
+    expect(COMPANY_LIST_CSV_HEADER.toLowerCase()).not.toContain("email");
+  });
+  it("puts in the niche, region, needs and exclusions, and says how many to find", () => {
+    expect(prompt).toContain("Med-tech startups");
+    expect(prompt).toContain("the San Francisco Bay Area");
+    expect(prompt).toContain("go-to-market planning");
+    expect(prompt).toContain("Acme");
+    expect(prompt).toMatch(/\b40\b/);
+  });
+  it("uses a header the list importer reads", () => {
+    const row = ["Acme", "https://acme.com", "Does things", "tech", "https://acme.com/about"];
+    expect(row).toHaveLength(COMPANY_LIST_CSV_HEADER.split(",").length);
+    const { leads, errors } = parseCompanyList(`${COMPANY_LIST_CSV_HEADER}\n${row.join(",")}`);
+    expect(errors).toEqual([]);
+    expect(leads[0]).toMatchObject({ name: "Acme", website: "https://acme.com", niche: "tech" });
+  });
+  it("falls back to placeholders when fields are empty", () => {
+    expect(buildCompanyListPrompt({ niche: "", region: "", needs: "", exclude: "" })).toMatch(/\[describe the kind of company\]/);
   });
 });

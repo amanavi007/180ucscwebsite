@@ -1,14 +1,17 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import type { Database, Json } from "@/lib/supabase/database.types";
 import { EXEC_ROLES } from "@/lib/auth/roles";
 import { CLIENTS } from "@/lib/clients";
 import { formatOrgDate } from "@/lib/date";
 import { fetchAllPages } from "@/lib/paginate";
 import { pacificInstant } from "@/lib/outreach/pacing";
 import { fetchPageHtml, fetchRobotsTxt, loadYcDataset } from "@/lib/outreach/discovery/web";
-import type { DiscoveryDeps } from "@/lib/outreach/discovery/runner";
-import { summarizeCandidates, type CandidateSummary, type CandidateView } from "@/lib/outreach/discovery/view";
+import type { CandidateRecord, DiscoveryDeps, PoolPayload } from "@/lib/outreach/discovery/runner";
+import type { Founder } from "@/lib/outreach/discovery/founders";
+import { parseYcFounders } from "@/lib/outreach/discovery/founders";
+import { outcomesForFilter, summarizeCandidates, type CandidateSummary, type CandidateView } from "@/lib/outreach/discovery/view";
 import { OUTREACH_SETTING_KEYS, parseOutreachSettings, type OutreachSettings } from "@/lib/outreach/settings";
 import { emailDomain } from "@/lib/outreach/verify";
 import { factsToJson, loadOutreachSettings } from "./outreach";
@@ -30,6 +33,43 @@ async function discoveryOwner(admin: Admin): Promise<string> {
   const { data, error } = await admin.from("profiles").select("id").in("role", EXEC_ROLES).order("created_at").limit(1);
   if (error || !data?.[0]) throw new Error("No exec profile to create discovered prospects under.");
   return data[0].id;
+}
+
+type CandidateRow = Database["public"]["Tables"]["outreach_discovery_candidates"]["Row"];
+type CandidateInsert = Database["public"]["Tables"]["outreach_discovery_candidates"]["Insert"];
+
+export function recordToRow(r: CandidateRecord): CandidateInsert {
+  return {
+    source: r.source,
+    source_ref: r.sourceRef,
+    company: r.company,
+    website: r.website,
+    domain: r.domain,
+    outcome: r.outcome,
+    reason: r.reason,
+    prospect_id: r.prospectId,
+    email: r.email,
+    email_source_url: r.emailSourceUrl,
+    founders: r.founders as unknown as Json,
+    payload: r.payload as unknown as Json,
+  };
+}
+
+function rowToRecord(row: CandidateRow): CandidateRecord {
+  return {
+    source: row.source === "list" ? "list" : "yc",
+    sourceRef: row.source_ref,
+    company: row.company,
+    website: row.website ?? "",
+    domain: row.domain,
+    outcome: row.outcome as CandidateRecord["outcome"],
+    reason: row.reason,
+    prospectId: row.prospect_id,
+    email: row.email,
+    emailSourceUrl: row.email_source_url,
+    founders: Array.isArray(row.founders) ? (row.founders as unknown as Founder[]) : [],
+    payload: row.payload ? (row.payload as unknown as PoolPayload) : null,
+  };
 }
 
 export async function buildDiscoveryDeps(): Promise<DiscoveryDeps> {
@@ -59,6 +99,15 @@ export async function buildDiscoveryDeps(): Promise<DiscoveryDeps> {
     now: () => Date.now(),
 
     loadDataset: loadYcDataset,
+
+    fetchFounders: async (slug) => parseYcFounders((await fetchPageHtml(`https://www.ycombinator.com/companies/${slug}`)) ?? ""),
+
+    readyPool: async () => {
+      const rows = await fetchAllPages((from, to) =>
+        admin.from("outreach_discovery_candidates").select("*").eq("outcome", "ready").order("created_at").range(from, to),
+      );
+      return rows.map(rowToRecord);
+    },
 
     seenDomains: async () => {
       const rows = await fetchAllPages((from, to) => admin.from("outreach_discovery_candidates").select("domain").order("domain").range(from, to));
@@ -105,22 +154,9 @@ export async function buildDiscoveryDeps(): Promise<DiscoveryDeps> {
     fetchRobots: fetchRobotsTxt,
     fetchPage: fetchPageHtml,
 
+    // A ready company becomes added (or duplicate) later, so the row is updated, not skipped.
     recordCandidate: async (r) => {
-      const { error } = await admin.from("outreach_discovery_candidates").upsert(
-        {
-          source: r.source,
-          source_ref: r.sourceRef,
-          company: r.company,
-          website: r.website,
-          domain: r.domain,
-          outcome: r.outcome,
-          reason: r.reason,
-          prospect_id: r.prospectId,
-          email: r.email,
-          email_source_url: r.emailSourceUrl,
-        },
-        { onConflict: "domain", ignoreDuplicates: true },
-      );
+      const { error } = await admin.from("outreach_discovery_candidates").upsert(recordToRow(r), { onConflict: "domain" });
       if (error) throw error;
     },
 
@@ -134,6 +170,8 @@ export async function buildDiscoveryDeps(): Promise<DiscoveryDeps> {
           size_stage: p.sizeStage,
           summary: p.summary,
           facts: factsToJson(p.facts),
+          contact_name: p.contactName,
+          contact_role: p.contactRole,
           contact_email: p.email,
           contact_domain: emailDomain(p.email),
           created_by: owner,
@@ -149,26 +187,38 @@ export async function buildDiscoveryDeps(): Promise<DiscoveryDeps> {
 export interface DiscoveryOverview {
   settings: OutreachSettings;
   candidates: CandidateView[];
+  /** Companies per outcome across the whole table, not just the rows shown. */
+  counts: Record<string, number>;
   summary: Omit<CandidateSummary, "lastRunAt"> & { lastRunAt: string | null };
   /** Prospects waiting to be sent, against the limit that pauses discovery. */
   backlog: number;
   backlogLimit: number;
 }
 
-const LIST_LIMIT = 400;
+const LIST_LIMIT = 500;
 
-/** Read as the signed-in exec (RLS), so this page never needs the service role. */
-export async function getDiscoveryOverview(now = new Date()): Promise<DiscoveryOverview> {
+/** Read as the signed-in exec (RLS), so this page never needs the service role. `filter` narrows the list on the server. */
+export async function getDiscoveryOverview(filter = "all", now = new Date()): Promise<DiscoveryOverview> {
   const supabase = await createClient();
-  const [settingRows, candidateRows, backlog] = await Promise.all([
+  const outcomes = outcomesForFilter(filter);
+  let list = supabase
+    .from("outreach_discovery_candidates")
+    .select("id, source_ref, founders, company, website, domain, outcome, reason, prospect_id, email, email_source_url, created_at")
+    .order("created_at", { ascending: false })
+    .limit(LIST_LIMIT);
+  if (outcomes) list = list.in("outcome", outcomes); // in-ok: short list of outcomes
+  const [settingRows, candidateRows, tally, backlog] = await Promise.all([
     supabase.from("org_settings").select("key, value").in("key", OUTREACH_SETTING_KEYS),
-    supabase.from("outreach_discovery_candidates").select("*").order("created_at", { ascending: false }).limit(LIST_LIMIT),
+    list,
+    // Tiny rows for every company, so the counts and the daily summary are exact however long the table gets.
+    fetchAllPages((from, to) => supabase.from("outreach_discovery_candidates").select("outcome, created_at").order("created_at").range(from, to)),
     supabase.from("outreach_prospects").select("id", { count: "exact", head: true }).in("status", ["new", "verified", "drafted"]), // in-ok: short list of statuses
   ]);
   for (const r of [settingRows, candidateRows, backlog]) if (r.error) throw r.error;
   const candidates: CandidateView[] = (candidateRows.data ?? []).map((r) => ({
     id: r.id,
     sourceRef: r.source_ref,
+    founders: Array.isArray(r.founders) ? (r.founders as unknown as Founder[]) : [],
     company: r.company,
     website: r.website,
     domain: r.domain,
@@ -179,10 +229,13 @@ export async function getDiscoveryOverview(now = new Date()): Promise<DiscoveryO
     emailSourceUrl: r.email_source_url,
     createdAt: r.created_at,
   }));
-  const summary = summarizeCandidates(candidates, now);
+  const counts: Record<string, number> = {};
+  for (const row of tally) counts[row.outcome] = (counts[row.outcome] ?? 0) + 1;
+  const summary = summarizeCandidates(tally.map((t) => ({ outcome: t.outcome, createdAt: t.created_at })), now);
   return {
     settings: parseOutreachSettings(settingRows.data ?? []),
     candidates,
+    counts,
     summary: { ...summary, lastRunAt: summary.lastRunAt?.toISOString() ?? null },
     backlog: backlog.count ?? 0,
     backlogLimit: BACKLOG_LIMIT,

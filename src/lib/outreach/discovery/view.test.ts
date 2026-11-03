@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { OUTCOME_FILTERS, filterByOutcome, outcomeChip, summarizeCandidates, type CandidateView } from "./view";
+import { OUTCOME_FILTERS, countsByFilter, filterByOutcome, outcomeChip, outcomesForFilter, summarizeCandidates, type CandidateView } from "./view";
 
 const c = (outcome: string, createdAt = "2026-11-03T14:00:00Z"): CandidateView => ({
   id: outcome + createdAt,
   sourceRef: "acme",
+  founders: [],
   company: "Acme",
   website: "https://acme.com",
   domain: "acme.com",
@@ -18,6 +19,7 @@ const c = (outcome: string, createdAt = "2026-11-03T14:00:00Z"): CandidateView =
 describe("outcomeChip", () => {
   it("shows every outcome as a plain word with a status colour", () => {
     expect(outcomeChip("added")).toEqual({ label: "Added", variant: "ok" });
+    expect(outcomeChip("ready")).toEqual({ label: "Ready", variant: "info" });
     expect(outcomeChip("no_email")).toEqual({ label: "No email", variant: "muted" });
     expect(outcomeChip("duplicate")).toEqual({ label: "Already known", variant: "muted" });
     expect(outcomeChip("unreachable")).toEqual({ label: "Couldn't reach", variant: "warn" });
@@ -37,6 +39,22 @@ describe("filterByOutcome", () => {
     expect(filterByOutcome(rows, "problems").map((r) => r.outcome).sort()).toEqual(["error", "no_facts", "unreachable"]);
   });
   it("offers an All chip first", () => expect(OUTCOME_FILTERS[0].key).toBe("all"));
+});
+
+describe("outcomesForFilter and countsByFilter", () => {
+  it("maps a filter to the database outcomes it covers, and all to none", () => {
+    expect(outcomesForFilter("all")).toBeNull();
+    expect(outcomesForFilter("ready")).toEqual(["ready"]);
+    expect(outcomesForFilter("problems")).toEqual(["unreachable", "no_facts", "error"]);
+    expect(outcomesForFilter("nonsense")).toBeNull();
+  });
+  it("totals each filter from the per-outcome counts", () => {
+    const counts = countsByFilter({ ready: 400, added: 12, no_email: 300, duplicate: 3, unreachable: 5, error: 1 });
+    expect(counts).toMatchObject({ all: 721, ready: 400, added: 12, no_email: 300, duplicate: 3, problems: 6 });
+  });
+  it("has a Ready filter after All", () => {
+    expect(OUTCOME_FILTERS.map((f) => f.key).slice(0, 2)).toEqual(["all", "ready"]);
+  });
 });
 
 describe("summarizeCandidates", () => {

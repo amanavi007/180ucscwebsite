@@ -1,12 +1,15 @@
 import { formatOrgDate } from "@/lib/date";
 import { pacificInstant } from "../pacing";
 import type { ChipVariant } from "../view";
+import type { Founder } from "./founders";
 
 /** One company discovery looked at, as the portal shows it. */
 export interface CandidateView {
   id: string;
   /** The directory id for the company (its slug). */
   sourceRef: string | null;
+  /** The founders the directory lists, so someone adding an email by hand knows who to look for. */
+  founders: Founder[];
   company: string;
   website: string | null;
   domain: string;
@@ -19,6 +22,7 @@ export interface CandidateView {
 }
 
 const OUTCOMES: Record<string, { label: string; variant: ChipVariant }> = {
+  ready: { label: "Ready", variant: "info" },
   added: { label: "Added", variant: "ok" },
   no_email: { label: "No email", variant: "muted" },
   duplicate: { label: "Already known", variant: "muted" },
@@ -34,11 +38,24 @@ export function outcomeChip(outcome: string): { label: string; variant: ChipVari
 
 export const OUTCOME_FILTERS: { key: string; label: string; outcomes: string[] }[] = [
   { key: "all", label: "All", outcomes: [] },
+  { key: "ready", label: "Ready", outcomes: ["ready"] },
   { key: "added", label: "Added", outcomes: ["added"] },
   { key: "no_email", label: "No email", outcomes: ["no_email"] },
   { key: "duplicate", label: "Already known", outcomes: ["duplicate"] },
   { key: "problems", label: "Problems", outcomes: ["unreachable", "no_facts", "error"] },
 ];
+
+/** The database outcomes a filter covers; null means no narrowing (All, or a key we do not know). */
+export function outcomesForFilter(key: string): string[] | null {
+  const filter = OUTCOME_FILTERS.find((f) => f.key === key);
+  return !filter || filter.key === "all" ? null : filter.outcomes;
+}
+
+/** How many companies each filter holds, from the count per outcome. */
+export function countsByFilter(counts: Record<string, number>): Record<string, number> {
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  return Object.fromEntries(OUTCOME_FILTERS.map((f) => [f.key, f.key === "all" ? total : f.outcomes.reduce((sum, o) => sum + (counts[o] ?? 0), 0)]));
+}
 
 export function filterByOutcome<T extends { outcome: string }>(rows: T[], key: string): T[] {
   const filter = OUTCOME_FILTERS.find((f) => f.key === key);
