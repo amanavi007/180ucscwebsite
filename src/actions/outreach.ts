@@ -22,11 +22,11 @@ import { emailDomain, partitionImport, type SkipReason } from "@/lib/outreach/ve
 import { runPrepare, runSend, type PrepareResult } from "@/lib/outreach/runner";
 import { parseOutreachSettings, shouldRestartRamp } from "@/lib/outreach/settings";
 import { loadOutreachSettings } from "@/lib/data/outreach";
-import { buildDiscoveryDeps } from "@/lib/data/outreach-discovery";
+import { buildDiscoveryDeps, recordToRow } from "@/lib/data/outreach-discovery";
 import { normalizeManualEmail } from "@/lib/outreach/discovery/emails";
 import { matchFounderToEmail, type Founder } from "@/lib/outreach/discovery/founders";
 import { parseCompanyList, type ListError } from "@/lib/outreach/discovery/list";
-import { prospectFromYc, runDiscovery, stageLeads, type DiscoveryResult } from "@/lib/outreach/discovery/runner";
+import { evaluateCandidate, evaluateListLead, prospectFromYc, runDiscovery, stageLeads, type DiscoveryResult } from "@/lib/outreach/discovery/runner";
 import { loadYcDataset } from "@/lib/outreach/discovery/web";
 import { factsToJson } from "@/lib/data/outreach";
 import { fetchInChunks, runInChunks } from "@/lib/paginate";
@@ -297,6 +297,40 @@ export async function addCandidateEmailAction(candidateId: string, rawEmail: str
   revalidatePath(DISCOVERY_PORTAL_PATH);
   revalidatePath(OUTREACH_PORTAL_PATH);
   return {};
+}
+
+/** A company flagged "already known" by mistake (a name that matches a past client, say): read it again and put it back in the pool. */
+export async function notDuplicateAction(candidateId: string): Promise<ActionResult> {
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error };
+  const admin = createAdminClient();
+  const { data: row } = await admin.from("outreach_discovery_candidates").select("*").eq("id", candidateId).maybeSingle();
+  if (!row) return { error: "That company wasn't found. Refresh the page." };
+  if (row.outcome !== "duplicate") return { error: "Only companies marked as already known can be changed." };
+  try {
+    const base = await buildDiscoveryDeps();
+    // Everything stays checked except the lookalike matches the person is overruling. The do-not-contact list is never overruled.
+    const deps = {
+      ...base,
+      findDuplicate: async (a: { domain: string; name: string }) => {
+        const reason = await base.findDuplicate(a);
+        return reason === "On the do-not-contact list." ? reason : null;
+      },
+    };
+    const website = row.website ?? "";
+    const company = row.source === "yc" && row.source_ref ? (await loadYcDataset()).find((c) => c.slug === row.source_ref) : undefined;
+    const record = company
+      ? await evaluateCandidate({ ...company, website }, deps, "stage", { deep: true })
+      : await evaluateListLead({ name: row.company, website, summary: null, niche: null, sources: [] }, deps, "stage", { deep: true });
+    if (record.outcome === "duplicate") return { error: record.reason ?? "It is still known." };
+    await admin.from("outreach_discovery_candidates").update({ ...recordToRow(record), attempts: 0 }).eq("id", row.id);
+    await logAudit(profile.id, "outreach.not_duplicate", row.company);
+    revalidatePath(DISCOVERY_PORTAL_PATH);
+    return record.outcome === "ready" ? {} : { error: `Checked again: ${record.reason ?? record.outcome}` };
+  } catch (err) {
+    console.error("not duplicate failed:", err);
+    return { error: "Couldn't check it just now. Try again." };
+  }
 }
 
 export interface CompanyListResult {

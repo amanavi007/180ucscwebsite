@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { addCandidateEmailAction, runDiscoveryNowAction } from "@/actions/outreach";
+import { addCandidateEmailAction, notDuplicateAction, runDiscoveryNowAction } from "@/actions/outreach";
 import { FilterChip } from "@/components/filter-chip";
 import { ListSearch } from "@/components/list-search";
 import { PageHeader } from "@/components/page-header";
@@ -199,8 +199,8 @@ export function DiscoveryWorkspace({ overview }: { overview: DiscoveryOverview }
                       <span className="block font-semibold">{c.company}</span>
                       <span className="block text-sm text-muted-foreground">{c.domain}</span>
                     </TableCell>
-                    <TableCell className="max-w-72 text-sm text-muted-foreground">{c.reason ?? c.email ?? "–"}</TableCell>
-                    <TableCell className="tabular-nums">{formatWhen(c.createdAt)}</TableCell>
+                    <TableCell className="max-w-72 min-w-48 text-sm break-words whitespace-normal text-muted-foreground">{c.reason ?? c.email ?? "–"}</TableCell>
+                    <TableCell className="pl-6 whitespace-nowrap tabular-nums">{formatWhen(c.createdAt)}</TableCell>
                     <TableCell>
                       <Badge variant={chip.variant}>{chip.label}</Badge>
                     </TableCell>
@@ -318,6 +318,7 @@ function CandidatePanel({ candidate, onClose }: { candidate: CandidateView; onCl
       )}
 
       {["no_email", "unreachable", "failed"].includes(candidate.outcome) && <AddEmailForm candidate={candidate} />}
+      {candidate.outcome === "duplicate" && <NotDuplicate candidate={candidate} />}
 
       {candidate.prospectId && (
         <p className="text-sm">
@@ -328,6 +329,33 @@ function CandidatePanel({ candidate, onClose }: { candidate: CandidateView; onCl
         </p>
       )}
     </aside>
+  );
+}
+
+/** For a company wrongly flagged as already known: look at its website again and put it back in the pool. */
+function NotDuplicate({ candidate }: { candidate: CandidateView }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  function onClick() {
+    startTransition(async () => {
+      const result = await notDuplicateAction(candidate.id);
+      if (result.error) return void toast.error(result.error);
+      toast.success(`${candidate.company} is back in the pool.`);
+      router.refresh();
+    });
+  }
+  return (
+    <section aria-labelledby="not-dup-heading" className="space-y-3 rounded-2xl border p-4">
+      <h3 id="not-dup-heading" className="text-base">
+        Not actually known?
+      </h3>
+      <p className="text-sm text-muted-foreground">
+        If this is a different company, or one nobody has contacted, read its website again and put it back in line. Addresses on the do-not-contact list stay blocked.
+      </p>
+      <Button variant="outline" onClick={onClick} disabled={isPending}>
+        {isPending ? "Checking..." : "It's not known, add it"}
+      </Button>
+    </section>
   );
 }
 
