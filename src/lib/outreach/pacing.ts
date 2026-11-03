@@ -3,9 +3,12 @@ import type { OutreachSettings } from "./settings";
 
 const MIN_GAP_MS = 3 * 60_000;
 const LEAD_MS = 2 * 60_000;
-const RAMP_START_CAP = 15;
-const RAMP_HOLD_DAYS = 5;
-const RAMP_STEP = 5;
+// A new sending domain has no reputation: start small and grow slowly, so mailbox providers see a steady, welcome sender.
+const RAMP_FIRST_CAP = 5;
+const RAMP_FIRST_DAYS = 7;
+const RAMP_SECOND_CAP = 10;
+const RAMP_SECOND_DAYS = 7;
+const RAMP_STEP = 2;
 const RAMP_MAX_CAP = 40;
 const OVERRIDE_MAX = 100;
 
@@ -14,13 +17,14 @@ const dayNumber = (date: string) => {
   return Math.floor(Date.UTC(y, m - 1, d) / 86_400_000);
 };
 
-/** How many emails may go out today. Holds at 15 for five days, then +5 a day up to 40. */
+/** How many emails may go out today: 5 a day for a week, 10 for the next week, then 2 more each day up to 40. */
 export function dailyCap(startedOn: string | null, today: string, override: number | null): number {
   if (!startedOn) return 0;
   if (override !== null) return Math.min(override, OVERRIDE_MAX);
   const day = dayNumber(today) - dayNumber(startedOn);
-  if (day < RAMP_HOLD_DAYS) return RAMP_START_CAP;
-  return Math.min(RAMP_MAX_CAP, RAMP_START_CAP + RAMP_STEP * (day - RAMP_HOLD_DAYS + 1));
+  if (day < RAMP_FIRST_DAYS) return RAMP_FIRST_CAP;
+  if (day < RAMP_FIRST_DAYS + RAMP_SECOND_DAYS) return RAMP_SECOND_CAP;
+  return Math.min(RAMP_MAX_CAP, RAMP_SECOND_CAP + RAMP_STEP * (day - RAMP_FIRST_DAYS - RAMP_SECOND_DAYS + 1));
 }
 
 /** The UTC instant at which a Pacific wall clock reads `date` `hour`:00. */

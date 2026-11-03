@@ -170,7 +170,7 @@ export function SettingsForm({ settings }: { settings: OutreachSettings }) {
             <Field className="max-w-xs">
               <FieldLabel htmlFor="outreach-cap">Daily limit</FieldLabel>
               <Input id="outreach-cap" inputMode="numeric" value={dailyCap} onChange={(e) => setDailyCap(e.target.value)} placeholder="Automatic" />
-              <FieldDescription>Leave empty for the automatic ramp: 15 a day for the first five days, then 5 more each day up to 40. A number here overrides it (never above 100).</FieldDescription>
+              <FieldDescription>Leave empty for the automatic ramp: 5 a day for the first week, 10 for the second, then 2 more each day up to 40. A number here overrides it (never above 100).</FieldDescription>
             </Field>
             <div className="flex flex-wrap gap-4">
               <Field className="w-40">

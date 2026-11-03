@@ -1,6 +1,14 @@
 import { Badge } from "@/components/ui/badge";
 import type { OutreachOverview } from "@/lib/data/outreach";
+import { HEARTBEAT_JOBS, type HeartbeatJob } from "@/lib/outreach/heartbeat";
 import { senderState } from "@/lib/outreach/view";
+
+const JOB_LABELS: Record<HeartbeatJob, string> = { discover: "Discovery", prepare: "Drafting", send: "Sending" };
+
+function when(iso: string | null): string {
+  if (!iso) return "never";
+  return new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(iso));
+}
 
 function percent(part: number, whole: number): string {
   if (whole === 0) return "0%";
@@ -36,6 +44,27 @@ export function HealthStrip({ overview }: { overview: OutreachOverview }) {
         <p className="text-sm text-muted-foreground">Marked as spam, last 7 days</p>
         <p className="mt-1 font-heading text-3xl tabular-nums">{health.complained}</p>
         <p className="text-sm text-muted-foreground">Sending stops at the first complaint over the limit.</p>
+      </div>
+      <div className="border-t pt-4 text-sm sm:col-span-4">
+        <p className="text-muted-foreground">Daily jobs</p>
+        <ul className="mt-1.5 flex flex-wrap gap-x-6 gap-y-2">
+          {HEARTBEAT_JOBS.map((job) => {
+            const j = overview.jobs[job];
+            return (
+              <li key={job} className="flex items-center gap-2">
+                <span className="font-semibold">{JOB_LABELS[job]}</span>
+                {j.state === "ok" ? (
+                  <span className="tabular-nums text-muted-foreground">{j.lastRunAt ? `ran ${when(j.lastRunAt)}` : "hasn't run yet"}</span>
+                ) : (
+                  <>
+                    <Badge variant="bad">{j.state === "never_ran" ? "Never ran" : "Overdue"}</Badge>
+                    <span className="tabular-nums text-muted-foreground">{j.lastRunAt ? `last ran ${when(j.lastRunAt)}` : "no run recorded"}</span>
+                  </>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       </div>
     </section>
   );

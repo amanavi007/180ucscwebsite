@@ -168,6 +168,7 @@ export async function getDiscoveryOverview(now = new Date()): Promise<DiscoveryO
   for (const r of [settingRows, candidateRows, backlog]) if (r.error) throw r.error;
   const candidates: CandidateView[] = (candidateRows.data ?? []).map((r) => ({
     id: r.id,
+    sourceRef: r.source_ref,
     company: r.company,
     website: r.website,
     domain: r.domain,

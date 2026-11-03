@@ -71,6 +71,20 @@ export function hostOf(website: string | null): string | null {
 
 const isPlatform = (host: string) => PLATFORM_HOSTS.some((p) => host === p || host.endsWith(`.${p}`));
 
+/** The prospect to add for a directory company and the email chosen for it; used by discovery and by adding an email by hand. */
+export function prospectFromYc(c: YcCompany, email: string, extraFacts: ProspectFact[] = []): NewProspect {
+  const size = c.team_size ? Number(c.team_size) : 0;
+  return {
+    company: c.name,
+    website: c.website ?? "",
+    niche: nicheForIndustries(c.industries),
+    sizeStage: size > 0 ? `${size} people${c.batch ? `, YC ${c.batch}` : ""}` : c.batch ? `YC ${c.batch}` : null,
+    summary: c.one_liner?.trim() || null,
+    facts: [...ycFacts(c), ...extraFacts],
+    email,
+  };
+}
+
 /** Looks at one company's own website and either adds it as a prospect or records why not. Never throws. */
 export async function evaluateCandidate(c: YcCompany, deps: DiscoveryDeps): Promise<CandidateRecord> {
   const host = hostOf(c.website);
@@ -127,21 +141,11 @@ export async function evaluateCandidate(c: YcCompany, deps: DiscoveryDeps): Prom
     const taken = await deps.emailTaken(email);
     if (taken) return finish("duplicate", taken);
 
-    const facts = ycFacts(c);
     const description = homeHtml ? metaDescription(homeHtml) : null;
-    if (description) facts.push({ text: description, sourceUrl: urls[0] });
-    if (facts.length === 0) return finish("no_facts", "Nothing sourced to say about this company.");
+    const prospect = prospectFromYc(c, email, description ? [{ text: description, sourceUrl: urls[0] }] : []);
+    if (prospect.facts.length === 0) return finish("no_facts", "Nothing sourced to say about this company.");
 
-    const size = c.team_size ? Number(c.team_size) : 0;
-    record.prospectId = await deps.addProspect({
-      company: c.name,
-      website: c.website!,
-      niche: nicheForIndustries(c.industries),
-      sizeStage: size > 0 ? `${size} people${c.batch ? `, YC ${c.batch}` : ""}` : c.batch ? `YC ${c.batch}` : null,
-      summary: c.one_liner?.trim() || null,
-      facts,
-      email,
-    });
+    record.prospectId = await deps.addProspect(prospect);
     return finish("added", null);
   } catch (err) {
     return finish("error", err instanceof Error ? err.message : String(err));

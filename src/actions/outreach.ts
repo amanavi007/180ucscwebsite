@@ -18,12 +18,15 @@ import {
   setOutreachSetting,
 } from "@/lib/data/outreach";
 import { parseProspectCsv, type CsvError } from "@/lib/outreach/csv";
-import { partitionImport, type SkipReason } from "@/lib/outreach/verify";
+import { emailDomain, partitionImport, type SkipReason } from "@/lib/outreach/verify";
 import { runPrepare, runSend, type PrepareResult } from "@/lib/outreach/runner";
 import { parseOutreachSettings, shouldRestartRamp } from "@/lib/outreach/settings";
 import { loadOutreachSettings } from "@/lib/data/outreach";
 import { buildDiscoveryDeps } from "@/lib/data/outreach-discovery";
-import { runDiscovery, type DiscoveryResult } from "@/lib/outreach/discovery/runner";
+import { normalizeManualEmail } from "@/lib/outreach/discovery/emails";
+import { prospectFromYc, runDiscovery, type DiscoveryResult } from "@/lib/outreach/discovery/runner";
+import { loadYcDataset } from "@/lib/outreach/discovery/web";
+import { factsToJson } from "@/lib/data/outreach";
 import { fetchInChunks, runInChunks } from "@/lib/paginate";
 
 export interface ActionResult {
@@ -228,6 +231,67 @@ export async function runDiscoveryNowAction(): Promise<ActionResult & { result?:
     console.error("outreach discovery (manual) failed:", err);
     return { error: "Discovery didn't finish. If the discovery table isn't set up yet, run the latest migration, then try again." };
   }
+}
+
+/** A company discovery skipped for having no published email, added as a prospect with an address a person found. */
+export async function addCandidateEmailAction(candidateId: string, rawEmail: string): Promise<ActionResult> {
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error };
+  const parsed = normalizeManualEmail(rawEmail);
+  if ("error" in parsed) return { error: parsed.error };
+  const email = parsed.email;
+
+  const admin = createAdminClient();
+  const { data: candidate } = await admin.from("outreach_discovery_candidates").select("*").eq("id", candidateId).maybeSingle();
+  if (!candidate) return { error: "That company wasn't found. Refresh the page." };
+  if (!["no_email", "unreachable"].includes(candidate.outcome)) return { error: "Only companies skipped for having no email can be added by hand." };
+
+  const [existing, byEmail, byDomain] = await Promise.all([
+    admin.from("outreach_prospects").select("id").eq("contact_email", email).limit(1),
+    admin.from("outreach_suppressions").select("id").eq("email", email).limit(1),
+    admin.from("outreach_suppressions").select("id").eq("domain", emailDomain(email)).limit(1),
+  ]);
+  if ((existing.data?.length ?? 0) > 0) return { error: "That address is already a prospect." };
+  if ((byEmail.data?.length ?? 0) > 0 || (byDomain.data?.length ?? 0) > 0) return { error: "That address is on the do-not-contact list." };
+
+  let company;
+  try {
+    company = (await loadYcDataset()).find((c) => c.slug === candidate.source_ref);
+  } catch {
+    return { error: "Couldn't reach the company directory just now. Try again in a minute." };
+  }
+  if (!company) return { error: "That company is no longer in the directory, so there are no facts to write from." };
+  const prospect = prospectFromYc(company, email);
+  if (prospect.facts.length === 0) return { error: "There's nothing sourced to say about this company." };
+
+  const { data: created, error: insertError } = await admin
+    .from("outreach_prospects")
+    .insert({
+      company: prospect.company,
+      website: prospect.website,
+      niche: prospect.niche,
+      size_stage: prospect.sizeStage,
+      summary: prospect.summary,
+      facts: factsToJson(prospect.facts),
+      contact_email: email,
+      contact_domain: emailDomain(email),
+      created_by: profile.id,
+    })
+    .select("id")
+    .single();
+  if (insertError) {
+    if (insertError.code === UNIQUE_VIOLATION) return { error: "That address is already a prospect." };
+    console.error("add candidate email failed:", insertError);
+    return { error: "Couldn't add it. Try again." };
+  }
+  await admin
+    .from("outreach_discovery_candidates")
+    .update({ outcome: "added", reason: "Email added by hand.", prospect_id: created.id, email, email_source_url: null })
+    .eq("id", candidate.id);
+  await logAudit(profile.id, "outreach.discovery_email", `${prospect.company} ${email}`);
+  revalidatePath(DISCOVERY_PORTAL_PATH);
+  revalidatePath(OUTREACH_PORTAL_PATH);
+  return {};
 }
 
 export interface OutreachSettingsInput {

@@ -3,6 +3,7 @@ import { OUTCOME_FILTERS, filterByOutcome, outcomeChip, summarizeCandidates, typ
 
 const c = (outcome: string, createdAt = "2026-11-03T14:00:00Z"): CandidateView => ({
   id: outcome + createdAt,
+  sourceRef: "acme",
   company: "Acme",
   website: "https://acme.com",
   domain: "acme.com",

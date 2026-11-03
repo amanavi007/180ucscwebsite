@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { buildDraftPrompt, checkDraft, generateDraft, isNearDuplicate, parseDraftOutput } from "./draft";
+import { ASK_OPTIONS, askFor, buildDraftPrompt, checkDraft, generateDraft, isNearDuplicate, parseDraftOutput } from "./draft";
 import type { ProspectDraftRow } from "./types";
 
 const row: ProspectDraftRow = {
@@ -18,9 +18,10 @@ const row: ProspectDraftRow = {
   contactEmail: "jo@acmehealth.com",
 };
 
+const ask = askFor("Acme Health");
 const good = {
   subject: "A student team for Acme Health's California launch",
-  body: "Hi Jo,\n\nWe saw that Acme Health is building remote patient monitoring for rural clinics and heading into California.\n\nOur student consulting team at UCSC could work on your go-to-market plan for a quarter, at no cost to you.\n\nWould a 30-minute call be worth it to see if there is a fit?",
+  body: `Hi Jo,\n\nWe saw that Acme Health is building remote patient monitoring for rural clinics and heading into California.\n\nOur student consulting team at UCSC could work on your go-to-market plan for a quarter, at no cost to you.\n\n${ask}`,
 };
 
 describe("parseDraftOutput", () => {
@@ -104,6 +105,32 @@ describe("checkDraft: reads like a person, not an AI", () => {
       expect(checkDraft({ ...good, subject }, row).problems.join(" ")).toMatch(/subject/i);
     }
     expect(checkDraft({ ...good, subject: "a student team for acme health's california launch and more words" }, row).problems.join(" ")).toMatch(/subject/i);
+  });
+});
+
+describe("the closing ask", () => {
+  it("is one of a few phrasings, always for a 30-minute call", () => {
+    expect(ASK_OPTIONS.length).toBeGreaterThanOrEqual(5);
+    for (const a of ASK_OPTIONS) expect(a).toMatch(/30[- ]minute/);
+    expect(ASK_OPTIONS).toContain(askFor("Anything Inc"));
+  });
+  it("is the same for the same company and spreads across companies", () => {
+    expect(askFor("Acme Health")).toBe(askFor("Acme Health"));
+    const used = new Set(["A", "Bb", "Ccc", "Dddd", "Eeeee", "Ffffff", "Ggggggg", "Hhhhhhhh", "Iiiiiiiii", "Jjjjjjjjjj"].map(askFor));
+    expect(used.size).toBeGreaterThan(2);
+  });
+  it("is required, word for word, at the end of a first email", () => {
+    const other = ASK_OPTIONS.find((a) => a !== ask)!;
+    const wrong = checkDraft({ ...good, body: good.body.replace(ask, other) }, row, "first", { ask });
+    expect(wrong.problems.join(" ")).toMatch(/end with this exact sentence/i);
+    expect(checkDraft(good, row, "first", { ask }).ok).toBe(true);
+  });
+  it("tells the model which sentence to end with, and how to greet a team with no named contact", () => {
+    const p = buildDraftPrompt({ row: { ...row, contactName: null }, step: "first", previousSubjects: [], clubFacts: "f", ask });
+    expect(p).toContain(ask);
+    expect(p).toMatch(/Hi Acme Health team,/);
+    expect(p).toMatch(/Never 'Hi there'/);
+    expect(p).not.toMatch(/otherwise use 'Hi there'/);
   });
 });
 

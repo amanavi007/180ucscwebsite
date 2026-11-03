@@ -5,6 +5,8 @@ import type { ChipVariant } from "../view";
 /** One company discovery looked at, as the portal shows it. */
 export interface CandidateView {
   id: string;
+  /** The directory id for the company (its slug). */
+  sourceRef: string | null;
   company: string;
   website: string | null;
   domain: string;

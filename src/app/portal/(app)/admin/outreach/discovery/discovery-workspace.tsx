@@ -1,15 +1,17 @@
 "use client";
 
-import { useMemo, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { runDiscoveryNowAction } from "@/actions/outreach";
+import { addCandidateEmailAction, runDiscoveryNowAction } from "@/actions/outreach";
 import { FilterChip } from "@/components/filter-chip";
 import { ListSearch } from "@/components/list-search";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { DiscoveryOverview } from "@/lib/data/outreach-discovery";
 import { OUTCOME_FILTERS, filterByOutcome, outcomeChip, type CandidateView } from "@/lib/outreach/discovery/view";
@@ -236,6 +238,8 @@ function CandidatePanel({ candidate, onClose }: { candidate: CandidateView; onCl
         </div>
       </dl>
 
+      {["no_email", "unreachable"].includes(candidate.outcome) && <AddEmailForm candidate={candidate} />}
+
       {candidate.prospectId && (
         <p className="text-sm">
           <Link href={`${PIPELINE_PATH}?prospect=${candidate.prospectId}`} className="text-link underline-offset-4 hover:underline">
@@ -245,5 +249,52 @@ function CandidatePanel({ candidate, onClose }: { candidate: CandidateView; onCl
         </p>
       )}
     </aside>
+  );
+}
+
+/** For a company with no published email: a person finds one (team page, LinkedIn) and adds it. */
+function AddEmailForm({ candidate }: { candidate: CandidateView }) {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const search = `https://www.google.com/search?q=${encodeURIComponent(`${candidate.company} founder contact email`)}`;
+  const directory = candidate.sourceRef ? `https://www.ycombinator.com/companies/${candidate.sourceRef}` : null;
+
+  function onAdd() {
+    startTransition(async () => {
+      const result = await addCandidateEmailAction(candidate.id, email);
+      if (result.error) return void toast.error(result.error);
+      toast.success(`${candidate.company} added with ${email.trim().toLowerCase()}.`);
+      router.refresh();
+    });
+  }
+
+  return (
+    <section aria-labelledby="add-email-heading" className="space-y-3 rounded-2xl border p-4">
+      <h3 id="add-email-heading" className="text-base">
+        Add an email yourself
+      </h3>
+      <p className="text-sm text-muted-foreground">
+        Found a founder&apos;s address on their team page or LinkedIn? Add it and this company joins the pipeline with the same sourced facts.
+      </p>
+      <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+        <a href={search} target="_blank" rel="noreferrer" className="text-link underline-offset-4 hover:underline">
+          Search the web for a contact
+        </a>
+        {directory && (
+          <a href={directory} target="_blank" rel="noreferrer" className="text-link underline-offset-4 hover:underline">
+            See the founders on Y Combinator
+          </a>
+        )}
+      </p>
+      <Field>
+        <FieldLabel htmlFor="candidate-email">Email address</FieldLabel>
+        <Input id="candidate-email" type="email" value={email} placeholder="name@company.com" onChange={(e) => setEmail(e.target.value)} />
+        <FieldDescription>It is checked like any other prospect before anything is sent.</FieldDescription>
+      </Field>
+      <Button variant="outline" onClick={onAdd} disabled={isPending || email.trim() === ""}>
+        {isPending ? "Adding..." : "Add as a prospect"}
+      </Button>
+    </section>
   );
 }

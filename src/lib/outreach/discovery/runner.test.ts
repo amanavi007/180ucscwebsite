@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { evaluateCandidate, runDiscovery, type CandidateRecord, type DiscoveryDeps } from "./runner";
+import { evaluateCandidate, prospectFromYc, runDiscovery, type CandidateRecord, type DiscoveryDeps } from "./runner";
 import type { YcCompany } from "./yc";
 
 const company = (over: Partial<YcCompany> = {}): YcCompany => ({
@@ -213,5 +213,21 @@ describe("runDiscovery", () => {
     await runDiscovery(deps);
     expect(records.map((r) => r.outcome).sort()).toEqual(["added", "unreachable"]);
     expect(records.find((r) => r.outcome === "added")).toMatchObject({ source: "yc", company: "Co 0", domain: "co0.com", prospectId: "prospect-1", email: "hello@co0.com" });
+  });
+});
+
+describe("prospectFromYc", () => {
+  it("builds a prospect from the directory entry with every fact sourced", () => {
+    const p = prospectFromYc(company(), "jo@acmehealth.com");
+    expect(p).toMatchObject({ company: "Acme Health", website: "https://acmehealth.com", niche: "med-tech", email: "jo@acmehealth.com", summary: "Remote monitoring for rural clinics", sizeStage: "12 people, YC Summer 2025" });
+    expect(p.facts.length).toBeGreaterThan(2);
+    expect(p.facts.every((f) => f.sourceUrl.startsWith("http"))).toBe(true);
+  });
+  it("adds extra sourced facts after the directory ones", () => {
+    const p = prospectFromYc(company(), "jo@acmehealth.com", [{ text: "They describe themselves well.", sourceUrl: "https://acmehealth.com/" }]);
+    expect(p.facts.at(-1)).toEqual({ text: "They describe themselves well.", sourceUrl: "https://acmehealth.com/" });
+  });
+  it("has no facts when the directory has nothing to say", () => {
+    expect(prospectFromYc(company({ one_liner: "", long_description: "", team_size: null, batch: "" }), "a@b.co").facts).toEqual([]);
   });
 });

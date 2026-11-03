@@ -8,6 +8,8 @@ import { formatOrgDate } from "@/lib/date";
 import { cancelScheduledOutreachEmail, sendOutreachEmail } from "@/lib/email/outreach-send";
 import { buildBrakeAlertEmail } from "@/lib/email/outreach-emails";
 import { draftWithModel } from "@/lib/outreach/draft-model";
+import { stopAction } from "@/lib/outreach/stop-pending";
+import { HEARTBEAT_JOBS, heartbeatKey, jobHealth, staleSiblings, type HeartbeatJob, type Heartbeats, type JobHealth } from "@/lib/outreach/heartbeat";
 import { attributeBooking } from "@/lib/outreach/booking-attribution";
 import { dailyCap, pacificInstant } from "@/lib/outreach/pacing";
 import {
@@ -327,16 +329,25 @@ export async function addSuppression(admin: Admin, email: string, reason: string
   if (error) console.error("add suppression failed:", error.message);
 }
 
-/** Cancels every message Resend is still holding for a prospect, so nothing goes out after a reply, booking or opt-out. */
+/**
+ * Stops everything still pending for a prospect after a reply, booking or opt-out. Drafts and emails Resend is
+ * still holding are cancelled; an email whose time has already passed went out, so it is recorded as sent.
+ */
 export async function cancelScheduledMessages(admin: Admin, prospectId: string): Promise<void> {
+  const now = new Date();
   const { data } = await admin
     .from("outreach_messages")
-    .select("id, resend_id")
+    .select("id, resend_id, status, scheduled_for")
     .eq("prospect_id", prospectId)
     .in("status", ["scheduled", "draft"]);
   for (const m of data ?? []) {
-    if (m.resend_id) await cancelScheduledOutreachEmail(m.resend_id);
-    await admin.from("outreach_messages").update({ status: "cancelled" }).eq("id", m.id);
+    const action = stopAction({ status: m.status, scheduledFor: m.scheduled_for ? new Date(m.scheduled_for) : null }, now);
+    if (action === "mark_sent") {
+      await admin.from("outreach_messages").update({ status: "sent", sent_at: m.scheduled_for }).eq("id", m.id);
+    } else if (action === "cancel") {
+      if (m.resend_id) await cancelScheduledOutreachEmail(m.resend_id);
+      await admin.from("outreach_messages").update({ status: "cancelled" }).eq("id", m.id);
+    }
   }
 }
 
@@ -574,6 +585,8 @@ export interface OutreachOverview {
   sentToday: number;
   cap: number;
   bookingOpen: boolean;
+  /** When each daily job last ran, and whether that is on time. */
+  jobs: Record<HeartbeatJob, JobHealth>;
 }
 
 /** Everything the Outreach screen needs, read as the signed-in exec (RLS keeps everyone else out). */
@@ -584,7 +597,7 @@ export async function getOutreachOverview(now = new Date()): Promise<OutreachOve
     supabase.from("outreach_messages").select("*").order("step", { ascending: true }).limit(4000),
     supabase.from("outreach_replies").select("*").order("created_at", { ascending: false }).limit(500),
     supabase.from("outreach_events").select("id, prospect_id, kind, created_at").order("created_at", { ascending: false }).limit(2000),
-    supabase.from("org_settings").select("key, value").in("key", OUTREACH_SETTING_KEYS),
+    supabase.from("org_settings").select("key, value").in("key", [...OUTREACH_SETTING_KEYS, ...HEARTBEAT_JOBS.map(heartbeatKey)]),
     supabase.from("org_settings").select("value").eq("key", "client_meeting_booking_open").maybeSingle(),
   ]);
   for (const r of [prospects, messages, replies, events, settingRows]) if (r.error) throw r.error;
@@ -596,6 +609,9 @@ export async function getOutreachOverview(now = new Date()): Promise<OutreachOve
   const msgs = messages.data ?? [];
   const evs = events.data ?? [];
   const inWindow = (iso: string | null, from: number) => !!iso && new Date(iso).getTime() >= from;
+  const beats = Object.fromEntries(HEARTBEAT_JOBS.map((job) => [job, (settingRows.data ?? []).find((r) => r.key === heartbeatKey(job))?.value || null])) as Heartbeats;
+  const oldestProspectAt = (prospects.data ?? []).reduce<string | null>((oldest, p) => (oldest === null || p.created_at < oldest ? p.created_at : oldest), null);
+  const jobs = Object.fromEntries(HEARTBEAT_JOBS.map((job) => [job, jobHealth(now, beats[job], { mode: settings.mode, oldestProspectAt })])) as Record<HeartbeatJob, JobHealth>;
 
   return {
     prospects: (prospects.data ?? []).map((p) => ({
@@ -646,5 +662,19 @@ export async function getOutreachOverview(now = new Date()): Promise<OutreachOve
     sentToday: msgs.filter((m) => ["scheduled", "sent"].includes(m.status) && inWindow(m.scheduled_for, startOfToday)).length,
     cap: dailyCap(settings.startedOn, today, settings.dailyCapOverride),
     bookingOpen: booking.data?.value === "true",
+    jobs,
   };
+}
+
+/** Records that a daily job finished, and emails the execs if one of the other jobs has gone quiet. Never throws: it must not fail the job. */
+export async function recordJobRun(job: HeartbeatJob, now = new Date()): Promise<void> {
+  try {
+    const admin = createAdminClient();
+    await setOutreachSetting(admin, heartbeatKey(job), now.toISOString());
+    const { data } = await admin.from("org_settings").select("key, value").in("key", HEARTBEAT_JOBS.map(heartbeatKey));
+    const beats = Object.fromEntries(HEARTBEAT_JOBS.map((j) => [j, (data ?? []).find((r) => r.key === heartbeatKey(j))?.value || null])) as Heartbeats;
+    for (const stale of staleSiblings(now, beats, job)) await alertExecsOfBrake(admin, `job_stale_${stale}`);
+  } catch (err) {
+    console.error("outreach heartbeat failed:", err);
+  }
 }

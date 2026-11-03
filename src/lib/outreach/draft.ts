@@ -25,9 +25,26 @@ export function parseDraftOutput(raw: unknown): DraftOutput | null {
   return parsed.success ? parsed.data : null;
 }
 
+/** Closing questions for a first email. One is assigned per company so a batch does not end the same way. */
+export const ASK_OPTIONS = [
+  "Would a 30-minute call be worth it to see if there's a fit?",
+  "Would you be open to a 30-minute call to see if this could help?",
+  "Could we find 30 minutes to talk it through?",
+  "Is a short 30-minute call something you'd consider?",
+  "Would a quick 30-minute call make sense?",
+  "Would you be up for a 30-minute call to see where we could help?",
+];
+
+/** The same company always gets the same ask, and companies spread across the options. */
+export function askFor(company: string): string {
+  let hash = 0;
+  for (const ch of company.toLowerCase()) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return ASK_OPTIONS[hash % ASK_OPTIONS.length];
+}
+
 const KIND_INSTRUCTIONS: Record<DraftKind, string> = {
   first:
-    "This is the FIRST email to this person. Maximum 110 words. Use exactly this shape, as short paragraphs separated by a blank line: (1) 'Hi <first name>,' alone on its line; (2) one or two sentences showing we actually looked at their company, naming one specific thing from the prospect data in plain words; (3) two or three sentences on what we would do for them: a team of UCSC students works on one concrete problem for them for a quarter, naming the kind of problem that fits this company based only on the prospect data, at no cost to them; (4) one sentence asking whether a 30-minute call is worth it to see if there is a fit. Lead with them, not us: the club gets one sentence at most. Make them want to take the call by being concrete about what they would get.",
+    "This is the FIRST email to this person. Maximum 110 words. Use exactly this shape, as short paragraphs separated by a blank line: (1) the greeting alone on its line; (2) one or two sentences showing we actually looked at their company, naming one specific thing from the prospect data in plain words; (3) two or three sentences on what we would do for them: a team of UCSC students works on one concrete problem for them for a quarter, naming the kind of problem that fits this company based only on the prospect data, at no cost to them; (4) the closing ask, given in the rules below. Lead with them, not us: the club gets one sentence at most. Make them want to take the call by being concrete about what they would get.",
   follow_up:
     "This is a short follow-up to an earlier email that got no reply. Add one new, specific reason it could be useful; do not just bump the thread. Maximum 60 words, in two short paragraphs separated by a blank line.",
   closing:
@@ -39,6 +56,8 @@ export function buildDraftPrompt(args: {
   step: DraftKind;
   previousSubjects: string[];
   clubFacts: string;
+  /** For a first email: the exact closing sentence this company gets. */
+  ask?: string;
   /** Problems found in the previous attempt, to be fixed. */
   fix?: string[];
 }): string {
@@ -62,7 +81,8 @@ export function buildDraftPrompt(args: {
     "- You may name one or two organizations from the past clients list in the club facts, picking the ones closest to this company's field or size. Name only organizations on that list, never describe their projects beyond the club facts, and skip this if none is a fair match.",
     "- Do not sign off or add a signature; it is added automatically.",
     "- No hype and no fake urgency.",
-    "- Address the contact by first name if given, otherwise use 'Hi there'.",
+    `- Greeting: 'Hi <first name>,' if a contact name is given, otherwise '${`Hi ${row.company} team,`}' using the company name. Never 'Hi there'.`,
+    ...(args.ask ? [`- The last paragraph must be exactly this sentence and nothing else: "${args.ask}"`] : []),
     "- Write it differently from the earlier subject lines listed below.",
     "Respond with JSON: {\"subject\": string, \"paragraphs\": string[]}. Put each paragraph in its own string, with the greeting ('Hi <first name>,') as the first paragraph. Do not put line breaks inside a string.",
     "",
@@ -125,7 +145,7 @@ function specificTerms(row: ProspectDraftRow): string[] {
   return [row.company.toLowerCase(), host?.toLowerCase() ?? "", ...(words ?? [])].filter((t) => t.length >= 4);
 }
 
-export function checkDraft(draft: DraftOutput, row: ProspectDraftRow, kind: DraftKind = "first"): { ok: boolean; problems: string[] } {
+export function checkDraft(draft: DraftOutput, row: ProspectDraftRow, kind: DraftKind = "first", options: { ask?: string } = {}): { ok: boolean; problems: string[] } {
   const problems: string[] = [];
   const all = `${draft.subject}\n${draft.body}`.toLowerCase();
   const body = draft.body;
@@ -146,6 +166,8 @@ export function checkDraft(draft: DraftOutput, row: ProspectDraftRow, kind: Draf
   if (body.split(/(?<=[.?])\s+|\n+/).some((sentence) => wordCount(sentence) > MAX_SENTENCE_WORDS)) {
     problems.push(`Break up any sentence longer than ${MAX_SENTENCE_WORDS} words.`);
   }
+
+  if (options.ask && paragraphs[paragraphs.length - 1] !== options.ask) problems.push(`End with this exact sentence as the last paragraph: "${options.ask}"`);
 
   // Reads like a person.
   if (/[\u2014\u2013]/.test(body)) problems.push("Remove the dashes (em dashes and en dashes).");
@@ -195,6 +217,7 @@ export async function generateDraft(args: {
   if (row.facts.length === 0 && !row.summary && !row.whyFit) {
     return { needsAttention: "No researched facts about this company to base an email on." };
   }
+  const ask = args.step === "first" ? askFor(row.company) : undefined;
   let fix: string[] | undefined;
   let lastProblems: string[] = [];
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
@@ -203,6 +226,7 @@ export async function generateDraft(args: {
       step: args.step,
       previousSubjects: args.previousSubjects,
       clubFacts: args.clubFacts ?? "",
+      ask,
       fix,
     });
     const parsed = parseDraftOutput(await args.generate(prompt));
@@ -211,7 +235,7 @@ export async function generateDraft(args: {
       fix = lastProblems = ["Respond with valid JSON containing a subject and a body."];
       continue;
     }
-    const check = checkDraft(draft, row, args.step);
+    const check = checkDraft(draft, row, args.step, { ask });
     if (check.ok) return { draft };
     fix = lastProblems = check.problems;
   }

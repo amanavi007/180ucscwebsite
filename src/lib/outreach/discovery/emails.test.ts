@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractCompanyEmails, pickBestEmail } from "./emails";
+import { extractCompanyEmails, normalizeManualEmail, pickBestEmail } from "./emails";
 
 describe("extractCompanyEmails", () => {
   it("finds plain text and mailto emails on the company's own domain", () => {
@@ -28,7 +28,7 @@ describe("pickBestEmail", () => {
     expect(pickBestEmail(["info@acme.com", "contact@acme.com"])).toBe("contact@acme.com");
   });
   it("never picks inboxes that are not for business conversations", () => {
-    for (const local of ["careers", "jobs", "security", "support", "sales", "press", "privacy", "legal", "abuse", "billing", "noreply", "no-reply", "help", "hr", "recruiting", "media", "partners", "quotes", "orders", "bookings", "feedback", "marketing", "newsletter"]) {
+    for (const local of ["careers", "jobs", "security", "support", "sales", "press", "privacy", "legal", "abuse", "billing", "noreply", "no-reply", "help", "hr", "recruiting", "media", "partners", "quotes", "orders", "bookings", "feedback", "marketing", "newsletter", "cancel", "cancellations", "refunds", "returns", "complaints", "investors", "ir", "dpo", "gdpr", "trust", "notifications", "alerts"]) {
       expect(pickBestEmail([`${local}@acme.com`])).toBeNull();
     }
   });
@@ -37,5 +37,20 @@ describe("pickBestEmail", () => {
   });
   it("returns null for an empty list", () => {
     expect(pickBestEmail([])).toBeNull();
+  });
+});
+
+describe("normalizeManualEmail", () => {
+  it("trims and lowercases a good address", () => {
+    expect(normalizeManualEmail("  Jo.Lee@Acme.COM ")).toEqual({ email: "jo.lee@acme.com" });
+  });
+  it("accepts an address pasted as Name <email> or mailto:", () => {
+    expect(normalizeManualEmail("Jo Lee <jo@acme.com>")).toEqual({ email: "jo@acme.com" });
+    expect(normalizeManualEmail("mailto:jo@acme.com")).toEqual({ email: "jo@acme.com" });
+  });
+  it("rejects things that are not one email address", () => {
+    for (const bad of ["", "jo", "jo@", "@acme.com", "jo@acme", "jo@acme.com, ann@acme.com", "jo smith@acme.com"]) {
+      expect(normalizeManualEmail(bad)).toHaveProperty("error");
+    }
   });
 });

@@ -1,4 +1,5 @@
 import { isPacificHour } from "@/lib/interview-reminders";
+import { recordJobRun } from "@/lib/data/outreach";
 import { buildDiscoveryDeps } from "@/lib/data/outreach-discovery";
 import { runDiscovery } from "@/lib/outreach/discovery/runner";
 
@@ -19,7 +20,9 @@ export async function GET(request: Request) {
   if (!isPacificHour(new Date(), DISCOVER_HOUR)) return Response.json({ skipped: "not 6am Pacific" });
 
   try {
-    return Response.json(await runDiscovery(await buildDiscoveryDeps()));
+    const result = await runDiscovery(await buildDiscoveryDeps());
+    await recordJobRun("discover");
+    return Response.json(result);
   } catch (err) {
     console.error("outreach discovery failed:", err);
     return Response.json({ error: err instanceof Error ? err.message : "failed" }, { status: 500 });

@@ -15,12 +15,22 @@ export function extractCompanyEmails(html: string, host: string): string[] {
   return [...found];
 }
 
+const ONE_ADDRESS = /^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/;
+
+/** Cleans up an address typed or pasted by a person ("Jo <jo@x.com>", "mailto:jo@x.com") or says what is wrong with it. */
+export function normalizeManualEmail(input: string): { email: string } | { error: string } {
+  const bracketed = /<([^>]+)>/.exec(input)?.[1];
+  const email = (bracketed ?? input).trim().replace(/^mailto:/i, "").toLowerCase();
+  return ONE_ADDRESS.test(email) ? { email } : { error: "That doesn't look like one email address." };
+}
+
 /** Inboxes that are not for a business conversation, so we never write to them. */
 const NOT_FOR_BUSINESS = new Set([
   "careers", "career", "jobs", "job", "hiring", "recruiting", "recruiter", "hr", "people", "talent",
   "security", "abuse", "privacy", "legal", "compliance", "dmca", "billing", "accounts", "invoices", "payments",
   "support", "help", "helpdesk", "customerservice", "service", "sales", "press", "media", "pr", "partners",
   "quotes", "quote", "orders", "order", "bookings", "reservations", "feedback", "marketing", "newsletter", "subscribe",
+  "cancel", "cancellation", "cancellations", "refund", "refunds", "returns", "complaints", "investors", "investor", "ir", "dpo", "gdpr", "trust", "notifications", "alerts",
   "noreply", "no-reply", "donotreply", "do-not-reply", "mailer-daemon", "postmaster", "webmaster", "unsubscribe", "bounce", "bounces",
 ]);
 

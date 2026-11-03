@@ -170,6 +170,9 @@ const BRAKE_COPY: Record<string, string> = {
   account_error: "Resend rejected the outreach account, so sending was paused.",
   booking_closed: "The intro-call booking page is closed, so sending is on hold.",
   paused: "Outreach is paused in Settings.",
+  job_stale_discover: "The daily job that finds new companies has not run in over a day. Check the Vercel cron logs, and that CRON_SECRET is set.",
+  job_stale_prepare: "The daily job that verifies prospects and writes drafts has not run in over a day. Check the Vercel cron logs, and that CRON_SECRET is set.",
+  job_stale_send: "The daily job that schedules emails has not run in over a day. Check the Vercel cron logs, and that CRON_SECRET is set.",
   webhook_disabled: "Resend had switched off the webhook that brings replies and bounces into the portal. It has been turned back on automatically. Replies sent while it was off may not have been forwarded, so check the Resend dashboard (Webhooks) for failed events.",
   webhook_missing: "There is no Resend webhook for the portal, so replies, bounces and spam complaints are not reaching it. Add one in the Resend dashboard under Webhooks, pointing at the portal's /api/webhooks/resend address.",
 };
@@ -178,5 +181,5 @@ export function buildBrakeAlertEmail(reason: string, portalUrl: string): EmailCo
   const explanation = BRAKE_COPY[reason] ?? "Outreach stopped for a safety reason.";
   const text = `${explanation}\n\nOpen the portal: ${portalUrl}`;
   const html = `<p>${escapeHtml(explanation)}</p><p><a href="${escapeHtml(portalUrl)}">Open the portal</a></p>`;
-  return { subject: reason.startsWith("webhook") ? "Outreach needs a look: reply webhook" : "Outreach sending paused", text, html };
+  return { subject: reason.startsWith("webhook") ? "Outreach needs a look: reply webhook" : reason.startsWith("job_stale") ? "Outreach needs a look: a daily job stopped" : "Outreach sending paused", text, html };
 }
