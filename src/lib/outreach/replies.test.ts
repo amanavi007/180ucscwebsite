@@ -49,6 +49,19 @@ team@consulting.ucsc180dc.org> wrote:
 > and we won't email you again.
 `;
 
+describe("classifyReply: not now", () => {
+  const classify = (text: string) => classifyReply({ subject: "Re: x", text, headers: null });
+  it("keeps a timing answer out of the permanent no", () => {
+    expect(classify("Not right now, but check back in the spring.")).toBe("later");
+    expect(classify("Maybe next quarter, we're heads down.")).toBe("later");
+    expect(classify("Bad timing for us. Reach back out in a few months.")).toBe("later");
+  });
+  it("still treats a plain no as a no", () => {
+    expect(classify("Not interested, thanks.")).toBe("not_interested");
+    expect(classify("Not interested right now, please remove me")).toBe("unsubscribe");
+  });
+});
+
 describe("stripQuotedReply", () => {
   it("drops the Gmail quote block and keeps only what the person wrote", () => {
     expect(stripQuotedReply(`this sounds interesting, can we talk?\n\n${OUR_EMAIL_QUOTED}`)).toBe("this sounds interesting, can we talk?");

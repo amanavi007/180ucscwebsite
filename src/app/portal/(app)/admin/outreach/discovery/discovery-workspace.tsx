@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -14,13 +14,10 @@ import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { DiscoveryOverview } from "@/lib/data/outreach-discovery";
-import { OUTCOME_FILTERS, countsByFilter, outcomeChip, type CandidateView } from "@/lib/outreach/discovery/view";
+import { OUTCOME_FILTERS, PAGE_SIZES, countsByFilter, outcomeChip, type CandidateView } from "@/lib/outreach/discovery/view";
 import { CompanyListDialog } from "./company-list-dialog";
 import { formatWhen } from "@/lib/outreach/view";
-import { useFilteredList } from "@/lib/use-filtered-list";
 import { cn } from "@/lib/utils";
-
-const SEARCH_FIELDS: ((c: CandidateView) => string)[] = [(c) => c.company, (c) => c.domain, (c) => c.email ?? ""];
 
 const PIPELINE_PATH = "/portal/admin/outreach";
 
@@ -41,25 +38,40 @@ export function DiscoveryWorkspace({ overview }: { overview: DiscoveryOverview }
   const pathname = usePathname();
   const params = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const [navPending, startNav] = useTransition();
   const { settings, summary } = overview;
 
   const outcome = params.get("outcome") ?? "all";
   const selectedId = params.get("candidate");
 
-  function setParam(key: string, value: string | null) {
+  /** Changes address-bar settings. Anything that changes which companies are listed also goes back to page 1. */
+  function setParams(changes: Record<string, string | null>, keepPage = false) {
     const next = new URLSearchParams(params.toString());
-    if (value && value !== "all") next.set(key, value);
-    else next.delete(key);
+    for (const [key, value] of Object.entries(changes)) {
+      if (value && value !== "all") next.set(key, value);
+      else next.delete(key);
+    }
+    if (!keepPage && !("page" in changes)) next.delete("page");
     const query = next.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    startNav(() => router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false }));
   }
+  const setParam = (key: string, value: string | null) => setParams({ [key]: value }, key === "candidate");
 
-  const { query, setQuery, filtered: searched } = useFilteredList<CandidateView>(overview.candidates, SEARCH_FIELDS);
-  // The server already narrowed the list by result; the search box only filters what it sent.
+  // The server searches and pages, so the browser only ever holds one page of rows.
+  const [query, setQuery] = useState(overview.search);
+  useEffect(() => {
+    if (query.trim() === overview.search) return;
+    const id = setTimeout(() => setParams({ q: query.trim() || null }), 350);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
   const counts = useMemo(() => countsByFilter(overview.counts), [overview.counts]);
-  const visible = searched;
+  const visible = overview.candidates;
   const [listOpen, setListOpen] = useState(false);
-  const selected = overview.candidates.find((c) => c.id === selectedId) ?? null;
+  const selected = overview.selected;
+  const firstRow = overview.total === 0 ? 0 : (overview.page - 1) * overview.size + 1;
+  const lastRow = Math.min(overview.total, overview.page * overview.size);
+  const lastPage = Math.max(1, Math.ceil(overview.total / overview.size));
 
   const full = overview.backlog > overview.backlogLimit;
   const state = !settings.discoveryEnabled
@@ -125,7 +137,7 @@ export function DiscoveryWorkspace({ overview }: { overview: DiscoveryOverview }
       <CompanyListDialog open={listOpen} onOpenChange={setListOpen} />
 
       <div className={cn("grid items-start gap-6", selected && "xl:grid-cols-[minmax(0,1fr)_420px]")}>
-        <div className="min-w-0 space-y-4">
+        <div className={cn("min-w-0 space-y-4 transition-opacity", navPending && "opacity-60")} aria-busy={navPending}>
           <div className="flex flex-wrap items-center gap-3">
             <ListSearch value={query} onChange={setQuery} placeholder="Search company or email..." className="w-64" />
             <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by result">
@@ -136,6 +148,13 @@ export function DiscoveryWorkspace({ overview }: { overview: DiscoveryOverview }
               ))}
             </div>
           </div>
+          {(outcome === "retrying" || outcome === "gave_up") && (
+            <p className="text-sm text-muted-foreground">
+              {outcome === "retrying"
+                ? "Discovery is working on these by itself: another look at the website, a search for a new one, a deeper read for an email. Nothing to do here."
+                : "Discovery tried and moved on: no working website, no public email, or the site asks bots to stay out. Nothing to do here. You can still add an email yourself if you happen to know one."}
+            </p>
+          )}
 
           <Table>
             <TableHeader>
@@ -150,11 +169,11 @@ export function DiscoveryWorkspace({ overview }: { overview: DiscoveryOverview }
               {visible.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
-                    {overview.candidates.length === 0
-                      ? outcome === "all"
+                    {overview.search
+                      ? "No one matches that."
+                      : outcome === "all"
                         ? "Nothing yet. Turn discovery on in Settings, press Find companies now, or add a list of companies."
-                        : "Nothing with that result."
-                      : "No one matches that."}
+                        : "Nothing with that result."}
                   </TableCell>
                 </TableRow>
               )}
@@ -190,6 +209,33 @@ export function DiscoveryWorkspace({ overview }: { overview: DiscoveryOverview }
               })}
             </TableBody>
           </Table>
+
+          <nav aria-label="Pages" className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground tabular-nums">
+              {overview.total === 0 ? "No companies" : `${firstRow.toLocaleString()}–${lastRow.toLocaleString()} of ${overview.total.toLocaleString()}`}
+            </p>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+              <div className="flex items-center gap-1.5" role="group" aria-label="Companies per page">
+                <span className="text-sm text-muted-foreground">Per page</span>
+                {PAGE_SIZES.map((n) => (
+                  <FilterChip key={n} selected={overview.size === n} onClick={() => setParams({ size: n === PAGE_SIZES[0] ? null : String(n) })}>
+                    {n}
+                  </FilterChip>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" disabled={navPending || overview.page <= 1} onClick={() => setParams({ page: String(overview.page - 1) })}>
+                  Previous
+                </Button>
+                <span className="text-sm tabular-nums">
+                  Page {overview.page} of {lastPage}
+                </span>
+                <Button variant="outline" size="sm" disabled={navPending || overview.page >= lastPage} onClick={() => setParams({ page: String(overview.page + 1) })}>
+                  Next
+                </Button>
+              </div>
+            </div>
+          </nav>
         </div>
 
         {selected && <CandidatePanel key={selected.id} candidate={selected} onClose={() => setParam("candidate", null)} />}
@@ -271,7 +317,7 @@ function CandidatePanel({ candidate, onClose }: { candidate: CandidateView; onCl
         </section>
       )}
 
-      {["no_email", "unreachable"].includes(candidate.outcome) && <AddEmailForm candidate={candidate} />}
+      {["no_email", "unreachable", "failed"].includes(candidate.outcome) && <AddEmailForm candidate={candidate} />}
 
       {candidate.prospectId && (
         <p className="text-sm">

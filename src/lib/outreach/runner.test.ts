@@ -265,7 +265,8 @@ describe("runSend", () => {
     const send = vi.fn().mockRejectedValueOnce(new Error("bad address")).mockResolvedValue({ resendId: "re_ok" });
     await runSend(sendDeps(store, { send }));
     expect(store.messages.get("m1")!).toMatchObject({ status: "failed", error: "bad address" });
-    expect(store.prospects.get("p1")!.status).toBe("drafted");
+    // Never retried silently: a person sees why and decides, instead of the prospect sitting in limbo forever.
+    expect(store.prospects.get("p1")!).toMatchObject({ status: "needs_attention", statusReason: "The email could not be sent: bad address" });
     expect(store.messages.get("m2")!).toMatchObject({ status: "scheduled", resendId: "re_ok" });
   });
 
@@ -297,7 +298,11 @@ function prepareDeps(store: Store, over: Partial<PrepareDeps> = {}, s = settings
     unsubscribeMailto: base.unsubscribeMailto,
     fromAddress: base.fromAddress,
     replyTo: base.replyTo,
-    listProspects: async (statuses, limit) => [...store.prospects.values()].filter((p) => statuses.includes(p.status)).slice(0, limit),
+    listProspects: async (statuses, limit, opts) =>
+      [...store.prospects.values()]
+        .filter((p) => statuses.includes(p.status))
+        .filter((p) => !opts?.dueBy || (p.nextActionAt !== null && p.nextActionAt <= opts.dueBy))
+        .slice(0, limit),
     casProspect: base.casProspect,
     casMessage: base.casMessage,
     checkMx: async (d) => d !== "nomx.com",
@@ -391,6 +396,24 @@ describe("runPrepare", () => {
     await runPrepare(deps);
     const followUps = [...store.messages.values()].filter((m) => m.step === 1);
     expect(followUps).toHaveLength(1);
+  });
+
+  it("still drafts a due follow-up when far more prospects than the read limit are waiting ahead of it", async () => {
+    const store = new Store();
+    // 150 prospects whose next step is weeks away, older than the one that is due.
+    for (let i = 0; i < 150; i++) store.prospects.set(`w${i}`, prospect(1000 + i, { status: "follow_up_1", step: 2, nextActionAt: new Date("2026-11-30T00:00:00Z") }));
+    store.prospects.set("due", prospect(1, { status: "sent", step: 1, nextActionAt: new Date("2026-10-21T00:00:00Z"), firstSentAt: new Date("2026-10-15T20:00:00Z") }));
+    const result = await runPrepare(prepareDeps(store, {}, settings({ mode: "live" })));
+    expect(result.followUps).toBe(1);
+    expect(store.messages.get("m_p1_1")).toBeDefined();
+  });
+
+  it("drafts a follow-up again after its first attempt failed to send", async () => {
+    const store = new Store();
+    store.prospects.set("p1", prospect(1, { status: "sent", step: 1, nextActionAt: new Date("2026-10-21T00:00:00Z"), firstSentAt: new Date("2026-10-15T20:00:00Z") }));
+    store.messages.set("m1", { id: "m1", prospectId: "p1", step: 1, subject: "S", bodyText: "B", status: "failed", scheduledFor: null, resendId: null, sentAt: null, error: "x" });
+    const deps = prepareDeps(store, { hasMessageForStep: async (pid, step) => [...store.messages.values()].some((m) => m.prospectId === pid && m.step === step && !["cancelled", "failed"].includes(m.status)) }, settings({ mode: "live" }));
+    expect((await runPrepare(deps)).followUps).toBe(1);
   });
 
   it("does not draft follow-ups for prospects who have replied, booked or unsubscribed", async () => {

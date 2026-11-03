@@ -9,6 +9,7 @@ import type { WebhookDeps, WebhookEvent } from "@/lib/outreach/webhook-handler";
 import { replyForwardRecipients } from "@/lib/outreach/settings";
 import { emailDomain } from "@/lib/outreach/verify";
 import {
+  addDomainSuppression,
   addSuppression,
   alertExecsOfBrake,
   cancelScheduledMessages,
@@ -22,6 +23,8 @@ import {
 } from "./outreach";
 
 const DAY_MS = 86_400_000;
+// An out-of-office usually lasts a week or two; four days keeps follow-ups from landing while they are still away.
+const AUTO_REPLY_PAUSE_MS = 4 * DAY_MS;
 // Statuses a reply must never overwrite.
 const KEEP_STATUSES = ["booked", "unsubscribed", "bounced", "invalid"];
 
@@ -138,7 +141,7 @@ export function buildWebhookDeps(): WebhookDeps {
     pauseSequence: async (prospectId) => {
       const { data } = await admin.from("outreach_prospects").select("next_action_at").eq("id", prospectId).maybeSingle();
       if (!data?.next_action_at) return;
-      const pushed = new Date(Math.max(new Date(data.next_action_at).getTime(), Date.now() + DAY_MS));
+      const pushed = new Date(Math.max(new Date(data.next_action_at).getTime(), Date.now() + AUTO_REPLY_PAUSE_MS));
       await admin.from("outreach_prospects").update({ next_action_at: pushed.toISOString() }).eq("id", prospectId);
     },
 
@@ -190,8 +193,20 @@ export function buildWebhookDeps(): WebhookDeps {
         .update({ status: "unsubscribed", status_reason: "Marked an email as spam.", next_action_at: null })
         .eq("id", prospectId);
       await addSuppression(admin, email, "Marked an email as spam.");
+      await addDomainSuppression(admin, email, "Marked an email as spam.");
       await cancelScheduledMessages(admin, prospectId);
       await recordOutreachEvent(admin, { prospectId, messageId, kind: "complained" });
+    },
+
+    markSendFailed: async ({ prospectId, messageId, reason }) => {
+      await admin.from("outreach_messages").update({ status: "failed", error: reason }).eq("id", messageId).in("status", ["scheduled", "sent"]); // in-ok: short list of statuses
+      await admin
+        .from("outreach_prospects")
+        .update({ status: "needs_attention", status_reason: `The email could not be sent: ${reason}`, next_action_at: null })
+        .eq("id", prospectId)
+        .in("status", ["queued", "sent", "follow_up_1", "follow_up_2"]); // in-ok: short list of statuses
+      await cancelScheduledMessages(admin, prospectId);
+      await recordOutreachEvent(admin, { prospectId, messageId, kind: "failed", detail: { reason } });
     },
 
     recordDelivered: async ({ prospectId, messageId }) => {

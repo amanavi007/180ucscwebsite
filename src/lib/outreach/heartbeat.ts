@@ -1,11 +1,32 @@
 import type { OutreachMode } from "./settings";
 
 /** The daily jobs. Each records when it last ran, so a job that quietly stops can be noticed. */
-export const HEARTBEAT_JOBS = ["discover", "prepare", "send"] as const;
+export const HEARTBEAT_JOBS = ["discover", "repair", "prepare", "send"] as const;
 export type HeartbeatJob = (typeof HEARTBEAT_JOBS)[number];
 export type Heartbeats = Record<HeartbeatJob, string | null>;
 
 export const heartbeatKey = (job: HeartbeatJob) => `outreach_heartbeat_${job}`;
+
+/** What the job did on its last run, in a sentence. The hosting plan keeps no logs, so this is the only record. */
+export const lastRunKey = (job: HeartbeatJob) => `outreach_lastrun_${job}`;
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/** One short sentence for the portal from a job's result object. */
+export function summarizeRun(job: HeartbeatJob, result: unknown): string {
+  const r = (result ?? {}) as Record<string, unknown>;
+  const num = (k: string) => (typeof r[k] === "number" ? (r[k] as number) : 0);
+  if (job === "prepare") {
+    const parts = [`checked ${num("verified")}`, `wrote ${plural(num("drafted"), "draft")}`, `${plural(num("followUps"), "follow-up")}`];
+    if (num("needsAttention") > 0) parts.push(`${num("needsAttention")} need attention`);
+    return parts.join(", ");
+  }
+  if (job === "send") {
+    return typeof r.skipped === "string" && r.skipped ? `sent none (${r.skipped.replace(/_/g, " ")})` : `scheduled ${plural(num("scheduled"), "email")}`;
+  }
+  if (job === "repair") return `tried ${num("tried")}, recovered ${num("recovered")}, gave up on ${num("gaveUp")}, still trying ${num("stillTrying")}`;
+  return typeof r.skipped === "string" && r.skipped ? `added none (${r.skipped.replace(/_/g, " ")})` : `added ${plural(num("added"), "company", "companies")}, ${num("fromPool")} from the pool`;
+}
 
 /** Jobs run once a day; allow a little over a day for the schedule to drift before calling one overdue. */
 export const STALE_AFTER_HOURS = 30;

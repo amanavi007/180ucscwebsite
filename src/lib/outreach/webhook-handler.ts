@@ -40,6 +40,8 @@ export interface WebhookDeps {
   markForwarded(emailId: string): Promise<void>;
   markBounced(args: { prospectId: string; messageId: string; email: string; reason: string }): Promise<void>;
   markComplained(args: { prospectId: string; messageId: string; email: string }): Promise<void>;
+  /** Resend could not deliver the email at all (not a bounce): the person must look, because the sequence assumed it went out. */
+  markSendFailed(args: { prospectId: string; messageId: string; reason: string }): Promise<void>;
   recordDelivered(args: { prospectId: string; messageId: string }): Promise<void>;
   /** Re-checks bounce and complaint rates and pauses sending if they are too high. */
   checkBrakes(): Promise<void>;
@@ -110,6 +112,14 @@ async function handleDelivery(event: WebhookEvent, deps: WebhookDeps) {
     if (bounce.type === "Transient") return;
     await deps.markBounced({ ...found, email, reason: bounce.message ?? "Bounced." });
     await deps.checkBrakes();
+  } else if (event.type === "email.suppressed") {
+    // Resend refused to send because this address bounced or complained before.
+    const suppressed = (event.data.suppressed ?? {}) as { message?: string };
+    await deps.markBounced({ ...found, email, reason: suppressed.message ?? "Resend has this address on its suppression list." });
+    await deps.checkBrakes();
+  } else if (event.type === "email.failed") {
+    const failed = (event.data.failed ?? {}) as { reason?: string };
+    await deps.markSendFailed({ ...found, reason: failed.reason ?? "Resend could not send the email." });
   } else if (event.type === "email.complained") {
     await deps.markComplained({ ...found, email });
     await deps.checkBrakes();
@@ -127,7 +137,7 @@ export async function handleResendWebhook(request: Request, deps: WebhookDeps): 
   }
   try {
     if (event.type === "email.received") await handleReceived(event.data, deps);
-    else if (["email.delivered", "email.bounced", "email.complained"].includes(event.type)) await handleDelivery(event, deps);
+    else if (["email.delivered", "email.bounced", "email.complained", "email.suppressed", "email.failed"].includes(event.type)) await handleDelivery(event, deps);
     return Response.json({ ok: true });
   } catch (err) {
     console.error("resend webhook failed:", err);

@@ -78,6 +78,7 @@ const REPLY_LABELS: Record<string, string> = {
   interested: "Interested",
   question: "Question",
   not_interested: "Not interested",
+  later: "Not right now",
   unsubscribe: "Asked to unsubscribe",
   auto_reply: "Automatic reply",
   other: "Other",
@@ -94,6 +95,7 @@ const EVENT_LABELS: Record<string, string> = {
   replied: "Replied",
   unsubscribed: "Unsubscribed",
   booked: "Booked a call",
+  failed: "Could not be sent",
   brake: "Sending paused",
 };
 

@@ -1,6 +1,6 @@
 import { isFreeMailDomain } from "./verify";
 
-export type ReplyClass = "auto_reply" | "unsubscribe" | "not_interested" | "interested" | "question" | "other";
+export type ReplyClass = "auto_reply" | "unsubscribe" | "not_interested" | "later" | "interested" | "question" | "other";
 
 /** "Jo Lee <Jo@Acme.com>" -> "jo@acme.com" */
 export function extractEmail(from: string): string {
@@ -10,6 +10,9 @@ export function extractEmail(from: string): string {
 
 const AUTO_SUBJECT = /^(automatic reply|auto[- ]?reply|autoreply)\b|out of (the )?office/i;
 const UNSUBSCRIBE = /\b(unsubscribe|remove me|take me off|stop (emailing|contacting|sending|messaging)|do not (contact|email)|don'?t (contact|email))\b/i;
+// "Not now" is not "no": a person decides, and the company stays contactable.
+const LATER =
+  /\b(not (right )?now|not at the moment|not at this time|bad timing|maybe (later|next|in)|(reach|check|circle|follow) (back|up) (in|next|later|after)|(next|this coming) (quarter|semester|year|month|spring|summer|fall|winter)|in (a few|a couple of|\d+) (weeks|months)|after (the )?(summer|fall|winter|spring|holidays|new year))\b/i;
 const NOT_INTERESTED = /\b(not interested|no thanks|no thank you|not a (good )?fit|not looking|pass on this|we'?ll pass)\b/i;
 const INTERESTED =
   /interest(ed|ing)|sounds (good|great)|let'?s (talk|chat|set up|schedule|connect)|happy to (chat|talk|meet|connect)|can we (talk|chat|meet|set up|schedule)|would love to/i;
@@ -53,6 +56,7 @@ export function classifyReply(args: { subject: string; text: string; headers: Re
   if (hasAutoHeaders(args.headers) || AUTO_SUBJECT.test(args.subject.trim())) return "auto_reply";
   const text = stripQuotedReply(args.text);
   if (UNSUBSCRIBE.test(text)) return "unsubscribe";
+  if (LATER.test(text)) return "later";
   if (NOT_INTERESTED.test(text)) return "not_interested";
   if (INTERESTED.test(text)) return "interested";
   if (text.includes("?")) return "question";

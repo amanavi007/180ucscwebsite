@@ -31,6 +31,7 @@ function deps(over: Partial<WebhookDeps> = {}): WebhookDeps & { calls: string[] 
     markForwarded: track("markForwarded", undefined),
     markBounced: track("markBounced", undefined),
     markComplained: track("markComplained", undefined),
+    markSendFailed: track("markSendFailed", undefined),
     recordDelivered: track("delivered", undefined),
     checkBrakes: track("checkBrakes", undefined),
     ...over,
@@ -164,5 +165,41 @@ describe("handleResendWebhook", () => {
     const res = await handleResendWebhook(post(received()), d);
     expect(res.status).toBe(500);
     expect(d.markForwarded).not.toHaveBeenCalled();
+  });
+
+  describe("emails that were never delivered", () => {
+    const found = { messageId: "m1", prospectId: "p1" };
+
+    it("marks an email Resend could not send as failed, with Resend's reason", async () => {
+      const d = deps({ findMessageByResendId: vi.fn(async () => found) });
+      const res = await handleResendWebhook(post({ type: "email.failed", data: { email_id: "re_1", to: ["jo@acme.com"], failed: { reason: "Could not reach the mail server" } } }), d);
+      expect(res.status).toBe(200);
+      expect(d.markSendFailed).toHaveBeenCalledWith({ ...found, reason: "Could not reach the mail server" });
+      expect(d.markBounced).not.toHaveBeenCalled();
+    });
+
+    it("treats an address on Resend's suppression list like a bounce, so it joins our do-not-contact list", async () => {
+      const d = deps({ findMessageByResendId: vi.fn(async () => found) });
+      await handleResendWebhook(post({ type: "email.suppressed", data: { email_id: "re_1", to: ["jo@acme.com"], suppressed: { message: "Previously bounced" } } }), d);
+      expect(d.markBounced).toHaveBeenCalledWith({ ...found, email: "jo@acme.com", reason: "Previously bounced" });
+      expect(d.checkBrakes).toHaveBeenCalled();
+    });
+
+    it("ignores failures for emails that are not outreach", async () => {
+      const d = deps();
+      const res = await handleResendWebhook(post({ type: "email.failed", data: { email_id: "re_booking" } }), d);
+      expect(res.status).toBe(200);
+      expect(d.markSendFailed).not.toHaveBeenCalled();
+    });
+  });
+
+  it("sends a 'not right now' reply to a human instead of removing the company", async () => {
+    const d = deps({
+      fetchReceived: vi.fn(async () => ({ from: "Jo Lee <jo@acme.com>", subject: "Re: x", text: "Thanks, not right now. Check back next quarter.", headers: null })),
+    });
+    await handleResendWebhook(post(received()), d);
+    expect(d.unsubscribe).not.toHaveBeenCalled();
+    expect(d.markReplied).toHaveBeenCalledWith("p1");
+    expect(d.saveReply).toHaveBeenCalledWith(expect.objectContaining({ classification: "later" }));
   });
 });

@@ -9,7 +9,7 @@ import { cancelScheduledOutreachEmail, sendOutreachEmail } from "@/lib/email/out
 import { buildBrakeAlertEmail } from "@/lib/email/outreach-emails";
 import { draftWithModel } from "@/lib/outreach/draft-model";
 import { stopAction } from "@/lib/outreach/stop-pending";
-import { HEARTBEAT_JOBS, heartbeatKey, jobHealth, staleSiblings, type HeartbeatJob, type Heartbeats, type JobHealth } from "@/lib/outreach/heartbeat";
+import { HEARTBEAT_JOBS, heartbeatKey, jobHealth, lastRunKey, staleSiblings, summarizeRun, type HeartbeatJob, type Heartbeats, type JobHealth } from "@/lib/outreach/heartbeat";
 import { attributeBooking } from "@/lib/outreach/booking-attribution";
 import { dailyCap, pacificInstant } from "@/lib/outreach/pacing";
 import {
@@ -20,7 +20,7 @@ import {
   type OutreachSettings,
 } from "@/lib/outreach/settings";
 import { type WebhookHealthDeps } from "@/lib/outreach/webhook-health";
-import { checkMx, emailDomain, type ExistingProspectData } from "@/lib/outreach/verify";
+import { checkMx, emailDomain, isFreeMailDomain, type ExistingProspectData } from "@/lib/outreach/verify";
 import type {
   MessagePatch,
   PrepareDeps,
@@ -30,7 +30,7 @@ import type {
   SendDeps,
 } from "@/lib/outreach/runner";
 import type { ProspectDraftRow, ProspectFact } from "@/lib/outreach/types";
-import { fetchInChunks } from "@/lib/paginate";
+import { fetchAllPages, fetchInChunks } from "@/lib/paginate";
 
 type Admin = ReturnType<typeof createAdminClient>;
 type ProspectRow = Database["public"]["Tables"]["outreach_prospects"]["Row"];
@@ -178,13 +178,12 @@ export async function buildPrepareDeps(now = new Date()): Promise<PrepareDeps> {
   return {
     ...outreachEnv(settings, now),
     ...casDeps(admin),
-    listProspects: async (statuses, limit) => {
-      const { data, error } = await admin
-        .from("outreach_prospects")
-        .select("*")
-        .in("status", statuses) // in-ok: short list of statuses
-        .order("created_at", { ascending: true })
-        .limit(limit);
+    listProspects: async (statuses, limit, opts) => {
+      const base = admin.from("outreach_prospects").select("*").in("status", statuses); // in-ok: short list of statuses
+      const { data, error } = await (opts?.dueBy
+        ? base.lte("next_action_at", opts.dueBy.toISOString()).order("next_action_at", { ascending: true })
+        : base.order("created_at", { ascending: true })
+      ).limit(limit);
       if (error) throw error;
       return runnerProspects(admin, data ?? []);
     },
@@ -202,7 +201,7 @@ export async function buildPrepareDeps(now = new Date()): Promise<PrepareDeps> {
         .select("id", { count: "exact", head: true })
         .eq("prospect_id", prospectId)
         .eq("step", step)
-        .neq("status", "cancelled");
+        .not("status", "in", "(cancelled,failed)"); // a failed email never went out, so the step still needs one
       if (error) throw error;
       return (count ?? 0) > 0;
     },
@@ -256,7 +255,7 @@ export function buildWebhookHealthDeps(): WebhookHealthDeps {
     list: async () => {
       const res = await fetch("https://api.resend.com/webhooks", { headers, cache: "no-store" });
       if (!res.ok) throw new Error(`Resend webhooks list failed: ${res.status}`);
-      const body = (await res.json()) as { data?: { id: string; endpoint: string; status: string }[] };
+      const body = (await res.json()) as { data?: { id: string; endpoint: string; status: string; events?: string[] }[] };
       return body.data ?? [];
     },
     update: async (id, patch) => {
@@ -323,10 +322,27 @@ export async function isEmailSuppressed(admin: Admin, email: string): Promise<bo
   return (byDomain.data?.length ?? 0) > 0;
 }
 
+const UNIQUE_VIOLATION = "23505";
+
+/**
+ * Adds one row to the do-not-contact list. The unique indexes on email and domain are partial, which PostgREST's
+ * `upsert(onConflict)` cannot target (it fails with "no unique or exclusion constraint"), so this inserts and treats
+ * "already there" as success. Throws on any other failure: a lost opt-out must be seen, not logged and forgotten.
+ */
+async function insertSuppression(admin: Admin, row: { email: string } | { domain: string }, reason: string): Promise<void> {
+  const { error } = await admin.from("outreach_suppressions").insert({ ...row, reason });
+  if (error && error.code !== UNIQUE_VIOLATION) throw error;
+}
+
 export async function addSuppression(admin: Admin, email: string, reason: string): Promise<void> {
-  const e = email.trim().toLowerCase();
-  const { error } = await admin.from("outreach_suppressions").upsert({ email: e, reason }, { onConflict: "email", ignoreDuplicates: true });
-  if (error) console.error("add suppression failed:", error.message);
+  await insertSuppression(admin, { email: email.trim().toLowerCase() }, reason);
+}
+
+/** A company asked to be left alone: every inbox at its domain is blocked. Free-mail domains are never blocked whole. */
+export async function addDomainSuppression(admin: Admin, email: string, reason: string): Promise<void> {
+  const domain = emailDomain(email);
+  if (!domain || isFreeMailDomain(domain)) return;
+  await insertSuppression(admin, { domain }, reason);
 }
 
 /**
@@ -483,6 +499,7 @@ export async function unsubscribeProspect(prospectId: string, reason = "Unsubscr
   const { data: prospect } = await admin.from("outreach_prospects").select("contact_email").eq("id", prospectId).maybeSingle();
   if (!prospect) return;
   await addSuppression(admin, prospect.contact_email, reason);
+  await addDomainSuppression(admin, prospect.contact_email, reason);
   await cancelScheduledMessages(admin, prospectId);
   await admin
     .from("outreach_prospects")
@@ -587,20 +604,27 @@ export interface OutreachOverview {
   bookingOpen: boolean;
   /** When each daily job last ran, and whether that is on time. */
   jobs: Record<HeartbeatJob, JobHealth>;
+  /** What each job did on its last run. */
+  jobSummaries: Record<HeartbeatJob, string | null>;
 }
 
 /** Everything the Outreach screen needs, read as the signed-in exec (RLS keeps everyone else out). */
 export async function getOutreachOverview(now = new Date()): Promise<OutreachOverview> {
   const supabase = await createClient();
-  const [prospects, messages, replies, events, settingRows, booking] = await Promise.all([
-    supabase.from("outreach_prospects").select("*").order("created_at", { ascending: false }).limit(1000),
-    supabase.from("outreach_messages").select("*").order("step", { ascending: true }).limit(4000),
-    supabase.from("outreach_replies").select("*").order("created_at", { ascending: false }).limit(500),
-    supabase.from("outreach_events").select("id, prospect_id, kind, created_at").order("created_at", { ascending: false }).limit(2000),
-    supabase.from("org_settings").select("key, value").in("key", [...OUTREACH_SETTING_KEYS, ...HEARTBEAT_JOBS.map(heartbeatKey)]),
+  // Every row, a page at a time: a plain select stops at 1,000 rows, and the oldest prospects (often the ones that replied) would silently vanish.
+  const [prospectRows, messageRows, replyRows, eventRows, settingRows, booking] = await Promise.all([
+    fetchAllPages((from, to) => supabase.from("outreach_prospects").select("*").order("created_at", { ascending: false }).order("id").range(from, to)),
+    fetchAllPages((from, to) => supabase.from("outreach_messages").select("*").order("step", { ascending: true }).order("id").range(from, to)),
+    fetchAllPages((from, to) => supabase.from("outreach_replies").select("*").order("created_at", { ascending: false }).order("id").range(from, to)),
+    fetchAllPages((from, to) => supabase.from("outreach_events").select("id, prospect_id, kind, created_at").order("created_at", { ascending: false }).order("id").range(from, to)),
+    supabase.from("org_settings").select("key, value").in("key", [...OUTREACH_SETTING_KEYS, ...HEARTBEAT_JOBS.map(heartbeatKey), ...HEARTBEAT_JOBS.map(lastRunKey)]),
     supabase.from("org_settings").select("value").eq("key", "client_meeting_booking_open").maybeSingle(),
   ]);
-  for (const r of [prospects, messages, replies, events, settingRows]) if (r.error) throw r.error;
+  if (settingRows.error) throw settingRows.error;
+  const prospects = { data: prospectRows };
+  const messages = { data: messageRows };
+  const replies = { data: replyRows };
+  const events = { data: eventRows };
 
   const settings = parseOutreachSettings(settingRows.data ?? []);
   const today = formatOrgDate(now);
@@ -663,14 +687,16 @@ export async function getOutreachOverview(now = new Date()): Promise<OutreachOve
     cap: dailyCap(settings.startedOn, today, settings.dailyCapOverride),
     bookingOpen: booking.data?.value === "true",
     jobs,
+    jobSummaries: Object.fromEntries(HEARTBEAT_JOBS.map((job) => [job, (settingRows.data ?? []).find((r) => r.key === lastRunKey(job))?.value || null])) as Record<HeartbeatJob, string | null>,
   };
 }
 
 /** Records that a daily job finished, and emails the execs if one of the other jobs has gone quiet. Never throws: it must not fail the job. */
-export async function recordJobRun(job: HeartbeatJob, now = new Date()): Promise<void> {
+export async function recordJobRun(job: HeartbeatJob, now = new Date(), result?: unknown): Promise<void> {
   try {
     const admin = createAdminClient();
     await setOutreachSetting(admin, heartbeatKey(job), now.toISOString());
+    if (result !== undefined) await setOutreachSetting(admin, lastRunKey(job), summarizeRun(job, result));
     const { data } = await admin.from("org_settings").select("key, value").in("key", HEARTBEAT_JOBS.map(heartbeatKey));
     const beats = Object.fromEntries(HEARTBEAT_JOBS.map((j) => [j, (data ?? []).find((r) => r.key === heartbeatKey(j))?.value || null])) as Heartbeats;
     for (const stale of staleSiblings(now, beats, job)) await alertExecsOfBrake(admin, `job_stale_${stale}`);

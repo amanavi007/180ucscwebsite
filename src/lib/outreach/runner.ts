@@ -98,7 +98,8 @@ interface SharedDeps extends RunnerEnv {
 }
 
 export interface PrepareDeps extends SharedDeps {
-  listProspects(statuses: string[], limit: number): Promise<RunnerProspect[]>;
+  /** Oldest due first. With `dueBy`, only prospects whose next action is due by then; the rest cannot crowd them out of the limit. */
+  listProspects(statuses: string[], limit: number, opts?: { dueBy?: Date }): Promise<RunnerProspect[]>;
   checkMx(domain: string): Promise<boolean>;
   draft(args: { row: ProspectDraftRow; step: DraftKind; previousSubjects: string[] }): Promise<{ draft: DraftOutput } | { needsAttention: string }>;
   insertDraft(prospectId: string, step: number, draft: DraftOutput): Promise<void>;
@@ -130,7 +131,11 @@ const EXEC_TEST_LIMIT = 5;
 const RECONCILE_DELAY_MS = 5 * 60_000;
 const CLOSING_GRACE_MS = 7 * 86_400_000;
 const VERIFY_BATCH = 25;
+/** First emails drafted per run, at least; raised to the number of companies discovery adds a day, so drafting never caps the pipeline. */
 const DRAFT_BATCH = 10;
+const MAX_DRAFT_BATCH = 40;
+/** The cron may run for 300 seconds; stop starting new AI drafts well before that so the job finishes and records itself. */
+const PREPARE_BUDGET_MS = 200_000;
 
 export function toDraftRow(p: RunnerProspect): ProspectDraftRow {
   return {
@@ -175,16 +180,19 @@ export async function runPrepare(deps: PrepareDeps): Promise<PrepareResult> {
         nextActionAt: next,
       });
     }
-    for (const p of await deps.listProspects(["closing_note"], 50)) {
-      if (p.nextActionAt && p.nextActionAt <= now) await deps.casProspect(p.id, ["closing_note"], { status: "no_response" });
+    for (const p of await deps.listProspects(["closing_note"], 100, { dueBy: now })) {
+      await deps.casProspect(p.id, ["closing_note"], { status: "no_response" });
     }
   }
 
-  for (const p of await deps.listProspects(["new"], VERIFY_BATCH)) {
+  const toVerify = await deps.listProspects(["new"], VERIFY_BATCH);
+  // DNS lookups wait on the network, so they run side by side instead of one after another.
+  const hasMx = await Promise.all(toVerify.map((p) => (classifyEmail(p.contactEmail).disposable ? Promise.resolve(true) : deps.checkMx(p.contactDomain))));
+  for (const [i, p] of toVerify.entries()) {
     const info = classifyEmail(p.contactEmail);
     let reason: string | null = null;
     if (info.disposable) reason = "Disposable email domain.";
-    else if (!(await deps.checkMx(p.contactDomain))) reason = "The email domain can't receive mail.";
+    else if (!hasMx[i]) reason = "The email domain can't receive mail.";
     if (reason) {
       await deps.casProspect(p.id, ["new"], { status: "invalid", statusReason: reason });
     } else if (await deps.casProspect(p.id, ["new"], { status: "verified", statusReason: info.roleInbox ? "Generic inbox, not a named person." : null })) {
@@ -192,9 +200,13 @@ export async function runPrepare(deps: PrepareDeps): Promise<PrepareResult> {
     }
   }
 
+  const startedAt = Date.now();
+  const outOfTime = () => Date.now() - startedAt > PREPARE_BUDGET_MS;
+  const draftBatch = Math.min(MAX_DRAFT_BATCH, Math.max(DRAFT_BATCH, settings.discoveryPerDay));
   const batchBodies = await deps.recentDraftBodies();
   const batchSubjects: string[] = [];
-  for (const p of await deps.listProspects(["verified"], DRAFT_BATCH)) {
+  for (const p of await deps.listProspects(["verified"], draftBatch)) {
+    if (outOfTime()) break;
     const previous = await deps.previousSubjects(p.id);
     let outcome: { draft: DraftOutput } | { needsAttention: string } = { needsAttention: "Draft too similar to another in this batch." };
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -220,8 +232,9 @@ export async function runPrepare(deps: PrepareDeps): Promise<PrepareResult> {
   }
 
   if (settings.mode === "live") {
-    const waiting = await deps.listProspects(["sent", "follow_up_1", "follow_up_2"], 50);
+    const waiting = await deps.listProspects(["sent", "follow_up_1", "follow_up_2"], 100, { dueBy: now });
     for (const p of waiting) {
+      if (outOfTime()) break;
       if (!p.nextActionAt || p.nextActionAt > now) continue;
       if (await deps.hasMessageForStep(p.id, p.step)) continue;
       const made = await deps.draft({ row: toDraftRow(p), step: stepKind(p.step), previousSubjects: await deps.previousSubjects(p.id) });
@@ -346,8 +359,10 @@ export async function runSend(deps: SendDeps): Promise<SendResult> {
         return { scheduled, skipped: "account_error" };
       }
       if (execOnly) continue;
-      await deps.casMessage(message.id, ["scheduled"], { status: "failed", error: err instanceof Error ? err.message : String(err) });
-      await deps.casProspect(prospect.id, ["queued"], { status: claimedProspectStatus });
+      // Not retried by itself: an address Resend refuses would be refused again every day. A person sees it and decides.
+      const reason = err instanceof Error ? err.message : String(err);
+      await deps.casMessage(message.id, ["scheduled"], { status: "failed", error: reason });
+      await deps.casProspect(prospect.id, ["queued"], { status: "needs_attention", statusReason: `The email could not be sent: ${reason}` });
     }
   }
   return { scheduled, skipped: null };

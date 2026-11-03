@@ -15,6 +15,12 @@ describe("nextActionAt", () => {
     const thursday = new Date("2026-10-22T18:00:00Z");
     expect(pacificDate(nextActionAt(thursday, [4, 9, 15], 1)!)).toBe("2026-10-28");
   });
+  it("is the start of that Pacific day, so the 7am job that writes follow-ups sees it as due that morning", () => {
+    const afternoonSend = new Date("2026-10-19T22:41:00Z"); // Mon 3:41pm PDT
+    const due = nextActionAt(afternoonSend, [4, 9, 15], 1)!;
+    expect(due.toISOString()).toBe("2026-10-23T07:00:00.000Z"); // Fri 12:00am PDT
+    expect(due.getTime()).toBeLessThanOrEqual(new Date("2026-10-23T14:00:00Z").getTime()); // before Friday 7am PDT
+  });
   it("returns null after the last step", () => {
     expect(nextActionAt(monday, [4, 9, 15], 4)).toBeNull();
     expect(nextActionAt(monday, [], 1)).toBeNull();

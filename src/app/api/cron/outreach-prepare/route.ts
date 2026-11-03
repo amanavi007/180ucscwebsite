@@ -5,7 +5,8 @@ import { checkWebhookHealth } from "@/lib/outreach/webhook-health";
 
 // Always run fresh; this reads the clock and the database.
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+// Writing drafts with an AI model is slow; the job stops starting new ones well before this.
+export const maxDuration = 300;
 
 const PREPARE_HOUR = 7;
 
@@ -27,7 +28,7 @@ export async function GET(request: Request) {
 
   try {
     const result = await runPrepare(await buildPrepareDeps(now));
-    await recordJobRun("prepare", now);
+    await recordJobRun("prepare", now, result);
     return Response.json({ webhook, ...result });
   } catch (err) {
     console.error("outreach prepare failed:", err);

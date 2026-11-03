@@ -2,7 +2,7 @@ import type { ProspectFact } from "../types";
 import { extractCompanyEmails, pickBestEmail } from "./emails";
 import { matchFounderToEmail, type Founder } from "./founders";
 import type { ListLead } from "./list";
-import { isAllowedByRobots, metaDescription, pageUrlsToTry } from "./page";
+import { deepPageUrls, isAllowedByRobots, metaDescription, pageUrlsToTry } from "./page";
 import {
   interleaveMedTech,
   matchesFilter,
@@ -17,7 +17,7 @@ import {
 } from "./yc";
 
 /** `ready` is a company already looked at and waiting in the pool; `added` is one that became a prospect. */
-export type CandidateOutcome = "ready" | "added" | "duplicate" | "no_email" | "unreachable" | "no_facts" | "error";
+export type CandidateOutcome = "ready" | "added" | "duplicate" | "no_email" | "unreachable" | "no_facts" | "error" | "failed";
 
 export interface NewProspect {
   company: string;
@@ -124,7 +124,10 @@ type Crawl =
   | { ok: false; domain: string; outcome: CandidateOutcome; reason: string; email: string | null; emailSourceUrl: string | null };
 
 /** Reads a company's own website for the email it publishes. Shared by every source of companies. */
-async function crawlSite(args: { name: string; website: string }, deps: DiscoveryDeps): Promise<Crawl> {
+/** Pages read in one deep look; keeps a slow site from eating the time budget. */
+const MAX_DEEP_PAGES = 16;
+
+async function crawlSite(args: { name: string; website: string }, deps: DiscoveryDeps, opts: { deep?: boolean } = {}): Promise<Crawl> {
   const host = hostOf(args.website);
   const fail = (outcome: CandidateOutcome, reason: string, email: string | null = null, emailSourceUrl: string | null = null): Crawl => ({
     ok: false,
@@ -142,11 +145,13 @@ async function crawlSite(args: { name: string; website: string }, deps: Discover
   const origin = new URL(args.website).origin;
   const robots = await deps.fetchRobots(origin);
   const urls = pageUrlsToTry(args.website);
+  const queue = [...urls];
   const found = new Map<string, string>();
   let homeHtml: string | null = null;
   let fetchedAny = false;
   let blocked = 0;
-  for (const url of urls) {
+  for (let i = 0; i < queue.length; i++) {
+    const url = queue[i];
     if (!isAllowedByRobots(robots, new URL(url).pathname)) {
       blocked++;
       continue;
@@ -154,12 +159,16 @@ async function crawlSite(args: { name: string; website: string }, deps: Discover
     const html = await deps.fetchPage(url);
     if (html === null) continue;
     fetchedAny = true;
-    if (url === urls[0]) homeHtml = html;
+    if (url === urls[0]) {
+      homeHtml = html;
+      // A deeper look adds the extra pages and whatever contact-like links the homepage itself shows.
+      if (opts.deep) queue.push(...deepPageUrls(args.website, html, queue).slice(0, MAX_DEEP_PAGES - queue.length));
+    }
     for (const email of extractCompanyEmails(html, host)) if (!found.has(email)) found.set(email, url);
     if (pickBestEmail([...found.keys()])) break;
   }
 
-  if (!fetchedAny) return fail("unreachable", blocked === urls.length ? "The site's robots.txt does not allow it." : "Could not load the website.");
+  if (!fetchedAny) return fail("unreachable", blocked === queue.length ? "The site's robots.txt does not allow it." : "Could not load the website.");
 
   const email = pickBestEmail([...found.keys()]);
   if (!email) {
@@ -197,12 +206,12 @@ async function finishWithProspect(record: CandidateRecord, prospect: NewProspect
 }
 
 /** Looks at one directory company's own website and either adds it, stages it, or records why not. Never throws. */
-export async function evaluateCandidate(c: YcCompany, deps: DiscoveryDeps, mode: "add" | "stage" = "add"): Promise<CandidateRecord> {
+export async function evaluateCandidate(c: YcCompany, deps: DiscoveryDeps, mode: "add" | "stage" = "add", opts: { deep?: boolean } = {}): Promise<CandidateRecord> {
   const record = baseRecord("yc", c.slug, c.name, c.website);
   try {
     // The founders are kept even when no email is found, so a person adding one by hand knows who to look for.
     record.founders = await deps.fetchFounders(c.slug).catch(() => []);
-    const crawl = await crawlSite({ name: c.name, website: c.website ?? "" }, deps);
+    const crawl = await crawlSite({ name: c.name, website: c.website ?? "" }, deps, opts);
     record.domain = crawl.domain;
     record.email = crawl.ok ? crawl.email : crawl.email;
     record.emailSourceUrl = crawl.emailSourceUrl;
@@ -220,10 +229,10 @@ export async function evaluateCandidate(c: YcCompany, deps: DiscoveryDeps, mode:
 const LIST_PRIORITY = 10_000_000;
 
 /** Same as evaluateCandidate, for a company someone pasted in (a name and website, never an email). */
-export async function evaluateListLead(lead: ListLead, deps: DiscoveryDeps, mode: "add" | "stage" = "stage"): Promise<CandidateRecord> {
+export async function evaluateListLead(lead: ListLead, deps: DiscoveryDeps, mode: "add" | "stage" = "stage", opts: { deep?: boolean } = {}): Promise<CandidateRecord> {
   const record = baseRecord("list", null, lead.name, lead.website);
   try {
-    const crawl = await crawlSite({ name: lead.name, website: lead.website }, deps);
+    const crawl = await crawlSite({ name: lead.name, website: lead.website }, deps, opts);
     record.domain = crawl.domain;
     record.email = crawl.email;
     record.emailSourceUrl = crawl.emailSourceUrl;
@@ -320,13 +329,13 @@ export async function runDiscovery(deps: DiscoveryDeps): Promise<DiscoveryResult
   return { added, evaluated, fromPool, skipped: null };
 }
 
-interface PoolOptions {
+export interface PoolOptions {
   concurrency: number;
   budgetMs: number;
 }
 
 /** Runs `work` over `items` with a few at a time, stopping to start new ones when time is up. Returns how many were never started. */
-async function inParallel<T>(items: T[], opts: PoolOptions, now: () => number, work: (item: T) => Promise<void>): Promise<number> {
+export async function inParallel<T>(items: T[], opts: PoolOptions, now: () => number, work: (item: T) => Promise<void>): Promise<number> {
   const started = now();
   let next = 0;
   await Promise.all(

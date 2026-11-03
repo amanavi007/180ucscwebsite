@@ -71,3 +71,34 @@ const PAGE_PATHS = ["/", "/contact", "/about", "/team", "/company", "/contact-us
 export function pageUrlsToTry(homeUrl: string): string[] {
   return PAGE_PATHS.map((path) => new URL(path, homeUrl).toString());
 }
+
+/** Pages a first look skips. Privacy and terms pages often name a real contact; "about us" and "people" often name the team. */
+const DEEP_PATHS = ["/about-us", "/people", "/our-team", "/leadership", "/contact/", "/privacy", "/privacy-policy", "/terms", "/legal", "/imprint", "/support", "/press", "/partners", "/careers"];
+const CONTACT_LINK = /contact|about|team|people|company|leadership|privacy|terms|legal|imprint|press|partner|reach|connect|hello|support/i;
+
+/** Links on the homepage that point at a page likely to publish a contact, on the same site. At most `max`. */
+export function contactLinks(html: string, homeUrl: string, max = 6): string[] {
+  const home = new URL(homeUrl);
+  const found = new Set<string>();
+  for (const m of html.matchAll(/<a\b[^>]*?href=["']([^"'#]+)["'][^>]*>/gi)) {
+    try {
+      const url = new URL(m[1].trim(), home);
+      if (url.hostname.replace(/^www\./, "") !== home.hostname.replace(/^www\./, "")) continue;
+      if (!/^https?:$/.test(url.protocol) || /\.(png|jpe?g|gif|svg|webp|pdf|zip|css|js)$/i.test(url.pathname)) continue;
+      if (url.pathname === "/" || !CONTACT_LINK.test(url.pathname)) continue;
+      found.add(`${url.origin}${url.pathname}`);
+    } catch {
+      // not a usable link
+    }
+    if (found.size >= max) break;
+  }
+  return [...found];
+}
+
+/** The extra pages for a deeper look: the usual ones plus the links the homepage itself points to. */
+export function deepPageUrls(homeUrl: string, homeHtml: string | null, already: string[]): string[] {
+  const known = new Set(already);
+  // The site's own links come first: they are known to exist, unlike the guessed paths.
+  const extra = [...(homeHtml ? contactLinks(homeHtml, homeUrl) : []), ...DEEP_PATHS.map((path) => new URL(path, homeUrl).toString())];
+  return [...new Set(extra)].filter((u) => !known.has(u));
+}

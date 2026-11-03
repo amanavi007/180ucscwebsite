@@ -1,4 +1,5 @@
-import { ORG_TIME_ZONE } from "@/lib/date";
+import { formatOrgDate, ORG_TIME_ZONE } from "@/lib/date";
+import { pacificInstant } from "./pacing";
 
 const DAY_MS = 86_400_000;
 
@@ -9,7 +10,9 @@ const isWeekend = (d: Date) => {
 
 /**
  * When email number `step` is due, counted in Pacific business days after `from` (the first send).
- * `step` 1 is the first follow-up. Null once the sequence has no more emails.
+ * `step` 1 is the first follow-up. Null once the sequence has no more emails. The result is the start of that
+ * Pacific day: the morning job that writes follow-ups runs at 7am, so a due time later in the day (the first
+ * email's own clock time) would make every follow-up wait one more day.
  */
 export function nextActionAt(from: Date, followupDays: number[], step: number): Date | null {
   const days = followupDays[step - 1];
@@ -20,7 +23,7 @@ export function nextActionAt(from: Date, followupDays: number[], step: number): 
     t += DAY_MS;
     if (!isWeekend(new Date(t))) remaining--;
   }
-  return new Date(t);
+  return pacificInstant(formatOrgDate(new Date(t)), 0);
 }
 
 export type SentStatus = "sent" | "follow_up_1" | "follow_up_2" | "closing_note";

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ASK_OPTIONS, askFor, buildDraftPrompt, checkDraft, generateDraft, isNearDuplicate, parseDraftOutput } from "./draft";
+import { ASK_OPTIONS, askFor, buildDraftPrompt, checkDraft, generateDraft, isNearDuplicate, parseDraftOutput, ungroundedClaims } from "./draft";
 import type { ProspectDraftRow } from "./types";
 
 const row: ProspectDraftRow = {
@@ -209,5 +209,27 @@ describe("generateDraft", () => {
   it("treats unparseable model output as a failed attempt", async () => {
     const generate = vi.fn().mockResolvedValueOnce("garbage").mockResolvedValueOnce(good);
     expect(await generateDraft({ row, step: "first", previousSubjects: [], generate })).toEqual({ draft: good });
+  });
+});
+
+describe("ungroundedClaims", () => {
+  const club = "- 180 Degrees Consulting at UCSC is a student-run group.\n- Past clients, from our website: Santa Cruz Community Health; Pacific Edge.";
+  const claims = (body: string) => ungroundedClaims(body, row, club);
+
+  it("accepts an email that only uses what we know", () => {
+    expect(claims(good.body)).toEqual([]);
+    expect(claims("Hi Jo,\n\nWe like what Acme Health does for rural clinics in California.\n\nWe helped Pacific Edge with a similar plan.\n\nWould a 30-minute call make sense?")).toEqual([]);
+  });
+  it("catches an invented person, customer or number", () => {
+    expect(claims("Hi Jo,\n\nWe read that Acme Health raised a round led by Sequoia.\n\nWould a call help?")).toContain("Sequoia");
+    expect(claims("Hi Jo,\n\nAcme Health serves 400 clinics today.\n\nWould a call help?")).toContain("400");
+    expect(claims("Hi Maria,\n\nWe like Acme Health.\n\nWould a call help?")).toContain("Maria");
+  });
+  it("ignores a capital letter that only starts a sentence", () => {
+    expect(claims("Hi Jo,\n\nRural clinics are hard to reach. Monitoring them remotely helps. Acme Health does that.")).toEqual([]);
+  });
+  it("is part of the rules a draft must pass", () => {
+    const check = checkDraft({ subject: good.subject, body: good.body.replace("rural clinics", "rural clinics in Texas") }, row, "first", { ask, clubFacts: "" });
+    expect(check.problems.join(" ")).toContain('Remove "Texas"');
   });
 });

@@ -59,3 +59,26 @@ describe("checkWebhookHealth", () => {
     expect(notify).not.toHaveBeenCalled();
   });
 });
+
+describe("checkWebhookHealth: subscribed events", () => {
+  const OLD = ["email.received", "email.delivered", "email.bounced", "email.complained"];
+
+  it("adds the failed and suppressed events when they are missing, keeping the ones already there", async () => {
+    const { run, update, notify } = setup([{ id: "w1", endpoint: EXPECTED, status: "enabled", events: OLD }]);
+    expect(await run()).toBe("events_added");
+    expect(update).toHaveBeenCalledWith("w1", { events: [...OLD, "email.failed", "email.suppressed"] });
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("leaves a webhook alone when it already has every event", async () => {
+    const { run, update } = setup([{ id: "w1", endpoint: EXPECTED, status: "enabled", events: [...OLD, "email.failed", "email.suppressed", "email.sent"] }]);
+    expect(await run()).toBe("ok");
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("repairs the events in the same call that turns a disabled webhook back on", async () => {
+    const { run, update } = setup([{ id: "w1", endpoint: EXPECTED, status: "disabled", events: OLD }]);
+    expect(await run()).toBe("re_enabled");
+    expect(update).toHaveBeenCalledWith("w1", { status: "enabled", events: [...OLD, "email.failed", "email.suppressed"] });
+  });
+});

@@ -5,13 +5,15 @@ import type { Database, Json } from "@/lib/supabase/database.types";
 import { EXEC_ROLES } from "@/lib/auth/roles";
 import { CLIENTS } from "@/lib/clients";
 import { formatOrgDate } from "@/lib/date";
+import { resolve4, resolve6 } from "node:dns/promises";
 import { fetchAllPages } from "@/lib/paginate";
+import type { RepairDeps } from "@/lib/outreach/discovery/repair";
 import { pacificInstant } from "@/lib/outreach/pacing";
 import { fetchPageHtml, fetchRobotsTxt, loadYcDataset } from "@/lib/outreach/discovery/web";
 import type { CandidateRecord, DiscoveryDeps, PoolPayload } from "@/lib/outreach/discovery/runner";
 import type { Founder } from "@/lib/outreach/discovery/founders";
 import { parseYcFounders } from "@/lib/outreach/discovery/founders";
-import { outcomesForFilter, summarizeCandidates, type CandidateSummary, type CandidateView } from "@/lib/outreach/discovery/view";
+import { ALL_OUTCOMES, outcomesForFilter, parsePage, parsePageSize, type CandidateSummary, type CandidateView } from "@/lib/outreach/discovery/view";
 import { OUTREACH_SETTING_KEYS, parseOutreachSettings, type OutreachSettings } from "@/lib/outreach/settings";
 import { emailDomain } from "@/lib/outreach/verify";
 import { factsToJson, loadOutreachSettings } from "./outreach";
@@ -184,9 +186,72 @@ export async function buildDiscoveryDeps(): Promise<DiscoveryDeps> {
   };
 }
 
+const RETRY_AFTER_MS = 20 * 3_600_000;
+
+const hostResolves = async (host: string) => {
+  try {
+    return (await resolve4(host)).length > 0;
+  } catch {
+    try {
+      return (await resolve6(host)).length > 0;
+    } catch {
+      return false;
+    }
+  }
+};
+
+/** Discovery plus what it needs to look at problem companies again. */
+export async function buildRepairDeps(): Promise<RepairDeps> {
+  const admin = createAdminClient();
+  const deps = await buildDiscoveryDeps();
+  return {
+    ...deps,
+    resolves: hostResolves,
+    repairQueue: async (limit) => {
+      const cutoff = new Date(Date.now() - RETRY_AFTER_MS).toISOString();
+      const { data, error } = await admin
+        .from("outreach_discovery_candidates")
+        .select("*")
+        .in("outcome", ["unreachable", "no_email", "error"]) // in-ok: short list of outcomes
+        .lt("attempts", 3)
+        .or(`last_attempt_at.is.null,last_attempt_at.lt.${cutoff}`)
+        .order("attempts", { ascending: true })
+        .order("last_attempt_at", { ascending: true, nullsFirst: true })
+        .limit(limit);
+      if (error) throw error;
+      return (data ?? []).map((row) => ({ id: row.id, attempts: row.attempts, record: rowToRecord(row) }));
+    },
+    saveRepair: async (id, record, attempts) => {
+      const row = { ...recordToRow(record), attempts, last_attempt_at: new Date().toISOString() };
+      const { error } = await admin.from("outreach_discovery_candidates").update(row).eq("id", id);
+      if (!error) return;
+      // A new website that another row already has: this row is the same company, so it is already known.
+      if (error.code === "23505") {
+        const { domain: _kept, ...rest } = row;
+        void _kept;
+        const { error: retry } = await admin
+          .from("outreach_discovery_candidates")
+          .update({ ...rest, outcome: "duplicate", reason: "Its new website is already known.", payload: null })
+          .eq("id", id);
+        if (retry) throw retry;
+        return;
+      }
+      throw error;
+    },
+  };
+}
+
 export interface DiscoveryOverview {
   settings: OutreachSettings;
+  /** One page of companies, narrowed by the filter and search. */
   candidates: CandidateView[];
+  /** The company open in the side panel, whether or not it is on this page. */
+  selected: CandidateView | null;
+  /** Companies matching the filter and search, across all pages. */
+  total: number;
+  page: number;
+  size: number;
+  search: string;
   /** Companies per outcome across the whole table, not just the rows shown. */
   counts: Record<string, number>;
   summary: Omit<CandidateSummary, "lastRunAt"> & { lastRunAt: string | null };
@@ -195,27 +260,10 @@ export interface DiscoveryOverview {
   backlogLimit: number;
 }
 
-const LIST_LIMIT = 500;
+const CANDIDATE_COLUMNS = "id, source_ref, founders, company, website, domain, outcome, reason, prospect_id, email, email_source_url, created_at";
 
-/** Read as the signed-in exec (RLS), so this page never needs the service role. `filter` narrows the list on the server. */
-export async function getDiscoveryOverview(filter = "all", now = new Date()): Promise<DiscoveryOverview> {
-  const supabase = await createClient();
-  const outcomes = outcomesForFilter(filter);
-  let list = supabase
-    .from("outreach_discovery_candidates")
-    .select("id, source_ref, founders, company, website, domain, outcome, reason, prospect_id, email, email_source_url, created_at")
-    .order("created_at", { ascending: false })
-    .limit(LIST_LIMIT);
-  if (outcomes) list = list.in("outcome", outcomes); // in-ok: short list of outcomes
-  const [settingRows, candidateRows, tally, backlog] = await Promise.all([
-    supabase.from("org_settings").select("key, value").in("key", OUTREACH_SETTING_KEYS),
-    list,
-    // Tiny rows for every company, so the counts and the daily summary are exact however long the table gets.
-    fetchAllPages((from, to) => supabase.from("outreach_discovery_candidates").select("outcome, created_at").order("created_at").range(from, to)),
-    supabase.from("outreach_prospects").select("id", { count: "exact", head: true }).in("status", ["new", "verified", "drafted"]), // in-ok: short list of statuses
-  ]);
-  for (const r of [settingRows, candidateRows, backlog]) if (r.error) throw r.error;
-  const candidates: CandidateView[] = (candidateRows.data ?? []).map((r) => ({
+function toCandidateView(r: Pick<CandidateRow, "id" | "source_ref" | "founders" | "company" | "website" | "domain" | "outcome" | "reason" | "prospect_id" | "email" | "email_source_url" | "created_at">): CandidateView {
+  return {
     id: r.id,
     sourceRef: r.source_ref,
     founders: Array.isArray(r.founders) ? (r.founders as unknown as Founder[]) : [],
@@ -228,15 +276,81 @@ export async function getDiscoveryOverview(filter = "all", now = new Date()): Pr
     email: r.email,
     emailSourceUrl: r.email_source_url,
     createdAt: r.created_at,
-  }));
-  const counts: Record<string, number> = {};
-  for (const row of tally) counts[row.outcome] = (counts[row.outcome] ?? 0) + 1;
-  const summary = summarizeCandidates(tally.map((t) => ({ outcome: t.outcome, createdAt: t.created_at })), now);
+  };
+}
+
+export interface DiscoveryQuery {
+  filter?: string;
+  /** 1-based. */
+  page?: string | null;
+  size?: string | null;
+  /** Text to find in the company, website or email. */
+  q?: string | null;
+  /** A company to open in the side panel, even when it is not on this page. */
+  candidate?: string | null;
+}
+
+/** Characters that mean something inside a PostgREST filter string; a search for them would break the query. */
+const cleanSearch = (q: string) => q.replace(/[%,()*\\]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
+
+/**
+ * Read as the signed-in exec (RLS), so this page never needs the service role. One page of rows is read, not the whole table
+ * (it holds thousands of companies), and the counts come from cheap count queries, so moving between tabs stays quick.
+ */
+export async function getDiscoveryOverview(query: DiscoveryQuery = {}, now = new Date()): Promise<DiscoveryOverview> {
+  const supabase = await createClient();
+  const filter = query.filter ?? "all";
+  const outcomes = outcomesForFilter(filter);
+  const size = parsePageSize(query.size);
+  const search = cleanSearch(query.q ?? "");
+  const startOfToday = pacificInstant(formatOrgDate(now), 0).toISOString();
+  const weekAgo = new Date(now.getTime() - 7 * 86_400_000).toISOString();
+
+  const countWhere = (build: (q: ReturnType<typeof base>) => ReturnType<typeof base>) => build(base()).then((r) => {
+    if (r.error) throw r.error;
+    return r.count ?? 0;
+  });
+  const base = () => supabase.from("outreach_discovery_candidates").select("id", { count: "exact", head: true });
+
+  // The page is chosen after the total is known, so a stale page number lands on the last real page.
+  let list = supabase.from("outreach_discovery_candidates").select(CANDIDATE_COLUMNS.replace("founders, ", ""), { count: "exact" }).order("created_at", { ascending: false }).order("id");
+  if (outcomes) list = list.in("outcome", outcomes); // in-ok: short list of outcomes
+  if (search) list = list.or(`company.ilike.%${search}%,domain.ilike.%${search}%,email.ilike.%${search}%`);
+  const firstPage = await list.range(0, size - 1);
+  if (firstPage.error) throw firstPage.error;
+  const total = firstPage.count ?? 0;
+  const page = parsePage(query.page, total, size);
+  let rows = firstPage.data ?? [];
+  if (page > 1) {
+    const more = await list.range((page - 1) * size, page * size - 1);
+    if (more.error) throw more.error;
+    rows = more.data ?? [];
+  }
+
+  const [settingRows, backlog, perOutcome, addedToday, lookedAtToday, addedWeek, lookedAtWeek, lastRun, selectedRow] = await Promise.all([
+    supabase.from("org_settings").select("key, value").in("key", OUTREACH_SETTING_KEYS),
+    supabase.from("outreach_prospects").select("id", { count: "exact", head: true }).in("status", ["new", "verified", "drafted"]), // in-ok: short list of statuses
+    Promise.all(ALL_OUTCOMES.map((o) => countWhere((q) => q.eq("outcome", o)))),
+    countWhere((q) => q.eq("outcome", "added").gte("created_at", startOfToday)),
+    countWhere((q) => q.gte("created_at", startOfToday)),
+    countWhere((q) => q.eq("outcome", "added").gte("created_at", weekAgo)),
+    countWhere((q) => q.gte("created_at", weekAgo)),
+    supabase.from("outreach_discovery_candidates").select("created_at").order("created_at", { ascending: false }).limit(1),
+    query.candidate ? supabase.from("outreach_discovery_candidates").select(CANDIDATE_COLUMNS).eq("id", query.candidate).maybeSingle() : Promise.resolve(null),
+  ]);
+  for (const r of [settingRows, backlog, lastRun]) if (r.error) throw r.error;
+  const counts = Object.fromEntries(ALL_OUTCOMES.map((o, i) => [o, perOutcome[i]]));
+
   return {
     settings: parseOutreachSettings(settingRows.data ?? []),
-    candidates,
+    candidates: rows.map((r) => toCandidateView(r as unknown as CandidateRow)),
+    selected: selectedRow?.data ? toCandidateView(selectedRow.data as unknown as CandidateRow) : null,
     counts,
-    summary: { ...summary, lastRunAt: summary.lastRunAt?.toISOString() ?? null },
+    total,
+    page,
+    size,
+    search,
+    summary: { addedToday, lookedAtToday, addedWeek, lookedAtWeek, lastRunAt: lastRun.data?.[0]?.created_at ?? null },
     backlog: backlog.count ?? 0,
     backlogLimit: BACKLOG_LIMIT,
   };

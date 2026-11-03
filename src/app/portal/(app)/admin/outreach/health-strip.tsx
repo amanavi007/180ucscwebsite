@@ -3,7 +3,7 @@ import type { OutreachOverview } from "@/lib/data/outreach";
 import { HEARTBEAT_JOBS, type HeartbeatJob } from "@/lib/outreach/heartbeat";
 import { senderState } from "@/lib/outreach/view";
 
-const JOB_LABELS: Record<HeartbeatJob, string> = { discover: "Discovery", prepare: "Drafting", send: "Sending" };
+const JOB_LABELS: Record<HeartbeatJob, string> = { discover: "Discovery", repair: "Repair", prepare: "Drafting", send: "Sending" };
 
 function when(iso: string | null): string {
   if (!iso) return "never";
@@ -54,7 +54,10 @@ export function HealthStrip({ overview }: { overview: OutreachOverview }) {
               <li key={job} className="flex items-center gap-2">
                 <span className="font-semibold">{JOB_LABELS[job]}</span>
                 {j.state === "ok" ? (
-                  <span className="tabular-nums text-muted-foreground">{j.lastRunAt ? `ran ${when(j.lastRunAt)}` : "hasn't run yet"}</span>
+                  <span className="tabular-nums text-muted-foreground">
+                    {j.lastRunAt ? `ran ${when(j.lastRunAt)}` : "hasn't run yet"}
+                    {overview.jobSummaries[job] ? `: ${overview.jobSummaries[job]}` : ""}
+                  </span>
                 ) : (
                   <>
                     <Badge variant="bad">{j.state === "never_ran" ? "Never ran" : "Overdue"}</Badge>

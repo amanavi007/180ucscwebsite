@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 
   try {
     const result = await runDiscovery(await buildDiscoveryDeps());
-    await recordJobRun("discover");
+    await recordJobRun("discover", new Date(), result);
     return Response.json(result);
   } catch (err) {
     console.error("outreach discovery failed:", err);

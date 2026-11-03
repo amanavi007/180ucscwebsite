@@ -10,18 +10,18 @@ export const dynamic = "force-dynamic";
 // "Find companies now" and "Add companies" read a few dozen websites in one request.
 export const maxDuration = 60;
 
-export default async function OutreachDiscoveryPage({ searchParams }: { searchParams: Promise<{ outcome?: string }> }) {
-  const { outcome } = await searchParams;
+export default async function OutreachDiscoveryPage({ searchParams }: { searchParams: Promise<{ outcome?: string; page?: string; size?: string; q?: string; candidate?: string }> }) {
+  const { outcome, page, size, q, candidate } = await searchParams;
   let overview;
   try {
-    overview = await getDiscoveryOverview(outcome ?? "all");
+    overview = await getDiscoveryOverview({ filter: outcome ?? "all", page, size, q, candidate });
   } catch (error) {
     console.error("Discovery overview failed:", error);
     return (
       <div className="space-y-6">
         <PageHeader title="Discovery" description="Companies found automatically, and why some were skipped." />
         <p className="rounded-[22px] border bg-card p-6 text-muted-foreground">
-          The discovery list didn&apos;t load. Refresh the page. If it keeps happening, the discovery table may not be set up yet: run the latest database migrations (20261103000001 and 20261103000002).
+          The discovery list didn&apos;t load. Refresh the page. If it keeps happening, the discovery table may not be set up yet: run the latest database migrations (20261103000001, 20261103000002 and 20261103000004).
         </p>
       </div>
     );

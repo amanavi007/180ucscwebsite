@@ -107,6 +107,12 @@ const REPLY_COPY: Record<string, ReplyCopy> = {
     todo: () => "Nothing to do. You can still reply to say thanks.",
     did: "Stopped follow-ups and added them to the do-not-contact list.",
   },
+  later: {
+    tag: "Not right now",
+    headline: (w) => `${w} replied that the timing is not right.`,
+    todo: (name) => `Reply all to thank ${name} and ask when to check back. Put a reminder in your calendar; the system will not email them again by itself.`,
+    did: "Stopped all follow-up emails to them. They were not added to the do-not-contact list.",
+  },
   unsubscribe: {
     tag: "Unsubscribed",
     headline: (w) => `${w} asked us to stop emailing them.`,
@@ -171,6 +177,7 @@ const BRAKE_COPY: Record<string, string> = {
   booking_closed: "The intro-call booking page is closed, so sending is on hold.",
   paused: "Outreach is paused in Settings.",
   job_stale_discover: "The daily job that finds new companies has not run in over a day. Check the Vercel cron logs, and that CRON_SECRET is set.",
+  job_stale_repair: "The daily job that retries companies discovery could not read has not run in over a day. Check the Vercel cron logs, and that CRON_SECRET is set.",
   job_stale_prepare: "The daily job that verifies prospects and writes drafts has not run in over a day. Check the Vercel cron logs, and that CRON_SECRET is set.",
   job_stale_send: "The daily job that schedules emails has not run in over a day. Check the Vercel cron logs, and that CRON_SECRET is set.",
   webhook_disabled: "Resend had switched off the webhook that brings replies and bounces into the portal. It has been turned back on automatically. Replies sent while it was off may not have been forwarded, so check the Resend dashboard (Webhooks) for failed events.",

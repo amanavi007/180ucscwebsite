@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { OUTCOME_FILTERS, countsByFilter, filterByOutcome, outcomeChip, outcomesForFilter, summarizeCandidates, type CandidateView } from "./view";
+import { OUTCOME_FILTERS, countsByFilter, filterByOutcome, outcomeChip, outcomesForFilter, parsePage, parsePageSize, summarizeCandidates, type CandidateView } from "./view";
 
 const c = (outcome: string, createdAt = "2026-11-03T14:00:00Z"): CandidateView => ({
   id: outcome + createdAt,
@@ -20,11 +20,12 @@ describe("outcomeChip", () => {
   it("shows every outcome as a plain word with a status colour", () => {
     expect(outcomeChip("added")).toEqual({ label: "Added", variant: "ok" });
     expect(outcomeChip("ready")).toEqual({ label: "Ready", variant: "info" });
-    expect(outcomeChip("no_email")).toEqual({ label: "No email", variant: "muted" });
+    expect(outcomeChip("no_email")).toEqual({ label: "Retrying", variant: "muted" });
+    expect(outcomeChip("failed")).toEqual({ label: "Gave up", variant: "muted" });
     expect(outcomeChip("duplicate")).toEqual({ label: "Already known", variant: "muted" });
-    expect(outcomeChip("unreachable")).toEqual({ label: "Couldn't reach", variant: "warn" });
-    expect(outcomeChip("no_facts")).toEqual({ label: "Nothing to say", variant: "warn" });
-    expect(outcomeChip("error")).toEqual({ label: "Error", variant: "bad" });
+    expect(outcomeChip("unreachable")).toEqual({ label: "Retrying", variant: "warn" });
+    expect(outcomeChip("no_facts")).toEqual({ label: "Nothing to say", variant: "muted" });
+    expect(outcomeChip("error")).toEqual({ label: "Retrying", variant: "warn" });
   });
   it("copes with an outcome it has not heard of", () => {
     expect(outcomeChip("weird")).toEqual({ label: "weird", variant: "muted" });
@@ -35,8 +36,8 @@ describe("filterByOutcome", () => {
   const rows = [c("added"), c("no_email"), c("duplicate"), c("unreachable"), c("no_facts"), c("error")];
   it("returns everything for all", () => expect(filterByOutcome(rows, "all")).toHaveLength(6));
   it("returns one outcome", () => expect(filterByOutcome(rows, "added").map((r) => r.outcome)).toEqual(["added"]));
-  it("groups the outcomes that need a human look under Problems", () => {
-    expect(filterByOutcome(rows, "problems").map((r) => r.outcome).sort()).toEqual(["error", "no_facts", "unreachable"]);
+  it("groups what discovery is still working on under Retrying", () => {
+    expect(filterByOutcome(rows, "retrying").map((r) => r.outcome).sort()).toEqual(["error", "no_email", "unreachable"]);
   });
   it("offers an All chip first", () => expect(OUTCOME_FILTERS[0].key).toBe("all"));
 });
@@ -45,12 +46,13 @@ describe("outcomesForFilter and countsByFilter", () => {
   it("maps a filter to the database outcomes it covers, and all to none", () => {
     expect(outcomesForFilter("all")).toBeNull();
     expect(outcomesForFilter("ready")).toEqual(["ready"]);
-    expect(outcomesForFilter("problems")).toEqual(["unreachable", "no_facts", "error"]);
+    expect(outcomesForFilter("retrying")).toEqual(["no_email", "unreachable", "error"]);
+    expect(outcomesForFilter("gave_up")).toEqual(["failed", "no_facts"]);
     expect(outcomesForFilter("nonsense")).toBeNull();
   });
   it("totals each filter from the per-outcome counts", () => {
     const counts = countsByFilter({ ready: 400, added: 12, no_email: 300, duplicate: 3, unreachable: 5, error: 1 });
-    expect(counts).toMatchObject({ all: 721, ready: 400, added: 12, no_email: 300, duplicate: 3, problems: 6 });
+    expect(counts).toMatchObject({ all: 721, ready: 400, added: 12, duplicate: 3, retrying: 306, gave_up: 0 });
   });
   it("has a Ready filter after All", () => {
     expect(OUTCOME_FILTERS.map((f) => f.key).slice(0, 2)).toEqual(["all", "ready"]);
@@ -74,5 +76,21 @@ describe("summarizeCandidates", () => {
   });
   it("has no last run before anything was looked at", () => {
     expect(summarizeCandidates([], now)).toMatchObject({ addedToday: 0, lookedAtToday: 0, lastRunAt: null });
+  });
+});
+
+describe("paging", () => {
+  it("only allows the offered page sizes", () => {
+    expect(parsePageSize("100")).toBe(100);
+    expect(parsePageSize("250")).toBe(250);
+    expect(parsePageSize("7")).toBe(50);
+    expect(parsePageSize(null)).toBe(50);
+  });
+  it("keeps the page number inside the pages that exist", () => {
+    expect(parsePage("3", 1141, 50)).toBe(3);
+    expect(parsePage("999", 1141, 50)).toBe(23);
+    expect(parsePage("0", 1141, 50)).toBe(1);
+    expect(parsePage("abc", 10, 50)).toBe(1);
+    expect(parsePage("2", 0, 50)).toBe(1);
   });
 });

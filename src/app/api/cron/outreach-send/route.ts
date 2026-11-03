@@ -20,7 +20,7 @@ export async function GET(request: Request) {
 
   try {
     const result = await runSend(await buildSendDeps(now));
-    await recordJobRun("send", now);
+    await recordJobRun("send", now, result);
     return Response.json(result);
   } catch (err) {
     console.error("outreach send failed:", err);

@@ -345,6 +345,8 @@ export interface Database {
           next_action_at: string | null;
           booking_token: string;
           last_sent_at: string | null;
+          owner_id: string | null;
+          handled_at: string | null;
           created_by: string;
           created_at: string;
           updated_at: string;
@@ -368,6 +370,8 @@ export interface Database {
           next_action_at?: string | null;
           booking_token?: string;
           last_sent_at?: string | null;
+          owner_id?: string | null;
+          handled_at?: string | null;
           created_by: string;
           created_at?: string;
           updated_at?: string;
@@ -441,6 +445,8 @@ export interface Database {
           founders: Json;
           payload: Json | null;
           created_at: string;
+          attempts: number;
+          last_attempt_at: string | null;
         };
         Insert: {
           id?: string;
@@ -457,6 +463,8 @@ export interface Database {
           founders?: Json;
           payload?: Json | null;
           created_at?: string;
+          attempts?: number;
+          last_attempt_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["outreach_discovery_candidates"]["Insert"]>;
         Relationships: [];

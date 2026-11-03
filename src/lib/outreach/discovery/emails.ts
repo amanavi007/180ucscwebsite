@@ -30,7 +30,7 @@ const NOT_FOR_BUSINESS = new Set([
   "security", "abuse", "privacy", "legal", "compliance", "dmca", "billing", "accounts", "invoices", "payments",
   "support", "help", "helpdesk", "customerservice", "service", "sales", "press", "media", "pr", "partners",
   "quotes", "quote", "orders", "order", "bookings", "reservations", "feedback", "marketing", "newsletter", "subscribe",
-  "cancel", "cancellation", "cancellations", "refund", "refunds", "returns", "complaints", "investors", "investor", "ir", "dpo", "gdpr", "trust", "notifications", "alerts",
+  "cancel", "questions", "question", "cancellation", "cancellations", "refund", "refunds", "returns", "complaints", "investors", "investor", "ir", "dpo", "gdpr", "trust", "notifications", "alerts",
   "noreply", "no-reply", "donotreply", "do-not-reply", "mailer-daemon", "postmaster", "webmaster", "unsubscribe", "bounce", "bounces",
 ]);
 

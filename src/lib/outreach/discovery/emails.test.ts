@@ -54,3 +54,10 @@ describe("normalizeManualEmail", () => {
     }
   });
 });
+
+describe("pickBestEmail: customer-service inboxes", () => {
+  it("never picks the inbox that answers customers' questions or cancellations", () => {
+    expect(pickBestEmail(["questions@cova.care"])).toBeNull();
+    expect(pickBestEmail(["cancel@rhem.ai", "hello@rhem.ai"])).toBe("hello@rhem.ai");
+  });
+});

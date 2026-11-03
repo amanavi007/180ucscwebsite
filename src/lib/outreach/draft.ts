@@ -145,7 +145,42 @@ function specificTerms(row: ProspectDraftRow): string[] {
   return [row.company.toLowerCase(), host?.toLowerCase() ?? "", ...(words ?? [])].filter((t) => t.length >= 4);
 }
 
-export function checkDraft(draft: DraftOutput, row: ProspectDraftRow, kind: DraftKind = "first", options: { ask?: string } = {}): { ok: boolean; problems: string[] } {
+const tokens = (text: string) => new Set(text.toLowerCase().match(/[a-z0-9]+/g) ?? []);
+
+/** Words an email may use without them being in the data: the ask and the club's own name. */
+const ALWAYS_ALLOWED = "30 minute 10 ten 180 degrees consulting ucsc uc santa cruz hi hello team thanks";
+
+/**
+ * Names and numbers in the email that appear nowhere in what we know: the company's data, the club facts (which hold the
+ * past clients), the contact. A model that invents a founder, a funding round or a customer count is caught here, because
+ * the other rules only ask for one specific word. Capitalized words at the start of a sentence are ignored, since any word
+ * can be capitalized there.
+ */
+export function ungroundedClaims(body: string, row: ProspectDraftRow, clubFacts: string): string[] {
+  const known = tokens(
+    [ALWAYS_ALLOWED, clubFacts, row.company, row.website ?? "", row.niche ?? "", row.sizeStage ?? "", row.summary ?? "", row.whyFit ?? "", row.contactName ?? "", row.contactRole ?? "", row.contactEmail, ...row.facts.map((f) => f.text)].join(" "),
+  );
+  const isKnown = (word: string) => {
+    const w = word.toLowerCase();
+    return known.has(w) || (w.endsWith("s") && known.has(w.slice(0, -1))) || known.has(`${w}s`);
+  };
+  const found = new Set<string>();
+  for (const sentence of body.split(/(?<=[.?])\s+|\n+/)) {
+    const words = sentence.match(/[A-Za-z0-9][A-Za-z0-9'\u2019.,-]*/g) ?? [];
+    words.forEach((raw, i) => {
+      const word = raw.replace(/['\u2019]s$/i, "").replace(/[.,'-]+$/, "");
+      if (/^\d/.test(word)) {
+        // "10-week" and "30-minute" are split on the hyphen; a bare number must be known.
+        for (const part of word.split("-")) if (/^\d+$/.test(part) && !isKnown(part)) found.add(part);
+      } else if (i > 0 && /^[A-Z][A-Za-z]+$/.test(word) && !isKnown(word)) {
+        found.add(word);
+      }
+    });
+  }
+  return [...found];
+}
+
+export function checkDraft(draft: DraftOutput, row: ProspectDraftRow, kind: DraftKind = "first", options: { ask?: string; clubFacts?: string } = {}): { ok: boolean; problems: string[] } {
   const problems: string[] = [];
   const all = `${draft.subject}\n${draft.body}`.toLowerCase();
   const body = draft.body;
@@ -180,6 +215,9 @@ export function checkDraft(draft: DraftOutput, row: ProspectDraftRow, kind: Draf
   for (const word of AI_WORDS) if (new RegExp(`\\b${word}\\b`, "i").test(all)) problems.push(`Do not use the word "${word}".`);
 
   if (!specificTerms(row).some((t) => all.includes(t))) problems.push("Mention something specific to this company from the prospect data.");
+  for (const claim of ungroundedClaims(body, row, options.clubFacts ?? "")) {
+    problems.push(`Remove "${claim}": it is not in the prospect data or the club facts. State only what is given.`);
+  }
   return { ok: problems.length === 0, problems };
 }
 
@@ -235,7 +273,7 @@ export async function generateDraft(args: {
       fix = lastProblems = ["Respond with valid JSON containing a subject and a body."];
       continue;
     }
-    const check = checkDraft(draft, row, args.step, { ask });
+    const check = checkDraft(draft, row, args.step, { ask, clubFacts: args.clubFacts });
     if (check.ok) return { draft };
     fix = lastProblems = check.problems;
   }
