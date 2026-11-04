@@ -3,18 +3,22 @@ export interface RecruitSettings {
   disagreementThreshold: number;
   /** Combined total an applicant needs to be invited to interview; null means no cutoff is set. */
   interviewCutoff: number | null;
+  /** Combined total needed after interviews to be offered a JC spot; null means no cutoff is set. */
+  jcCutoff: number | null;
 }
 
 export const DEFAULT_RECRUIT_SETTINGS: RecruitSettings = {
   normalizeMinN: 8,
   disagreementThreshold: 1.5,
   interviewCutoff: null,
+  jcCutoff: null,
 };
 
 export const RECRUIT_SETTING_KEYS: Record<keyof RecruitSettings, string> = {
   normalizeMinN: "recruit_normalize_min_n",
   disagreementThreshold: "recruit_disagreement_threshold",
   interviewCutoff: "recruit_interview_cutoff",
+  jcCutoff: "recruit_jc_cutoff",
 };
 
 /** The value stored in org_settings; an unset cutoff is stored as an empty string. */
@@ -38,6 +42,10 @@ export function validateRecruitSettings(partial: Partial<RecruitSettings>): stri
     if (!Number.isFinite(partial.interviewCutoff)) return "Enter the interview cutoff as a number.";
     if (partial.interviewCutoff < 0) return "The interview cutoff can't be negative.";
   }
+  if (partial.jcCutoff !== undefined && partial.jcCutoff !== null) {
+    if (!Number.isFinite(partial.jcCutoff)) return "Enter the JC cutoff as a number.";
+    if (partial.jcCutoff < 0) return "The JC cutoff can't be negative.";
+  }
   return null;
 }
 
@@ -53,12 +61,13 @@ export function parseRecruitSettings(rows: { key: string; value: string }[]): Re
   return {
     normalizeMinN: read("normalizeMinN"),
     disagreementThreshold: read("disagreementThreshold"),
-    interviewCutoff: readCutoff(byKey.get(RECRUIT_SETTING_KEYS.interviewCutoff)),
+    interviewCutoff: readCutoff(byKey.get(RECRUIT_SETTING_KEYS.interviewCutoff), "interviewCutoff"),
+    jcCutoff: readCutoff(byKey.get(RECRUIT_SETTING_KEYS.jcCutoff), "jcCutoff"),
   };
 }
 
-function readCutoff(raw: string | undefined): number | null {
+function readCutoff(raw: string | undefined, field: "interviewCutoff" | "jcCutoff"): number | null {
   if (raw === undefined || raw.trim() === "") return null;
   const parsed = Number(raw);
-  return Number.isFinite(parsed) && validateRecruitSettings({ interviewCutoff: parsed }) === null ? parsed : null;
+  return Number.isFinite(parsed) && validateRecruitSettings({ [field]: parsed }) === null ? parsed : null;
 }

@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { removeOnboardingJc, restoreOnboardingJc } from "@/actions/jc-onboarding";
+import { removeOnboardingJc, removeOnboardingJcs, restoreOnboardingJc } from "@/actions/jc-onboarding";
 import type { OnboardingData } from "@/lib/data/onboarding";
 import {
   computeOnboardingStats,
@@ -10,6 +10,7 @@ import {
   type OnboardingThresholds,
 } from "@/lib/onboarding-attendance";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PersonAvatar } from "@/components/person-avatar";
@@ -18,6 +19,7 @@ import { useConfirm } from "@/components/confirm-dialog";
 export function RosterTab({ data, thresholds }: { data: OnboardingData; thresholds: OnboardingThresholds }) {
   const [pending, startTransition] = useTransition();
   const [confirm, dialog] = useConfirm();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const rows = useMemo(() => {
     const takenIds = new Set(data.meetings.filter((m) => m.taken).map((m) => m.id));
@@ -45,6 +47,36 @@ export function RosterTab({ data, thresholds }: { data: OnboardingData; threshol
     });
   }
 
+  async function removeSelected() {
+    const ids = rows.map((r) => r.jc.id).filter((id) => selected.has(id));
+    if (ids.length === 0) return;
+    const ok = await confirm({
+      title: `Remove ${ids.length} ${ids.length === 1 ? "JC" : "JCs"}?`,
+      description: "They leave the roster and future meetings. Past attendance is kept, and you can restore them.",
+      confirmLabel: `Remove ${ids.length}`,
+    });
+    if (!ok) return;
+    startTransition(async () => {
+      const result = await removeOnboardingJcs(ids);
+      if (result.error) toast.error(result.error);
+      else {
+        toast.success(`${result.removed} removed. Restore anyone from the Removed list below.`);
+        setSelected(new Set());
+      }
+    });
+  }
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.jc.id));
+
   function restore(id: string, name: string) {
     startTransition(async () => {
       const result = await restoreOnboardingJc(id);
@@ -60,10 +92,30 @@ export function RosterTab({ data, thresholds }: { data: OnboardingData; threshol
   return (
     <div className="space-y-6">
       {dialog}
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-accent px-5 py-3 text-accent-foreground">
+          <span className="text-sm font-semibold">{selected.size} selected</span>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())}>
+              Clear selection
+            </Button>
+            <Button variant="outline" size="sm" disabled={pending} onClick={removeSelected}>
+              Remove selected
+            </Button>
+          </div>
+        </div>
+      )}
       <div className="overflow-x-auto rounded-[22px] border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  aria-label="Select all JCs"
+                  checked={allSelected}
+                  onCheckedChange={(checked) => setSelected(checked ? new Set(rows.map((r) => r.jc.id)) : new Set())}
+                />
+              </TableHead>
               <TableHead>JC</TableHead>
               <TableHead className="text-right">Present</TableHead>
               <TableHead className="text-right">Late</TableHead>
@@ -77,6 +129,13 @@ export function RosterTab({ data, thresholds }: { data: OnboardingData; threshol
           <TableBody>
             {rows.map(({ jc, stats, reasons }) => (
               <TableRow key={jc.id}>
+                <TableCell>
+                  <Checkbox
+                    aria-label={`Select ${jc.name}`}
+                    checked={selected.has(jc.id)}
+                    onCheckedChange={() => toggle(jc.id)}
+                  />
+                </TableCell>
                 <TableCell>
                   <div className="flex min-w-0 items-center gap-3">
                     <PersonAvatar name={jc.name} />

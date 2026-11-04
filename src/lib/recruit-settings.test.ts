@@ -9,8 +9,14 @@ describe("parseRecruitSettings", () => {
     const rows = [
       { key: RECRUIT_SETTING_KEYS.normalizeMinN, value: "12" },
       { key: RECRUIT_SETTING_KEYS.disagreementThreshold, value: "2" },
+      { key: RECRUIT_SETTING_KEYS.jcCutoff, value: "14.5" },
     ];
-    expect(parseRecruitSettings(rows)).toEqual({ normalizeMinN: 12, disagreementThreshold: 2, interviewCutoff: null });
+    expect(parseRecruitSettings(rows)).toEqual({
+      normalizeMinN: 12,
+      disagreementThreshold: 2,
+      interviewCutoff: null,
+      jcCutoff: 14.5,
+    });
   });
   it("ignores garbage and out-of-range values", () => {
     const rows = [

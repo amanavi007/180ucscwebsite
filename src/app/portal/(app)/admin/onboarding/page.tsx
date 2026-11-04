@@ -37,7 +37,7 @@ export default async function OnboardingPage({
       data={data}
       thresholds={thresholds}
       quarters={quarters.map((q) => ({ id: q.id, name: q.name }))}
-      defaultCutoff={recruitSettings.interviewCutoff}
+      defaultCutoff={recruitSettings.jcCutoff}
     />
   );
 }

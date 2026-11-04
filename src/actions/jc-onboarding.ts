@@ -9,6 +9,7 @@ import { getOrgTodayDateString } from "@/lib/date";
 import { ONBOARDING_MARKS, parseJcLines } from "@/lib/onboarding-attendance";
 import { getApplicantRows } from "@/lib/data/recruit";
 import { getScoringBundle } from "@/lib/data/recruit-scoring";
+import { RECRUIT_SETTING_KEYS } from "@/lib/recruit-settings";
 import { combinedTotal, meetsCutoff } from "@/lib/recruit";
 import type { OnboardingMark } from "@/lib/supabase/database.types";
 
@@ -91,6 +92,24 @@ export async function removeOnboardingJc(id: string, reason?: string): Promise<A
   await logAudit(denied.profile.id, "onboarding.jc_removed", data.name, reason?.trim() || null);
   revalidatePath(PATH);
   return {};
+}
+
+/** Drop several JCs at once (after a bulk import, say). Past marks are kept; each can be restored. */
+export async function removeOnboardingJcs(ids: string[]): Promise<ActionResult & { removed?: number }> {
+  const denied = await requireExec();
+  if (denied.error) return { error: denied.error };
+  if (ids.length === 0) return { error: "Select at least one JC." };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("onboarding_jcs")
+    .update({ removed_at: new Date().toISOString() })
+    .in("id", ids)
+    .is("removed_at", null)
+    .select("id");
+  if (error) return { error: error.message };
+  await logAudit(denied.profile.id, "onboarding.jcs_removed", undefined, `${data.length} JC(s)`);
+  revalidatePath(PATH);
+  return { removed: data.length };
 }
 
 export async function restoreOnboardingJc(id: string): Promise<ActionResult> {
@@ -293,6 +312,10 @@ export async function importJcsFromApplicants(input: {
     })),
   );
   if (error) return { error: error.message };
+  // Remember the JC line for next time (separate from the interview cutoff).
+  await supabase
+    .from("org_settings")
+    .upsert({ key: RECRUIT_SETTING_KEYS.jcCutoff, value: String(input.cutoff) }, { onConflict: "key" });
   await logAudit(denied.profile.id, "onboarding.jcs_imported", undefined, `${fresh.length} JC(s) at cutoff ${input.cutoff}`);
   revalidatePath(PATH);
   return { ...summary, added: fresh.length };

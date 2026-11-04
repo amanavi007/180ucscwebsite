@@ -68,7 +68,7 @@ function ImportFromApplicants({
     <div className="space-y-3 rounded-lg border p-3">
       <p className="text-sm font-semibold">Import from applicants</p>
       <p className="text-[13px] text-muted-foreground">
-        Adds everyone at or above a score, with the name and email already on file.
+        Adds everyone at or above the JC decision score (after interviews), with the name and email already on file. This is separate from the interview cutoff.
       </p>
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-0 flex-1 basis-40">
@@ -85,7 +85,7 @@ function ImportFromApplicants({
           </Select>
         </div>
         <div className="w-28">
-          <label htmlFor="jc-import-cutoff" className="text-[13px] font-medium">Score cutoff</label>
+          <label htmlFor="jc-import-cutoff" className="text-[13px] font-medium">JC cutoff</label>
           <Input
             id="jc-import-cutoff"
             type="number"
