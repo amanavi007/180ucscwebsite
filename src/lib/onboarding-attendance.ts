@@ -1,5 +1,8 @@
 import type { OnboardingMark } from "@/lib/supabase/database.types";
 
+/** The Attendance page's team toggle value for the JC onboarding group (`?team=jc-onboarding`). */
+export const JC_GROUP_ID = "jc-onboarding";
+
 export const ONBOARDING_MARKS: OnboardingMark[] = ["present", "tardy", "excused", "unexcused"];
 
 export const ONBOARDING_MARK_LABEL: Record<OnboardingMark, string> = {

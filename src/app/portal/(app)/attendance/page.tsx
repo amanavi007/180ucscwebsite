@@ -16,7 +16,8 @@ import { isExec, isElevatedOrAbove } from "@/lib/auth/roles";
 import { isProjectLead } from "@/lib/auth/project-access";
 import { getOrgTodayDateString } from "@/lib/date";
 import { getOnboardingData } from "@/lib/data/onboarding";
-import { AttendanceView, JC_GROUP_ID, type JcGroup } from "./attendance-view";
+import { JC_GROUP_ID } from "@/lib/onboarding-attendance";
+import { AttendanceView, type JcGroup } from "./attendance-view";
 import { MyAttendanceStats } from "./my-attendance-stats";
 import { TeamAttendanceStatusCard } from "./team-attendance-status";
 

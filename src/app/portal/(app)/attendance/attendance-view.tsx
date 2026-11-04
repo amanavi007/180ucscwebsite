@@ -12,13 +12,11 @@ import {
 } from "@/components/ui/select";
 import { submitAttendance, fetchSessionForDate } from "@/actions/attendance";
 import { submitJcAttendance, fetchJcSessionForDate } from "@/actions/jc-onboarding";
+import { JC_GROUP_ID } from "@/lib/onboarding-attendance";
 import { QuickEntryForm, type EntrySession } from "./quick-entry-form";
 import { HistoryList } from "./history-list";
 import type { ProjectWithRelations, MembershipWithProfile } from "@/lib/data/types";
 import type { AttendanceHistoryRow, SessionWithMarks } from "@/lib/data/attendance";
-
-/** The Select value for the JC onboarding group, next to the project teams. */
-export const JC_GROUP_ID = "jc-onboarding";
 
 export interface JcGroup {
   roster: { id: string; name: string }[];
