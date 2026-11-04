@@ -164,7 +164,7 @@ export default async function AttendancePage({
       ) : (
         <AttendanceView
           projects={projects}
-          selectedProjectId={selectedProject?.id ?? null}
+          selectedProjectId={selectedProjectId ?? null}
           canSubmit={canSubmit}
           roster={roster}
           history={history}
