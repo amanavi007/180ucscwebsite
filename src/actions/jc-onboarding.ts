@@ -11,6 +11,7 @@ import { getApplicantRows } from "@/lib/data/recruit";
 import { getScoringBundle } from "@/lib/data/recruit-scoring";
 import { RECRUIT_SETTING_KEYS } from "@/lib/recruit-settings";
 import { combinedTotal, meetsCutoff } from "@/lib/recruit";
+import { getActiveQuarter } from "@/lib/data/quarters";
 import type { OnboardingMark } from "@/lib/supabase/database.types";
 
 export interface ActionResult {
@@ -319,4 +320,80 @@ export async function importJcsFromApplicants(input: {
   await logAudit(denied.profile.id, "onboarding.jcs_imported", undefined, `${fresh.length} JC(s) at cutoff ${input.cutoff}`);
   revalidatePath(PATH);
   return { ...summary, added: fresh.length };
+}
+
+/**
+ * The same shape as team attendance, so the Attendance page can show JC onboarding as one more group:
+ * only the exceptions are sent and everyone else is present. Like teams, a past day that already has a
+ * record is locked here (the Onboarding admin page is where those get corrected).
+ */
+export async function submitJcAttendance(input: {
+  date: string;
+  excusedIds: string[];
+  unexcusedIds: string[];
+  tardyIds: string[];
+}): Promise<ActionResult> {
+  const denied = await requireExec();
+  if (denied.error) return { error: denied.error };
+  const quarter = await getActiveQuarter();
+  if (!quarter) return { error: "No active quarter." };
+
+  const today = getOrgTodayDateString();
+  if (input.date > today) return { error: "Can't log attendance for a future date." };
+
+  const supabase = await createClient();
+  const { data: existing } = await supabase
+    .from("onboarding_meetings")
+    .select("id, taken_at")
+    .eq("quarter_id", quarter.id)
+    .eq("date", input.date)
+    .maybeSingle();
+  if (input.date < today && existing?.taken_at) {
+    return { error: "Attendance for that past date is already logged. Edit it from Admin > People > Onboarding." };
+  }
+
+  let meetingId = existing?.id;
+  if (!meetingId) {
+    const { data: created, error } = await supabase
+      .from("onboarding_meetings")
+      .insert({ quarter_id: quarter.id, date: input.date })
+      .select("id")
+      .single();
+    if (error) return { error: error.message };
+    meetingId = created.id;
+  }
+
+  const marks: Record<string, OnboardingMark> = {};
+  for (const id of input.tardyIds) marks[id] = "tardy";
+  for (const id of input.excusedIds) marks[id] = "excused";
+  for (const id of input.unexcusedIds) marks[id] = "unexcused";
+  const result = await submitOnboardingAttendance(meetingId, marks);
+  if (!result.error) revalidatePath("/portal/attendance");
+  return result;
+}
+
+/** A day's saved exceptions for the JC group (null when nothing is logged for that date). */
+export async function fetchJcSessionForDate(date: string): Promise<{ marks: { id: string; mark: OnboardingMark }[] } | null> {
+  const denied = await requireExec();
+  if (denied.error) return null;
+  const quarter = await getActiveQuarter();
+  if (!quarter) return null;
+  const supabase = await createClient();
+  const { data: meeting } = await supabase
+    .from("onboarding_meetings")
+    .select("id, taken_at")
+    .eq("quarter_id", quarter.id)
+    .eq("date", date)
+    .maybeSingle();
+  if (!meeting?.taken_at) return null;
+  const { data: rows } = await supabase
+    .from("onboarding_marks")
+    .select("jc_id, mark, jc:onboarding_jcs!inner(removed_at)")
+    .eq("meeting_id", meeting.id)
+    .neq("mark", "present");
+  return {
+    marks: ((rows ?? []) as unknown as { jc_id: string; mark: OnboardingMark; jc: { removed_at: string | null } }[])
+      .filter((r) => !r.jc.removed_at)
+      .map((r) => ({ id: r.jc_id, mark: r.mark })),
+  };
 }

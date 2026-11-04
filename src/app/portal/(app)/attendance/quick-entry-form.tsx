@@ -3,14 +3,11 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { submitAttendance, fetchSessionForDate } from "@/actions/attendance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import type { MembershipWithProfile } from "@/lib/data/types";
-import type { SessionWithMarks } from "@/lib/data/attendance";
 import type { AttendanceMark } from "@/lib/supabase/database.types";
 
 const MARK_OPTIONS: { value: AttendanceMark; label: string }[] = [
@@ -31,21 +28,41 @@ const MARK_BADGE_CLASS: Record<AttendanceMark, string> = {
   tardy: "bg-status-warn text-status-warn-foreground border-transparent",
 };
 
-function marksFromSession(session: SessionWithMarks | null): Record<string, AttendanceMark> {
-  if (!session) return {};
-  return Object.fromEntries(session.marks.map((m) => [m.user_id, m.mark]));
+/** What a saved day looks like: absent kinds only, since no mark means present. */
+export interface EntrySession {
+  marks: { id: string; mark: AttendanceMark }[];
 }
 
+export interface EntryPerson {
+  id: string;
+  name: string;
+}
+
+function marksFromSession(session: EntrySession | null): Record<string, AttendanceMark> {
+  if (!session) return {};
+  return Object.fromEntries(session.marks.map((m) => [m.id, m.mark]));
+}
+
+/** Shared by team attendance and JC onboarding attendance; the caller supplies how a day is loaded and saved. */
 export function QuickEntryForm({
-  projectId,
   roster,
   today,
   initialSession,
+  loadSession,
+  save,
+  emptyText = "No team members yet.",
 }: {
-  projectId: string;
-  roster: MembershipWithProfile[];
+  roster: EntryPerson[];
   today: string;
-  initialSession: SessionWithMarks | null;
+  initialSession: EntrySession | null;
+  loadSession: (date: string) => Promise<EntrySession | null>;
+  save: (input: {
+    date: string;
+    excusedIds: string[];
+    unexcusedIds: string[];
+    tardyIds: string[];
+  }) => Promise<{ error?: string }>;
+  emptyText?: string;
 }) {
   const [date, setDate] = useState(today);
   const [marks, setMarks] = useState<Record<string, AttendanceMark>>(
@@ -62,7 +79,7 @@ export function QuickEntryForm({
     setIsLoadingDate(true);
     startTransition(async () => {
       try {
-        const session = newDate === today ? initialSession : await fetchSessionForDate(projectId, newDate);
+        const session = newDate === today ? initialSession : await loadSession(newDate);
         setHasSession(!!session);
         setMarks(marksFromSession(session));
       } catch {
@@ -97,8 +114,7 @@ export function QuickEntryForm({
       .map(([id]) => id);
 
     startTransition(async () => {
-      const result = await submitAttendance({
-        projectId,
+      const result = await save({
         date,
         excusedIds,
         unexcusedIds,
@@ -160,31 +176,31 @@ export function QuickEntryForm({
         <div className="divide-y rounded-md border">
           {roster.map((m) => (
             <div
-              key={m.user_id}
+              key={m.id}
               className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
             >
-              <span className="text-sm font-medium">{m.profile?.name ?? "Unknown"}</span>
+              <span className="text-sm font-medium">{m.name}</span>
               {readOnly ? (
                 <Badge
                   variant="outline"
                   className={
-                    marks[m.user_id]
-                      ? MARK_BADGE_CLASS[marks[m.user_id]]
+                    marks[m.id]
+                      ? MARK_BADGE_CLASS[marks[m.id]]
                       : "bg-muted text-muted-foreground border-transparent"
                   }
                 >
-                  {marks[m.user_id] ? MARK_LABELS[marks[m.user_id]] : "Present"}
+                  {marks[m.id] ? MARK_LABELS[marks[m.id]] : "Present"}
                 </Badge>
               ) : (
                 <div className="flex gap-1.5">
                   {MARK_OPTIONS.map((opt) => {
-                    const active = marks[m.user_id] === opt.value;
+                    const active = marks[m.id] === opt.value;
                     return (
                       <button
                         key={opt.value}
                         type="button"
                         disabled={isPending || isLoadingDate}
-                        onClick={() => toggleMark(m.user_id, opt.value)}
+                        onClick={() => toggleMark(m.id, opt.value)}
                         className={cn(
                           "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
                           active
@@ -201,7 +217,7 @@ export function QuickEntryForm({
             </div>
           ))}
           {roster.length === 0 && (
-            <p className="px-3 py-4 text-sm text-muted-foreground">No team members yet.</p>
+            <p className="px-3 py-4 text-sm text-muted-foreground">{emptyText}</p>
           )}
         </div>
 
