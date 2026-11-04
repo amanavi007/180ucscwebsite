@@ -7,6 +7,9 @@ import { isExec } from "@/lib/auth/roles";
 import { logAudit } from "@/lib/audit";
 import { getOrgTodayDateString } from "@/lib/date";
 import { ONBOARDING_MARKS, parseJcLines } from "@/lib/onboarding-attendance";
+import { getApplicantRows } from "@/lib/data/recruit";
+import { getScoringBundle } from "@/lib/data/recruit-scoring";
+import { combinedTotal, meetsCutoff } from "@/lib/recruit";
 import type { OnboardingMark } from "@/lib/supabase/database.types";
 
 export interface ActionResult {
@@ -233,4 +236,64 @@ export async function updateOnboardingThresholds(input: {
   revalidatePath(PATH);
   revalidatePath("/portal/admin/settings");
   return {};
+}
+
+/**
+ * Pulls everyone at or above a score line from the applicant list into the JC roster, with the
+ * name and email already on file. `dryRun` only counts. Skips anyone already on the roster.
+ */
+export async function importJcsFromApplicants(input: {
+  quarterId: string;
+  sourceQuarterId: string;
+  cutoff: number;
+  dryRun?: boolean;
+}): Promise<ActionResult & { total?: number; fresh?: number; alreadyOnRoster?: number; noEmail?: number; added?: number }> {
+  const denied = await requireExec();
+  if (denied.error) return { error: denied.error };
+  if (!Number.isFinite(input.cutoff)) return { error: "Enter the score cutoff as a number." };
+
+  const [rows, bundle] = await Promise.all([
+    getApplicantRows(input.sourceQuarterId),
+    getScoringBundle(input.sourceQuarterId, denied.profile.id),
+  ]);
+  const above = rows
+    .filter((r) => r.hasApplication)
+    .map((r) => ({
+      ...r,
+      total: combinedTotal(r.total, bundle.summaries.resume[r.id], bundle.summaries.interview[r.id]),
+    }))
+    .filter((r) => meetsCutoff(r.total, input.cutoff));
+
+  const supabase = await createClient();
+  const { data: existing, error: readError } = await supabase
+    .from("onboarding_jcs")
+    .select("name, email")
+    .eq("quarter_id", input.quarterId)
+    .is("removed_at", null);
+  if (readError) return { error: readError.message };
+  const have = new Set(existing.flatMap((e) => [e.name.toLowerCase(), ...(e.email ? [e.email.toLowerCase()] : [])]));
+
+  const fresh = above.filter((r) => {
+    const email = r.email?.trim().toLowerCase();
+    return !have.has(r.name.trim().toLowerCase()) && !(email && have.has(email));
+  });
+  const summary = {
+    total: above.length,
+    fresh: fresh.length,
+    alreadyOnRoster: above.length - fresh.length,
+    noEmail: fresh.filter((r) => !r.email?.trim()).length,
+  };
+  if (input.dryRun || fresh.length === 0) return summary;
+
+  const { error } = await supabase.from("onboarding_jcs").insert(
+    fresh.map((r) => ({
+      quarter_id: input.quarterId,
+      name: r.name.trim(),
+      email: r.email?.trim().toLowerCase() || null,
+    })),
+  );
+  if (error) return { error: error.message };
+  await logAudit(denied.profile.id, "onboarding.jcs_imported", undefined, `${fresh.length} JC(s) at cutoff ${input.cutoff}`);
+  revalidatePath(PATH);
+  return { ...summary, added: fresh.length };
 }

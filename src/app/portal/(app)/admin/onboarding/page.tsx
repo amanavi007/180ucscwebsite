@@ -3,6 +3,7 @@ import { getQuarters } from "@/lib/data/quarters";
 import { getOnboardingData, getOnboardingThresholds } from "@/lib/data/onboarding";
 import { defaultQuarterId, resolveQuarterId } from "@/lib/admin-nav";
 import { getOrgTodayDateString } from "@/lib/date";
+import { getRecruitSettings } from "@/lib/data/recruit-settings";
 import { OnboardingView } from "./onboarding-view";
 
 export const metadata: Metadata = { title: "Admin · Onboarding" };
@@ -19,7 +20,11 @@ export default async function OnboardingPage({
     return <p className="text-sm text-muted-foreground">No quarters yet. Create one in Setup first.</p>;
   }
 
-  const [data, thresholds] = await Promise.all([getOnboardingData(selected.id), getOnboardingThresholds()]);
+  const [data, thresholds, recruitSettings] = await Promise.all([
+    getOnboardingData(selected.id),
+    getOnboardingThresholds(),
+    getRecruitSettings(),
+  ]);
 
   return (
     <OnboardingView
@@ -31,6 +36,8 @@ export default async function OnboardingPage({
       today={getOrgTodayDateString()}
       data={data}
       thresholds={thresholds}
+      quarters={quarters.map((q) => ({ id: q.id, name: q.name }))}
+      defaultCutoff={recruitSettings.interviewCutoff}
     />
   );
 }

@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { UserPlus } from "lucide-react";
-import { addOnboardingJcs } from "@/actions/jc-onboarding";
+import { addOnboardingJcs, importJcsFromApplicants } from "@/actions/jc-onboarding";
 import type { OnboardingData } from "@/lib/data/onboarding";
 import type { OnboardingThresholds } from "@/lib/onboarding-attendance";
 import { PageHeader } from "@/components/page-header";
@@ -19,11 +19,112 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { RosterTab } from "./roster-tab";
 import { SessionsTab } from "./sessions-tab";
 
-function AddJcsDialog({ quarterId }: { quarterId: string }) {
+function ImportFromApplicants({
+  quarterId,
+  quarters,
+  defaultCutoff,
+  onDone,
+}: {
+  quarterId: string;
+  quarters: { id: string; name: string }[];
+  defaultCutoff: number | null;
+  onDone: () => void;
+}) {
+  const [sourceId, setSourceId] = useState(quarterId);
+  const [cutoff, setCutoff] = useState(defaultCutoff === null ? "" : String(defaultCutoff));
+  const [preview, setPreview] = useState<{ total: number; fresh: number; alreadyOnRoster: number; noEmail: number } | null>(null);
+  const [pending, startTransition] = useTransition();
+  const n = Number(cutoff);
+  const valid = cutoff.trim() !== "" && Number.isFinite(n);
+
+  function run(dryRun: boolean) {
+    startTransition(async () => {
+      const result = await importJcsFromApplicants({ quarterId, sourceQuarterId: sourceId, cutoff: n, dryRun });
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      if (dryRun) {
+        setPreview({
+          total: result.total ?? 0,
+          fresh: result.fresh ?? 0,
+          alreadyOnRoster: result.alreadyOnRoster ?? 0,
+          noEmail: result.noEmail ?? 0,
+        });
+        return;
+      }
+      toast.success(`Added ${result.added ?? 0} JC${result.added === 1 ? "" : "s"} from applicants.`);
+      onDone();
+    });
+  }
+
+  return (
+    <div className="space-y-3 rounded-lg border p-3">
+      <p className="text-sm font-semibold">Import from applicants</p>
+      <p className="text-[13px] text-muted-foreground">
+        Adds everyone at or above a score, with the name and email already on file.
+      </p>
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="min-w-0 flex-1 basis-40">
+          <label htmlFor="jc-import-quarter" className="text-[13px] font-medium">Applicants from</label>
+          <Select value={sourceId} onValueChange={(v) => { if (v) { setSourceId(v); setPreview(null); } }}>
+            <SelectTrigger id="jc-import-quarter" size="sm" className="w-full">
+              <SelectValue>{(value: string) => quarters.find((q) => q.id === value)?.name ?? "Quarter"}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {quarters.map((q) => (
+                <SelectItem key={q.id} value={q.id}>{q.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-28">
+          <label htmlFor="jc-import-cutoff" className="text-[13px] font-medium">Score cutoff</label>
+          <Input
+            id="jc-import-cutoff"
+            type="number"
+            step="0.5"
+            inputMode="decimal"
+            className="h-8"
+            value={cutoff}
+            onChange={(e) => { setCutoff(e.target.value); setPreview(null); }}
+          />
+        </div>
+        <Button variant="outline" size="sm" disabled={pending || !valid} onClick={() => run(true)}>
+          Preview
+        </Button>
+      </div>
+      {preview && (
+        <div className="space-y-2">
+          <p className="text-sm">
+            {preview.fresh} to add
+            {preview.alreadyOnRoster > 0 ? `, ${preview.alreadyOnRoster} already on the roster` : ""}
+            {preview.noEmail > 0 ? `, ${preview.noEmail} with no email on file` : ""}.
+          </p>
+          <Button size="sm" variant="outline" disabled={pending || preview.fresh === 0} onClick={() => run(false)}>
+            Add {preview.fresh} from applicants
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AddJcsDialog({
+  quarterId,
+  quarters,
+  defaultCutoff,
+}: {
+  quarterId: string;
+  quarters: { id: string; name: string }[];
+  defaultCutoff: number | null;
+}) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [pending, startTransition] = useTransition();
@@ -61,6 +162,12 @@ function AddJcsDialog({ quarterId }: { quarterId: string }) {
             One per line: a name, or a name and email. Any email works, since JCs don&apos;t have a chapter address.
           </DialogDescription>
         </DialogHeader>
+        <ImportFromApplicants
+          quarterId={quarterId}
+          quarters={quarters}
+          defaultCutoff={defaultCutoff}
+          onDone={() => setOpen(false)}
+        />
         <Textarea
           aria-label="JCs, one per line"
           rows={8}
@@ -87,6 +194,8 @@ export function OnboardingView({
   today,
   data,
   thresholds,
+  quarters,
+  defaultCutoff,
 }: {
   quarterId: string;
   quarterName: string;
@@ -95,6 +204,8 @@ export function OnboardingView({
   today: string;
   data: OnboardingData;
   thresholds: OnboardingThresholds;
+  quarters: { id: string; name: string }[];
+  defaultCutoff: number | null;
 }) {
   const activeCount = useMemo(() => data.jcs.filter((j) => !j.removedAt).length, [data.jcs]);
   const takenCount = data.meetings.filter((m) => m.taken).length;
@@ -104,7 +215,7 @@ export function OnboardingView({
       <PageHeader
         title="Onboarding"
         description={`${quarterName} · attendance for Junior Consultant onboarding meetings. Any exec can take it.`}
-        actions={<AddJcsDialog quarterId={quarterId} />}
+        actions={<AddJcsDialog quarterId={quarterId} quarters={quarters} defaultCutoff={defaultCutoff} />}
       />
       <UrlTabs values={["sessions", "roster"]} fallback="sessions">
         <TabsList>
