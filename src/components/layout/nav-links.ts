@@ -242,6 +242,16 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     group: "admin-people",
   },
   {
+    href: "/portal/admin/onboarding",
+    label: "JC Onboarding",
+    viewLabel: "Onboarding",
+    icon: ClipboardCheck,
+    execOnly: true,
+    keywords: "jc junior consultants onboarding attendance absences excused unexcused late roster drop remove dot training",
+    quarterScoped: true,
+    group: "admin-people",
+  },
+  {
     href: "/portal/admin/team-page",
     label: "Team Page",
     viewLabel: "Team page",

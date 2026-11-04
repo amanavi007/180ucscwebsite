@@ -39,6 +39,7 @@ export type TaskStageStep =
 export type MeetingNoteType = "client_call" | "officer_meeting" | "team_checkin";
 
 export type AttendanceMark = "excused" | "unexcused" | "tardy";
+export type OnboardingMark = "present" | "tardy" | "excused" | "unexcused";
 
 export type MembershipTeamRole = "pm" | "sc" | "member";
 
@@ -287,6 +288,64 @@ export interface Database {
           mark: AttendanceMark;
         };
         Update: Partial<Database["public"]["Tables"]["attendance_marks"]["Insert"]>;
+        Relationships: [];
+      };
+      onboarding_jcs: {
+        Row: {
+          id: string;
+          quarter_id: string;
+          name: string;
+          email: string | null;
+          removed_at: string | null;
+          removed_reason: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          quarter_id: string;
+          name: string;
+          email?: string | null;
+          removed_at?: string | null;
+          removed_reason?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["onboarding_jcs"]["Insert"]>;
+        Relationships: [];
+      };
+      onboarding_meetings: {
+        Row: {
+          id: string;
+          quarter_id: string;
+          date: string;
+          taken_by: string | null;
+          taken_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          quarter_id: string;
+          date: string;
+          taken_by?: string | null;
+          taken_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["onboarding_meetings"]["Insert"]>;
+        Relationships: [];
+      };
+      onboarding_marks: {
+        Row: {
+          id: string;
+          meeting_id: string;
+          jc_id: string;
+          mark: OnboardingMark;
+        };
+        Insert: {
+          id?: string;
+          meeting_id: string;
+          jc_id: string;
+          mark: OnboardingMark;
+        };
+        Update: Partial<Database["public"]["Tables"]["onboarding_marks"]["Insert"]>;
         Relationships: [];
       };
       wiki_pages: {

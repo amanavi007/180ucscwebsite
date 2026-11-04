@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { updateAttendanceAlertThreshold, updateDefaultBulkPassword, updateResearchPrompts } from "@/actions/org-settings";
+import { updateOnboardingThresholds } from "@/actions/jc-onboarding";
+import type { OnboardingThresholds } from "@/lib/onboarding-attendance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,13 +22,32 @@ export function SettingsPanel({
   attendanceThreshold,
   defaultPassword,
   researchPrompts,
+  onboardingThresholds,
 }: {
   attendanceThreshold: number;
   defaultPassword: string;
   researchPrompts: ResearchPrompt[];
+  onboardingThresholds: OnboardingThresholds;
 }) {
   const [thresholdValue, setThresholdValue] = useState(String(Math.round(attendanceThreshold * 100)));
   const [isPendingThreshold, startThresholdTransition] = useTransition();
+
+  const [maxUnexcused, setMaxUnexcused] = useState(String(onboardingThresholds.maxUnexcused));
+  const [maxAbsences, setMaxAbsences] = useState(String(onboardingThresholds.maxAbsences));
+  const [minRate, setMinRate] = useState(String(Math.round(onboardingThresholds.minRate * 100)));
+  const [isPendingOnboarding, startOnboardingTransition] = useTransition();
+
+  function onSaveOnboarding() {
+    startOnboardingTransition(async () => {
+      const result = await updateOnboardingThresholds({
+        maxUnexcused: Number(maxUnexcused),
+        maxAbsences: Number(maxAbsences),
+        minRatePercent: Number(minRate),
+      });
+      if (result?.error) toast.error(result.error);
+      else toast.success("JC onboarding limits updated.");
+    });
+  }
 
   const [passwordValue, setPasswordValue] = useState(defaultPassword);
   const [isPendingPassword, startPasswordTransition] = useTransition();
@@ -93,6 +114,35 @@ export function SettingsPanel({
               </Button>
             </div>
           </Field>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">JC onboarding absence limits</CardTitle>
+          <CardDescription>
+            A JC is flagged on the Onboarding roster when they reach any of these. Late counts as attended. Set a
+            limit to 0 to turn it off.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid max-w-2xl gap-4 sm:grid-cols-3">
+            <Field>
+              <FieldLabel htmlFor="onb-unexcused">Unexcused absences</FieldLabel>
+              <Input id="onb-unexcused" type="number" min={0} max={50} value={maxUnexcused} onChange={(e) => setMaxUnexcused(e.target.value)} disabled={isPendingOnboarding} />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="onb-absences">Total absences</FieldLabel>
+              <Input id="onb-absences" type="number" min={0} max={50} value={maxAbsences} onChange={(e) => setMaxAbsences(e.target.value)} disabled={isPendingOnboarding} />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="onb-rate">Minimum attendance (%)</FieldLabel>
+              <Input id="onb-rate" type="number" min={0} max={100} value={minRate} onChange={(e) => setMinRate(e.target.value)} disabled={isPendingOnboarding} />
+            </Field>
+          </div>
+          <Button className="mt-4" onClick={onSaveOnboarding} disabled={isPendingOnboarding}>
+            Save
+          </Button>
         </CardContent>
       </Card>
 
