@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
 import { fetchAllPages } from "@/lib/paginate";
 import { factsToJson } from "./outreach";
+import { sendStateOf, sendStates } from "./outreach-agent-correct";
 import { fetchPageHtml } from "@/lib/outreach/discovery/web";
 import {
   afterCursorFilter,
@@ -61,7 +62,14 @@ export async function listProspects(admin: Admin, q: ListQuery) {
   const { data, error } = await query;
   if (error) throw error;
   const result = page((data ?? []) as ProspectRow[], q.limit);
-  return { rows: result.rows.map(prospectView), nextCursor: result.nextCursor };
+  const states = await sendStates(admin, result.rows.map((r) => r.id));
+  return {
+    rows: result.rows.map((r) => {
+      const s = states.get(r.id) ?? { messages: [], events: [], lastSentAt: null };
+      return { ...prospectView(r), ...sendStateOf({ status: r.status, lastSentAt: s.lastSentAt, messages: s.messages, events: s.events }) };
+    }),
+    nextCursor: result.nextCursor,
+  };
 }
 
 /* ── Writes ────────────────────────────────────────────────────────────────────────────────────────────────── */

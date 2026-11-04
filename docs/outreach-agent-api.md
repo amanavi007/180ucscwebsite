@@ -43,6 +43,26 @@ Lists use cursor paging: `?limit=` (default 100, max 200) and `?cursor=` (opaque
 
 Not available to the agent, by design: raw database access, deletes, settings changes, anything about sending, drafting, suppression or do-not-contact (read-only through `/context`).
 
+## Correction access (scope `outreach:correct`)
+
+For fixing what an audit finds. Give a key this scope in Admin → Outreach → Settings → Research agent ("Allow correction access"). Same key, same kill switch, 60 calls a minute; without the scope `403 missing_scope`. Every change is written to the activity log (`kind: "correction"`). None of it touches mode, settings, targets or suppressions, and none of it sends anything.
+
+| Call | What it does |
+| --- | --- |
+| `PATCH /candidates/:id/contact` | Replace `{contactName, contactRole, contactEmail, emailSourceUrl, emailEvidence}` or invalidate `{invalidateEmail:true, reason}` a candidate's stored contact. Works on `ready`, `no_email`, `failed`, `unreachable`; `409 already_added` once promoted (use the prospect call), `409 not_correctable` for other outcomes. |
+| `PATCH /prospects/:id/contact` | Same body for a prospect. A replaced `verified`/`drafted`/`queued`/`invalid` prospect goes back to `new` (drafts and scheduled mail dropped) so the new address is verified before any send. Invalidate marks it `invalid`. `409 already_engaged` if it was sent to or replied. |
+| `POST /prospects/:id/invalidate` | `{reason: junk_contact\|acquired\|defunct\|not_a_fit\|other, detail?}`. Sets `invalid`, out of drafting and sending. `409 already_engaged` if sent. Repeating is a no-op. |
+| `POST /candidates/:id/retire` | `{reason: defunct\|acquired\|not_a_fit\|out_of_scope\|other, detail?}`. New terminal outcome `retired`: out of tasks, repair and promotion; its own bucket in `/stats`. |
+
+A replacement email gets the task-result checks (syntax, free mail, blocked inbox, source rules, MX, do-not-contact, duplicates) plus one more: the `emailSourceUrl` page is fetched and must show the address. Rejections are `422 {status:"rejected", reason}` with `blocked_inbox` (role or junk inbox; the submission endpoints call the same thing `role_inbox`), `free_mail`, `no_source`, `mx_failed`, `suppressed`, `duplicate_email`, `invalid_email`.
+
+Blocked inbox local parts now also include `admin superadmin root example demo test` (with `postmaster webmaster noreply no-reply donotreply mailer-daemon abuse`), for discovery, the CSV import, agent submissions and corrections. A pooled company with no contact name defaults to its first stored founder when it is added.
+
+`GET /prospects` rows also carry read-only send state: `lastOutreachStatus` (`drafted|sent|bounced|replied|null`), `lastSentAt`, `bounced`.
+
+One-time re-screen of stored contacts against the blocklist (dry run unless `--apply`):
+`NODE_OPTIONS="--conditions=react-server" npx tsx --env-file=.env.local scripts/outreach-rescreen.ts [--apply]`. Prospects that match become `invalid` (reason `junk_contact`); ready candidates lose the email and drop to `no_email`; prospects already sent to are listed and left alone.
+
 ## The rules the API enforces
 
 - Only emails published in a public source. Every row needs `emailSourceUrl` (https) and `emailEvidence` ∈ `published_on_site | published_directory | published_filing | published_other`. `published_on_site` must be a page on the company's own site. Otherwise `no_source`.

@@ -90,6 +90,12 @@ export async function checkMx(
   }
 }
 
+/** Placeholder mailboxes (admin@, test@, root@ ...) that no person reads; the CSV import refuses them like the agent does. */
+const JUNK_LOCAL = new Set(["admin", "superadmin", "root", "postmaster", "webmaster", "example", "demo", "test", "noreply", "no-reply", "donotreply", "mailer-daemon", "abuse"]);
+function isJunkInbox(email: string): boolean {
+  return JUNK_LOCAL.has(email.split("@")[0] ?? "");
+}
+
 export type SkipReason = "duplicate_email" | "duplicate_company" | "past_client" | "suppressed" | "invalid_email";
 
 export interface ExistingProspectData {
@@ -112,7 +118,7 @@ export function partitionImport(
     const email = normalizeEmail(row.contactEmail);
     const domain = emailDomain(email);
     let reason: SkipReason | null = null;
-    if (!checkEmailSyntax(email).ok) reason = "invalid_email";
+    if (!checkEmailSyntax(email).ok || isJunkInbox(email)) reason = "invalid_email";
     else if (existing.suppressedEmails.has(email) || existing.suppressedDomains.has(domain)) reason = "suppressed";
     else if (existing.emails.has(email)) reason = "duplicate_email";
     else if (existing.clientNames.has(row.company.trim().toLowerCase())) reason = "past_client";

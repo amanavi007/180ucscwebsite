@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 
 /** What a key may do. A key holds a subset of these. */
-export const AGENT_SCOPES = ["outreach:read", "outreach:submit", "outreach:enrich", "outreach:audit"] as const;
+export const AGENT_SCOPES = ["outreach:read", "outreach:submit", "outreach:enrich", "outreach:audit", "outreach:correct"] as const;
 export type AgentScope = (typeof AGENT_SCOPES)[number];
 
 export const AGENT_KEY_PREFIX = "180agent_";

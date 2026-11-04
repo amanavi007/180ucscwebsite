@@ -30,6 +30,7 @@ const OUTCOMES: Record<string, { label: string; variant: ChipVariant }> = {
   no_facts: { label: "Nothing to say", variant: "muted" },
   error: { label: "Retrying", variant: "warn" },
   failed: { label: "Gave up", variant: "muted" },
+  retired: { label: "Retired", variant: "muted" },
 };
 
 /** The word and color of a candidate's chip. Always a word, never color alone. */
@@ -42,11 +43,11 @@ export const OUTCOME_FILTERS: { key: string; label: string; outcomes: string[] }
   { key: "ready", label: "Ready", outcomes: ["ready"] },
   { key: "added", label: "Added", outcomes: ["added"] },
   // Everything discovery set aside. Each row's chip says why (Already known, Retrying, Gave up); none of it needs doing by hand.
-  { key: "skipped", label: "Skipped", outcomes: ["duplicate", "no_email", "unreachable", "error", "failed", "no_facts"] },
+  { key: "skipped", label: "Skipped", outcomes: ["duplicate", "no_email", "unreachable", "error", "failed", "no_facts", "retired"] },
 ];
 
 /** Every outcome the database can hold, for counting. */
-export const ALL_OUTCOMES = ["ready", "added", "duplicate", "no_email", "unreachable", "no_facts", "error", "failed"];
+export const ALL_OUTCOMES = ["ready", "added", "duplicate", "no_email", "unreachable", "no_facts", "error", "failed", "retired"];
 
 export const PAGE_SIZES = [50, 100, 250];
 export const DEFAULT_PAGE_SIZE = 50;

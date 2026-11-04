@@ -500,20 +500,29 @@ export async function generateAgentKeyAction(label: string, audit = false): Prom
   return { key, prefix };
 }
 
-/** Gives an active key audit access (full reads plus three narrow repairs), or takes it away again. Takes effect on the next call. */
-export async function setAgentKeyAuditAction(keyId: string, enabled: boolean): Promise<ActionResult> {
+async function setKeyScope(keyId: string, scope: string, enabled: boolean, auditName: string): Promise<ActionResult> {
   const { profile, error } = await requireExec();
   if (error || !profile) return { error };
   const admin = createAdminClient();
   const { data: key, error: readError } = await admin.from("outreach_agent_keys").select("scopes, key_prefix, revoked_at").eq("id", keyId).maybeSingle();
   if (readError) return { error: "That didn't save. Try again." };
   if (!key || key.revoked_at) return { error: "That key was already revoked." };
-  const scopes = [...new Set([...key.scopes.filter((x) => x !== AUDIT_SCOPE), ...(enabled ? [AUDIT_SCOPE] : [])])];
+  const scopes = [...new Set([...key.scopes.filter((x) => x !== scope), ...(enabled ? [scope] : [])])];
   const { error: updateError } = await admin.from("outreach_agent_keys").update({ scopes }).eq("id", keyId).is("revoked_at", null);
   if (updateError) return { error: "That didn't save. If the latest migration isn't applied yet, run it first." };
-  await logAudit(profile.id, enabled ? "outreach.agent_key_audit_on" : "outreach.agent_key_audit_off", key.key_prefix);
+  await logAudit(profile.id, `outreach.agent_key_${auditName}_${enabled ? "on" : "off"}`, key.key_prefix);
   revalidatePath(`${OUTREACH_PORTAL_PATH}/settings`);
   return {};
+}
+
+/** Gives an active key audit access (full reads plus three narrow repairs), or takes it away again. Takes effect on the next call. */
+export async function setAgentKeyAuditAction(keyId: string, enabled: boolean): Promise<ActionResult> {
+  return setKeyScope(keyId, AUDIT_SCOPE, enabled, "audit");
+}
+
+/** Lets an active key correct or retire stored contacts and companies, or takes that away again. Takes effect on the next call. */
+export async function setAgentKeyCorrectAction(keyId: string, enabled: boolean): Promise<ActionResult> {
+  return setKeyScope(keyId, "outreach:correct", enabled, "correct");
 }
 
 /** Kills a key immediately. The agent's next call with it gets a 401. */

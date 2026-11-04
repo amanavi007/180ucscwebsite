@@ -46,7 +46,7 @@ describe("outcomesForFilter and countsByFilter", () => {
   it("maps a filter to the database outcomes it covers, and all to none", () => {
     expect(outcomesForFilter("all")).toBeNull();
     expect(outcomesForFilter("ready")).toEqual(["ready"]);
-    expect(outcomesForFilter("skipped")).toEqual(["duplicate", "no_email", "unreachable", "error", "failed", "no_facts"]);
+    expect(outcomesForFilter("skipped")).toEqual(["duplicate", "no_email", "unreachable", "error", "failed", "no_facts", "retired"]);
     expect(outcomesForFilter("nonsense")).toBeNull();
   });
   it("totals each filter from the per-outcome counts", () => {

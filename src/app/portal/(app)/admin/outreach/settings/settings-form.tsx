@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { generateAgentKeyAction, revokeAgentKeyAction, setAgentKeyAuditAction, updateOutreachSettingsAction } from "@/actions/outreach";
+import { generateAgentKeyAction, revokeAgentKeyAction, setAgentKeyAuditAction, setAgentKeyCorrectAction, updateOutreachSettingsAction } from "@/actions/outreach";
 import { useConfirm } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -112,6 +112,14 @@ export function SettingsForm({ settings, agent }: { settings: OutreachSettings; 
       const result = await setAgentKeyAuditAction(id, enabled);
       if (result.error) toast.error(result.error);
       else toast.success(enabled ? "Audit access on." : "Audit access off.");
+    });
+  }
+
+  function onToggleCorrect(id: string, enabled: boolean) {
+    startTransition(async () => {
+      const result = await setAgentKeyCorrectAction(id, enabled);
+      if (result.error) toast.error(result.error);
+      else toast.success(enabled ? "Correction access on." : "Correction access off.");
     });
   }
 
@@ -276,11 +284,16 @@ export function SettingsForm({ settings, agent }: { settings: OutreachSettings; 
                     <span className="min-w-0 break-words font-semibold">{k.label}</span>
                     <code className="text-sm text-muted-foreground">{k.prefix}…</code>
                     <Badge variant={k.revokedAt ? "muted" : "ok"}>{k.revokedAt ? "Revoked" : "Active"}</Badge>
-                    <span className="text-sm text-muted-foreground">read, submit, enrich{k.audit ? ", audit" : ""}</span>
+                    <span className="text-sm text-muted-foreground">read, submit, enrich{k.audit ? ", audit" : ""}{k.correct ? ", correct" : ""}</span>
                     <span className="text-sm text-muted-foreground tabular-nums">last used {when(k.lastUsedAt)}</span>
                     {!k.revokedAt && (
                       <Button variant="outline" size="sm" className="ml-auto" disabled={isPending} onClick={() => onToggleAudit(k.id, !k.audit)}>
                         {k.audit ? "Remove audit access" : "Allow audit access"}
+                      </Button>
+                    )}
+                    {!k.revokedAt && (
+                      <Button variant="outline" size="sm" disabled={isPending} onClick={() => onToggleCorrect(k.id, !k.correct)}>
+                        {k.correct ? "Remove correction access" : "Allow correction access"}
                       </Button>
                     )}
                     {!k.revokedAt && (

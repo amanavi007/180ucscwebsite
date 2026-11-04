@@ -32,7 +32,15 @@ export const NOT_FOR_BUSINESS = new Set([
   "quotes", "quote", "orders", "order", "bookings", "reservations", "feedback", "marketing", "newsletter", "subscribe",
   "cancel", "questions", "question", "cancellation", "cancellations", "refund", "refunds", "returns", "complaints", "investors", "investor", "ir", "dpo", "gdpr", "trust", "notifications", "alerts",
   "noreply", "no-reply", "donotreply", "do-not-reply", "mailer-daemon", "postmaster", "webmaster", "unsubscribe", "bounce", "bounces",
+  // Placeholder and system mailboxes that nobody reads.
+  "admin", "superadmin", "root", "example", "demo", "test",
 ]);
+
+/** Whether the part before the @ is on the blocked list (role, system or placeholder inbox), whatever its length. */
+export function isBlockedInbox(email: string): boolean {
+  const local = email.trim().toLowerCase().split("@")[0] ?? "";
+  return NOT_FOR_BUSINESS.has(local) || NOT_FOR_BUSINESS.has(local.split(/[._+-]/)[0]);
+}
 
 /** Whether an address is one we may write to: not a role inbox like sales@ or careers@. A named person, founders@, hello@, contact@ and info@ all pass. */
 export function isBusinessInbox(email: string): boolean {
@@ -41,7 +49,7 @@ export function isBusinessInbox(email: string): boolean {
 }
 
 /** Generic inboxes, best first. Anything not listed here is treated as a named person's inbox. */
-const GENERIC_ORDER = ["founders", "founder", "hello", "hey", "hi", "contact", "team", "info", "general", "office", "mail", "admin", "inquiries", "enquiries"];
+const GENERIC_ORDER = ["founders", "founder", "hello", "hey", "hi", "contact", "team", "info", "general", "office", "mail", "inquiries", "enquiries"];
 
 /** The one address worth writing to: a named inbox, else the friendliest generic one; null when only role inboxes exist. */
 export function pickBestEmail(emails: string[]): string | null {

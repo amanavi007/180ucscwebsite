@@ -1,5 +1,5 @@
 import type { ProspectFact } from "../types";
-import { extractCompanyEmails, pickBestEmail } from "./emails";
+import { extractCompanyEmails, isBlockedInbox, pickBestEmail } from "./emails";
 import { matchFounderToEmail, type Founder } from "./founders";
 import type { ListLead } from "./list";
 import { deepPageUrls, isAllowedByRobots, metaDescription, pageUrlsToTry } from "./page";
@@ -17,7 +17,7 @@ import {
 } from "./yc";
 
 /** `ready` is a company already looked at and waiting in the pool; `added` is one that became a prospect. */
-export type CandidateOutcome = "ready" | "added" | "duplicate" | "no_email" | "unreachable" | "no_facts" | "error" | "failed";
+export type CandidateOutcome = "ready" | "added" | "duplicate" | "no_email" | "unreachable" | "no_facts" | "error" | "failed" | "retired";
 
 export interface NewProspect {
   company: string;
@@ -272,8 +272,12 @@ function orderPool(entries: CandidateRecord[]): CandidateRecord[] {
 
 /** Adds a ready company after checking again that it is still new. */
 async function addFromPool(entry: CandidateRecord, deps: DiscoveryDeps): Promise<CandidateRecord> {
-  const prospect = entry.payload!.prospect;
+  const pooled = entry.payload!.prospect;
+  // Most pooled payloads carry no contact name although the founders are stored: default to the first founder.
+  const lead = entry.founders[0];
+  const prospect = !pooled.contactName && lead?.name ? { ...pooled, contactName: lead.name, contactRole: pooled.contactRole ?? lead.title } : pooled;
   try {
+    if (isBlockedInbox(prospect.email)) return { ...entry, outcome: "no_email", reason: `Stored email ${prospect.email} is a role or junk inbox.` };
     const duplicate = (await deps.findDuplicate({ domain: entry.domain, name: entry.company })) ?? (await deps.emailTaken(prospect.email));
     if (duplicate) return { ...entry, outcome: "duplicate", reason: duplicate };
     return { ...entry, outcome: "added", reason: null, prospectId: await deps.addProspect(prospect) };

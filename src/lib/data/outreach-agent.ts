@@ -239,6 +239,8 @@ export interface AgentKeyView {
   createdAt: string;
   /** Whether the key may read all discovery data and make the audit repairs. */
   audit: boolean;
+  /** Whether the key may correct and retire stored contacts and companies. */
+  correct: boolean;
 }
 
 export interface AgentCorrection {
@@ -282,7 +284,7 @@ export async function getAgentOverview(now = new Date()): Promise<AgentOverview>
     .map((r) => describeCorrection(r.detail as Record<string, unknown> | null, r.created_at));
   return {
     corrections,
-    keys: (keys.data ?? []).map((k) => ({ id: k.id, label: k.label, prefix: k.key_prefix, lastUsedAt: k.last_used_at, revokedAt: k.revoked_at, createdAt: k.created_at, audit: k.scopes.includes("outreach:audit") })),
+    keys: (keys.data ?? []).map((k) => ({ id: k.id, label: k.label, prefix: k.key_prefix, lastUsedAt: k.last_used_at, revokedAt: k.revoked_at, createdAt: k.created_at, audit: k.scopes.includes("outreach:audit"), correct: k.scopes.includes("outreach:correct") })),
     lastRunAt: beat.data?.value || null,
     acceptedToday,
     topSkips: Object.entries(skips)
@@ -300,7 +302,13 @@ function describeCorrection(detail: Record<string, unknown> | null, at: string):
   const summary =
     action === "website"
       ? `Website changed from ${d.oldDomain ?? "?"} to ${d.newDomain ?? "?"}. ${d.note ?? ""}`
-      : action === "facts"
+      : action === "contact_correction"
+        ? `Contact ${d.field ?? "changed"}: ${d.oldEmail ?? "none"} to ${d.newEmail ?? "none"}.`
+        : action === "retire" || action === "invalidate"
+          ? `${action === "retire" ? "Retired" : "Invalidated"}: ${d.reason ?? "no reason"}. ${d.detail ?? ""}`
+          : action === "rescreen"
+            ? `Re-screened stored contacts: ${d.flagged ?? 0} flagged.`
+            : action === "facts"
         ? `Added ${d.added ?? 0} sourced fact(s).`
         : `Handed back to discovery. ${d.note ?? ""}`;
   return { at, action, company, summary: summary.trim().slice(0, 240) };
