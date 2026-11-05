@@ -89,7 +89,7 @@ export function buildDraftPrompt(args: {
     "- Never use em dashes, en dashes, semicolons, colons or exclamation marks in the body.",
     "- Never use the 'not X, but Y' or 'not just X' construction, or any variation of it (such as \"it isn't X, it's Y\"). Say what a thing is, directly.",
     "- No lists of three, no rhetorical questions, and none of these openers or words: 'I came across', 'I noticed', 'reaching out', 'I hope', 'excited', 'thrilled', 'passionate', 'delve', 'leverage', 'seamless', 'robust', 'unlock', 'elevate', 'landscape', 'journey', 'synergy', 'cutting-edge', 'game-changer', 'streamline', 'empower', 'holistic'.",
-    "- Subject line: at most 9 words, plain, and it must contain either 'UCSC' or '180 Degrees Consulting' so it reads as a real student group and not an ad. Name the company or what we would work on. No exclamation marks, and never the words 'free', 'opportunity', 'partnership' or 'collaboration'. Example shapes: 'UCSC students on Acme's pricing', '180 Degrees Consulting project for Acme'.",
+    "- Subject line: at most 10 words, plain, and it must contain '180 Degrees Consulting' so it reads as a real organization and not an ad. Name the company or what we would work on. No exclamation marks, and never the words 'free', 'opportunity', 'partnership' or 'collaboration'. Example shapes: '180 Degrees Consulting project for Acme', 'Acme pricing research from 180 Degrees Consulting'.",
     "- Be specific and sincere about the company, using only the prospect data below. Warm is good; flattery and hype are not.",
     isForProfit(row)
       ? "- Money: say nothing about cost, price, fees, donations, payment or the project being free. Do not use the words 'free' or 'nothing' about money. Money is discussed on the call."
@@ -208,8 +208,8 @@ export function checkDraft(draft: DraftOutput, row: ProspectDraftRow, kind: Draf
   // The subject.
   if (draft.subject.includes("!")) problems.push("Remove the exclamation mark from the subject.");
   if (SUBJECT_BANNED.test(draft.subject)) problems.push("Rewrite the subject: it must not contain 'free', 'opportunity', 'partnership', 'collaboration' or 'proposal'.");
-  if (wordCount(draft.subject) > 10) problems.push("Shorten the subject to at most 9 words.");
-  if (!/\b(ucsc|uc santa cruz|180 degrees)\b/i.test(draft.subject)) problems.push("Put 'UCSC' or '180 Degrees Consulting' in the subject line.");
+  if (wordCount(draft.subject) > 11) problems.push("Shorten the subject to at most 10 words.");
+  if (!/\b180 degrees consulting\b/i.test(draft.subject)) problems.push("Put '180 Degrees Consulting' in the subject line.");
 
   // Length and shape.
   const limit = WORD_LIMITS[kind];

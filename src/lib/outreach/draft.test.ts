@@ -21,7 +21,7 @@ const row: ProspectDraftRow = {
 
 const ask = askFor("Acme Health");
 const good = {
-  subject: "UCSC students on Acme Health's California launch",
+  subject: "180 Degrees Consulting on Acme Health's California launch",
   body: `Hi Jo,\n\nWe saw that Acme Health is building remote patient monitoring for rural clinics and heading into California.\n\nA team of UCSC students would spend a full quarter on your go-to-market plan for that move. We agree on the scope with you first, then the students research the market and hand over recommendations you can act on.\n\n${ask}`,
 };
 
@@ -65,8 +65,8 @@ describe("checkDraft", () => {
     expect(checkDraft({ ...good, body: body(1) }, row, "first").ok).toBe(false);
     expect(checkDraft({ ...good, body: body(4) }, row, "follow_up").ok).toBe(false);
   });
-  it("requires UCSC or 180 Degrees Consulting in the subject", () => {
-    expect(checkDraft({ ...good, subject: "Acme Health pricing research" }, row).problems.join(" ")).toMatch(/subject line/i);
+  it("requires 180 Degrees Consulting in the subject", () => {
+    expect(checkDraft({ ...good, subject: "UCSC students on Acme Health pricing" }, row).problems.join(" ")).toMatch(/subject line/i);
     expect(checkDraft({ ...good, subject: "180 Degrees Consulting project for Acme Health" }, row).ok).toBe(true);
   });
   it("says nothing about money to a company, but lets a nonprofit hear the project costs nothing", () => {
@@ -168,7 +168,7 @@ describe("buildDraftPrompt", () => {
   it("tells the model the shape, the style rules and the banned patterns", () => {
     const p = buildDraftPrompt({ row, step: "first", previousSubjects: [], clubFacts: "f" });
     expect(p).toMatch(/85 and 120 words/);
-    expect(p).toMatch(/UCSC' or '180 Degrees Consulting/);
+    expect(p).toMatch(/must contain '180 Degrees Consulting'/);
     expect(p).toMatch(/"paragraphs"/);
     expect(p).toMatch(/under 20 words/i);
     expect(p).toMatch(/blank line/i);
