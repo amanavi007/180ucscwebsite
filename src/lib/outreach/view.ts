@@ -37,7 +37,9 @@ export const STAGE_FILTERS: { key: string; label: string; statuses: string[] }[]
   { key: "sent", label: "Sent", statuses: ["sent", "follow_up_1", "follow_up_2", "closing_note"] },
   { key: "replied", label: "Replied", statuses: ["replied"] },
   { key: "booked", label: "Booked", statuses: ["booked"] },
-  { key: "finished", label: "Finished", statuses: ["no_response", "unsubscribed", "invalid"] },
+  { key: "finished", label: "Finished", statuses: ["no_response", "unsubscribed"] },
+  // Addresses that can't be emailed. They sit here, out of the way, instead of cluttering Finished.
+  { key: "trash", label: "Trash", statuses: ["invalid"] },
 ];
 
 /** Stages that show Discovery's candidates instead of prospects. */

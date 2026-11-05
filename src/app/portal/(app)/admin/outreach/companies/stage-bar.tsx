@@ -5,7 +5,7 @@ import { FilterChip } from "@/components/filter-chip";
 import { DISCOVERY_STAGES, STAGE_FILTERS } from "@/lib/outreach/view";
 
 /** The one row of stages across Companies, left to right from found to finished. Choosing one clears the page and any open panel. */
-const ORDER = ["needs-you", "found", "drafted", "scheduled", "sent", "replied", "booked", "finished", "skipped", "all"];
+const ORDER = ["needs-you", "found", "drafted", "scheduled", "sent", "replied", "booked", "finished", "skipped", "trash", "all"];
 const LABELS: Record<string, string> = Object.fromEntries([...STAGE_FILTERS, ...DISCOVERY_STAGES].map((s) => [s.key, s.label]));
 
 export function StageBar({ stage, counts }: { stage: string; counts: Record<string, number> }) {

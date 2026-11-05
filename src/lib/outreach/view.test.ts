@@ -187,3 +187,13 @@ describe("companyStageCounts", () => {
     expect(companyStageCounts([], {})).toMatchObject({ found: 0, skipped: 0, all: 0 });
   });
 });
+
+describe("Trash stage", () => {
+  const rows = [{ status: "invalid" }, { status: "no_response" }, { status: "unsubscribed" }, { status: "sent" }];
+  it("holds invalid emails, and Finished no longer does", () => {
+    expect(filterByStage(rows, "trash")).toEqual([{ status: "invalid" }]);
+    expect(filterByStage(rows, "finished").map((r) => r.status)).toEqual(["no_response", "unsubscribed"]);
+    expect(companyStageCounts(rows, {}).trash).toBe(1);
+    expect(normalizeStage("trash")).toBe("trash");
+  });
+});
