@@ -64,7 +64,7 @@ function kindInstructions(step: DraftKind, row: Pick<ProspectDraftRow, "segment"
     return "This is a brief, friendly closing note after earlier emails got no reply. Say you won't keep emailing, and leave the door open. Maximum 50 words, in two short paragraphs separated by a blank line.";
   }
   const cost = isForProfit(row) ? "" : ", at no cost to them";
-  return `This is the FIRST email to this person. Between 85 and 120 words. Use exactly this shape, as short paragraphs separated by a blank line: (1) the greeting alone on its line; (2) one or two sentences showing we actually looked at their company, naming one specific thing from the prospect data in plain words; (3) three or four sentences on what we would do for them: a team of UCSC students works on one concrete problem for them for a quarter${cost}, naming the kind of problem that fits this company based only on the prospect data, what the team would hand over at the end, and how the quarter works (we agree on the scope together first, then the students research and deliver recommendations). You may add one short sentence naming a past client close to their field; (4) the closing ask, given in the rules below. Lead with them, not us: the club gets one sentence at most. Make them want to take the call by being concrete about what they would get.`;
+  return `This is the FIRST email to this person. Between 85 and 120 words. Use exactly this shape, as short paragraphs separated by a blank line: (1) the greeting alone on its line; (2) one or two sentences showing we actually looked at their company, naming one specific thing from the prospect data in plain words; (3) one or two sentences on what we would do for them: a team of UCSC students works on one concrete problem for them for a quarter${cost}, naming the kind of problem that fits this company based only on the prospect data; (4) a separate short paragraph of one or two sentences on how the quarter works and what the team hands over (we agree on the scope together first, then the students research and deliver recommendations), optionally naming one past client close to their field; (5) the closing ask, given in the rules below. Every paragraph stays under 45 words. Lead with them, not us: the club gets one sentence at most. Make them want to take the call by being concrete about what they would get.`;
 }
 
 export function buildDraftPrompt(args: {
@@ -139,7 +139,7 @@ const SUBJECT_BANNED = /\b(free|opportunity|partnership|collaboration|proposal)\
 const WORD_LIMITS: Record<DraftKind, number> = { first: 130, follow_up: 60, closing: 50 };
 const MIN_PARAGRAPHS: Record<DraftKind, number> = { first: 3, follow_up: 2, closing: 2 };
 const MIN_FIRST_WORDS = 65;
-const MAX_PARAGRAPH_WORDS = 55;
+const MAX_PARAGRAPH_WORDS = 60;
 const MAX_SENTENCE_WORDS = 28;
 
 const wordCount = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;

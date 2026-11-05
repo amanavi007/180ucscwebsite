@@ -16,6 +16,7 @@ export interface ScheduleMessage {
   prospectId: string;
   step: number;
   subject: string;
+  bodyText?: string;
   status: string;
   scheduledFor: string | null;
   sentAt: string | null;
@@ -29,6 +30,8 @@ export interface ScheduleItem {
   step: number;
   /** Null for a follow-up that is not written yet (it is drafted the morning it is due). */
   subject: string | null;
+  /** The written email, null when it is not written yet. */
+  body: string | null;
   state: "sent" | "scheduled" | "planned";
   /** The exact send time, known only once Resend has the email. */
   at: string | null;
@@ -88,12 +91,13 @@ export function buildSchedule(args: {
   const startOfToday = pacificInstant(today, 0).getTime();
   const startOfTomorrow = pacificInstant(addDays(today, 1), 0).getTime();
 
-  const item = (p: ScheduleProspect, m: { step: number; subject: string | null }, state: ScheduleItem["state"], at: string | null): ScheduleItem => ({
+  const item = (p: ScheduleProspect, m: { step: number; subject: string | null; body?: string | null }, state: ScheduleItem["state"], at: string | null): ScheduleItem => ({
     prospectId: p.id,
     company: p.company,
     contact: p.contactName ? `${p.contactName}, ${p.contactEmail}` : p.contactEmail,
     step: m.step,
     subject: m.subject,
+    body: m.body ?? null,
     state,
     at,
   });
@@ -104,7 +108,7 @@ export function buildSchedule(args: {
     const when = m.sentAt ?? m.scheduledFor;
     if (!p || !when || !["scheduled", "sent"].includes(m.status)) continue;
     const t = Date.parse(when);
-    if (t >= startOfToday && t < startOfTomorrow) todayActual.push(item(p, m, m.status === "sent" ? "sent" : "scheduled", when));
+    if (t >= startOfToday && t < startOfTomorrow) todayActual.push(item(p, { step: m.step, subject: m.subject, body: m.bodyText }, m.status === "sent" ? "sent" : "scheduled", when));
   }
   todayActual.sort((a, b) => Date.parse(a.at!) - Date.parse(b.at!));
 
@@ -113,6 +117,7 @@ export function buildSchedule(args: {
     p: ScheduleProspect;
     step: number;
     subject: string | null;
+    body: string | null;
     readyOn: string;
     order: number;
   }
@@ -125,11 +130,11 @@ export function buildSchedule(args: {
     const followUp = m.step > 0 && m.step === p.step && FOLLOW_UP_STATUSES.includes(p.status) && !!p.nextActionAt;
     if (!first && !followUp) return;
     draftedSteps.add(`${p.id}:${m.step}`);
-    queue.push({ p, step: m.step, subject: m.subject, readyOn: first ? today : formatOrgDate(new Date(p.nextActionAt!)), order: m.createdAt ? Date.parse(m.createdAt) : i });
+    queue.push({ p, step: m.step, subject: m.subject, body: m.bodyText ?? null, readyOn: first ? today : formatOrgDate(new Date(p.nextActionAt!)), order: m.createdAt ? Date.parse(m.createdAt) : i });
   });
   for (const p of prospects) {
     if (!FOLLOW_UP_STATUSES.includes(p.status) || !p.nextActionAt || draftedSteps.has(`${p.id}:${p.step}`)) continue;
-    queue.push({ p, step: p.step, subject: null, readyOn: formatOrgDate(new Date(p.nextActionAt)), order: Date.parse(p.nextActionAt) });
+    queue.push({ p, step: p.step, subject: null, body: null, readyOn: formatOrgDate(new Date(p.nextActionAt)), order: Date.parse(p.nextActionAt) });
   }
   queue.sort((a, b) => a.order - b.order);
 
@@ -154,7 +159,7 @@ export function buildSchedule(args: {
         if (domains.has(domain)) continue;
         domains.add(domain);
         used.add(q);
-        items.push(item(q.p, { step: q.step, subject: q.subject }, "planned", null));
+        items.push(item(q.p, { step: q.step, subject: q.subject, body: q.body }, "planned", null));
       }
     }
     days.push({ date, label: dayLabel(date, today), weekend, cap, items });

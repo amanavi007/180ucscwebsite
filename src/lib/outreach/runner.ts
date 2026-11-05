@@ -110,6 +110,8 @@ export interface PrepareDeps extends SharedDeps {
   listScheduledDue(before: Date): Promise<ScheduledMessage[]>;
   /** Cancels unsent drafts that no longer pass the writing rules (written under older rules) so they get redrafted. Returns how many. */
   refreshStaleDrafts?(): Promise<number>;
+  /** Stop starting new drafts after this long. Defaults to 150 seconds, which fits the cron's 300-second limit. */
+  budgetMs?: number;
 }
 
 export interface SendDeps extends SharedDeps {
@@ -137,10 +139,11 @@ const RECONCILE_DELAY_MS = 5 * 60_000;
 const CLOSING_GRACE_MS = 7 * 86_400_000;
 const VERIFY_BATCH = 25;
 /** First emails drafted per run, at least; raised to the number of companies discovery adds a day, so drafting never caps the pipeline. */
-const DRAFT_BATCH = 10;
+const DRAFT_BATCH = 20;
+const DRAFT_CONCURRENCY = 4;
 const MAX_DRAFT_BATCH = 40;
 /** The cron may run for 300 seconds; stop starting new AI drafts well before that so the job finishes and records itself. */
-const PREPARE_BUDGET_MS = 200_000;
+const PREPARE_BUDGET_MS = 150_000;
 
 export function toDraftRow(p: RunnerProspect): ProspectDraftRow {
   return {
@@ -212,34 +215,35 @@ export async function runPrepare(deps: PrepareDeps): Promise<PrepareResult> {
   }
 
   const startedAt = Date.now();
-  const outOfTime = () => Date.now() - startedAt > PREPARE_BUDGET_MS;
+  const budgetMs = deps.budgetMs ?? PREPARE_BUDGET_MS;
+  const outOfTime = () => Date.now() - startedAt > budgetMs;
   const draftBatch = Math.min(MAX_DRAFT_BATCH, Math.max(DRAFT_BATCH, settings.discoveryPerDay));
   const batchBodies = await deps.recentDraftBodies();
   const batchSubjects: string[] = [];
-  for (const p of await deps.listProspects(["verified"], draftBatch)) {
+  const toDraft = await deps.listProspects(["verified"], draftBatch);
+  // The model is slow (up to two minutes for a draft that needs retries), so a few drafts are written at once.
+  for (let i = 0; i < toDraft.length; i += DRAFT_CONCURRENCY) {
     if (outOfTime()) break;
-    const previous = await deps.previousSubjects(p.id);
-    let outcome: { draft: DraftOutput } | { needsAttention: string } = { needsAttention: "Draft too similar to another in this batch." };
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const made = await deps.draft({ row: toDraftRow(p), step: "first", previousSubjects: [...previous, ...batchSubjects] });
-      if ("needsAttention" in made) {
-        outcome = made;
-        break;
+    const chunk = toDraft.slice(i, i + DRAFT_CONCURRENCY);
+    const earlier = await Promise.all(chunk.map((p) => deps.previousSubjects(p.id)));
+    const firstTries = await Promise.all(chunk.map((p, j) => deps.draft({ row: toDraftRow(p), step: "first", previousSubjects: [...earlier[j], ...batchSubjects] })));
+    for (let j = 0; j < chunk.length; j++) {
+      const p = chunk[j];
+      let outcome: { draft: DraftOutput } | { needsAttention: string } = firstTries[j];
+      if (!("needsAttention" in outcome) && batchBodies.some((b) => isNearDuplicate(b, (outcome as { draft: DraftOutput }).draft.body))) {
+        const again = await deps.draft({ row: toDraftRow(p), step: "first", previousSubjects: [...earlier[j], ...batchSubjects] });
+        outcome = "needsAttention" in again || !batchBodies.some((b) => isNearDuplicate(b, again.draft.body)) ? again : { needsAttention: "Draft too similar to another in this batch." };
       }
-      if (!batchBodies.some((b) => isNearDuplicate(b, made.draft.body))) {
-        outcome = made;
-        break;
+      if ("needsAttention" in outcome) {
+        if (await deps.casProspect(p.id, ["verified"], { status: "needs_attention", statusReason: outcome.needsAttention })) result.needsAttention++;
+        continue;
       }
+      if (!(await deps.casProspect(p.id, ["verified"], { status: "drafted", statusReason: null }))) continue;
+      await deps.insertDraft(p.id, 0, outcome.draft);
+      batchBodies.push(outcome.draft.body);
+      batchSubjects.push(outcome.draft.subject);
+      result.drafted++;
     }
-    if ("needsAttention" in outcome) {
-      if (await deps.casProspect(p.id, ["verified"], { status: "needs_attention", statusReason: outcome.needsAttention })) result.needsAttention++;
-      continue;
-    }
-    if (!(await deps.casProspect(p.id, ["verified"], { status: "drafted", statusReason: null }))) continue;
-    await deps.insertDraft(p.id, 0, outcome.draft);
-    batchBodies.push(outcome.draft.body);
-    batchSubjects.push(outcome.draft.subject);
-    result.drafted++;
   }
 
   if (settings.mode === "live") {
