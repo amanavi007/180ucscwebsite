@@ -1,3 +1,4 @@
+import { pickSender } from "./senders";
 import { describe, expect, it, vi } from "vitest";
 import { runPrepare, runSend, type MessagePatch, type PrepareDeps, type ProspectPatch, type RunnerProspect, type SendArgs, type SendDeps } from "./runner";
 import { DEFAULT_OUTREACH_SETTINGS, type OutreachSettings } from "./settings";
@@ -140,6 +141,42 @@ describe("runSend", () => {
     }
     const token = /unsubscribe\?token=([^>]+)>/.exec(store.sends[0].headers["List-Unsubscribe"])![1];
     expect(verifyUnsubscribeToken(decodeURIComponent(token), "secret")).toMatch(/^p\d$/);
+  });
+
+  it("sends each company from its own officer, signed as them, and keeps them on the thread", async () => {
+    const store = new Store();
+    for (let n = 1; n <= 5; n++) store.addDrafted(n);
+    const senders = [
+      { id: "a", name: "Aman Avinash", title: "Director of Projects", linkedin: "", enabled: true },
+      { id: "d", name: "Devarsh Jayakrishnan", title: "Director of External Affairs", linkedin: "", enabled: true },
+    ];
+    await runSend(sendDeps(store, {}, settings({ senders })));
+    const froms = new Set(store.sends.map((s) => s.from));
+    expect(froms).toEqual(new Set(["Aman Avinash <aman@consulting.ucsc180dc.org>", "Devarsh Jayakrishnan <devarsh@consulting.ucsc180dc.org>"]));
+    for (const s of store.sends) {
+      const who = s.from.startsWith("Aman") ? "Aman Avinash\nDirector of Projects" : "Devarsh Jayakrishnan\nDirector of External Affairs";
+      expect(s.text).toContain(who);
+    }
+    // The officer is written onto the prospect, so a follow-up comes from the same person.
+    const queued = [...store.prospects.values()].filter((p) => p.status === "queued");
+    expect(queued.every((p) => p.senderId === "a" || p.senderId === "d")).toBe(true);
+    const flipped = queued[0].senderId === "a" ? "d" : "a";
+    expect(pickSender(senders, queued[0].id, queued[0].senderId ?? null)?.id).not.toBe(flipped);
+  });
+
+  it("links the services page in a first email", async () => {
+    const store = new Store();
+    store.addDrafted(1);
+    await runSend(sendDeps(store));
+    expect(store.sends[0].text).toContain("https://ucsc180dc.org/services");
+    expect(store.sends[0].html).toContain("services page");
+  });
+
+  it("uses the single sender in Settings when no officers are set up", async () => {
+    const store = new Store();
+    store.addDrafted(1);
+    await runSend(sendDeps(store));
+    expect(store.sends[0].from).toBe("180 Degrees Consulting at UCSC <team@consulting.ucsc180dc.org>");
   });
 
   it("holds back a draft that fails the current writing rules instead of sending it", async () => {

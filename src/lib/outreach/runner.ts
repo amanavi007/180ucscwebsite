@@ -4,7 +4,8 @@ import { isNearDuplicate, type DraftKind, type DraftOutput } from "./draft";
 import { OutreachAccountError } from "./errors";
 import { dailyCap, evaluateBrakes, planSendTimes } from "./pacing";
 import { nextActionAt, statusAfterSend, stepKind } from "./sequence";
-import type { OutreachSettings } from "./settings";
+import { buildFromAddress, type OutreachSettings } from "./settings";
+import { buildSignature, pickSender } from "./senders";
 import type { ProspectDraftRow, ProspectFact } from "./types";
 import { listUnsubscribeHeaders, oneClickUrl, signUnsubscribeToken, unsubscribeUrl } from "./unsubscribe";
 import { classifyEmail } from "./verify";
@@ -29,6 +30,8 @@ export interface RunnerProspect {
   nextActionAt: Date | null;
   firstSentAt: Date | null;
   bookingToken: string;
+  /** The officer this company hears from; set when the first email is scheduled. */
+  senderId?: string | null;
 }
 
 export interface ProspectPatch {
@@ -37,6 +40,7 @@ export interface ProspectPatch {
   step?: number;
   nextActionAt?: Date | null;
   lastSentAt?: Date;
+  senderId?: string;
 }
 
 export interface MessagePatch {
@@ -330,10 +334,12 @@ export async function runSend(deps: SendDeps): Promise<SendResult> {
     const { message, prospect } = picked[i];
     const at = times[i];
     const claimedProspectStatus = prospect.status;
+    // The same officer writes to a company every time. With no officers set up, everything comes from the one sender in Settings.
+    const sender = pickSender(settings.senders, prospect.id, prospect.senderId ?? null);
 
     if (!execOnly) {
       if (!(await deps.casMessage(message.id, ["draft"], { status: "scheduled", scheduledFor: at ?? null }))) continue;
-      if (!(await deps.casProspect(prospect.id, SENDABLE, { status: "queued" }))) {
+      if (!(await deps.casProspect(prospect.id, SENDABLE, sender ? { status: "queued", senderId: sender.id } : { status: "queued" }))) {
         await deps.casMessage(message.id, ["scheduled"], { status: "draft", scheduledFor: null });
         continue;
       }
@@ -352,12 +358,14 @@ export async function runSend(deps: SendDeps): Promise<SendResult> {
       unsubscribeUrl: unsubscribeUrl(token, deps.siteUrl),
       senderName: settings.senderName,
       postalAddress: settings.postalAddress,
-      signature: settings.signature,
+      signature: sender ? buildSignature(sender, deps.siteUrl) : settings.signature,
+      // The first email and the first follow-up point to what we have done; later ones stay short.
+      servicesUrl: message.step <= 1 ? `${deps.siteUrl.replace(/\/$/, "")}/services` : undefined,
     });
     try {
       const { resendId } = await deps.send({
         to: execOnly ? testRecipients : [prospect.contactEmail],
-        from: deps.fromAddress,
+        from: sender ? buildFromAddress(deps.fromAddress, sender.name) : deps.fromAddress,
         replyTo: deps.replyTo,
         subject: email.subject,
         text: email.text,

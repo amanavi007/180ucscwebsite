@@ -22,6 +22,7 @@ import { parseProspectCsv, type CsvError } from "@/lib/outreach/csv";
 import { emailDomain, partitionImport, type SkipReason } from "@/lib/outreach/verify";
 import { runPrepare, runSend, type PrepareResult } from "@/lib/outreach/runner";
 import { agentTargetsSchema, parseOutreachSettings, shouldRestartRamp } from "@/lib/outreach/settings";
+import { sendersProblem, sendersSchema, type OutreachSender } from "@/lib/outreach/senders";
 import { generateAgentKey } from "@/lib/outreach/agent-auth";
 import { loadOutreachSettings } from "@/lib/data/outreach";
 import { buildDiscoveryDeps, recordToRow } from "@/lib/data/outreach-discovery";
@@ -371,6 +372,8 @@ export interface OutreachSettingsInput {
   senderName: string;
   fromName: string;
   signature: string;
+  /** The officers emails come from, one per company. */
+  senders: OutreachSender[];
   postalAddress: string;
   followupDays: string;
   discoveryEnabled: boolean;
@@ -445,6 +448,11 @@ export async function updateOutreachSettingsAction(input: OutreachSettingsInput)
   if ("error" in targets) return { error: targets.error };
   rows.push({ key: "outreach_agent_targets", value: targets.json });
   if (input.signature.length > 600) return { error: "The signature is too long. Keep it under 600 characters." };
+  const senders = sendersSchema.safeParse(input.senders);
+  if (!senders.success) return { error: "Every officer needs a name and a title." };
+  const sendersIssue = sendersProblem(senders.data);
+  if (sendersIssue) return { error: sendersIssue };
+  rows.push({ key: "outreach_senders", value: senders.data.length > 0 ? JSON.stringify(senders.data) : "" });
 
   if (input.mode === "self_only" || input.mode === "exec_only" || input.mode === "live") {
     try {

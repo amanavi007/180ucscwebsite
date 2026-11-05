@@ -11,6 +11,8 @@ export interface OutreachEmailInput {
   postalAddress: string;
   /** The closing block, from "Best regards," down; lines may hold [label](https://link). Empty or missing signs as the team. */
   signature?: string;
+  /** The services page; when set, the email points to it above the booking link. */
+  servicesUrl?: string;
 }
 
 const LINK = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g;
@@ -53,6 +55,7 @@ export function buildOutreachEmail(input: OutreachEmailInput): EmailContent {
   const text = [
     input.bodyText.trim(),
     "",
+    ...(input.servicesUrl ? [`See some of our past work: ${input.servicesUrl}`, ""] : []),
     `Book a discovery call here: ${plainLink(input.bookingUrl)}`,
     "",
     BAR,
@@ -64,6 +67,7 @@ export function buildOutreachEmail(input: OutreachEmailInput): EmailContent {
 
   const html = `<div>
     ${paragraphs(input.bodyText)}
+    ${input.servicesUrl ? `<p>See some of our past work on our <a href="${escapeHtml(input.servicesUrl)}">services page</a>.</p>` : ""}
     <p><a href="${escapeHtml(input.bookingUrl)}">Book a discovery call here</a></p>
     <div style="border-top:1px solid #999;width:260px;margin:22px 0 12px"></div>
     <div style="font-family:${SIGNATURE_FONT};font-size:14px;line-height:1.35">${signatureHtml(signature)}</div>

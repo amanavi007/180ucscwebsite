@@ -12,7 +12,9 @@ export const CLUB_FACTS = `
 - We started with nonprofits and social enterprises and are now expanding into for-profit startups and small Bay Area companies, with new focus areas in tech consulting and med-tech consulting.
 - We are an international, university-based consultancy: 180 Degrees Consulting is a global network, and the UCSC branch is run by students.
 - Past work includes marketing strategy, community engagement initiatives and new program design, for local and Bay Area organizations (see the past clients list below).
-- An engagement is a ten-week project on one specific challenge or opportunity. The scope is agreed together with the client first, and our team then delivers data-informed recommendations.
+- An engagement is a ten-week project on one specific challenge or opportunity. The scope is agreed together with the client first. The team researches the problem and delivers data-informed recommendations.
+- New this quarter is an implementation track. Beyond research and recommendations, our students can help build and roll out the top recommendation, so the client ends the quarter with something working.
+- Examples of what the team can build: a funding or donor tracking system, internal workflow tools, a data dashboard, and social media content that we create and post for the client.
 - Services cost the client nothing.
 - A prospect can book a 30-minute intro call with our exec team through the booking link that is added to every email.
 

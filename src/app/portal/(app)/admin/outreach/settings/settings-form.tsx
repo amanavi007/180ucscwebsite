@@ -11,6 +11,7 @@ import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { OutreachMode, OutreachSettings } from "@/lib/outreach/settings";
+import { cleanLinkedin, mailboxName, type OutreachSender } from "@/lib/outreach/senders";
 import type { AgentOverview } from "@/lib/data/outreach-agent";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +38,7 @@ function when(iso: string | null): string {
 }
 
 /** Outreach settings: sections on the left, one at a time on the right, saved together with one button. */
-export function SettingsForm({ settings, agent }: { settings: OutreachSettings; agent: AgentOverview }) {
+export function SettingsForm({ settings, agent, roster }: { settings: OutreachSettings; agent: AgentOverview; roster: OutreachSender[] }) {
   const [section, setSection] = useState<(typeof SECTIONS)[number]["key"]>("sending");
   const [mode, setMode] = useState<OutreachMode>(settings.mode);
   const [paused, setPaused] = useState(settings.paused);
@@ -48,6 +49,8 @@ export function SettingsForm({ settings, agent }: { settings: OutreachSettings; 
   const [senderName, setSenderName] = useState(settings.senderName);
   const [fromName, setFromName] = useState(settings.fromName);
   const [signature, setSignature] = useState(settings.signature);
+  // Until officers are saved, the execs on the roster are shown as a starting point. Saving makes them the senders.
+  const [senders, setSenders] = useState<OutreachSender[]>(settings.senders.length > 0 ? settings.senders : roster);
   const [address, setAddress] = useState(settings.postalAddress);
   const [discoveryOn, setDiscoveryOn] = useState(settings.discoveryEnabled);
   const [perDay, setPerDay] = useState(String(settings.discoveryPerDay));
@@ -83,6 +86,7 @@ export function SettingsForm({ settings, agent }: { settings: OutreachSettings; 
         senderName,
         fromName,
         signature,
+        senders,
         postalAddress: address,
         followupDays: followups,
         discoveryEnabled: discoveryOn,
@@ -97,6 +101,18 @@ export function SettingsForm({ settings, agent }: { settings: OutreachSettings; 
       if (result.error) toast.error(result.error);
       else toast.success("Outreach settings saved.");
     });
+  }
+
+  const changeSender = (id: string, patch: Partial<OutreachSender>) => setSenders((list) => list.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+
+  function onAddSender() {
+    setSenders((list) => [...list, { id: crypto.randomUUID(), name: "", title: "", linkedin: "", enabled: true }]);
+  }
+
+  function onFillFromRoster() {
+    // Keeps what was edited by hand; only adds execs who are not in the list yet.
+    setSenders((list) => [...list, ...roster.filter((r) => !list.some((s) => s.id === r.id))]);
+    toast.success("Execs from the roster added.");
   }
 
   function onGenerateKey() {
@@ -374,6 +390,62 @@ export function SettingsForm({ settings, agent }: { settings: OutreachSettings; 
         {section === "sender" && (
           <>
             <h2 className="text-lg">Sender</h2>
+            <fieldset className="space-y-3">
+              <legend className="text-base font-semibold">Officers who send</legend>
+              <p className="max-w-prose text-sm text-muted-foreground">
+                Emails take turns coming from these officers, and each is signed with that officer&apos;s name, title and LinkedIn. A company hears from the same
+                officer every time. Replies still go to the shared team inbox. Turn an officer off when they step down.
+              </p>
+              <div className="max-h-[50dvh] space-y-3 overflow-y-auto pr-1">
+                {senders.length === 0 && <p className="text-sm text-muted-foreground">No officers yet. Everything is sent from the sender below. Add officers, or fill the list from the roster.</p>}
+                {senders.map((s) => (
+                  <div key={s.id} className="min-w-0 space-y-3 rounded-2xl border p-3.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <label className="flex min-w-0 items-center gap-2.5">
+                        <Checkbox checked={s.enabled} onCheckedChange={(v) => changeSender(s.id, { enabled: v === true })} />
+                        <span className="min-w-0 truncate font-semibold">{s.name.trim() || "New officer"}</span>
+                        <Badge variant={s.enabled ? "ok" : "muted"}>{s.enabled ? "Sending" : "Off"}</Badge>
+                      </label>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setSenders((list) => list.filter((x) => x.id !== s.id))}>
+                        Remove
+                      </Button>
+                    </div>
+                    <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+                      <Field className="min-w-0">
+                        <FieldLabel htmlFor={`sender-name-${s.id}`}>Full name</FieldLabel>
+                        <Input id={`sender-name-${s.id}`} value={s.name} onChange={(e) => changeSender(s.id, { name: e.target.value })} />
+                        <FieldDescription>Sends from {mailboxName(s.name) || "firstname"}@ on the outreach domain.</FieldDescription>
+                      </Field>
+                      <Field className="min-w-0">
+                        <FieldLabel htmlFor={`sender-title-${s.id}`}>Title</FieldLabel>
+                        <Input id={`sender-title-${s.id}`} value={s.title} onChange={(e) => changeSender(s.id, { title: e.target.value })} />
+                      </Field>
+                    </div>
+                    <Field className="min-w-0">
+                      <FieldLabel htmlFor={`sender-linkedin-${s.id}`}>LinkedIn link</FieldLabel>
+                      <Input
+                        id={`sender-linkedin-${s.id}`}
+                        value={s.linkedin}
+                        placeholder="https://www.linkedin.com/in/..."
+                        onChange={(e) => changeSender(s.id, { linkedin: e.target.value })}
+                        onBlur={(e) => changeSender(s.id, { linkedin: cleanLinkedin(e.target.value) || e.target.value.trim() })}
+                      />
+                      <FieldDescription>Optional. Leave empty and the signature shows only the website link.</FieldDescription>
+                    </Field>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" onClick={onAddSender}>
+                  Add an officer
+                </Button>
+                <Button type="button" variant="outline" onClick={onFillFromRoster}>
+                  Fill from the roster
+                </Button>
+              </div>
+            </fieldset>
+            <h3 className="text-base font-semibold">Single sender</h3>
+            <p className="max-w-prose text-sm text-muted-foreground">Used only while no officer above is turned on.</p>
             <Field className="max-w-md">
               <FieldLabel htmlFor="outreach-name">Sender name</FieldLabel>
               <Input id="outreach-name" value={senderName} onChange={(e) => setSenderName(e.target.value)} />

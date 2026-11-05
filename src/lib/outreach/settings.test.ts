@@ -51,6 +51,7 @@ describe("parseOutreachSettings", () => {
       senderName: "Team X",
       fromName: "Aman Avinash",
       signature: "Best regards,\n\nAman",
+      senders: [],
       discoveryEnabled: true,
       discoveryPerDay: 6,
       discoveryRegions: ["Oakland", "Berkeley"],
@@ -86,7 +87,7 @@ describe("parseOutreachSettings", () => {
   });
 
   it("lists every key it reads", () => {
-    expect(OUTREACH_SETTING_KEYS).toHaveLength(20);
+    expect(OUTREACH_SETTING_KEYS).toHaveLength(21);
     expect(OUTREACH_SETTING_KEYS).toContain("outreach_mode");
   });
 });

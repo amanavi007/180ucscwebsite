@@ -12,6 +12,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { EXEC_ROLES } from "@/lib/auth/roles";
 import { buildPrepareDeps, buildSendDeps, factsToJson, loadOutreachSettings, outreachEnv } from "@/lib/data/outreach";
 import { buildOutreachEmail } from "@/lib/email/outreach-emails";
+import { buildSignature, pickSender } from "@/lib/outreach/senders";
+import { buildFromAddress } from "@/lib/outreach/settings";
 import { sendOutreachEmail } from "@/lib/email/outreach-send";
 import { buildBookingUrl } from "@/lib/outreach/booking-link";
 import { listUnsubscribeHeaders, oneClickUrl, signUnsubscribeToken, unsubscribeUrl } from "@/lib/outreach/unsubscribe";
@@ -103,6 +105,7 @@ async function preview() {
   if (!message) throw new Error("no draft yet: run prepare first");
   const env = outreachEnv(await loadOutreachSettings(admin));
   const token = signUnsubscribeToken(p.id, env.unsubscribeSecret);
+  const sender = pickSender(env.settings.senders, p.id, p.sender_id);
   const email = buildOutreachEmail({
     subject: message.subject,
     bodyText: message.body_text,
@@ -110,18 +113,20 @@ async function preview() {
     unsubscribeUrl: unsubscribeUrl(token, env.siteUrl),
     senderName: env.settings.senderName,
     postalAddress: env.settings.postalAddress,
-    signature: env.settings.signature,
+    signature: sender ? buildSignature(sender, env.siteUrl) : env.settings.signature,
+    servicesUrl: `${env.siteUrl}/services`,
   });
+  const from = sender ? buildFromAddress(env.fromAddress, sender.name) : env.fromAddress;
   const { resendId } = await sendOutreachEmail({
     to: [TEST_EMAIL],
-    from: env.fromAddress,
+    from,
     replyTo: env.replyTo,
     subject: email.subject,
     text: email.text,
     html: email.html,
     headers: listUnsubscribeHeaders(oneClickUrl(token, env.siteUrl), env.unsubscribeMailto),
   });
-  console.log("sent now from", env.fromAddress, "to", TEST_EMAIL, resendId);
+  console.log("sent now from", from, "to", TEST_EMAIL, resendId);
 }
 
 async function status() {

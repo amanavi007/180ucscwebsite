@@ -89,6 +89,7 @@ function toRunnerProspect(row: ProspectRow, firstSentAt: Date | null): RunnerPro
     nextActionAt: row.next_action_at ? new Date(row.next_action_at) : null,
     firstSentAt,
     bookingToken: row.booking_token,
+    senderId: row.sender_id,
   };
 }
 
@@ -157,6 +158,7 @@ function prospectPatchToRow(patch: ProspectPatch): Database["public"]["Tables"][
   if (patch.step !== undefined) row.step = patch.step;
   if (patch.nextActionAt !== undefined) row.next_action_at = patch.nextActionAt ? patch.nextActionAt.toISOString() : null;
   if (patch.lastSentAt !== undefined) row.last_sent_at = patch.lastSentAt.toISOString();
+  if (patch.senderId !== undefined) row.sender_id = patch.senderId;
   return row;
 }
 

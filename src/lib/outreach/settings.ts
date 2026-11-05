@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseSenders, type OutreachSender } from "./senders";
 
 export type OutreachMode = "off" | "dry_run" | "self_only" | "exec_only" | "live";
 
@@ -20,6 +21,8 @@ export interface OutreachSettings {
    * A line may hold links written [label](https://...). Empty means "Best, The 180 Degrees Consulting UCSC team".
    */
   signature: string;
+  /** Officers emails come from, one per company. Empty means the single sender above is used for everything. */
+  senders: OutreachSender[];
   /** Whether the daily job finds new companies on its own. */
   discoveryEnabled: boolean;
   /** New prospects wanted per day. */
@@ -108,6 +111,7 @@ export const DEFAULT_OUTREACH_SETTINGS: OutreachSettings = {
   senderName: "180 Degrees Consulting at UCSC",
   fromName: "",
   signature: "",
+  senders: [],
   discoveryEnabled: false,
   discoveryPerDay: 10,
   discoveryRegions: ["San Francisco", "Palo Alto", "Mountain View", "Oakland", "San Jose", "Berkeley", "Menlo Park", "Redwood City", "Sunnyvale", "Santa Cruz"],
@@ -131,6 +135,7 @@ export const OUTREACH_SETTING_KEYS = [
   "outreach_sender_name",
   "outreach_from_name",
   "outreach_signature",
+  "outreach_senders",
   "outreach_discovery_enabled",
   "outreach_discovery_per_day",
   "outreach_discovery_regions",
@@ -192,6 +197,7 @@ export function parseOutreachSettings(rows: { key: string; value: string }[]): O
     senderName: get.outreach_sender_name?.trim() || d.senderName,
     fromName: get.outreach_from_name?.trim() || d.fromName,
     signature: get.outreach_signature?.replace(/\r\n/g, "\n").trim() || d.signature,
+    senders: parseSenders(get.outreach_senders),
     discoveryEnabled: get.outreach_discovery_enabled === "true",
     discoveryPerDay: wholeNumber(get.outreach_discovery_per_day, 0, 50) ?? d.discoveryPerDay,
     discoveryRegions: list(get.outreach_discovery_regions, ",") ?? d.discoveryRegions,

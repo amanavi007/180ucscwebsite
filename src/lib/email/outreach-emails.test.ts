@@ -10,6 +10,20 @@ const args = {
   postalAddress: "1156 High St, Santa Cruz, CA 95064",
 };
 
+describe("buildOutreachEmail: services link", () => {
+  it("points to the services page above the booking link when given one", () => {
+    const email = buildOutreachEmail({ ...args, servicesUrl: "https://www.ucsc180dc.org/services" });
+    expect(email.text).toContain("See some of our past work: https://www.ucsc180dc.org/services");
+    expect(email.text.indexOf("past work")).toBeLessThan(email.text.indexOf("Book a discovery call"));
+    expect(email.html).toContain('<a href="https://www.ucsc180dc.org/services">services page</a>');
+  });
+  it("leaves it out when there is none", () => {
+    const email = buildOutreachEmail(args);
+    expect(email.text).not.toContain("past work");
+    expect(email.html).not.toContain("services page");
+  });
+});
+
 describe("buildOutreachEmail", () => {
   const email = buildOutreachEmail(args);
   it("keeps the subject and includes the body", () => {

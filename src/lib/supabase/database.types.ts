@@ -407,6 +407,7 @@ export interface Database {
           last_sent_at: string | null;
           owner_id: string | null;
           handled_at: string | null;
+          sender_id: string | null;
           created_by: string;
           created_at: string;
           updated_at: string;
@@ -433,6 +434,7 @@ export interface Database {
           last_sent_at?: string | null;
           owner_id?: string | null;
           handled_at?: string | null;
+          sender_id?: string | null;
           created_by: string;
           created_at?: string;
           updated_at?: string;
