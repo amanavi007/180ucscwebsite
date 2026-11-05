@@ -1,6 +1,7 @@
 import { evaluateBrakes } from "./pacing";
 import type { OutreachSettings } from "./settings";
 import type { Schedule } from "./schedule";
+import { OUTCOME_FILTERS } from "./discovery/view";
 
 export type ChipVariant = "ok" | "warn" | "bad" | "info" | "muted";
 
@@ -200,4 +201,12 @@ export function funnelCounts(prospects: { status: string }[], foundCount: number
     ["drafted", "scheduled", "sent", "replied", "booked"].map((key) => ({ key, label: STAGE_FILTERS.find((f) => f.key === key)!.label, count: filterByStage(prospects, key).length })),
   );
   return steps.map((s) => ({ ...s, href: href(s.key) }));
+}
+
+/** The number on every Companies chip: prospects by stage, plus Discovery's ready and set-aside counts. */
+export function companyStageCounts(prospects: { status: string }[], discoveryCounts: Record<string, number>): Record<string, number> {
+  const counts: Record<string, number> = Object.fromEntries(STAGE_FILTERS.map((f) => [f.key, filterByStage(prospects, f.key).length]));
+  counts.found = discoveryCounts.ready ?? 0;
+  counts.skipped = (OUTCOME_FILTERS.find((f) => f.key === "skipped")?.outcomes ?? []).reduce((sum, o) => sum + (discoveryCounts[o] ?? 0), 0);
+  return counts;
 }

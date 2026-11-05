@@ -3,6 +3,7 @@ import { Resend } from "resend";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildReplyForwardEmail } from "@/lib/email/outreach-emails";
 import { sendOutreachEmail } from "@/lib/email/outreach-send";
+import { companiesHref } from "@/lib/outreach/links";
 import { evaluateBrakes } from "@/lib/outreach/pacing";
 import { extractEmail, matchReplyToProspect } from "@/lib/outreach/replies";
 import type { WebhookDeps, WebhookEvent } from "@/lib/outreach/webhook-handler";
@@ -15,7 +16,6 @@ import {
   cancelScheduledMessages,
   execEmails,
   loadOutreachSettings,
-  OUTREACH_PORTAL_PATH,
   recentHealth,
   recordOutreachEvent,
   setOutreachSetting,
@@ -148,7 +148,7 @@ export function buildWebhookDeps(): WebhookDeps {
     forward: async (args) => {
       const to = replyForwardRecipients(await loadOutreachSettings(admin), await execEmails(admin));
       if (to.length === 0) throw new Error("No exec email addresses to forward to.");
-      const portalUrl = `${process.env.NEXT_PUBLIC_SITE_URL}${OUTREACH_PORTAL_PATH}${args.prospectId ? `?prospect=${args.prospectId}` : ""}`;
+      const portalUrl = `${process.env.NEXT_PUBLIC_SITE_URL}${companiesHref({ prospect: args.prospectId ?? undefined })}`;
       const email = buildReplyForwardEmail({
         company: args.company,
         contactName: args.contactName,

@@ -1,30 +1,8 @@
-import type { Metadata } from "next";
-import { getDiscoveryOverview } from "@/lib/data/outreach-discovery";
-import { PageHeader } from "@/components/page-header";
-import { DiscoveryWorkspace } from "./discovery-workspace";
+import { redirect } from "next/navigation";
+import { companiesHref, legacyOutreachRedirect } from "@/lib/outreach/links";
 
-export const metadata: Metadata = { title: "Admin · Outreach Discovery" };
-
-// What discovery finds changes every morning.
-export const dynamic = "force-dynamic";
-// "Find companies now" and "Add companies" read a few dozen websites in one request.
-export const maxDuration = 60;
-
-export default async function OutreachDiscoveryPage({ searchParams }: { searchParams: Promise<{ outcome?: string; page?: string; size?: string; q?: string; candidate?: string }> }) {
-  const { outcome, page, size, q, candidate } = await searchParams;
-  let overview;
-  try {
-    overview = await getDiscoveryOverview({ filter: outcome ?? "all", page, size, q, candidate });
-  } catch (error) {
-    console.error("Discovery overview failed:", error);
-    return (
-      <div className="space-y-6">
-        <PageHeader title="Discovery" description="Companies found automatically, and why some were skipped." />
-        <p className="rounded-[22px] border bg-card p-6 text-muted-foreground">
-          The discovery list didn&apos;t load. Refresh the page. If it keeps happening, the discovery table may not be set up yet: run the latest database migrations (20261103000001, 20261103000002 and 20261103000004).
-        </p>
-      </div>
-    );
-  }
-  return <DiscoveryWorkspace overview={overview} />;
+/** Discovery now lives inside Companies (the Found and Skipped chips). Old links and bookmarks still land there. */
+export default async function OutreachDiscoveryPage({ searchParams }: { searchParams: Promise<{ outcome?: string; candidate?: string }> }) {
+  const { outcome, candidate } = await searchParams;
+  redirect(legacyOutreachRedirect({ outcome, candidate }) ?? companiesHref({ stage: "found" }));
 }

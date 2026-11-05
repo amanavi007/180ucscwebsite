@@ -81,7 +81,7 @@ export async function commitImportAction(csvText: string): Promise<ActionResult 
   try {
     const imported = await insertProspects(accept, profile.id);
     await logAudit(profile.id, "outreach.import", `${imported} prospects`);
-    revalidatePath(OUTREACH_PORTAL_PATH);
+    revalidatePath(OUTREACH_PORTAL_PATH, "layout");
     return { imported };
   } catch (err) {
     if ((err as { code?: string }).code === UNIQUE_VIOLATION) {
@@ -104,7 +104,7 @@ export async function stopProspectAction(prospectId: string): Promise<ActionResu
     .not("status", "in", "(replied,booked,unsubscribed,bounced,invalid)");
   if (updateError) return { error: "That didn't save. Try again." };
   await logAudit(profile.id, "outreach.stop", prospectId);
-  revalidatePath(OUTREACH_PORTAL_PATH);
+  revalidatePath(OUTREACH_PORTAL_PATH, "layout");
   return {};
 }
 
@@ -121,7 +121,7 @@ export async function resumeProspectAction(prospectId: string): Promise<ActionRe
   const { error: updateError } = await admin.from("outreach_prospects").update(patch).eq("id", prospectId);
   if (updateError) return { error: "That didn't save. Try again." };
   await logAudit(profile.id, "outreach.resume", prospectId);
-  revalidatePath(OUTREACH_PORTAL_PATH);
+  revalidatePath(OUTREACH_PORTAL_PATH, "layout");
   return {};
 }
 
@@ -139,7 +139,7 @@ export async function doNotContactAction(prospectId: string): Promise<ActionResu
     .eq("id", prospectId);
   await recordOutreachEvent(admin, { prospectId, kind: "unsubscribed", detail: { by: "exec" } });
   await logAudit(profile.id, "outreach.do_not_contact", prospectId);
-  revalidatePath(OUTREACH_PORTAL_PATH);
+  revalidatePath(OUTREACH_PORTAL_PATH, "layout");
   return {};
 }
 
@@ -153,7 +153,7 @@ export async function regenerateDraftAction(prospectId: string): Promise<ActionR
     return { error: "Only an unsent first email can be rewritten." };
   }
   await resetForRewrite(admin, [prospectId]);
-  revalidatePath(OUTREACH_PORTAL_PATH);
+  revalidatePath(OUTREACH_PORTAL_PATH, "layout");
   return {};
 }
 
@@ -176,7 +176,7 @@ export async function regenerateDraftsAction(prospectIds: string[]): Promise<Act
   const ids = data.map((p) => p.id);
   if (ids.length === 0) return { error: "None of those can be rewritten. Only unsent first emails can." };
   await resetForRewrite(admin, ids);
-  revalidatePath(OUTREACH_PORTAL_PATH);
+  revalidatePath(OUTREACH_PORTAL_PATH, "layout");
   return { rewritten: ids.length };
 }
 
@@ -194,7 +194,7 @@ export async function runPrepareNowAction(): Promise<ActionResult & { result?: P
   if (error) return { error };
   try {
     const result = await runPrepare(await buildPrepareDeps());
-    revalidatePath(OUTREACH_PORTAL_PATH);
+    revalidatePath(OUTREACH_PORTAL_PATH, "layout");
     return { result };
   } catch (err) {
     console.error("outreach prepare (manual) failed:", err);
@@ -219,7 +219,6 @@ export async function runSendTestNowAction(): Promise<ActionResult & { sent?: nu
   }
 }
 
-const DISCOVERY_PORTAL_PATH = `${OUTREACH_PORTAL_PATH}/discovery`;
 
 /** Looks at a handful of companies now instead of waiting for the 6am run. Works even while the daily job is switched off. */
 export async function runDiscoveryNowAction(): Promise<ActionResult & { result?: DiscoveryResult }> {
@@ -229,8 +228,7 @@ export async function runDiscoveryNowAction(): Promise<ActionResult & { result?:
     const deps = await buildDiscoveryDeps();
     // A manual run is a deliberate request: ignore the on/off switch, but keep it short enough for one request.
     const result = await runDiscovery({ ...deps, enabled: true, maxAttempts: 25, budgetMs: 45_000 });
-    revalidatePath(DISCOVERY_PORTAL_PATH);
-    revalidatePath(OUTREACH_PORTAL_PATH);
+    revalidatePath(OUTREACH_PORTAL_PATH, "layout");
     return { result };
   } catch (err) {
     console.error("outreach discovery (manual) failed:", err);
@@ -297,8 +295,7 @@ export async function addCandidateEmailAction(candidateId: string, rawEmail: str
   }
   if ("duplicate" in promoted) return { error: "That address is already a prospect." };
   await logAudit(profile.id, "outreach.discovery_email", `${prospect.company} ${email}`);
-  revalidatePath(DISCOVERY_PORTAL_PATH);
-  revalidatePath(OUTREACH_PORTAL_PATH);
+  revalidatePath(OUTREACH_PORTAL_PATH, "layout");
   return {};
 }
 
@@ -328,7 +325,6 @@ export async function notDuplicateAction(candidateId: string): Promise<ActionRes
     if (record.outcome === "duplicate") return { error: record.reason ?? "It is still known." };
     await admin.from("outreach_discovery_candidates").update({ ...recordToRow(record), attempts: 0 }).eq("id", row.id);
     await logAudit(profile.id, "outreach.not_duplicate", row.company);
-    revalidatePath(DISCOVERY_PORTAL_PATH);
     return record.outcome === "ready" ? {} : { error: `Checked again: ${record.reason ?? record.outcome}` };
   } catch (err) {
     console.error("not duplicate failed:", err);
@@ -355,7 +351,6 @@ export async function addCompanyListAction(text: string): Promise<ActionResult &
   if (leads.length === 0) return { error: errors[0]?.message ?? "No companies found in that list.", problems: errors };
   try {
     const result = await stageLeads(leads, await buildDiscoveryDeps(), { concurrency: 5, budgetMs: 45_000 });
-    revalidatePath(DISCOVERY_PORTAL_PATH);
     return { ...result, problems: errors };
   } catch (err) {
     console.error("outreach company list failed:", err);
@@ -477,7 +472,7 @@ export async function updateOutreachSettingsAction(input: OutreachSettingsInput)
     return { error: "The settings didn't save. Try again." };
   }
   await logAudit(profile.id, "outreach.settings", `mode ${input.mode}${input.paused ? ", paused" : ""}`);
-  revalidatePath(OUTREACH_PORTAL_PATH);
+  revalidatePath(OUTREACH_PORTAL_PATH, "layout");
   return {};
 }
 

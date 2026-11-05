@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STAGE_FILTERS, filterByStage, funnelCounts, isDiscoveryStage, needsYouItems, nicheOptions, normalizeStage, senderState, stageChip, todaySends } from "./view";
+import { STAGE_FILTERS, companyStageCounts, filterByStage, funnelCounts, isDiscoveryStage, needsYouItems, nicheOptions, normalizeStage, senderState, stageChip, todaySends } from "./view";
 import type { Schedule } from "./schedule";
 import { DEFAULT_OUTREACH_SETTINGS } from "./settings";
 
@@ -175,5 +175,15 @@ describe("funnelCounts", () => {
     const f = funnelCounts([{ status: "replied" }, { status: "sent" }, { status: "follow_up_1" }, { status: "booked" }], 1141);
     expect(f.map((x) => [x.key, x.count])).toEqual([["found", 1141], ["drafted", 0], ["scheduled", 0], ["sent", 2], ["replied", 1], ["booked", 1]]);
     expect(f[0].href).toBe("/portal/admin/outreach/companies?stage=found");
+  });
+});
+
+describe("companyStageCounts", () => {
+  it("counts prospect stages, found as ready candidates and skipped as everything set aside", () => {
+    const c = companyStageCounts([{ status: "replied" }, { status: "sent" }], { ready: 12, added: 5, duplicate: 3, no_email: 4, failed: 1 });
+    expect(c).toMatchObject({ all: 2, "needs-you": 1, replied: 1, sent: 1, found: 12, skipped: 8 });
+  });
+  it("is zero for Discovery stages when discovery has no counts", () => {
+    expect(companyStageCounts([], {})).toMatchObject({ found: 0, skipped: 0, all: 0 });
   });
 });

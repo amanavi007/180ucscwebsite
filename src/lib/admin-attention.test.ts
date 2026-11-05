@@ -100,7 +100,7 @@ describe("outreach attention items", () => {
   it("adds an item for replies waiting", () => {
     const items = buildAttentionItems({ ...base, outreachReplies: 2 });
     expect(items).toEqual([
-      { kind: "outreach-replies", label: "2 outreach replies are waiting for an exec", actionLabel: "Open outreach", href: "/portal/admin/outreach?stage=needs-you" },
+      { kind: "outreach-replies", label: "2 outreach replies are waiting for an exec", actionLabel: "Open outreach", href: "/portal/admin/outreach/companies?stage=needs-you" },
     ]);
   });
   it("adds an item for prospects that need a look, singular and plural", () => {

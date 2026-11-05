@@ -57,7 +57,7 @@ export default async function OutreachSchedulePage() {
           </div>
           <div>
             <dt className="text-muted-foreground">
-              Need you, <Link href="/portal/admin/outreach" className="text-link underline-offset-2 hover:underline">see Pipeline</Link>
+              Need you, <Link href="/portal/admin/outreach/companies?stage=needs-you" className="text-link underline-offset-2 hover:underline">see Companies</Link>
             </dt>
             <dd className="font-heading text-2xl tabular-nums">{schedule.needsAttention}</dd>
           </div>

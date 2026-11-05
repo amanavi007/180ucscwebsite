@@ -3,8 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { regenerateDraftsAction, runPrepareNowAction, runSendTestNowAction } from "@/actions/outreach";
-import { FilterChip } from "@/components/filter-chip";
+import { regenerateDraftsAction, runDiscoveryNowAction, runPrepareNowAction } from "@/actions/outreach";
 import { ListSearch } from "@/components/list-search";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -12,35 +11,38 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { OutreachOverview, ProspectView } from "@/lib/data/outreach";
+import type { DiscoveryOverview } from "@/lib/data/outreach-discovery";
 import { useFilteredList } from "@/lib/use-filtered-list";
-import { STAGE_FILTERS, filterByStage, formatWhen, nicheOptions, stageChip } from "@/lib/outreach/view";
+import { filterByStage, formatWhen, isDiscoveryStage, nicheOptions, stageChip } from "@/lib/outreach/view";
 import { cn } from "@/lib/utils";
-import { HealthStrip } from "./health-strip";
-import { ImportDialog } from "./import-dialog";
+import { ImportDialog } from "../import-dialog";
+import { CompanyListDialog } from "./company-list-dialog";
+import { DiscoveryList } from "./discovery-list";
 import { ProspectPanel } from "./prospect-panel";
+import { StageBar } from "./stage-bar";
 
 const SEARCH_FIELDS: ((p: ProspectView) => string)[] = [(p) => p.company, (p) => p.contactName ?? "", (p) => p.contactEmail];
 
-const SKIP_MESSAGES: Record<string, string> = {
-  nothing_due: "No drafts are ready to send. Generate drafts first.",
-  no_test_recipient: "No test inbox yet. Save the mode again in Settings.",
-  paused: "Outreach is paused. Unpause it in Settings.",
+const SKIPPED_MESSAGES: Record<string, string> = {
+  target_met: "Today's target is already met.",
+  backlog_full: "Too many prospects are still waiting to be sent, so discovery is holding off.",
+  disabled: "Discovery is switched off.",
 };
 
 /** An unsent first email: the only kind that can be rewritten. */
 const canRewrite = (p: ProspectView) => p.step === 0 && ["drafted", "needs_attention"].includes(p.status);
 
-/** The prospect list with filters, the health strip above it, and the panel beside it. */
-export function OutreachWorkspace({ overview }: { overview: OutreachOverview }) {
+/** Every company in one place: stage chips on top, the list below, and the panel beside it. Found and Skipped show Discovery's candidates. */
+export function CompaniesWorkspace({ overview, discovery, stage, counts }: { overview: OutreachOverview; discovery: DiscoveryOverview | null; stage: string; counts: Record<string, number> }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
   const [importOpen, setImportOpen] = useState(false);
+  const [listOpen, setListOpen] = useState(false);
   const [niche, setNiche] = useState("");
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
 
-  const stage = params.get("stage") ?? "all";
   const selectedId = params.get("prospect");
 
   function setParam(key: string, value: string | null) {
@@ -53,10 +55,6 @@ export function OutreachWorkspace({ overview }: { overview: OutreachOverview }) 
 
   const { query, setQuery, filtered: searched } = useFilteredList<ProspectView>(overview.prospects, SEARCH_FIELDS);
   const niches = useMemo(() => nicheOptions(overview.prospects), [overview.prospects]);
-  const counts = useMemo(
-    () => Object.fromEntries(STAGE_FILTERS.map((f) => [f.key, filterByStage(overview.prospects, f.key).length])),
-    [overview.prospects],
-  );
   const visible = useMemo(
     () => filterByStage(searched, stage).filter((p) => !niche || p.niche === niche),
     [searched, stage, niche],
@@ -104,34 +102,35 @@ export function OutreachWorkspace({ overview }: { overview: OutreachOverview }) 
     });
   }
 
-  function onSendTest() {
+  function onFindNow() {
     startTransition(async () => {
-      const result = await runSendTestNowAction();
-      if (result.error) toast.error(result.error);
-      else if (result.sent) toast.success(`Sent ${result.sent} test email${result.sent === 1 ? "" : "s"}. Check your inbox.`);
-      else toast.message(SKIP_MESSAGES[result.skipped ?? ""] ?? "Nothing was sent.");
+      const result = await runDiscoveryNowAction();
+      if (result.error) return void toast.error(result.error);
+      const r = result.result;
+      if (r?.skipped) toast.message(SKIPPED_MESSAGES[r.skipped] ?? "Nothing to do right now.");
+      else if (r) toast.success(`Looked at ${r.evaluated} companies and added ${r.added}.`);
+      router.refresh();
     });
   }
-
-  const testMode = overview.settings.mode === "self_only" || overview.settings.mode === "exec_only";
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Outreach"
-        description={`${overview.prospects.length} prospects · emails go out slowly from the team address, and every reply is forwarded to all execs.`}
+        title="Companies"
+        description="Every company, from found to booked. Replies are forwarded to all execs."
         actions={
           <>
             <Button variant="outline" size="lg" onClick={onGenerate} disabled={isPending || overview.settings.mode === "off"}>
               Generate drafts
             </Button>
-            {testMode && (
-              <Button variant="outline" size="lg" onClick={onSendTest} disabled={isPending}>
-                Send test emails
-              </Button>
-            )}
-            <Button size="lg" onClick={() => setImportOpen(true)}>
-              Import prospects
+            <Button variant="outline" size="lg" onClick={onFindNow} disabled={isPending}>
+              Find companies now
+            </Button>
+            <Button variant="outline" size="lg" onClick={() => setImportOpen(true)}>
+              Import a CSV
+            </Button>
+            <Button size="lg" onClick={() => setListOpen(true)}>
+              Add companies
             </Button>
           </>
         }
@@ -140,19 +139,21 @@ export function OutreachWorkspace({ overview }: { overview: OutreachOverview }) 
         <p className="text-sm text-muted-foreground">Generate drafts is disabled while outreach is off. Change the mode in Settings.</p>
       )}
 
-      <HealthStrip overview={overview} />
+      <StageBar stage={stage} counts={counts} />
 
+      {isDiscoveryStage(stage) ? (
+        discovery ? (
+          <DiscoveryList key={stage} overview={discovery} stage={stage} />
+        ) : (
+          <p className="rounded-[22px] border bg-card p-6 text-muted-foreground">
+            Discovery&apos;s list didn&apos;t load. Refresh the page. If it keeps happening, run the latest database migrations (20261103000001, 20261103000002 and 20261103000004).
+          </p>
+        )
+      ) : (
       <div className={cn("grid items-start gap-6", selected && "xl:grid-cols-[minmax(0,1fr)_420px]")}>
         <div className="min-w-0 space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             <ListSearch value={query} onChange={setQuery} placeholder="Search company or contact..." className="w-64" />
-            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by stage">
-              {STAGE_FILTERS.map((f) => (
-                <FilterChip key={f.key} selected={stage === f.key} onClick={() => setParam("stage", f.key)} count={counts[f.key]}>
-                  {f.label}
-                </FilterChip>
-              ))}
-            </div>
             {niches.length > 0 && (
               <label className="flex items-center gap-2 text-sm text-muted-foreground">
                 Niche
@@ -265,7 +266,10 @@ export function OutreachWorkspace({ overview }: { overview: OutreachOverview }) 
         )}
       </div>
 
+      )}
+
       <ImportDialog open={importOpen} onOpenChange={setImportOpen} />
+      <CompanyListDialog open={listOpen} onOpenChange={setListOpen} />
     </div>
   );
 }

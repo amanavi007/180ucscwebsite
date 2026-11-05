@@ -1,31 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { addCandidateEmailAction, notDuplicateAction, runDiscoveryNowAction } from "@/actions/outreach";
+import { addCandidateEmailAction, notDuplicateAction } from "@/actions/outreach";
 import { FilterChip } from "@/components/filter-chip";
 import { ListSearch } from "@/components/list-search";
-import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { DiscoveryOverview } from "@/lib/data/outreach-discovery";
-import { OUTCOME_FILTERS, PAGE_SIZES, countsByFilter, outcomeChip, type CandidateView } from "@/lib/outreach/discovery/view";
-import { CompanyListDialog } from "./company-list-dialog";
+import { PAGE_SIZES, outcomeChip, type CandidateView } from "@/lib/outreach/discovery/view";
+import { companiesHref } from "@/lib/outreach/links";
 import { formatWhen } from "@/lib/outreach/view";
 import { cn } from "@/lib/utils";
 
-const PIPELINE_PATH = "/portal/admin/outreach";
-
-const SKIPPED_MESSAGES: Record<string, string> = {
-  target_met: "Today's target is already met.",
-  backlog_full: "Too many prospects are still waiting to be sent, so discovery is holding off.",
-  disabled: "Discovery is switched off.",
-};
 
 function lastRun(iso: string | null): string {
   if (!iso) return "Not yet";
@@ -33,15 +25,13 @@ function lastRun(iso: string | null): string {
 }
 
 /** What discovery is doing today, the companies it has looked at, and why each was or wasn't added. */
-export function DiscoveryWorkspace({ overview }: { overview: DiscoveryOverview }) {
+export function DiscoveryList({ overview, stage }: { overview: DiscoveryOverview; stage: "found" | "skipped" }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const [isPending, startTransition] = useTransition();
   const [navPending, startNav] = useTransition();
   const { settings, summary } = overview;
 
-  const outcome = params.get("outcome") ?? "all";
   const selectedId = params.get("candidate");
 
   /** Changes address-bar settings. Anything that changes which companies are listed also goes back to page 1. */
@@ -65,9 +55,7 @@ export function DiscoveryWorkspace({ overview }: { overview: DiscoveryOverview }
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
-  const counts = useMemo(() => countsByFilter(overview.counts), [overview.counts]);
   const visible = overview.candidates;
-  const [listOpen, setListOpen] = useState(false);
   const selected = overview.selected;
   const firstRow = overview.total === 0 ? 0 : (overview.page - 1) * overview.size + 1;
   const lastRow = Math.min(overview.total, overview.page * overview.size);
@@ -80,34 +68,8 @@ export function DiscoveryWorkspace({ overview }: { overview: DiscoveryOverview }
       ? { label: "Holding off", variant: "warn" as const, detail: `${overview.backlog} prospects are still waiting to be sent.` }
       : { label: "On", variant: "ok" as const, detail: "Runs every morning around 6am." };
 
-  function onFindNow() {
-    startTransition(async () => {
-      const result = await runDiscoveryNowAction();
-      if (result.error) return void toast.error(result.error);
-      const r = result.result;
-      if (r?.skipped) toast.message(SKIPPED_MESSAGES[r.skipped] ?? "Nothing to do right now.");
-      else if (r) toast.success(`Looked at ${r.evaluated} companies and added ${r.added}.`);
-      router.refresh();
-    });
-  }
-
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Discovery"
-        description="Finds companies that fit, reads their own websites, and adds the ones that publish an email. Nothing here sends an email."
-        actions={
-          <>
-            <Button variant="outline" size="lg" onClick={() => setListOpen(true)}>
-              Add companies
-            </Button>
-            <Button size="lg" onClick={onFindNow} disabled={isPending}>
-              {isPending ? "Looking..." : "Find companies now"}
-            </Button>
-          </>
-        }
-      />
-
       <section aria-label="Discovery status" className="grid gap-x-8 gap-y-5 rounded-[22px] border bg-card p-5 sm:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))]">
         <div>
           <p className="text-sm text-muted-foreground">Discovery</p>
@@ -134,21 +96,12 @@ export function DiscoveryWorkspace({ overview }: { overview: DiscoveryOverview }
         </div>
       </section>
 
-      <CompanyListDialog open={listOpen} onOpenChange={setListOpen} />
-
       <div className={cn("grid items-start gap-6", selected && "xl:grid-cols-[minmax(0,1fr)_420px]")}>
         <div className={cn("min-w-0 space-y-4 transition-opacity", navPending && "opacity-60")} aria-busy={navPending}>
           <div className="flex flex-wrap items-center gap-3">
             <ListSearch value={query} onChange={setQuery} placeholder="Search company or email..." className="w-64" />
-            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by result">
-              {OUTCOME_FILTERS.map((f) => (
-                <FilterChip key={f.key} selected={outcome === f.key} onClick={() => setParam("outcome", f.key)} count={counts[f.key]}>
-                  {f.label}
-                </FilterChip>
-              ))}
-            </div>
           </div>
-          {outcome === "skipped" && (
+          {stage === "skipped" && (
             <p className="text-sm text-muted-foreground">
               Companies discovery set aside. &quot;Retrying&quot; ones it is still working on by itself; &quot;Gave up&quot; ones had no working website or no public email. Nothing to do here. Open one to add an email yourself, or to overrule &quot;Already known&quot;.
             </p>
@@ -169,9 +122,9 @@ export function DiscoveryWorkspace({ overview }: { overview: DiscoveryOverview }
                   <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
                     {overview.search
                       ? "No one matches that."
-                      : outcome === "all"
-                        ? "Nothing yet. Turn discovery on in Settings, press Find companies now, or add a list of companies."
-                        : "Nothing with that result."}
+                      : stage === "found"
+                        ? "No companies are waiting. Turn discovery on in Settings, press Find companies now, or add a list of companies."
+                        : "Nothing has been set aside."}
                   </TableCell>
                 </TableRow>
               )}
@@ -320,8 +273,8 @@ function CandidatePanel({ candidate, onClose }: { candidate: CandidateView; onCl
 
       {candidate.prospectId && (
         <p className="text-sm">
-          <Link href={`${PIPELINE_PATH}?prospect=${candidate.prospectId}`} className="text-link underline-offset-4 hover:underline">
-            Open this prospect in the pipeline
+          <Link href={companiesHref({ prospect: candidate.prospectId })} className="text-link underline-offset-4 hover:underline">
+            Open this prospect in Companies
           </Link>
           <span className="text-muted-foreground"> to see the facts the email will be based on.</span>
         </p>
@@ -360,8 +313,8 @@ function NotDuplicate({ candidate }: { candidate: CandidateView }) {
 /** For a company with no published email: a person finds one (team page, LinkedIn) and adds it. */
 function AddEmailForm({ candidate }: { candidate: CandidateView }) {
   const router = useRouter();
-  const [email, setEmail] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [email, setEmail] = useState("");
   const search = `https://www.google.com/search?q=${encodeURIComponent(`${candidate.company} founder contact email`)}`;
   const directory = candidate.sourceRef ? `https://www.ycombinator.com/companies/${candidate.sourceRef}` : null;
 

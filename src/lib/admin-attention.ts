@@ -1,3 +1,4 @@
+import { companiesHref } from "./outreach/links";
 import { withQuarterParam } from "./admin-nav";
 
 export type AttentionKind =
@@ -66,7 +67,7 @@ export function buildAttentionItems(counts: AttentionCounts): AttentionItem[] {
       kind: "outreach-replies",
       label: `${plural(counts.outreachReplies, "outreach reply is", "outreach replies are")} waiting for an exec`,
       actionLabel: "Open outreach",
-      href: "/portal/admin/outreach?stage=needs-you",
+      href: companiesHref({ stage: "needs-you" }),
     });
   }
   if (counts.outreachNeedsAttention && counts.outreachNeedsAttention > 0) {
@@ -74,7 +75,7 @@ export function buildAttentionItems(counts: AttentionCounts): AttentionItem[] {
       kind: "outreach-attention",
       label: `${plural(counts.outreachNeedsAttention, "outreach prospect needs", "outreach prospects need")} a look`,
       actionLabel: "Open outreach",
-      href: "/portal/admin/outreach?stage=needs-you",
+      href: companiesHref({ stage: "needs-you" }),
     });
   }
 
