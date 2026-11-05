@@ -63,6 +63,25 @@ Sending pauses itself, and execs are emailed, if bounces pass 2% (at least 2), i
 3. **Pilot.** Mode > *Live* with 10 to 20 prospects. It starts at 5 a day. Watch the health strip on the Outreach page daily: bounce rate and spam complaints should stay at zero or close to it.
 4. **Ramp.** After two weeks the limit rises by 2 a day to 40. You can set a lower daily limit in Settings at any time, or pause.
 
+### Google Postmaster Tools
+
+Resend only shows what Resend saw. [Postmaster Tools](https://postmaster.google.com) shows Gmail's own view of the sending domain. The root domain `ucsc180dc.org` is verified there (a TXT record named `@`), which also covers `consulting.ucsc180dc.org`.
+
+One-time setup:
+
+- [x] Add `ucsc180dc.org` and verify it with the TXT record.
+- [ ] Add a second officer's Google account as an owner, so access is not tied to one person.
+- [ ] Send a test to a Gmail address, choose Show original, and check that SPF, DKIM and DMARC all say PASS.
+
+Dashboards stay empty until a few hundred emails a day reach Gmail addresses, so in the first weeks keep watching Resend's bounce and complaint numbers instead. Once data appears, check it weekly:
+
+- **Spam rate** under 0.1% (Gmail's hard line is 0.3%; Resend pauses sending above 0.08%).
+- **Domain reputation** is High or Medium. If it drops to Low or Bad, pause sending and do not raise the limit.
+- **Authentication** stays at about 100% for SPF, DKIM and DMARC.
+- If the `consulting.` subdomain shows no data once volume is up, add it as its own entry.
+
+Before raising the daily limit above the default ramp, wait for two clean weeks: bounces under 2%, no spam reports, and reputation not falling. To send more than about 40 a day, add a second sending domain with its own warmup instead of raising the limit.
+
 ## 7. What counts as success
 
 Cold email typically gets low single-digit reply rates; well-run campaigns reach 8 to 15%. Judge this by **booked intro calls**, not emails sent. Replies, bookings and bounces are all visible per prospect in the side panel.
