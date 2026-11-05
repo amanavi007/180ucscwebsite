@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getOutreachOverview } from "@/lib/data/outreach";
 import { getDiscoveryOverview, type DiscoveryOverview } from "@/lib/data/outreach-discovery";
 import { PageHeader } from "@/components/page-header";
-import { companyStageCounts, isDiscoveryStage, normalizeStage } from "@/lib/outreach/view";
+import { companyStageCounts, filterByStage, isDiscoveryStage, normalizeStage } from "@/lib/outreach/view";
 import { CompaniesWorkspace } from "./companies-workspace";
 
 export const metadata: Metadata = { title: "Admin · Outreach Companies" };
@@ -14,8 +14,6 @@ export const maxDuration = 60;
 
 export default async function OutreachCompaniesPage({ searchParams }: { searchParams: Promise<{ stage?: string; page?: string; size?: string; q?: string; candidate?: string }> }) {
   const sp = await searchParams;
-  const stage = normalizeStage(sp.stage);
-
   let overview;
   try {
     overview = await getOutreachOverview();
@@ -30,6 +28,9 @@ export default async function OutreachCompaniesPage({ searchParams }: { searchPa
       </div>
     );
   }
+
+  // With no stage in the address, open on Needs you, or on All when nothing needs a person.
+  const stage = sp.stage ? normalizeStage(sp.stage) : filterByStage(overview.prospects, "needs-you").length > 0 ? "needs-you" : "all";
 
   // Discovery's tables may be missing or slow: the prospect list must still open, so a failure just empties those two chips.
   let discovery: DiscoveryOverview | null = null;
