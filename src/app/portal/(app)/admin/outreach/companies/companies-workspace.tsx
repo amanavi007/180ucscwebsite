@@ -6,12 +6,14 @@ import { toast } from "sonner";
 import { regenerateDraftsAction, runDiscoveryNowAction, runPrepareNowAction } from "@/actions/outreach";
 import { ListSearch } from "@/components/list-search";
 import { PageHeader } from "@/components/page-header";
+import { Pager } from "@/components/pager";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { OutreachOverview, ProspectView } from "@/lib/data/outreach";
 import type { DiscoveryOverview } from "@/lib/data/outreach-discovery";
+import { pageRows, parsePage, parsePageSize, PAGE_SIZES } from "@/lib/paging";
 import { useFilteredList } from "@/lib/use-filtered-list";
 import { filterByStage, formatWhen, isDiscoveryStage, nicheOptions, stageChip } from "@/lib/outreach/view";
 import { cn } from "@/lib/utils";
@@ -45,22 +47,36 @@ export function CompaniesWorkspace({ overview, discovery, stage, counts }: { ove
 
   const selectedId = params.get("prospect");
 
-  function setParam(key: string, value: string | null) {
+  /** Changes address-bar settings. Anything that changes which companies are listed also goes back to page 1. */
+  function setParams(changes: Record<string, string | null>) {
     const next = new URLSearchParams(params.toString());
-    if (value && value !== "all") next.set(key, value);
-    else next.delete(key);
+    for (const [key, value] of Object.entries(changes)) {
+      if (value && value !== "all") next.set(key, value);
+      else next.delete(key);
+    }
+    if (!("page" in changes) && !("prospect" in changes)) next.delete("page");
     const query = next.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }
+  const setParam = (key: string, value: string | null) => setParams({ [key]: value });
 
-  const { query, setQuery, filtered: searched } = useFilteredList<ProspectView>(overview.prospects, SEARCH_FIELDS);
+  const { query, setQuery: setQueryRaw, filtered: searched } = useFilteredList<ProspectView>(overview.prospects, SEARCH_FIELDS);
+  const setQuery = (value: string) => {
+    setQueryRaw(value);
+    if (params.get("page")) setParams({ page: null });
+  };
   const niches = useMemo(() => nicheOptions(overview.prospects), [overview.prospects]);
   const visible = useMemo(
     () => filterByStage(searched, stage).filter((p) => !niche || p.niche === niche),
     [searched, stage, niche],
   );
 
-  const rewritable = useMemo(() => visible.filter(canRewrite).map((p) => p.id), [visible]);
+  // Only one page of rows is ever drawn: 700 rows at once makes the page slow.
+  const size = parsePageSize(params.get("size"));
+  const page = parsePage(params.get("page"), visible.length, size);
+  const shown = useMemo(() => pageRows(visible, page, size), [visible, page, size]);
+
+  const rewritable = useMemo(() => shown.filter(canRewrite).map((p) => p.id), [shown]);
   const checkedIds = [...checked].filter((id) => overview.prospects.some((p) => p.id === id && canRewrite(p)));
   const allChecked = rewritable.length > 0 && rewritable.every((id) => checked.has(id));
 
@@ -159,7 +175,10 @@ export function CompaniesWorkspace({ overview, discovery, stage, counts }: { ove
                 Niche
                 <select
                   value={niche}
-                  onChange={(e) => setNiche(e.target.value)}
+                  onChange={(e) => {
+                    setNiche(e.target.value);
+                    if (params.get("page")) setParams({ page: null });
+                  }}
                   className="h-8 rounded-[10px] border border-input bg-card px-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <option value="">All</option>
@@ -212,7 +231,7 @@ export function CompaniesWorkspace({ overview, discovery, stage, counts }: { ove
                   </TableCell>
                 </TableRow>
               )}
-              {visible.map((p) => {
+              {shown.map((p) => {
                 const chip = stageChip(p.status);
                 const isSelected = p.id === selectedId;
                 return (
@@ -252,6 +271,13 @@ export function CompaniesWorkspace({ overview, discovery, stage, counts }: { ove
               })}
             </TableBody>
           </Table>
+
+          <Pager
+            total={visible.length}
+            page={page}
+            size={size}
+            onChange={(c) => setParams(c.size !== undefined ? { size: c.size === PAGE_SIZES[0] ? null : String(c.size) } : { page: String(c.page) })}
+          />
         </div>
 
         {selected && (

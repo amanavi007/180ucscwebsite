@@ -71,6 +71,7 @@ Rules:
   - Nothing in the portal scrolls sideways except a wide table, which scrolls inside its own card.
   - Panels and lists inside a dialog (previews, error lists, results) get their own `max-h-` and `overflow-auto`.
   - Never use `field-sizing-content` on anything without a `max-h-` next to it.
+  - Long lists page. Any list that can pass 50 rows (companies, people, applicants, log lines) shows one page at a time with the shared `Pager` (`src/components/pager.tsx`: 50, 100 or 250 per page, page and size in the address bar, helpers in `src/lib/paging.ts`). Never draw hundreds of rows at once: it makes the page slow. The guard test in `src/lib/paging.test.ts` fails when an outreach list table has no `Pager`.
   - A page built later must be tested with a very long paste (500 lines) before it is called done. The buttons must still be on screen.
 
 ## 5. Components (reuse these, don't restyle)

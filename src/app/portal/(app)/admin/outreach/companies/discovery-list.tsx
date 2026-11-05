@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { addCandidateEmailAction, notDuplicateAction } from "@/actions/outreach";
-import { FilterChip } from "@/components/filter-chip";
+import { Pager } from "@/components/pager";
 import { ListSearch } from "@/components/list-search";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,8 @@ import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { DiscoveryOverview } from "@/lib/data/outreach-discovery";
-import { PAGE_SIZES, outcomeChip, type CandidateView } from "@/lib/outreach/discovery/view";
+import { PAGE_SIZES } from "@/lib/paging";
+import { outcomeChip, type CandidateView } from "@/lib/outreach/discovery/view";
 import { companiesHref } from "@/lib/outreach/links";
 import { formatWhen } from "@/lib/outreach/view";
 import { cn } from "@/lib/utils";
@@ -57,9 +58,6 @@ export function DiscoveryList({ overview, stage }: { overview: DiscoveryOverview
   }, [query]);
   const visible = overview.candidates;
   const selected = overview.selected;
-  const firstRow = overview.total === 0 ? 0 : (overview.page - 1) * overview.size + 1;
-  const lastRow = Math.min(overview.total, overview.page * overview.size);
-  const lastPage = Math.max(1, Math.ceil(overview.total / overview.size));
 
   const full = overview.backlog > overview.backlogLimit;
   const state = !settings.discoveryEnabled
@@ -161,32 +159,13 @@ export function DiscoveryList({ overview, stage }: { overview: DiscoveryOverview
             </TableBody>
           </Table>
 
-          <nav aria-label="Pages" className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-muted-foreground tabular-nums">
-              {overview.total === 0 ? "No companies" : `${firstRow.toLocaleString()}–${lastRow.toLocaleString()} of ${overview.total.toLocaleString()}`}
-            </p>
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-              <div className="flex items-center gap-1.5" role="group" aria-label="Companies per page">
-                <span className="text-sm text-muted-foreground">Per page</span>
-                {PAGE_SIZES.map((n) => (
-                  <FilterChip key={n} selected={overview.size === n} onClick={() => setParams({ size: n === PAGE_SIZES[0] ? null : String(n) })}>
-                    {n}
-                  </FilterChip>
-                ))}
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" disabled={navPending || overview.page <= 1} onClick={() => setParams({ page: String(overview.page - 1) })}>
-                  Previous
-                </Button>
-                <span className="text-sm tabular-nums">
-                  Page {overview.page} of {lastPage}
-                </span>
-                <Button variant="outline" size="sm" disabled={navPending || overview.page >= lastPage} onClick={() => setParams({ page: String(overview.page + 1) })}>
-                  Next
-                </Button>
-              </div>
-            </div>
-          </nav>
+          <Pager
+            total={overview.total}
+            page={overview.page}
+            size={overview.size}
+            pending={navPending}
+            onChange={(c) => setParams(c.size !== undefined ? { size: c.size === PAGE_SIZES[0] ? null : String(c.size) } : { page: String(c.page) })}
+          />
         </div>
 
         {selected && <CandidatePanel key={selected.id} candidate={selected} onClose={() => setParam("candidate", null)} />}

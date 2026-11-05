@@ -49,21 +49,8 @@ export const OUTCOME_FILTERS: { key: string; label: string; outcomes: string[] }
 /** Every outcome the database can hold, for counting. */
 export const ALL_OUTCOMES = ["ready", "added", "duplicate", "no_email", "unreachable", "no_facts", "error", "failed", "retired"];
 
-export const PAGE_SIZES = [50, 100, 250];
-export const DEFAULT_PAGE_SIZE = 50;
-
-/** A page size from the address bar, falling back to the default for anything else. */
-export function parsePageSize(value: string | null | undefined): number {
-  const n = Number(value);
-  return PAGE_SIZES.includes(n) ? n : DEFAULT_PAGE_SIZE;
-}
-
-/** A 1-based page number from the address bar, clamped to the pages that exist. */
-export function parsePage(value: string | null | undefined, total: number, size: number): number {
-  const last = Math.max(1, Math.ceil(total / size));
-  const n = Math.floor(Number(value));
-  return Number.isFinite(n) && n >= 1 ? Math.min(n, last) : 1;
-}
+// Paging lives in one shared place; re-exported so discovery code keeps its imports.
+export { DEFAULT_PAGE_SIZE, PAGE_SIZES, parsePage, parsePageSize } from "@/lib/paging";
 
 /** The database outcomes a filter covers; null means no narrowing (All, or a key we do not know). */
 export function outcomesForFilter(key: string): string[] | null {
