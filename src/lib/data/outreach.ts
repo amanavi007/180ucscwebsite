@@ -708,6 +708,7 @@ export interface MessageView {
   scheduledFor: string | null;
   sentAt: string | null;
   error: string | null;
+  createdAt: string;
 }
 
 export interface ReplyView {
@@ -801,6 +802,7 @@ export async function getOutreachOverview(now = new Date()): Promise<OutreachOve
       scheduledFor: m.scheduled_for,
       sentAt: m.sent_at,
       error: m.error,
+      createdAt: m.created_at,
     })),
     replies: (replies.data ?? []).map((r) => ({
       id: r.id,

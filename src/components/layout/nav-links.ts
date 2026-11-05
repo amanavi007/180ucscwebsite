@@ -194,6 +194,15 @@ export const ADMIN_NAV_LINKS: NavLink[] = [
     group: "admin-outreach",
   },
   {
+    href: "/portal/admin/outreach/schedule",
+    label: "Outreach Schedule",
+    viewLabel: "Schedule",
+    icon: CalendarClock,
+    execOnly: true,
+    keywords: "outreach schedule what sends today tomorrow upcoming queue next emails planned follow ups calendar",
+    group: "admin-outreach",
+  },
+  {
     href: "/portal/admin/outreach/discovery",
     label: "Outreach Discovery",
     viewLabel: "Discovery",
