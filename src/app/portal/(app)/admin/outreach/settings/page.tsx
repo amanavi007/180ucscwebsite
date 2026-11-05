@@ -5,7 +5,6 @@ import { getAgentOverview } from "@/lib/data/outreach-agent";
 import { getTeamPageAdminRows } from "@/lib/data/team-page";
 import { roleLabel } from "@/lib/auth/roles";
 import { sendersFromRoster } from "@/lib/outreach/senders";
-import { PageHeader } from "@/components/page-header";
 import { SettingsForm } from "./settings-form";
 
 export const metadata: Metadata = { title: "Admin · Outreach Settings" };
@@ -34,10 +33,7 @@ export default async function OutreachSettingsPage() {
       return [];
     });
   return (
-    <div className="space-y-6">
-      <PageHeader title="Outreach settings" description="How fast emails go out, when, and what they say at the bottom." />
-      <SettingsForm settings={settings} agent={agent} roster={roster} />
-    </div>
+    <SettingsForm settings={settings} agent={agent} roster={roster} />
   );
 }
 

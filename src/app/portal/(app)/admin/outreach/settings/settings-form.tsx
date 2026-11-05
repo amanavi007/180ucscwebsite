@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { generateAgentKeyAction, revokeAgentKeyAction, setAgentKeyAuditAction, setAgentKeyCorrectAction, updateOutreachSettingsAction } from "@/actions/outreach";
+import { generateAgentKeyAction, revokeAgentKeyAction, runSendTestNowAction, setAgentKeyAuditAction, setAgentKeyCorrectAction, updateOutreachSettingsAction } from "@/actions/outreach";
 import { useConfirm } from "@/components/confirm-dialog";
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -13,16 +14,20 @@ import { Textarea } from "@/components/ui/textarea";
 import type { OutreachMode, OutreachSettings } from "@/lib/outreach/settings";
 import { cleanLinkedin, mailboxName, type OutreachSender } from "@/lib/outreach/senders";
 import type { AgentOverview } from "@/lib/data/outreach-agent";
-import { cn } from "@/lib/utils";
 
 const SECTIONS = [
-  { key: "sending", label: "Sending" },
-  { key: "discovery", label: "Discovery" },
-  { key: "agent", label: "Research agent" },
-  { key: "pace", label: "Pace" },
-  { key: "sequence", label: "Follow-ups" },
-  { key: "sender", label: "Sender" },
+  { id: "is-it-on", label: "Is it on?" },
+  { id: "how-fast", label: "How fast?" },
+  { id: "who-sends", label: "Who sends?" },
+  { id: "follow-ups", label: "Follow-ups" },
+  { id: "finding", label: "Finding companies" },
 ] as const;
+
+const SKIP_MESSAGES: Record<string, string> = {
+  nothing_due: "No drafts are ready to send. Generate drafts first.",
+  no_test_recipient: "No test inbox yet. Save the mode again.",
+  paused: "Outreach is paused. Unpause it first.",
+};
 
 const MODES: { value: OutreachMode; label: string; description: string }[] = [
   { value: "off", label: "Off", description: "Nothing is drafted or sent." },
@@ -37,9 +42,8 @@ function when(iso: string | null): string {
   return new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(iso));
 }
 
-/** Outreach settings: sections on the left, one at a time on the right, saved together with one button. */
+/** Outreach settings: one card per plain question, saved together with one button. */
 export function SettingsForm({ settings, agent, roster }: { settings: OutreachSettings; agent: AgentOverview; roster: OutreachSender[] }) {
-  const [section, setSection] = useState<(typeof SECTIONS)[number]["key"]>("sending");
   const [mode, setMode] = useState<OutreachMode>(settings.mode);
   const [paused, setPaused] = useState(settings.paused);
   const [dailyCap, setDailyCap] = useState(settings.dailyCapOverride === null ? "" : String(settings.dailyCapOverride));
@@ -115,6 +119,15 @@ export function SettingsForm({ settings, agent, roster }: { settings: OutreachSe
     toast.success("Execs from the roster added.");
   }
 
+  function onSendTest() {
+    startTransition(async () => {
+      const result = await runSendTestNowAction();
+      if (result.error) toast.error(result.error);
+      else if (result.sent) toast.success(`Sent ${result.sent} test email${result.sent === 1 ? "" : "s"}. Check your inbox.`);
+      else toast.message(SKIP_MESSAGES[result.skipped ?? ""] ?? "Nothing was sent.");
+    });
+  }
+
   function onGenerateKey() {
     startTransition(async () => {
       const result = await generateAgentKeyAction(keyLabel, keyAudit);
@@ -164,29 +177,36 @@ export function SettingsForm({ settings, agent, roster }: { settings: OutreachSe
   }
 
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-[200px_minmax(0,1fr)]">
-      <nav aria-label="Settings sections" className="flex gap-1.5 lg:flex-col">
-        {SECTIONS.map((s) => (
-          <button
-            key={s.key}
-            type="button"
-            aria-current={section === s.key ? "page" : undefined}
-            onClick={() => setSection(s.key)}
-            className={cn(
-              "rounded-[10px] px-3.5 py-2 text-left text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              section === s.key ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {s.label}
-          </button>
-        ))}
-      </nav>
+    <div className="space-y-6">
+      <PageHeader
+        title="Outreach settings"
+        description="Read top to bottom. Each box answers one plain question."
+        actions={
+          <Button size="lg" onClick={onSave} disabled={isPending}>
+            Save changes
+          </Button>
+        }
+      />
+      <div className="grid items-start gap-6 lg:grid-cols-[200px_minmax(0,1fr)]">
+        <nav aria-label="Settings sections" className="flex flex-wrap gap-1.5 lg:sticky lg:top-6 lg:flex-col">
+          {SECTIONS.map((x) => (
+            <a
+              key={x.id}
+              href={`#${x.id}`}
+              className="rounded-[10px] px-3.5 py-2 text-sm font-semibold text-muted-foreground outline-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {x.label}
+            </a>
+          ))}
+        </nav>
 
-      <div className="space-y-6 rounded-[22px] border bg-card p-6">
-        {section === "sending" && (
-          <>
+        <div className="min-w-0 space-y-6">
+        <section id="is-it-on" aria-labelledby="is-it-on-title" className="scroll-mt-6 space-y-6 rounded-[22px] border bg-card p-6">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="is-it-on-title" className="text-xl">Is it on?</h2>
+          </div>
             <fieldset className="space-y-3">
-              <legend className="text-lg">Mode</legend>
+              <legend className="sr-only">Mode</legend>
               {MODES.map((m) => (
                 <label key={m.value} className="flex cursor-pointer items-start gap-3 rounded-2xl border p-3.5 has-[:checked]:bg-accent">
                   <input type="radio" name="outreach-mode" value={m.value} checked={mode === m.value} onChange={() => setMode(m.value)} className="mt-1" />
@@ -206,12 +226,137 @@ export function SettingsForm({ settings, agent, roster }: { settings: OutreachSe
                 </span>
               </span>
             </label>
-          </>
-        )}
-
-        {section === "discovery" && (
-          <>
-            <h2 className="text-lg">Discovery</h2>
+            {(settings.mode === "self_only" || settings.mode === "exec_only") && (
+              <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-muted p-3.5">
+                <Button type="button" variant="outline" disabled={isPending} onClick={onSendTest}>
+                  Send test emails now
+                </Button>
+                <span className="text-sm text-muted-foreground">Sends what is due to your test inbox right now, using the saved mode.</span>
+              </div>
+            )}
+        </section>
+        <section id="how-fast" aria-labelledby="how-fast-title" className="scroll-mt-6 space-y-6 rounded-[22px] border bg-card p-6">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="how-fast-title" className="text-xl">How fast?</h2>
+          </div>
+            <Field className="max-w-xs">
+              <FieldLabel htmlFor="outreach-cap">Daily limit</FieldLabel>
+              <Input id="outreach-cap" inputMode="numeric" value={dailyCap} onChange={(e) => setDailyCap(e.target.value)} placeholder="Automatic" />
+              <FieldDescription>Leave empty for the automatic ramp: 5 a day for the first week, 10 for the second, then 2 more each day up to 40. A number here overrides it (never above 100).</FieldDescription>
+            </Field>
+            <div className="flex flex-wrap gap-4">
+              <Field className="w-40">
+                <FieldLabel htmlFor="outreach-start">Send from (hour)</FieldLabel>
+                <Input id="outreach-start" inputMode="numeric" value={startHour} onChange={(e) => setStartHour(e.target.value)} />
+              </Field>
+              <Field className="w-40">
+                <FieldLabel htmlFor="outreach-end">Send until (hour)</FieldLabel>
+                <Input id="outreach-end" inputMode="numeric" value={endHour} onChange={(e) => setEndHour(e.target.value)} />
+              </Field>
+            </div>
+            <p className="text-sm text-muted-foreground">Hours are 0 to 23 in Santa Cruz time (9 and 16 means 9am to 4pm). Emails only go out on weekdays, spread across the window.</p>
+        </section>
+        <section id="who-sends" aria-labelledby="who-sends-title" className="scroll-mt-6 space-y-6 rounded-[22px] border bg-card p-6">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="who-sends-title" className="text-xl">Who sends?</h2>
+          </div>
+            <fieldset className="space-y-3">
+              <legend className="text-base font-semibold">Officers who send</legend>
+              <p className="max-w-prose text-sm text-muted-foreground">
+                Emails take turns coming from these officers, and each is signed with that officer&apos;s name, title and LinkedIn. A company hears from the same
+                officer every time. Replies still go to the shared team inbox. Turn an officer off when they step down.
+              </p>
+              <div className="max-h-[50dvh] space-y-3 overflow-y-auto pr-1">
+                {senders.length === 0 && <p className="text-sm text-muted-foreground">No officers yet. Everything is sent from the sender below. Add officers, or fill the list from the roster.</p>}
+                {senders.map((s) => (
+                  <div key={s.id} className="min-w-0 space-y-3 rounded-2xl border p-3.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <label className="flex min-w-0 items-center gap-2.5">
+                        <Checkbox checked={s.enabled} onCheckedChange={(v) => changeSender(s.id, { enabled: v === true })} />
+                        <span className="min-w-0 truncate font-semibold">{s.name.trim() || "New officer"}</span>
+                        <Badge variant={s.enabled ? "ok" : "muted"}>{s.enabled ? "Sending" : "Off"}</Badge>
+                      </label>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setSenders((list) => list.filter((x) => x.id !== s.id))}>
+                        Remove
+                      </Button>
+                    </div>
+                    <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+                      <Field className="min-w-0">
+                        <FieldLabel htmlFor={`sender-name-${s.id}`}>Full name</FieldLabel>
+                        <Input id={`sender-name-${s.id}`} value={s.name} onChange={(e) => changeSender(s.id, { name: e.target.value })} />
+                        <FieldDescription>Sends from {mailboxName(s.name) || "firstname"}@ on the outreach domain.</FieldDescription>
+                      </Field>
+                      <Field className="min-w-0">
+                        <FieldLabel htmlFor={`sender-title-${s.id}`}>Title</FieldLabel>
+                        <Input id={`sender-title-${s.id}`} value={s.title} onChange={(e) => changeSender(s.id, { title: e.target.value })} />
+                      </Field>
+                    </div>
+                    <Field className="min-w-0">
+                      <FieldLabel htmlFor={`sender-linkedin-${s.id}`}>LinkedIn link</FieldLabel>
+                      <Input
+                        id={`sender-linkedin-${s.id}`}
+                        value={s.linkedin}
+                        placeholder="https://www.linkedin.com/in/..."
+                        onChange={(e) => changeSender(s.id, { linkedin: e.target.value })}
+                        onBlur={(e) => changeSender(s.id, { linkedin: cleanLinkedin(e.target.value) || e.target.value.trim() })}
+                      />
+                      <FieldDescription>Optional. Leave empty and the signature shows only the website link.</FieldDescription>
+                    </Field>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" onClick={onAddSender}>
+                  Add an officer
+                </Button>
+                <Button type="button" variant="outline" onClick={onFillFromRoster}>
+                  Fill from the roster
+                </Button>
+              </div>
+            </fieldset>
+            <details className="rounded-2xl border p-3.5">
+              <summary className="cursor-pointer text-base font-semibold">Advanced: single sender, signature and postal address</summary>
+              <div className="mt-4 space-y-6">
+              <p className="max-w-prose text-sm text-muted-foreground">Used only while no officer above is turned on. The postal address is required by law in every commercial email.</p>
+            <Field className="max-w-md">
+              <FieldLabel htmlFor="outreach-name">Sender name</FieldLabel>
+              <Input id="outreach-name" value={senderName} onChange={(e) => setSenderName(e.target.value)} />
+              <FieldDescription>Shown at the bottom of every email. The address emails come from is set in the environment, not here.</FieldDescription>
+            </Field>
+            <Field className="max-w-md">
+              <FieldLabel htmlFor="outreach-from-name">Sent by (full name)</FieldLabel>
+              <Input id="outreach-from-name" value={fromName} placeholder="Aman Avinash" onChange={(e) => setFromName(e.target.value)} />
+              <FieldDescription>The name people see as the sender. The email address uses the first name, so &quot;Aman Avinash&quot; sends from aman@ on the outreach domain. Leave empty to send as the team.</FieldDescription>
+            </Field>
+            <Field className="max-w-md">
+              <FieldLabel htmlFor="outreach-signature">Signature</FieldLabel>
+              <Textarea id="outreach-signature" value={signature} rows={6} placeholder={"Best regards,\n\nAman Avinash\nDirector of Projects | 180 Degrees Consulting"} onChange={(e) => setSignature(e.target.value)} />
+              <FieldDescription>Everything after the message, starting with the closing line. Write a link as [Learn more](https://ucsc180dc.org) and it shows as a clickable word. Leave empty to sign as the team.</FieldDescription>
+            </Field>
+            <Field className="max-w-md">
+              <FieldLabel htmlFor="outreach-address">Postal address</FieldLabel>
+              <Input id="outreach-address" value={address} onChange={(e) => setAddress(e.target.value)} />
+              <FieldDescription>Required by law in every commercial email. Use a real street address.</FieldDescription>
+            </Field>
+              </div>
+            </details>
+        </section>
+        <section id="follow-ups" aria-labelledby="follow-ups-title" className="scroll-mt-6 space-y-6 rounded-[22px] border bg-card p-6">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="follow-ups-title" className="text-xl">Follow-ups</h2>
+          </div>
+            <Field className="max-w-xs">
+              <FieldLabel htmlFor="outreach-followups">Business days after the first email</FieldLabel>
+              <Input id="outreach-followups" value={followups} onChange={(e) => setFollowups(e.target.value)} />
+              <FieldDescription>Rising whole numbers. 4, 9, 15 means a follow-up on day 4, another on day 9 and a short closing note on day 15. Replies, bookings and opt-outs stop the sequence.</FieldDescription>
+            </Field>
+        </section>
+        <section id="finding" aria-labelledby="finding-title" className="scroll-mt-6 space-y-6 rounded-[22px] border bg-card p-6">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="finding-title" className="text-xl">Finding companies</h2>
+            <Badge variant="muted">Advanced</Badge>
+          </div>
+            <h3 className="text-lg font-semibold">Discovery</h3>
             <label className="flex items-start gap-3">
               <Checkbox checked={discoveryOn} onCheckedChange={(v) => setDiscoveryOn(v === true)} className="mt-0.5" />
               <span>
@@ -242,12 +387,8 @@ export function SettingsForm({ settings, agent, roster }: { settings: OutreachSe
               <FieldDescription>Separated by semicolons, using Y Combinator&apos;s names, for example Healthcare; B2B; Fintech; Infrastructure; Consumer; Security.</FieldDescription>
             </Field>
             <p className="text-sm text-muted-foreground">Discovery pauses by itself while a lot of prospects are still waiting to be sent, so it never gets ahead of the daily limit.</p>
-          </>
-        )}
-
-        {section === "agent" && (
-          <>
-            <h2 className="text-lg">Research agent</h2>
+            <div className="border-t pt-6" />
+            <h3 className="text-lg font-semibold">Research agent</h3>
             <label className="flex items-start gap-3">
               <Checkbox checked={agentOn} onCheckedChange={(v) => setAgentOn(v === true)} className="mt-0.5" />
               <span>
@@ -351,128 +492,7 @@ export function SettingsForm({ settings, agent, roster }: { settings: OutreachSe
               )}
               <p className="text-sm text-muted-foreground">Two keys can be active at once, so you can swap keys without a gap: make the new one, give it to the agent, then revoke the old one.</p>
             </div>
-          </>
-        )}
-
-        {section === "pace" && (
-          <>
-            <h2 className="text-lg">Pace</h2>
-            <Field className="max-w-xs">
-              <FieldLabel htmlFor="outreach-cap">Daily limit</FieldLabel>
-              <Input id="outreach-cap" inputMode="numeric" value={dailyCap} onChange={(e) => setDailyCap(e.target.value)} placeholder="Automatic" />
-              <FieldDescription>Leave empty for the automatic ramp: 5 a day for the first week, 10 for the second, then 2 more each day up to 40. A number here overrides it (never above 100).</FieldDescription>
-            </Field>
-            <div className="flex flex-wrap gap-4">
-              <Field className="w-40">
-                <FieldLabel htmlFor="outreach-start">Send from (hour)</FieldLabel>
-                <Input id="outreach-start" inputMode="numeric" value={startHour} onChange={(e) => setStartHour(e.target.value)} />
-              </Field>
-              <Field className="w-40">
-                <FieldLabel htmlFor="outreach-end">Send until (hour)</FieldLabel>
-                <Input id="outreach-end" inputMode="numeric" value={endHour} onChange={(e) => setEndHour(e.target.value)} />
-              </Field>
-            </div>
-            <p className="text-sm text-muted-foreground">Hours are 0 to 23 in Santa Cruz time (9 and 16 means 9am to 4pm). Emails only go out on weekdays, spread across the window.</p>
-          </>
-        )}
-
-        {section === "sequence" && (
-          <>
-            <h2 className="text-lg">Follow-ups</h2>
-            <Field className="max-w-xs">
-              <FieldLabel htmlFor="outreach-followups">Business days after the first email</FieldLabel>
-              <Input id="outreach-followups" value={followups} onChange={(e) => setFollowups(e.target.value)} />
-              <FieldDescription>Rising whole numbers. 4, 9, 15 means a follow-up on day 4, another on day 9 and a short closing note on day 15. Replies, bookings and opt-outs stop the sequence.</FieldDescription>
-            </Field>
-          </>
-        )}
-
-        {section === "sender" && (
-          <>
-            <h2 className="text-lg">Sender</h2>
-            <fieldset className="space-y-3">
-              <legend className="text-base font-semibold">Officers who send</legend>
-              <p className="max-w-prose text-sm text-muted-foreground">
-                Emails take turns coming from these officers, and each is signed with that officer&apos;s name, title and LinkedIn. A company hears from the same
-                officer every time. Replies still go to the shared team inbox. Turn an officer off when they step down.
-              </p>
-              <div className="max-h-[50dvh] space-y-3 overflow-y-auto pr-1">
-                {senders.length === 0 && <p className="text-sm text-muted-foreground">No officers yet. Everything is sent from the sender below. Add officers, or fill the list from the roster.</p>}
-                {senders.map((s) => (
-                  <div key={s.id} className="min-w-0 space-y-3 rounded-2xl border p-3.5">
-                    <div className="flex items-center justify-between gap-3">
-                      <label className="flex min-w-0 items-center gap-2.5">
-                        <Checkbox checked={s.enabled} onCheckedChange={(v) => changeSender(s.id, { enabled: v === true })} />
-                        <span className="min-w-0 truncate font-semibold">{s.name.trim() || "New officer"}</span>
-                        <Badge variant={s.enabled ? "ok" : "muted"}>{s.enabled ? "Sending" : "Off"}</Badge>
-                      </label>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => setSenders((list) => list.filter((x) => x.id !== s.id))}>
-                        Remove
-                      </Button>
-                    </div>
-                    <div className="grid min-w-0 gap-3 sm:grid-cols-2">
-                      <Field className="min-w-0">
-                        <FieldLabel htmlFor={`sender-name-${s.id}`}>Full name</FieldLabel>
-                        <Input id={`sender-name-${s.id}`} value={s.name} onChange={(e) => changeSender(s.id, { name: e.target.value })} />
-                        <FieldDescription>Sends from {mailboxName(s.name) || "firstname"}@ on the outreach domain.</FieldDescription>
-                      </Field>
-                      <Field className="min-w-0">
-                        <FieldLabel htmlFor={`sender-title-${s.id}`}>Title</FieldLabel>
-                        <Input id={`sender-title-${s.id}`} value={s.title} onChange={(e) => changeSender(s.id, { title: e.target.value })} />
-                      </Field>
-                    </div>
-                    <Field className="min-w-0">
-                      <FieldLabel htmlFor={`sender-linkedin-${s.id}`}>LinkedIn link</FieldLabel>
-                      <Input
-                        id={`sender-linkedin-${s.id}`}
-                        value={s.linkedin}
-                        placeholder="https://www.linkedin.com/in/..."
-                        onChange={(e) => changeSender(s.id, { linkedin: e.target.value })}
-                        onBlur={(e) => changeSender(s.id, { linkedin: cleanLinkedin(e.target.value) || e.target.value.trim() })}
-                      />
-                      <FieldDescription>Optional. Leave empty and the signature shows only the website link.</FieldDescription>
-                    </Field>
-                  </div>
-                ))}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" onClick={onAddSender}>
-                  Add an officer
-                </Button>
-                <Button type="button" variant="outline" onClick={onFillFromRoster}>
-                  Fill from the roster
-                </Button>
-              </div>
-            </fieldset>
-            <h3 className="text-base font-semibold">Single sender</h3>
-            <p className="max-w-prose text-sm text-muted-foreground">Used only while no officer above is turned on.</p>
-            <Field className="max-w-md">
-              <FieldLabel htmlFor="outreach-name">Sender name</FieldLabel>
-              <Input id="outreach-name" value={senderName} onChange={(e) => setSenderName(e.target.value)} />
-              <FieldDescription>Shown at the bottom of every email. The address emails come from is set in the environment, not here.</FieldDescription>
-            </Field>
-            <Field className="max-w-md">
-              <FieldLabel htmlFor="outreach-from-name">Sent by (full name)</FieldLabel>
-              <Input id="outreach-from-name" value={fromName} placeholder="Aman Avinash" onChange={(e) => setFromName(e.target.value)} />
-              <FieldDescription>The name people see as the sender. The email address uses the first name, so &quot;Aman Avinash&quot; sends from aman@ on the outreach domain. Leave empty to send as the team.</FieldDescription>
-            </Field>
-            <Field className="max-w-md">
-              <FieldLabel htmlFor="outreach-signature">Signature</FieldLabel>
-              <Textarea id="outreach-signature" value={signature} rows={6} placeholder={"Best regards,\n\nAman Avinash\nDirector of Projects | 180 Degrees Consulting"} onChange={(e) => setSignature(e.target.value)} />
-              <FieldDescription>Everything after the message, starting with the closing line. Write a link as [Learn more](https://ucsc180dc.org) and it shows as a clickable word. Leave empty to sign as the team.</FieldDescription>
-            </Field>
-            <Field className="max-w-md">
-              <FieldLabel htmlFor="outreach-address">Postal address</FieldLabel>
-              <Input id="outreach-address" value={address} onChange={(e) => setAddress(e.target.value)} />
-              <FieldDescription>Required by law in every commercial email. Use a real street address.</FieldDescription>
-            </Field>
-          </>
-        )}
-
-        <div className="border-t pt-5">
-          <Button size="lg" onClick={onSave} disabled={isPending}>
-            Save settings
-          </Button>
+        </section>
         </div>
       </div>
       {confirmDialog}
