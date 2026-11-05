@@ -732,6 +732,97 @@ export interface EventView {
   createdAt: string;
 }
 
+type MessageRow = Database["public"]["Tables"]["outreach_messages"]["Row"];
+type ReplyRow = Database["public"]["Tables"]["outreach_replies"]["Row"];
+
+const toProspectView = (p: ProspectRow): ProspectView => ({
+  id: p.id,
+  company: p.company,
+  website: p.website,
+  niche: p.niche,
+  sizeStage: p.size_stage,
+  summary: p.summary,
+  whyFit: p.why_fit,
+  facts: factsFromJson(p.facts),
+  contactName: p.contact_name,
+  contactRole: p.contact_role,
+  contactEmail: p.contact_email,
+  status: p.status,
+  statusReason: p.status_reason,
+  step: p.step,
+  nextActionAt: p.next_action_at,
+  lastSentAt: p.last_sent_at,
+  senderId: p.sender_id ?? null,
+});
+
+const toMessageView = (m: MessageRow): MessageView => ({
+  id: m.id,
+  prospectId: m.prospect_id,
+  step: m.step,
+  subject: m.subject,
+  bodyText: m.body_text,
+  status: m.status,
+  scheduledFor: m.scheduled_for,
+  sentAt: m.sent_at,
+  error: m.error,
+  createdAt: m.created_at,
+});
+
+const toReplyView = (r: ReplyRow): ReplyView => ({
+  id: r.id,
+  prospectId: r.prospect_id,
+  fromEmail: r.from_email,
+  subject: r.subject,
+  snippet: r.snippet,
+  classification: r.classification,
+  createdAt: r.created_at,
+});
+
+const toEventView = (e: { id: string; prospect_id: string; kind: string; created_at: string }): EventView => ({
+  id: e.id,
+  prospectId: e.prospect_id,
+  kind: e.kind,
+  createdAt: e.created_at,
+});
+
+/** What the Companies list needs: the prospects and the mode. Emails, replies and events load only when a company is opened. */
+export interface CompaniesOverview {
+  prospects: ProspectView[];
+  settings: OutreachSettings;
+}
+
+export async function getCompaniesOverview(): Promise<CompaniesOverview> {
+  const supabase = await createClient();
+  const [prospectRows, settingRows] = await Promise.all([
+    fetchAllPages((from, to) => supabase.from("outreach_prospects").select("*").order("created_at", { ascending: false }).order("id").range(from, to)),
+    supabase.from("org_settings").select("key, value").in("key", OUTREACH_SETTING_KEYS),
+  ]);
+  if (settingRows.error) throw settingRows.error;
+  return { prospects: prospectRows.map(toProspectView), settings: parseOutreachSettings(settingRows.data ?? []) };
+}
+
+export interface ProspectDetail {
+  messages: MessageView[];
+  replies: ReplyView[];
+  events: EventView[];
+}
+
+/** One company's emails, replies and timeline, read as the signed-in exec (RLS). */
+export async function getProspectDetail(prospectId: string): Promise<ProspectDetail> {
+  const supabase = await createClient();
+  const [messages, replies, events] = await Promise.all([
+    supabase.from("outreach_messages").select("*").eq("prospect_id", prospectId).order("step", { ascending: true }).order("id"),
+    supabase.from("outreach_replies").select("*").eq("prospect_id", prospectId).order("created_at", { ascending: false }).order("id"),
+    supabase.from("outreach_events").select("id, prospect_id, kind, created_at").eq("prospect_id", prospectId).order("created_at", { ascending: false }).order("id"),
+  ]);
+  for (const r of [messages, replies, events]) if (r.error) throw r.error;
+  return {
+    messages: (messages.data ?? []).map(toMessageView),
+    replies: (replies.data ?? []).map(toReplyView),
+    events: (events.data ?? []).flatMap((e) => (e.prospect_id ? [toEventView({ ...e, prospect_id: e.prospect_id })] : [])),
+  };
+}
+
 export interface OutreachOverview {
   prospects: ProspectView[];
   messages: MessageView[];
@@ -778,47 +869,10 @@ export async function getOutreachOverview(now = new Date()): Promise<OutreachOve
   const jobs = Object.fromEntries(HEARTBEAT_JOBS.map((job) => [job, jobHealth(now, beats[job], { mode: job === "agent" && !settings.agentEnabled ? "off" : settings.mode, oldestProspectAt, job })])) as Record<HeartbeatJob, JobHealth>;
 
   return {
-    prospects: (prospects.data ?? []).map((p) => ({
-      id: p.id,
-      company: p.company,
-      website: p.website,
-      niche: p.niche,
-      sizeStage: p.size_stage,
-      summary: p.summary,
-      whyFit: p.why_fit,
-      facts: factsFromJson(p.facts),
-      contactName: p.contact_name,
-      contactRole: p.contact_role,
-      contactEmail: p.contact_email,
-      status: p.status,
-      statusReason: p.status_reason,
-      step: p.step,
-      nextActionAt: p.next_action_at,
-      lastSentAt: p.last_sent_at,
-      senderId: p.sender_id ?? null,
-    })),
-    messages: msgs.map((m) => ({
-      id: m.id,
-      prospectId: m.prospect_id,
-      step: m.step,
-      subject: m.subject,
-      bodyText: m.body_text,
-      status: m.status,
-      scheduledFor: m.scheduled_for,
-      sentAt: m.sent_at,
-      error: m.error,
-      createdAt: m.created_at,
-    })),
-    replies: (replies.data ?? []).map((r) => ({
-      id: r.id,
-      prospectId: r.prospect_id,
-      fromEmail: r.from_email,
-      subject: r.subject,
-      snippet: r.snippet,
-      classification: r.classification,
-      createdAt: r.created_at,
-    })),
-    events: evs.flatMap((e) => (e.prospect_id ? [{ id: e.id, prospectId: e.prospect_id, kind: e.kind, createdAt: e.created_at }] : [])),
+    prospects: (prospects.data ?? []).map(toProspectView),
+    messages: msgs.map(toMessageView),
+    replies: (replies.data ?? []).map(toReplyView),
+    events: evs.flatMap((e) => (e.prospect_id ? [toEventView({ ...e, prospect_id: e.prospect_id })] : [])),
     settings,
     health: {
       sent: msgs.filter((m) => ["scheduled", "sent"].includes(m.status) && inWindow(m.scheduled_for, since7)).length,

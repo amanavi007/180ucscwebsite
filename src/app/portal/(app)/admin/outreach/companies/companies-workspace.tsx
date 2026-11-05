@@ -11,11 +11,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { OutreachOverview, ProspectView } from "@/lib/data/outreach";
+import type { CompaniesOverview, ProspectView } from "@/lib/data/outreach";
 import type { DiscoveryOverview } from "@/lib/data/outreach-discovery";
 import { pageRows, parsePage, parsePageSize, PAGE_SIZES } from "@/lib/paging";
 import { useFilteredList } from "@/lib/use-filtered-list";
-import { filterByStage, formatWhen, isDiscoveryStage, nicheOptions, stageChip } from "@/lib/outreach/view";
+import { filterByStage, formatWhen, isDiscoveryStage, nicheOptions, normalizeStage, stageChip } from "@/lib/outreach/view";
 import { cn } from "@/lib/utils";
 import { ImportDialog } from "../import-dialog";
 import { CompanyListDialog } from "./company-list-dialog";
@@ -35,7 +35,7 @@ const SKIPPED_MESSAGES: Record<string, string> = {
 const canRewrite = (p: ProspectView) => p.step === 0 && ["drafted", "needs_attention"].includes(p.status);
 
 /** Every company in one place: stage chips on top, the list below, and the panel beside it. Found and Skipped show Discovery's candidates. */
-export function CompaniesWorkspace({ overview, discovery, stage, counts }: { overview: OutreachOverview; discovery: DiscoveryOverview | null; stage: string; counts: Record<string, number> }) {
+export function CompaniesWorkspace({ overview, discovery, defaultStage, counts }: { overview: CompaniesOverview; discovery: DiscoveryOverview | null; defaultStage: string; counts: Record<string, number> }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -46,8 +46,10 @@ export function CompaniesWorkspace({ overview, discovery, stage, counts }: { ove
   const [isPending, startTransition] = useTransition();
 
   const selectedId = params.get("prospect");
+  // Read from the address so moving between company stages never waits on the server.
+  const stage = params.get("stage") ? normalizeStage(params.get("stage")) : defaultStage;
 
-  /** Changes address-bar settings. Anything that changes which companies are listed also goes back to page 1. */
+  /** Changes address-bar settings without asking the server for anything: the list is already here. Anything that changes which companies are listed also goes back to page 1. */
   function setParams(changes: Record<string, string | null>) {
     const next = new URLSearchParams(params.toString());
     for (const [key, value] of Object.entries(changes)) {
@@ -56,7 +58,7 @@ export function CompaniesWorkspace({ overview, discovery, stage, counts }: { ove
     }
     if (!("page" in changes) && !("prospect" in changes)) next.delete("page");
     const query = next.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    window.history.replaceState(null, "", query ? `${pathname}?${query}` : pathname);
   }
   const setParam = (key: string, value: string | null) => setParams({ [key]: value });
 
@@ -284,9 +286,6 @@ export function CompaniesWorkspace({ overview, discovery, stage, counts }: { ove
           <ProspectPanel
             key={selected.id}
             prospect={selected}
-            messages={overview.messages.filter((m) => m.prospectId === selected.id)}
-            replies={overview.replies.filter((r) => r.prospectId === selected.id)}
-            events={overview.events.filter((e) => e.prospectId === selected.id)}
             onClose={() => setParam("prospect", null)}
           />
         )}

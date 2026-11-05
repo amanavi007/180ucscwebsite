@@ -1,12 +1,12 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { doNotContactAction, regenerateDraftAction, resumeProspectAction, stopProspectAction } from "@/actions/outreach";
+import { doNotContactAction, loadProspectDetailAction, regenerateDraftAction, resumeProspectAction, stopProspectAction } from "@/actions/outreach";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/confirm-dialog";
-import type { EventView, MessageView, ProspectView, ReplyView } from "@/lib/data/outreach";
+import type { ProspectDetail, ProspectView } from "@/lib/data/outreach";
 import { eventLabel, formatWhen, replyLabel, stageChip, stepLabel } from "@/lib/outreach/view";
 
 const FINISHED = ["replied", "booked", "unsubscribed", "bounced", "invalid", "no_response"];
@@ -14,17 +14,34 @@ const FINISHED = ["replied", "booked", "unsubscribed", "bounced", "invalid", "no
 /** One prospect in a panel beside the list: who they are, what we know, what was sent, what came back. */
 export function ProspectPanel({
   prospect,
-  messages,
-  replies,
-  events,
   onClose,
 }: {
   prospect: ProspectView;
-  messages: MessageView[];
-  replies: ReplyView[];
-  events: EventView[];
   onClose: () => void;
 }) {
+  // Emails, replies and the timeline are read for this one company when it opens, not shipped for every company with the list.
+  const [detail, setDetail] = useState<ProspectDetail | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  // Reload after an action changes the company (a rewrite, a stop, a send).
+  const version = `${prospect.status}|${prospect.step}|${prospect.nextActionAt}|${prospect.lastSentAt}`;
+  useEffect(() => {
+    let cancelled = false;
+    loadProspectDetailAction(prospect.id).then((r) => {
+      if (cancelled) return;
+      if (r.detail) {
+        setDetail(r.detail);
+        setDetailError(null);
+      } else setDetailError(r.error ?? "That company's emails didn't load.");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [prospect.id, version]);
+  const loading = !detail && !detailError;
+  const messages = detail?.messages ?? [];
+  const replies = detail?.replies ?? [];
+  const events = detail?.events ?? [];
+
   const [isPending, startTransition] = useTransition();
   const [confirm, confirmDialog] = useConfirm();
   const chip = stageChip(prospect.status);
@@ -124,7 +141,9 @@ export function ProspectPanel({
 
       <section aria-labelledby="messages-heading" className="space-y-3">
         <h3 id="messages-heading" className="text-base">Emails</h3>
-        {messages.length === 0 && <p className="text-sm text-muted-foreground">No emails written yet.</p>}
+        {loading && <p className="text-sm text-muted-foreground">Loading emails…</p>}
+        {detailError && <p className="text-sm text-status-bad-foreground">{detailError}</p>}
+        {!loading && !detailError && messages.length === 0 && <p className="text-sm text-muted-foreground">No emails written yet.</p>}
         {messages.map((m) => (
           <article key={m.id} className="space-y-1.5 rounded-2xl border p-3.5">
             <div className="flex flex-wrap items-center justify-between gap-2">

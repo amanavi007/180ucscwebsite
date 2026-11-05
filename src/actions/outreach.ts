@@ -31,7 +31,7 @@ import { matchFounderToEmail, type Founder } from "@/lib/outreach/discovery/foun
 import { parseCompanyList, type ListError } from "@/lib/outreach/discovery/list";
 import { evaluateCandidate, evaluateListLead, prospectFromYc, runDiscovery, stageLeads, type DiscoveryResult } from "@/lib/outreach/discovery/runner";
 import { loadYcDataset } from "@/lib/outreach/discovery/web";
-import { factsToJson } from "@/lib/data/outreach";
+import { factsToJson, getProspectDetail, type ProspectDetail } from "@/lib/data/outreach";
 import { fetchInChunks, runInChunks } from "@/lib/paginate";
 
 export interface ActionResult {
@@ -141,6 +141,18 @@ export async function doNotContactAction(prospectId: string): Promise<ActionResu
   await logAudit(profile.id, "outreach.do_not_contact", prospectId);
   revalidatePath(OUTREACH_PORTAL_PATH, "layout");
   return {};
+}
+
+/** One company's emails, replies and timeline, loaded when its panel opens instead of with the whole list. */
+export async function loadProspectDetailAction(prospectId: string): Promise<{ error?: string; detail?: ProspectDetail }> {
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error };
+  try {
+    return { detail: await getProspectDetail(prospectId) };
+  } catch (e) {
+    console.error("Prospect detail failed:", e);
+    return { error: "That company's emails didn't load." };
+  }
 }
 
 export async function regenerateDraftAction(prospectId: string): Promise<ActionResult> {

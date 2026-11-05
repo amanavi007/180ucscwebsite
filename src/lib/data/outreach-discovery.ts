@@ -360,3 +360,16 @@ export async function getDiscoveryOverview(query: DiscoveryQuery = {}, now = new
     backlogLimit: BACKLOG_LIMIT,
   };
 }
+
+/** Only the number of companies per outcome: what the Found and Skipped chips show while another stage is open. */
+export async function getDiscoveryCounts(): Promise<Record<string, number>> {
+  const supabase = await createClient();
+  const perOutcome = await Promise.all(
+    ALL_OUTCOMES.map(async (o) => {
+      const r = await supabase.from("outreach_discovery_candidates").select("id", { count: "exact", head: true }).eq("outcome", o);
+      if (r.error) throw r.error;
+      return r.count ?? 0;
+    }),
+  );
+  return Object.fromEntries(ALL_OUTCOMES.map((o, i) => [o, perOutcome[i]]));
+}
