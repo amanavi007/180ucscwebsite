@@ -1,5 +1,6 @@
 import { evaluateBrakes } from "./pacing";
 import type { OutreachSettings } from "./settings";
+import type { Schedule } from "./schedule";
 
 export type ChipVariant = "ok" | "warn" | "bad" | "info" | "muted";
 
@@ -28,12 +29,35 @@ export function stageChip(status: string): { label: string; variant: ChipVariant
 
 export const STAGE_FILTERS: { key: string; label: string; statuses: string[] }[] = [
   { key: "all", label: "All", statuses: [] },
-  { key: "needs-you", label: "Needs you", statuses: ["replied", "needs_attention"] },
-  { key: "not-sent", label: "Not sent yet", statuses: ["new", "verified", "drafted"] },
-  { key: "in-progress", label: "In progress", statuses: ["queued", "sent", "follow_up_1", "follow_up_2", "closing_note"] },
-  { key: "finished", label: "Finished", statuses: ["booked", "no_response"] },
-  { key: "stopped", label: "Stopped", statuses: ["unsubscribed", "bounced", "invalid"] },
+  // Needs you and Replied overlap on purpose: a reply is both a thing to answer and a stage.
+  { key: "needs-you", label: "Needs you", statuses: ["replied", "needs_attention", "bounced"] },
+  { key: "drafted", label: "Drafted", statuses: ["new", "verified", "drafted"] },
+  { key: "scheduled", label: "Scheduled", statuses: ["queued"] },
+  { key: "sent", label: "Sent", statuses: ["sent", "follow_up_1", "follow_up_2", "closing_note"] },
+  { key: "replied", label: "Replied", statuses: ["replied"] },
+  { key: "booked", label: "Booked", statuses: ["booked"] },
+  { key: "finished", label: "Finished", statuses: ["no_response", "unsubscribed", "invalid"] },
 ];
+
+/** Stages that show Discovery's candidates instead of prospects. */
+export const DISCOVERY_STAGES = [
+  { key: "found", label: "Found" },
+  { key: "skipped", label: "Skipped" },
+] as const;
+
+export function isDiscoveryStage(key: string | null | undefined): key is "found" | "skipped" {
+  return key === "found" || key === "skipped";
+}
+
+const OLD_STAGE_KEYS: Record<string, string> = { "not-sent": "drafted", "in-progress": "sent", stopped: "finished" };
+
+/** A stage from the address bar: old keys are mapped, nothing means Needs you, anything unknown means All. */
+export function normalizeStage(key: string | null | undefined): string {
+  if (!key) return "needs-you";
+  const mapped = OLD_STAGE_KEYS[key] ?? key;
+  if (isDiscoveryStage(mapped) || STAGE_FILTERS.some((f) => f.key === mapped)) return mapped;
+  return "all";
+}
 
 export function filterByStage<T extends { status: string }>(prospects: T[], key: string): T[] {
   const filter = STAGE_FILTERS.find((f) => f.key === key);
@@ -107,4 +131,73 @@ export function eventLabel(kind: string): string {
 export function formatWhen(iso: string | null): string {
   if (!iso) return "–";
   return new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric" }).format(new Date(iso));
+}
+
+export interface NeedsYouItem {
+  prospectId: string;
+  company: string;
+  kind: "reply" | "stuck" | "bounced";
+  reason: string;
+  actionLabel: "Open reply" | "Fix draft" | "Add another email";
+}
+
+const clip = (text: string, max: number) => (text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`);
+
+/** The things a person has to decide: replies first, then stuck drafts, then bounces. */
+export function needsYouItems(
+  prospects: { id: string; company: string; status: string; statusReason: string | null; contactEmail: string }[],
+  replies: { prospectId: string | null; snippet: string; createdAt: string }[],
+): NeedsYouItem[] {
+  const newestReply = new Map<string, { snippet: string; createdAt: string }>();
+  for (const r of replies) {
+    if (!r.prospectId) continue;
+    const seen = newestReply.get(r.prospectId);
+    if (!seen || r.createdAt > seen.createdAt) newestReply.set(r.prospectId, r);
+  }
+  const out: NeedsYouItem[] = [];
+  for (const p of prospects.filter((x) => x.status === "replied")) {
+    out.push({ prospectId: p.id, company: p.company, kind: "reply", reason: clip(newestReply.get(p.id)?.snippet.trim() || "Replied", 90), actionLabel: "Open reply" });
+  }
+  for (const p of prospects.filter((x) => x.status === "needs_attention" && x.statusReason !== "Stopped by an exec.")) {
+    out.push({ prospectId: p.id, company: p.company, kind: "stuck", reason: clip(p.statusReason || "Needs a look", 90), actionLabel: "Fix draft" });
+  }
+  for (const p of prospects.filter((x) => x.status === "bounced")) {
+    out.push({ prospectId: p.id, company: p.company, kind: "bounced", reason: `${p.contactEmail} did not accept the email`, actionLabel: "Add another email" });
+  }
+  return out;
+}
+
+export interface TodaySends {
+  items: { prospectId: string; company: string; step: number; at: string | null; state: "sent" | "scheduled" | "planned"; senderName: string | null }[];
+  left: number;
+  tomorrow: number;
+  windowLabel: string;
+}
+
+const hourLabel = (h: number) => `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? "AM" : "PM"}`;
+
+/** Today's sends from the schedule, how many are still to go, and how many are planned for the next working day. */
+export function todaySends(
+  schedule: Schedule,
+  senderNameFor: (prospectId: string) => string | null,
+  settings: Pick<OutreachSettings, "windowStartHour" | "windowEndHour">,
+): TodaySends {
+  const [first, ...rest] = schedule.days;
+  const items = (first?.items ?? []).map((i) => ({ prospectId: i.prospectId, company: i.company, step: i.step, at: i.at, state: i.state, senderName: senderNameFor(i.prospectId) }));
+  const next = rest.find((d) => !d.weekend);
+  return {
+    items,
+    left: items.filter((i) => i.state !== "sent").length,
+    tomorrow: next?.items.length ?? 0,
+    windowLabel: `${hourLabel(settings.windowStartHour)} to ${hourLabel(settings.windowEndHour)}`,
+  };
+}
+
+/** The pipeline strip on Today: one count per step, each linking to that stage in Companies. */
+export function funnelCounts(prospects: { status: string }[], foundCount: number): { key: string; label: string; count: number; href: string }[] {
+  const href = (key: string) => `/portal/admin/outreach/companies?stage=${key}`;
+  const steps = [{ key: "found", label: "Found", count: foundCount }].concat(
+    ["drafted", "scheduled", "sent", "replied", "booked"].map((key) => ({ key, label: STAGE_FILTERS.find((f) => f.key === key)!.label, count: filterByStage(prospects, key).length })),
+  );
+  return steps.map((s) => ({ ...s, href: href(s.key) }));
 }

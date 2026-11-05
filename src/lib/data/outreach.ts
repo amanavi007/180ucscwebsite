@@ -698,6 +698,8 @@ export interface ProspectView {
   step: number;
   nextActionAt: string | null;
   lastSentAt: string | null;
+  /** The officer this company is pinned to, null when no officer list is in use. */
+  senderId: string | null;
 }
 
 export interface MessageView {
@@ -793,6 +795,7 @@ export async function getOutreachOverview(now = new Date()): Promise<OutreachOve
       step: p.step,
       nextActionAt: p.next_action_at,
       lastSentAt: p.last_sent_at,
+      senderId: p.sender_id ?? null,
     })),
     messages: msgs.map((m) => ({
       id: m.id,
