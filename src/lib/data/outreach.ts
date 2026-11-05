@@ -7,7 +7,10 @@ import { CLIENTS } from "@/lib/clients";
 import { formatOrgDate } from "@/lib/date";
 import { cancelScheduledOutreachEmail, sendOutreachEmail } from "@/lib/email/outreach-send";
 import { buildBrakeAlertEmail } from "@/lib/email/outreach-emails";
+import { askFor, checkDraft } from "@/lib/outreach/draft";
 import { draftWithModel } from "@/lib/outreach/draft-model";
+import { CLUB_FACTS } from "@/lib/outreach/club-facts";
+import { stepKind } from "@/lib/outreach/sequence";
 import { stopAction } from "@/lib/outreach/stop-pending";
 import { HEARTBEAT_JOBS, heartbeatKey, jobHealth, lastRunKey, staleSiblings, summarizeRun, type HeartbeatJob, type Heartbeats, type JobHealth } from "@/lib/outreach/heartbeat";
 import { attributeBooking } from "@/lib/outreach/booking-attribution";
@@ -26,9 +29,11 @@ import type {
   PrepareDeps,
   ProspectPatch,
   RunnerEnv,
+  RunnerMessage,
   RunnerProspect,
   SendDeps,
 } from "@/lib/outreach/runner";
+import { toDraftRow } from "@/lib/outreach/runner";
 import type { ProspectDraftRow, ProspectFact } from "@/lib/outreach/types";
 import { fetchAllPages, fetchInChunks } from "@/lib/paginate";
 
@@ -70,6 +75,7 @@ function toRunnerProspect(row: ProspectRow, firstSentAt: Date | null): RunnerPro
     company: row.company,
     website: row.website,
     niche: row.niche,
+    segment: row.segment as RunnerProspect["segment"],
     sizeStage: row.size_stage,
     summary: row.summary,
     whyFit: row.why_fit,
@@ -84,6 +90,42 @@ function toRunnerProspect(row: ProspectRow, firstSentAt: Date | null): RunnerPro
     firstSentAt,
     bookingToken: row.booking_token,
   };
+}
+
+/** The writing rules applied to a stored draft, so a draft written under older rules is never sent. */
+function draftProblemsFor(message: Pick<RunnerMessage, "subject" | "bodyText" | "step">, prospect: RunnerProspect): string[] {
+  const kind = stepKind(message.step);
+  return checkDraft({ subject: message.subject, body: message.bodyText }, toDraftRow(prospect), kind, {
+    ask: kind === "first" ? askFor(prospect.company) : undefined,
+    clubFacts: CLUB_FACTS,
+  }).problems;
+}
+
+async function refreshStaleDrafts(admin: Admin): Promise<number> {
+  const { data: drafts, error } = await admin
+    .from("outreach_messages")
+    .select("id, prospect_id, step, subject, body_text")
+    .eq("status", "draft")
+    .order("created_at", { ascending: true })
+    .limit(500);
+  if (error) throw error;
+  if (!drafts || drafts.length === 0) return 0;
+  const rows = await fetchInChunks(
+    drafts.map((d) => d.prospect_id),
+    (chunk, from, to) => admin.from("outreach_prospects").select("*").in("id", chunk).order("id").range(from, to),
+  );
+  const prospects = new Map((await runnerProspects(admin, rows)).map((p) => [p.id, p]));
+  let refreshed = 0;
+  for (const d of drafts) {
+    const prospect = prospects.get(d.prospect_id);
+    if (!prospect || draftProblemsFor({ subject: d.subject, bodyText: d.body_text, step: d.step }, prospect).length === 0) continue;
+    await admin.from("outreach_messages").update({ status: "cancelled" }).eq("id", d.id).eq("status", "draft");
+    if (d.step === 0 && prospect.status === "drafted") {
+      await admin.from("outreach_prospects").update({ status: "verified", status_reason: null }).eq("id", prospect.id).eq("status", "drafted");
+    }
+    refreshed++;
+  }
+  return refreshed;
 }
 
 async function runnerProspects(admin: Admin, rows: ProspectRow[]): Promise<RunnerProspect[]> {
@@ -189,6 +231,7 @@ export async function buildPrepareDeps(now = new Date()): Promise<PrepareDeps> {
     },
     checkMx: (domain) => checkMx(domain),
     draft: (args) => draftWithModel(args),
+    refreshStaleDrafts: () => refreshStaleDrafts(admin),
     insertDraft: async (prospectId, step, draft) => {
       const { error } = await admin
         .from("outreach_messages")
@@ -383,6 +426,7 @@ export async function buildSendDeps(now = new Date()): Promise<SendDeps> {
   return {
     ...outreachEnv(settings, now),
     ...casDeps(admin),
+    draftProblems: draftProblemsFor,
     dueDrafts: async (at, limit) => {
       const { data: drafts, error } = await admin
         .from("outreach_messages")

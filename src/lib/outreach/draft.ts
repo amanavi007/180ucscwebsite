@@ -42,14 +42,30 @@ export function askFor(company: string): string {
   return ASK_OPTIONS[hash % ASK_OPTIONS.length];
 }
 
-const KIND_INSTRUCTIONS: Record<DraftKind, string> = {
-  first:
-    "This is the FIRST email to this person. Maximum 110 words. Use exactly this shape, as short paragraphs separated by a blank line: (1) the greeting alone on its line; (2) one or two sentences showing we actually looked at their company, naming one specific thing from the prospect data in plain words; (3) two or three sentences on what we would do for them: a team of UCSC students works on one concrete problem for them for a quarter, naming the kind of problem that fits this company based only on the prospect data, at no cost to them; (4) the closing ask, given in the rules below. Lead with them, not us: the club gets one sentence at most. Make them want to take the call by being concrete about what they would get.",
-  follow_up:
-    "This is a short follow-up to an earlier email that got no reply. Add one new, specific reason it could be useful; do not just bump the thread. Maximum 60 words, in two short paragraphs separated by a blank line.",
-  closing:
-    "This is a brief, friendly closing note after earlier emails got no reply. Say you won't keep emailing, and leave the door open. Maximum 50 words, in two short paragraphs separated by a blank line.",
-};
+/** Only nonprofits are told the project costs nothing. For companies the email says nothing about money; that comes up on the call. */
+export const isForProfit = (row: Pick<ProspectDraftRow, "segment">) => row.segment !== "nonprofit";
+
+/** Club facts without the lines about cost, for companies, so the model has nothing to repeat. */
+export function clubFactsFor(row: Pick<ProspectDraftRow, "segment">, clubFacts: string): string {
+  if (row.segment === "nonprofit") return clubFacts;
+  return clubFacts
+    .split("\n")
+    .filter((line) => !/free of charge|cost the client nothing|cost nothing/i.test(line))
+    .join("\n");
+}
+
+const MONEY_WORDS = /\b(free|no[- ]cost|no charge|costs? (you |them |your team )?nothing|nothing to you|donat\w*|fees?|pro bono|complimentary|paid|payment|gratis)\b/i;
+
+function kindInstructions(step: DraftKind, row: Pick<ProspectDraftRow, "segment">): string {
+  if (step === "follow_up") {
+    return "This is a short follow-up to an earlier email that got no reply. Add one new, specific reason it could be useful; do not just bump the thread. Maximum 60 words, in two short paragraphs separated by a blank line.";
+  }
+  if (step === "closing") {
+    return "This is a brief, friendly closing note after earlier emails got no reply. Say you won't keep emailing, and leave the door open. Maximum 50 words, in two short paragraphs separated by a blank line.";
+  }
+  const cost = isForProfit(row) ? "" : ", at no cost to them";
+  return `This is the FIRST email to this person. Between 85 and 120 words. Use exactly this shape, as short paragraphs separated by a blank line: (1) the greeting alone on its line; (2) one or two sentences showing we actually looked at their company, naming one specific thing from the prospect data in plain words; (3) three or four sentences on what we would do for them: a team of UCSC students works on one concrete problem for them for a quarter${cost}, naming the kind of problem that fits this company based only on the prospect data, what the team would hand over at the end, and how the quarter works (we agree on the scope together first, then the students research and deliver recommendations). You may add one short sentence naming a past client close to their field; (4) the closing ask, given in the rules below. Lead with them, not us: the club gets one sentence at most. Make them want to take the call by being concrete about what they would get.`;
+}
 
 export function buildDraftPrompt(args: {
   row: ProspectDraftRow;
@@ -66,16 +82,18 @@ export function buildDraftPrompt(args: {
   const lines = [
     "You write short, warm cold emails for 180 Degrees Consulting at UCSC, a student-run consulting group, to a possible client.",
     "You write on behalf of the team, not as one named person: say 'we' and 'our team', never 'I', and never invent or use a person's name for us. Sound like a friendly, genuine student group that admires their work, not like a sales pitch.",
-    KIND_INSTRUCTIONS[args.step],
+    kindInstructions(args.step, row),
     "Rules:",
     "- Plain text, no markdown, no bullet lists, no emojis.",
     "- Write like a real student emailing someone they respect: short sentences, plain words, contractions. It should sound fine read aloud. Every sentence stays under 20 words, and each paragraph is one to three sentences.",
     "- Never use em dashes, en dashes, semicolons, colons or exclamation marks in the body.",
     "- Never use the 'not X, but Y' or 'not just X' construction, or any variation of it (such as \"it isn't X, it's Y\"). Say what a thing is, directly.",
     "- No lists of three, no rhetorical questions, and none of these openers or words: 'I came across', 'I noticed', 'reaching out', 'I hope', 'excited', 'thrilled', 'passionate', 'delve', 'leverage', 'seamless', 'robust', 'unlock', 'elevate', 'landscape', 'journey', 'synergy', 'cutting-edge', 'game-changer', 'streamline', 'empower', 'holistic'.",
-    "- Subject line: at most 7 words, plain, the kind of thing a colleague would write, no exclamation marks, and never the words 'free', 'opportunity', 'partnership' or 'collaboration'.",
+    "- Subject line: at most 9 words, plain, and it must contain either 'UCSC' or '180 Degrees Consulting' so it reads as a real student group and not an ad. Name the company or what we would work on. No exclamation marks, and never the words 'free', 'opportunity', 'partnership' or 'collaboration'. Example shapes: 'UCSC students on Acme's pricing', '180 Degrees Consulting project for Acme'.",
     "- Be specific and sincere about the company, using only the prospect data below. Warm is good; flattery and hype are not.",
-    "- Money: say only that the project costs them nothing. Never mention donations, fees or payment.",
+    isForProfit(row)
+      ? "- Money: say nothing about cost, price, fees, donations, payment or the project being free. Do not use the words 'free' or 'nothing' about money. Money is discussed on the call."
+      : "- Money: say only that the project costs them nothing. Never mention donations, fees or payment.",
     "- State nothing about the company that is not in the prospect data. State nothing about the club that is not in the club facts.",
     "- One ask only: a short intro call. Never write a URL, link or booking instructions; a booking link is added automatically.",
     "- You may name one or two organizations from the past clients list in the club facts, picking the ones closest to this company's field or size. Name only organizations on that list, never describe their projects beyond the club facts, and skip this if none is a fair match.",
@@ -87,7 +105,7 @@ export function buildDraftPrompt(args: {
     "Respond with JSON: {\"subject\": string, \"paragraphs\": string[]}. Put each paragraph in its own string, with the greeting ('Hi <first name>,') as the first paragraph. Do not put line breaks inside a string.",
     "",
     "Club facts:",
-    args.clubFacts,
+    clubFactsFor(row, args.clubFacts),
     "",
     `Earlier subject lines to avoid repeating: ${args.previousSubjects.length > 0 ? args.previousSubjects.join(" | ") : "(none)"}`,
     "",
@@ -108,7 +126,7 @@ export function buildDraftPrompt(args: {
   return lines.join("\n");
 }
 
-const FORBIDDEN_PHRASES = ["i hope this finds you well", "circling back", "just checking in", "touching base", "per my last email", "came across", "reach out", "reaching out", "stands out", "in today's"];
+const FORBIDDEN_PHRASES = ["i hope this finds you well", "circling back", "just checking in", "touching base", "per my last email", "came across", "reach out", "reaching out", "stands out", "stand out", "stood out", "in today's"];
 const AI_WORDS = [
   "delve", "leverage", "leveraging", "seamless", "seamlessly", "robust", "tapestry", "landscape", "unlock", "elevate", "game-changer", "game changer",
   "cutting-edge", "synergy", "journey", "excited", "thrilled", "passionate", "streamline", "empower", "holistic", "testament", "pivotal", "foster", "resonate",
@@ -118,8 +136,9 @@ const NOT_X_BUT_Y = [
   /\b(isn't|is not|aren't|are not|wasn't|it's not|that's not|this isn't|we're not|we aren't)\b[^.!?\n]{0,80}\b(it's|it is|but|rather|instead)\b/i,
 ];
 const SUBJECT_BANNED = /\b(free|opportunity|partnership|collaboration|proposal)\b/i;
-const WORD_LIMITS: Record<DraftKind, number> = { first: 110, follow_up: 60, closing: 50 };
+const WORD_LIMITS: Record<DraftKind, number> = { first: 130, follow_up: 60, closing: 50 };
 const MIN_PARAGRAPHS: Record<DraftKind, number> = { first: 3, follow_up: 2, closing: 2 };
+const MIN_FIRST_WORDS = 65;
 const MAX_PARAGRAPH_WORDS = 55;
 const MAX_SENTENCE_WORDS = 28;
 
@@ -189,7 +208,8 @@ export function checkDraft(draft: DraftOutput, row: ProspectDraftRow, kind: Draf
   // The subject.
   if (draft.subject.includes("!")) problems.push("Remove the exclamation mark from the subject.");
   if (SUBJECT_BANNED.test(draft.subject)) problems.push("Rewrite the subject: it must not contain 'free', 'opportunity', 'partnership', 'collaboration' or 'proposal'.");
-  if (wordCount(draft.subject) > 8) problems.push("Shorten the subject to at most 7 words.");
+  if (wordCount(draft.subject) > 10) problems.push("Shorten the subject to at most 9 words.");
+  if (!/\b(ucsc|uc santa cruz|180 degrees)\b/i.test(draft.subject)) problems.push("Put 'UCSC' or '180 Degrees Consulting' in the subject line.");
 
   // Length and shape.
   const limit = WORD_LIMITS[kind];
@@ -202,6 +222,8 @@ export function checkDraft(draft: DraftOutput, row: ProspectDraftRow, kind: Draf
     problems.push(`Break up any sentence longer than ${MAX_SENTENCE_WORDS} words.`);
   }
 
+  if (kind === "first" && wordCount(body) < MIN_FIRST_WORDS) problems.push(`Make the body at least ${MIN_FIRST_WORDS} words: say concretely what the team would do and hand over.`);
+  if (isForProfit(row) && MONEY_WORDS.test(`${draft.subject}\n${body}`)) problems.push("Remove any mention of cost, being free, fees or donations. Say nothing about money.");
   if (options.ask && paragraphs[paragraphs.length - 1] !== options.ask) problems.push(`End with this exact sentence as the last paragraph: "${options.ask}"`);
 
   // Reads like a person.

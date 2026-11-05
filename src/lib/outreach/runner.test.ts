@@ -142,6 +142,16 @@ describe("runSend", () => {
     expect(verifyUnsubscribeToken(decodeURIComponent(token), "secret")).toMatch(/^p\d$/);
   });
 
+  it("holds back a draft that fails the current writing rules instead of sending it", async () => {
+    const store = new Store();
+    store.addDrafted(1);
+    store.addDrafted(2);
+    const result = await runSend(sendDeps(store, { draftProblems: (m) => (m.prospectId === "p1" ? ["Remove the dashes."] : []) }));
+    expect(result.scheduled).toBe(1);
+    expect(store.sends).toHaveLength(1);
+    expect(store.prospects.get("p1")!.status).toBe("drafted");
+  });
+
   it("does not send more when run again the same day (double-fired cron)", async () => {
     const store = new Store();
     for (let n = 1; n <= 20; n++) store.addDrafted(n);
@@ -323,6 +333,12 @@ function prepareDeps(store: Store, over: Partial<PrepareDeps> = {}, s = settings
 }
 
 describe("runPrepare", () => {
+  it("rewrites old drafts that fail the current rules and reports how many", async () => {
+    const store = new Store();
+    const result = await runPrepare(prepareDeps(store, { refreshStaleDrafts: async () => 3 }));
+    expect(result.staleRewritten).toBe(3);
+  });
+
   it("verifies new prospects and marks undeliverable ones invalid with a reason", async () => {
     const store = new Store();
     store.prospects.set("p1", prospect(1, { status: "new" }));

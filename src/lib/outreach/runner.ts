@@ -14,6 +14,7 @@ export interface RunnerProspect {
   company: string;
   website: string | null;
   niche: string | null;
+  segment?: ProspectDraftRow["segment"];
   sizeStage: string | null;
   summary: string | null;
   whyFit: string | null;
@@ -107,11 +108,15 @@ export interface PrepareDeps extends SharedDeps {
   previousSubjects(prospectId: string): Promise<string[]>;
   recentDraftBodies(): Promise<string[]>;
   listScheduledDue(before: Date): Promise<ScheduledMessage[]>;
+  /** Cancels unsent drafts that no longer pass the writing rules (written under older rules) so they get redrafted. Returns how many. */
+  refreshStaleDrafts?(): Promise<number>;
 }
 
 export interface SendDeps extends SharedDeps {
   /** Draft messages whose prospect is due for them (first emails, and follow-ups whose date has come). */
   dueDrafts(now: Date, limit: number): Promise<DueDraft[]>;
+  /** Problems with a draft under the current writing rules; a draft with any is held back instead of sent. */
+  draftProblems?(message: RunnerMessage, prospect: RunnerProspect): string[];
   isSuppressed(email: string): Promise<boolean>;
   /** True when another prospect at this company domain was emailed recently. */
   domainBusy(domain: string, excludeProspectId: string): Promise<boolean>;
@@ -142,6 +147,7 @@ export function toDraftRow(p: RunnerProspect): ProspectDraftRow {
     company: p.company,
     website: p.website,
     niche: p.niche,
+    segment: p.segment ?? null,
     sizeStage: p.sizeStage,
     summary: p.summary,
     whyFit: p.whyFit,
@@ -158,6 +164,8 @@ export interface PrepareResult {
   needsAttention: number;
   reconciled: number;
   followUps: number;
+  /** Old drafts that failed the current rules and were sent back for rewriting. */
+  staleRewritten?: number;
 }
 
 /** Verifies new prospects, drafts emails, turns past scheduled sends into sent ones, and drafts due follow-ups. */
@@ -165,6 +173,9 @@ export async function runPrepare(deps: PrepareDeps): Promise<PrepareResult> {
   const result: PrepareResult = { verified: 0, drafted: 0, needsAttention: 0, reconciled: 0, followUps: 0 };
   const { settings, now } = deps;
   if (settings.mode === "off") return result;
+
+  const stale = deps.refreshStaleDrafts ? await deps.refreshStaleDrafts() : 0;
+  if (stale > 0) result.staleRewritten = stale;
 
   if (settings.mode === "live") {
     for (const s of await deps.listScheduledDue(new Date(now.getTime() - RECONCILE_DELAY_MS))) {
@@ -291,6 +302,7 @@ export async function runSend(deps: SendDeps): Promise<SendResult> {
   for (const due of await deps.dueDrafts(now, available * 4)) {
     if (picked.length >= available) break;
     const { prospect } = due;
+    if (deps.draftProblems && deps.draftProblems(due.message, prospect).length > 0) continue;
     if (domains.has(prospect.contactDomain)) continue;
     if (await deps.isSuppressed(prospect.contactEmail)) continue;
     if (await deps.domainBusy(prospect.contactDomain, prospect.id)) continue;

@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { ASK_OPTIONS, askFor, buildDraftPrompt, checkDraft, generateDraft, isNearDuplicate, parseDraftOutput, ungroundedClaims } from "./draft";
+import { ASK_OPTIONS, askFor, buildDraftPrompt, checkDraft, clubFactsFor, generateDraft, isNearDuplicate, parseDraftOutput, ungroundedClaims } from "./draft";
 import type { ProspectDraftRow } from "./types";
 
 const row: ProspectDraftRow = {
   company: "Acme Health",
   website: "https://acmehealth.com",
   niche: "med-tech",
+  segment: "startup",
   sizeStage: "12, Seed",
   summary: "Remote patient monitoring for rural clinics",
   whyFit: "Entering the California market with no go-to-market plan",
@@ -20,8 +21,8 @@ const row: ProspectDraftRow = {
 
 const ask = askFor("Acme Health");
 const good = {
-  subject: "A student team for Acme Health's California launch",
-  body: `Hi Jo,\n\nWe saw that Acme Health is building remote patient monitoring for rural clinics and heading into California.\n\nOur student consulting team at UCSC could work on your go-to-market plan for a quarter, at no cost to you.\n\n${ask}`,
+  subject: "UCSC students on Acme Health's California launch",
+  body: `Hi Jo,\n\nWe saw that Acme Health is building remote patient monitoring for rural clinics and heading into California.\n\nA team of UCSC students would spend a full quarter on your go-to-market plan for that move. We agree on the scope with you first, then the students research the market and hand over recommendations you can act on.\n\n${ask}`,
 };
 
 describe("parseDraftOutput", () => {
@@ -56,12 +57,27 @@ describe("checkDraft", () => {
     expect(checkDraft({ ...good, body: good.body + " Just circling back." }, row).ok).toBe(false);
     expect(checkDraft({ ...good, body: "I hope this finds you well. Acme Health is great." }, row).ok).toBe(false);
   });
-  it("fails a first email over 110 words but allows a follow-up only up to 60", () => {
+  it("fails a first email over 130 words or under 65, and a follow-up over 60", () => {
     const sentence = "Acme Health builds clinic software for rural care teams. ";
-    const body = (n: number) => `Hi Jo,\n\n${sentence.repeat(n)}\n\nWould a call help?\n\nThanks.`;
-    expect(checkDraft({ ...good, body: body(14) }, row, "first").ok).toBe(false);
-    expect(checkDraft({ ...good, body: body(6) }, row, "first").ok).toBe(true);
-    expect(checkDraft({ ...good, body: body(6) }, row, "follow_up").ok).toBe(false);
+    const body = (n: number) => `Hi Jo,\n\n${Array(n).fill(sentence.repeat(2).trim()).join("\n\n")}\n\nWould a call help?`;
+    expect(checkDraft({ ...good, body: body(8) }, row, "first").ok).toBe(false);
+    expect(checkDraft({ ...good, body: body(4) }, row, "first").ok).toBe(true);
+    expect(checkDraft({ ...good, body: body(1) }, row, "first").ok).toBe(false);
+    expect(checkDraft({ ...good, body: body(4) }, row, "follow_up").ok).toBe(false);
+  });
+  it("requires UCSC or 180 Degrees Consulting in the subject", () => {
+    expect(checkDraft({ ...good, subject: "Acme Health pricing research" }, row).problems.join(" ")).toMatch(/subject line/i);
+    expect(checkDraft({ ...good, subject: "180 Degrees Consulting project for Acme Health" }, row).ok).toBe(true);
+  });
+  it("says nothing about money to a company, but lets a nonprofit hear the project costs nothing", () => {
+    const withCost = { ...good, body: good.body.replace("on your go-to-market plan", "on your go-to-market plan, at no cost to you,") };
+    expect(checkDraft(withCost, row).problems.join(" ")).toMatch(/cost|money/i);
+    expect(checkDraft({ ...good, body: good.body.replace("research the market", "research the market for free") }, row).ok).toBe(false);
+    expect(checkDraft(withCost, { ...row, segment: "nonprofit" }).ok).toBe(true);
+    expect(checkDraft(good, { ...row, segment: null }).ok).toBe(true);
+  });
+  it("does not treat 'pricing' as talk about cost", () => {
+    expect(checkDraft({ ...good, body: good.body.replace("go-to-market plan", "pricing and go-to-market plan") }, row).ok).toBe(true);
   });
   it("fails a draft that mentions nothing specific to the company", () => {
     const r = checkDraft({ subject: "Quick idea", body: "Hi there,\n\nWe are a student group that helps organizations. Want to talk?" }, row);
@@ -151,13 +167,18 @@ describe("buildDraftPrompt", () => {
   });
   it("tells the model the shape, the style rules and the banned patterns", () => {
     const p = buildDraftPrompt({ row, step: "first", previousSubjects: [], clubFacts: "f" });
-    expect(p).toMatch(/110 words/);
+    expect(p).toMatch(/85 and 120 words/);
+    expect(p).toMatch(/UCSC' or '180 Degrees Consulting/);
     expect(p).toMatch(/"paragraphs"/);
     expect(p).toMatch(/under 20 words/i);
     expect(p).toMatch(/blank line/i);
     expect(p).toMatch(/em dash/i);
     expect(p).toMatch(/not X, but Y/i);
-    expect(p).toMatch(/never mention donations/i);
+    expect(p).toMatch(/say nothing about cost/i);
+    expect(p).not.toMatch(/at no cost/i);
+    const nonprofit = buildDraftPrompt({ row: { ...row, segment: "nonprofit" }, step: "first", previousSubjects: [], clubFacts: "f" });
+    expect(nonprofit).toMatch(/costs them nothing/i);
+    expect(nonprofit).toMatch(/at no cost to them/i);
     expect(p).not.toMatch(/very much appreciated/i);
   });
   it("keeps company data inside tags and tells the model it is untrusted", () => {
@@ -231,5 +252,13 @@ describe("ungroundedClaims", () => {
   it("is part of the rules a draft must pass", () => {
     const check = checkDraft({ subject: good.subject, body: good.body.replace("rural clinics", "rural clinics in Texas") }, row, "first", { ask, clubFacts: "" });
     expect(check.problems.join(" ")).toContain('Remove "Texas"');
+  });
+});
+
+describe("clubFactsFor", () => {
+  const facts = "- A team works for one quarter.\n- Projects are free of charge to the client.\n- Services cost the client nothing.\n- Based at UCSC.";
+  it("drops the lines about cost for a company and keeps them for a nonprofit", () => {
+    expect(clubFactsFor({ segment: "startup" }, facts)).toBe("- A team works for one quarter.\n- Based at UCSC.");
+    expect(clubFactsFor({ segment: "nonprofit" }, facts)).toBe(facts);
   });
 });
