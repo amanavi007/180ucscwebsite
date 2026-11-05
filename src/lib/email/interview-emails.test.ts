@@ -11,11 +11,11 @@ const when = { date: "2026-10-07", startTime: "09:00", endTime: "10:00" };
 const siteUrl = "https://example.org";
 
 describe("interview emails", () => {
-  it("confirmation has date, time, SnE Library, calendar links and manage link", () => {
+  it("confirmation has date, time, Online, calendar links and manage link", () => {
     const { subject, html, text } = buildInterviewConfirmationEmail({ applicantName: "Jane", ...when, manageToken: "tok", siteUrl });
     expect(subject).toBe("You're booked for your 180DC UCSC interview");
     for (const body of [html, text]) {
-      expect(body).toContain("SnE Library");
+      expect(body).toContain("Online");
       expect(body).toContain("9:00 AM");
       expect(body).toContain("https://example.org/apply/interview/manage/tok");
       expect(body).toContain("https://example.org/api/interview/tok/calendar.ics");
@@ -68,7 +68,7 @@ describe("interview emails", () => {
     for (const body of [html, text]) {
       expect(body).toContain("jane@ucsc.edu");
       expect(body).toContain("Ben, Cy");
-      expect(body).toContain("SnE Library");
+      expect(body).toContain("Online");
     }
   });
 
