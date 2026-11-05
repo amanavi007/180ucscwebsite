@@ -64,7 +64,7 @@ function kindInstructions(step: DraftKind, row: Pick<ProspectDraftRow, "segment"
     return "This is a brief, friendly closing note after earlier emails got no reply. Say you won't keep emailing, and leave the door open. Maximum 50 words, in two short paragraphs separated by a blank line.";
   }
   const cost = isForProfit(row) ? "" : ", at no cost to them";
-  return `This is the FIRST email to this person. Between 95 and 130 words. Use exactly this shape, as short paragraphs separated by a blank line: (1) the greeting alone on its line; (2) one or two sentences showing we actually looked at their company, naming one specific thing from the prospect data in plain words; (3) one or two sentences on what we would do for them: a team of UCSC students works on one concrete problem for them for a quarter${cost}, giving the kind of problem that fits this company, based only on the prospect data, as ONE example of what we could help with, never as the only thing (use wording like 'one thing we could help with is' or 'for example'), and say we shape the project around whatever matters most to them; (4) a separate short paragraph of two sentences on how the quarter works. This is the part to stress. We agree on the scope together first, and the company can choose research and recommendations, or have the students also help build and roll out the top recommendation, so they end the quarter with something working. Present both as simply how we work. Never say new, newly, now offering or this quarter. Name one thing the team could build that fits this company, such as a dashboard, a tracking system, internal tools or content, based only on the prospect data, and optionally one past client close to their field; (5) the closing ask, given in the rules below. Every paragraph stays under 55 words. Lead with them, not us: the club gets one sentence at most. Make them want to take the call by being concrete about what they would get.`;
+  return `This is the FIRST email to this person. Between 95 and 130 words. Use exactly this shape, as short paragraphs separated by a blank line: (1) the greeting alone on its line; (2) one or two sentences showing we actually looked at their company, naming one specific thing from the prospect data in plain words; (3) one or two sentences on what we would do for them: a team of UCSC consultants works on one concrete problem for them for a quarter${cost}, giving the kind of problem that fits this company, based only on the prospect data, as ONE example of what we could help with, never as the only thing (use wording like 'one thing we could help with is' or 'for example'), and say we shape the project around whatever matters most to them; (4) a separate short paragraph of two sentences on how the quarter works. This is the part to stress. We agree on the scope together first, and the company can choose research and recommendations, or have the consultants also help build and roll out the top recommendation, so they end the quarter with something working. Present both as simply how we work. Never say new, newly, now offering or this quarter. Name one thing the team could build that fits this company, such as a dashboard, a tracking system, internal tools or content, based only on the prospect data, and optionally one past client close to their field; (5) the closing ask, given in the rules below. Every paragraph stays under 55 words. Lead with them, not us: the club gets one sentence at most. Make them want to take the call by being concrete about what they would get.`;
 }
 
 export function buildDraftPrompt(args: {
@@ -81,11 +81,11 @@ export function buildDraftPrompt(args: {
   const facts = row.facts.map((f) => `- ${f.text}`).join("\n") || "(none)";
   const lines = [
     "You write short, warm cold emails for 180 Degrees Consulting at UCSC, a student-run consulting group, to a possible client.",
-    "You write on behalf of the team, not as one named person: say 'we' and 'our team', never 'I', and never invent or use a person's name for us. Sound like a friendly, genuine student group that admires their work, not like a sales pitch.",
+    "You write on behalf of the team, not as one named person: say 'we' and 'our team', never 'I', and never invent or use a person's name for us. Sound like a friendly, genuine consulting group that admires their work, not like a sales pitch.",
     kindInstructions(args.step, row),
     "Rules:",
     "- Plain text, no markdown, no bullet lists, no emojis.",
-    "- Write like a real student emailing someone they respect: short sentences, plain words, contractions. It should sound fine read aloud. Every sentence stays under 20 words, and each paragraph is one to three sentences.",
+    "- Write like a real person emailing someone they respect: short sentences, plain words, contractions. It should sound fine read aloud. Every sentence stays under 20 words, and each paragraph is one to three sentences.",
     "- Never use em dashes, en dashes, semicolons, colons or exclamation marks in the body.",
     "- Never use the 'not X, but Y' or 'not just X' construction, or any variation of it (such as \"it isn't X, it's Y\"). Say what a thing is, directly.",
     "- No lists of three, no rhetorical questions, and none of these openers or words: 'I came across', 'I noticed', 'reaching out', 'I hope', 'excited', 'thrilled', 'passionate', 'delve', 'leverage', 'seamless', 'robust', 'unlock', 'elevate', 'landscape', 'journey', 'synergy', 'cutting-edge', 'game-changer', 'streamline', 'empower', 'holistic'.",
@@ -97,6 +97,7 @@ export function buildDraftPrompt(args: {
     "- State nothing about the company that is not in the prospect data. State nothing about the club that is not in the club facts.",
     "- One ask only: a short intro call. Never write a URL, link or booking instructions; a booking link is added automatically.",
     "- You may name one or two organizations from the past clients list in the club facts, picking the ones closest to this company's field or size. Name only organizations on that list, never describe their projects beyond the club facts, and skip this if none is a fair match.",
+    "- Call our people 'consultants' or 'our team', never 'students'. Do not use the word 'student' or 'students' (the one exception is 'student-run').",
     "- Do not sign off or add a signature; it is added automatically.",
     "- No hype and no fake urgency.",
     `- Greeting: 'Hi <first name>,' if a contact name is given, otherwise '${`Hi ${row.company} team,`}' using the company name. Never 'Hi there'.`,
@@ -139,6 +140,8 @@ const SUBJECT_BANNED = /\b(free|opportunity|partnership|collaboration|proposal)\
 const WORD_LIMITS: Record<DraftKind, number> = { first: 145, follow_up: 60, closing: 50 };
 const MIN_PARAGRAPHS: Record<DraftKind, number> = { first: 3, follow_up: 2, closing: 2 };
 const MIN_FIRST_WORDS = 65;
+/** Our people are consultants. Only 'student-run' may use the word. */
+const STUDENT_WORD = /\bstudents?\b(?!-run)/i;
 /** The project idea is one example, not the whole offer. */
 const EXAMPLE_WORDS = /\b(for example|for instance|such as|one (?:thing|area|place|way|idea|example)|one of the|something like|could start with|to start)\b/i;
 /** The build option is part of how we work, not an announcement. */
@@ -231,6 +234,7 @@ export function checkDraft(draft: DraftOutput, row: ProspectDraftRow, kind: Draf
   if (kind === "first" && wordCount(body) < MIN_FIRST_WORDS) problems.push(`Make the body at least ${MIN_FIRST_WORDS} words: say concretely what the team would do and hand over.`);
   if (kind === "first" && !IMPLEMENTATION_WORDS.test(body)) problems.push("Say that the team can also help build and roll out the top recommendation, and name one thing it could build for this company.");
   if (kind === "first" && !EXAMPLE_WORDS.test(body)) problems.push("Give the project idea as one example of what we could help with (for example 'one thing we could help with is'), so it does not sound like the only thing we do.");
+  if (STUDENT_WORD.test(`${draft.subject}\n${body}`)) problems.push("Call our people 'consultants' or 'our team', never 'students'.");
   if (NEWNESS.test(body)) problems.push("Do not call the build option new, and do not say 'this quarter'. Present it as simply how we work.");
   if (isForProfit(row) && MONEY_WORDS.test(`${draft.subject}\n${body}`)) problems.push("Remove any mention of cost, being free, fees or donations. Say nothing about money.");
   if (options.ask && paragraphs[paragraphs.length - 1] !== options.ask) problems.push(`End with this exact sentence as the last paragraph: "${options.ask}"`);

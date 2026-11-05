@@ -22,7 +22,7 @@ const row: ProspectDraftRow = {
 const ask = askFor("Acme Health");
 const good = {
   subject: "180 Degrees Consulting on Acme Health's California launch",
-  body: `Hi Jo,\n\nWe saw that Acme Health is building remote patient monitoring for rural clinics and heading into California.\n\nA team of UCSC students would spend a full quarter on your go-to-market plan for that move, for example. We agree on the scope with you first, then the students research the market and hand over recommendations. They can also help build and roll out the top recommendation, like a pricing dashboard.\n\n${ask}`,
+  body: `Hi Jo,\n\nWe saw that Acme Health is building remote patient monitoring for rural clinics and heading into California.\n\nA team of UCSC consultants would spend a full quarter on your go-to-market plan for that move, for example. We agree on the scope with you first, then the consultants research the market and hand over recommendations. They can also help build and roll out the top recommendation, like a pricing dashboard.\n\n${ask}`,
 };
 
 describe("parseDraftOutput", () => {
@@ -271,5 +271,13 @@ describe("checkDraft: how the offer is framed", () => {
   it("rejects a project idea that sounds like the only thing we do", () => {
     const only = good.body.replace(", for example.", ".");
     expect(checkDraft({ ...good, body: only }, row, "first", { ask }).problems.join(" ")).toMatch(/one example/i);
+  });
+});
+
+describe("checkDraft: our people are consultants", () => {
+  it("rejects calling them students, but allows student-run", () => {
+    const r = checkDraft({ ...good, body: good.body.replace("consultants would", "students would") }, row, "first", { ask });
+    expect(r.problems.join(" ")).toMatch(/consultants/);
+    expect(checkDraft({ ...good, body: good.body.replace("UCSC consultants", "student-run UCSC consultants") }, row, "first", { ask }).problems.join(" ")).not.toMatch(/never 'students'/);
   });
 });
