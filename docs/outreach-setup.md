@@ -71,7 +71,7 @@ One-time setup:
 
 - [x] Add `ucsc180dc.org` and verify it with the TXT record.
 - [ ] Add a second officer's Google account as an owner, so access is not tied to one person.
-- [ ] Send a test to a Gmail address, choose Show original, and check that SPF, DKIM and DMARC all say PASS.
+- [x] Send a test to a Gmail address, choose Show original, and check that SPF, DKIM and DMARC all say PASS.
 
 Dashboards stay empty until a few hundred emails a day reach Gmail addresses, so in the first weeks keep watching Resend's bounce and complaint numbers instead. Once data appears, check it weekly:
 
