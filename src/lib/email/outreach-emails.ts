@@ -11,7 +11,7 @@ export interface OutreachEmailInput {
   postalAddress: string;
   /** The closing block, from "Best regards," down; lines may hold [label](https://link). Empty or missing signs as the team. */
   signature?: string;
-  /** The services page; when set, the email points to it above the booking link. */
+  /** The services page; when set, a sentence about it goes into the body, just before the closing question. */
   servicesUrl?: string;
 }
 
@@ -38,6 +38,19 @@ function signatureHtml(signature: string): string {
     .join("");
 }
 
+const SERVICES_MARKER = "[[services]]";
+const SERVICES_MARKER_ESCAPED = escapeHtml(SERVICES_MARKER);
+const servicesSentenceText = (url: string) => `You can see the areas we help with and how a quarter works on our services page: ${url}`;
+const servicesSentenceHtml = (url: string) => `You can see the areas we help with and how a quarter works on <a href="${escapeHtml(url)}">our services page</a>.`;
+
+/** Puts the services sentence in as its own paragraph just before the last one (the closing question); after the body if it is very short. */
+function withServices(body: string, sentence: string | null): string {
+  if (!sentence) return body;
+  const parts = body.split(/\n{2,}/);
+  if (parts.length < 3) return `${body}\n\n${sentence}`;
+  return [...parts.slice(0, -1), sentence, parts[parts.length - 1]].join("\n\n");
+}
+
 const paragraphs = (text: string) =>
   text
     .split(/\n{2,}/)
@@ -53,9 +66,8 @@ const SIGNATURE_FONT = "'Times New Roman', Times, serif";
 export function buildOutreachEmail(input: OutreachEmailInput): EmailContent {
   const signature = input.signature?.trim() || TEAM_SIGNATURE;
   const text = [
-    input.bodyText.trim(),
+    withServices(input.bodyText.trim(), input.servicesUrl ? servicesSentenceText(input.servicesUrl) : null),
     "",
-    ...(input.servicesUrl ? [`See some of our past work: ${input.servicesUrl}`, ""] : []),
     `Book a discovery call here: ${plainLink(input.bookingUrl)}`,
     "",
     BAR,
@@ -66,8 +78,7 @@ export function buildOutreachEmail(input: OutreachEmailInput): EmailContent {
   ].join("\n");
 
   const html = `<div>
-    ${paragraphs(input.bodyText)}
-    ${input.servicesUrl ? `<p>See some of our past work on our <a href="${escapeHtml(input.servicesUrl)}">services page</a>.</p>` : ""}
+    ${paragraphs(withServices(input.bodyText.trim(), input.servicesUrl ? SERVICES_MARKER : null)).replace(SERVICES_MARKER_ESCAPED, input.servicesUrl ? servicesSentenceHtml(input.servicesUrl) : "")}
     <p><a href="${escapeHtml(input.bookingUrl)}">Book a discovery call here</a></p>
     <div style="border-top:1px solid #999;width:260px;margin:22px 0 12px"></div>
     <div style="font-family:${SIGNATURE_FONT};font-size:14px;line-height:1.35">${signatureHtml(signature)}</div>

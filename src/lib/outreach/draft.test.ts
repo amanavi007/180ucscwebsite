@@ -22,7 +22,7 @@ const row: ProspectDraftRow = {
 const ask = askFor("Acme Health");
 const good = {
   subject: "180 Degrees Consulting on Acme Health's California launch",
-  body: `Hi Jo,\n\nWe saw that Acme Health is building remote patient monitoring for rural clinics and heading into California.\n\nA team of UCSC students would spend a full quarter on your go-to-market plan for that move. We agree on the scope with you first, then the students research the market and hand over recommendations. New this quarter, they can also help build and roll out the top recommendation, like a pricing dashboard.\n\n${ask}`,
+  body: `Hi Jo,\n\nWe saw that Acme Health is building remote patient monitoring for rural clinics and heading into California.\n\nA team of UCSC students would spend a full quarter on your go-to-market plan for that move, for example. We agree on the scope with you first, then the students research the market and hand over recommendations. They can also help build and roll out the top recommendation, like a pricing dashboard.\n\n${ask}`,
 };
 
 describe("parseDraftOutput", () => {
@@ -58,12 +58,12 @@ describe("checkDraft", () => {
     expect(checkDraft({ ...good, body: "I hope this finds you well. Acme Health is great." }, row).ok).toBe(false);
   });
   it("fails a first email over 130 words or under 65, and a follow-up over 60", () => {
-    const sentence = "Acme Health builds clinic software for rural care teams. We can also build your top recommendation. ";
+    const sentence = "Acme Health builds clinic software for rural care teams. We can also build your top recommendation, for example. ";
     const body = (n: number) => `Hi Jo,\n\n${Array(n).fill(sentence.repeat(2).trim()).join("\n\n")}\n\nWould a call help?`;
     expect(checkDraft({ ...good, body: body(8) }, row, "first").ok).toBe(false);
-    expect(checkDraft({ ...good, body: body(4) }, row, "first").ok).toBe(true);
+    expect(checkDraft({ ...good, body: body(3) }, row, "first").ok).toBe(true);
     expect(checkDraft({ ...good, body: body(1) }, row, "first").ok).toBe(false);
-    expect(checkDraft({ ...good, body: body(4) }, row, "follow_up").ok).toBe(false);
+    expect(checkDraft({ ...good, body: body(3) }, row, "follow_up").ok).toBe(false);
   });
   it("requires 180 Degrees Consulting in the subject", () => {
     expect(checkDraft({ ...good, subject: "UCSC students on Acme Health pricing" }, row).problems.join(" ")).toMatch(/subject line/i);
@@ -87,7 +87,7 @@ describe("checkDraft", () => {
 });
 
 describe("checkDraft: reads like a person, not an AI", () => {
-  const withBody = (body: string) => checkDraft({ ...good, body: `Hi Jo,\n\n${body}\n\nWe can also build your top recommendation for Acme Health.\n\nWould a call help?` }, row);
+  const withBody = (body: string) => checkDraft({ ...good, body: `Hi Jo,\n\n${body}\n\nWe can also build your top recommendation for Acme Health, for example.\n\nWould a call help?` }, row);
   const problems = (body: string) => withBody(body).problems.join(" ");
 
   it("rejects em dashes, en dashes, semicolons, colons and exclamation marks", () => {
@@ -260,5 +260,16 @@ describe("clubFactsFor", () => {
   it("drops the lines about cost for a company and keeps them for a nonprofit", () => {
     expect(clubFactsFor({ segment: "startup" }, facts)).toBe("- A team works for one quarter.\n- Based at UCSC.");
     expect(clubFactsFor({ segment: "nonprofit" }, facts)).toBe(facts);
+  });
+});
+
+describe("checkDraft: how the offer is framed", () => {
+  it("rejects calling the build option new", () => {
+    const r = checkDraft({ ...good, body: good.body.replace("They can also help", "New this quarter, they can also help") }, row, "first", { ask });
+    expect(r.problems.join(" ")).toMatch(/new|this quarter/i);
+  });
+  it("rejects a project idea that sounds like the only thing we do", () => {
+    const only = good.body.replace(", for example.", ".");
+    expect(checkDraft({ ...good, body: only }, row, "first", { ask }).problems.join(" ")).toMatch(/one example/i);
   });
 });

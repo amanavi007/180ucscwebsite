@@ -58,13 +58,13 @@ const MONEY_WORDS = /\b(free|no[- ]cost|no charge|costs? (you |them |your team )
 
 function kindInstructions(step: DraftKind, row: Pick<ProspectDraftRow, "segment">): string {
   if (step === "follow_up") {
-    return "This is a short follow-up to an earlier email that got no reply. Add one new, specific reason it could be useful; do not just bump the thread. Where it fits, the new reason can be that the team can also help build and roll out the top recommendation, not only research it. Maximum 60 words, in two short paragraphs separated by a blank line.";
+    return "This is a short follow-up to an earlier email that got no reply. Add one new, specific reason it could be useful; do not just bump the thread. Where it fits, the new reason can be that the team can also help build and roll out the top recommendation as well as research it. Never call anything new. Maximum 60 words, in two short paragraphs separated by a blank line.";
   }
   if (step === "closing") {
     return "This is a brief, friendly closing note after earlier emails got no reply. Say you won't keep emailing, and leave the door open. Maximum 50 words, in two short paragraphs separated by a blank line.";
   }
   const cost = isForProfit(row) ? "" : ", at no cost to them";
-  return `This is the FIRST email to this person. Between 95 and 130 words. Use exactly this shape, as short paragraphs separated by a blank line: (1) the greeting alone on its line; (2) one or two sentences showing we actually looked at their company, naming one specific thing from the prospect data in plain words; (3) one or two sentences on what we would do for them: a team of UCSC students works on one concrete problem for them for a quarter${cost}, naming the kind of problem that fits this company based only on the prospect data; (4) a separate short paragraph of two sentences on how the quarter works. This is the part to stress. We agree on the scope together first, the students research and deliver recommendations, and new this quarter they can also help build and roll out the top recommendation (the implementation track), so the company ends the quarter with something working. Name one thing the team could build that fits this company, such as a dashboard, a tracking system, internal tools or content, based only on the prospect data, and optionally one past client close to their field; (5) the closing ask, given in the rules below. Every paragraph stays under 55 words. Lead with them, not us: the club gets one sentence at most. Make them want to take the call by being concrete about what they would get.`;
+  return `This is the FIRST email to this person. Between 95 and 130 words. Use exactly this shape, as short paragraphs separated by a blank line: (1) the greeting alone on its line; (2) one or two sentences showing we actually looked at their company, naming one specific thing from the prospect data in plain words; (3) one or two sentences on what we would do for them: a team of UCSC students works on one concrete problem for them for a quarter${cost}, giving the kind of problem that fits this company, based only on the prospect data, as ONE example of what we could help with, never as the only thing (use wording like 'one thing we could help with is' or 'for example'), and say we shape the project around whatever matters most to them; (4) a separate short paragraph of two sentences on how the quarter works. This is the part to stress. We agree on the scope together first, and the company can choose research and recommendations, or have the students also help build and roll out the top recommendation, so they end the quarter with something working. Present both as simply how we work. Never say new, newly, now offering or this quarter. Name one thing the team could build that fits this company, such as a dashboard, a tracking system, internal tools or content, based only on the prospect data, and optionally one past client close to their field; (5) the closing ask, given in the rules below. Every paragraph stays under 55 words. Lead with them, not us: the club gets one sentence at most. Make them want to take the call by being concrete about what they would get.`;
 }
 
 export function buildDraftPrompt(args: {
@@ -139,6 +139,10 @@ const SUBJECT_BANNED = /\b(free|opportunity|partnership|collaboration|proposal)\
 const WORD_LIMITS: Record<DraftKind, number> = { first: 145, follow_up: 60, closing: 50 };
 const MIN_PARAGRAPHS: Record<DraftKind, number> = { first: 3, follow_up: 2, closing: 2 };
 const MIN_FIRST_WORDS = 65;
+/** The project idea is one example, not the whole offer. */
+const EXAMPLE_WORDS = /\b(for example|for instance|such as|one (?:thing|area|place|way|idea|example)|one of the|something like|could start with|to start)\b/i;
+/** The build option is part of how we work, not an announcement. */
+const NEWNESS = /\b(?:new this|this quarter|this year we|now offer\w*|newly|recently (?:added|launched|started)|just (?:added|launched|started)|new (?:implementation|option|track|offering|service))\b/i;
 /** The first email has to say that the team builds things now, not only advises. */
 const IMPLEMENTATION_WORDS = /implement\w*|\b(?:build|builds|building|roll(?:ing)? out|put)\b[^.?]*\b(?:recommendations?|plans?|findings)\b/i;
 const MAX_PARAGRAPH_WORDS = 60;
@@ -225,7 +229,9 @@ export function checkDraft(draft: DraftOutput, row: ProspectDraftRow, kind: Draf
   }
 
   if (kind === "first" && wordCount(body) < MIN_FIRST_WORDS) problems.push(`Make the body at least ${MIN_FIRST_WORDS} words: say concretely what the team would do and hand over.`);
-  if (kind === "first" && !IMPLEMENTATION_WORDS.test(body)) problems.push("Say that the team can also help build and roll out the top recommendation (the new implementation track), and name one thing it could build for this company.");
+  if (kind === "first" && !IMPLEMENTATION_WORDS.test(body)) problems.push("Say that the team can also help build and roll out the top recommendation, and name one thing it could build for this company.");
+  if (kind === "first" && !EXAMPLE_WORDS.test(body)) problems.push("Give the project idea as one example of what we could help with (for example 'one thing we could help with is'), so it does not sound like the only thing we do.");
+  if (NEWNESS.test(body)) problems.push("Do not call the build option new, and do not say 'this quarter'. Present it as simply how we work.");
   if (isForProfit(row) && MONEY_WORDS.test(`${draft.subject}\n${body}`)) problems.push("Remove any mention of cost, being free, fees or donations. Say nothing about money.");
   if (options.ask && paragraphs[paragraphs.length - 1] !== options.ask) problems.push(`End with this exact sentence as the last paragraph: "${options.ask}"`);
 

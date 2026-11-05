@@ -13,13 +13,17 @@ const args = {
 describe("buildOutreachEmail: services link", () => {
   it("points to the services page above the booking link when given one", () => {
     const email = buildOutreachEmail({ ...args, servicesUrl: "https://www.ucsc180dc.org/services" });
-    expect(email.text).toContain("See some of our past work: https://www.ucsc180dc.org/services");
-    expect(email.text.indexOf("past work")).toBeLessThan(email.text.indexOf("Book a discovery call"));
-    expect(email.html).toContain('<a href="https://www.ucsc180dc.org/services">services page</a>');
+    expect(email.text).toContain("how a quarter works on our services page: https://www.ucsc180dc.org/services");
+    // It sits inside the message, right before the closing question, not as a footer.
+    expect(email.text.indexOf("services page")).toBeLessThan(email.text.indexOf("Would a short call help?"));
+    expect(email.text.indexOf("Saw Acme")).toBeLessThan(email.text.indexOf("services page"));
+    expect(email.html).toContain('<a href="https://www.ucsc180dc.org/services">our services page</a>');
+    expect(email.html.indexOf("our services page")).toBeLessThan(email.html.indexOf("Would a short call help?"));
+    expect(email.html).not.toContain("[[services]]");
   });
   it("leaves it out when there is none", () => {
     const email = buildOutreachEmail(args);
-    expect(email.text).not.toContain("past work");
+    expect(email.text).not.toContain("services page");
     expect(email.html).not.toContain("services page");
   });
 });
