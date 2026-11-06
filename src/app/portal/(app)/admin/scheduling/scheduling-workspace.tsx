@@ -44,7 +44,7 @@ import { RebalanceDialog } from "./rebalance-dialog";
 import { AddAvailabilityDialog } from "./add-availability-dialog";
 
 export interface SchedulingData {
-  coffee: { slots: SlotRow[]; bookings: BookingRow[]; availability: AvailabilityRow[] };
+  coffee: { slots: SlotRow[]; bookings: BookingRow[]; availability: AvailabilityRow[]; bookingOpen: boolean };
   interviews: {
     slots: InterviewSlotRow[];
     bookings: InterviewBookingRow[];
@@ -287,8 +287,10 @@ export function SchedulingWorkspace({
                 interviews={interviews.availability}
                 clients={clients.availability}
                 onAdd={() => setAddOpen(true)}
+                onClientPanel={clients.panelExecIds.includes(currentExecId)}
+                interviewWindow={{ windowStart: interviews.windowStart, windowEnd: interviews.windowEnd }}
               />
-              <SetupCard interviews={interviews} clients={clients} />
+              <SetupCard coffee={coffee} interviews={interviews} clients={clients} />
               {isSuperAdmin && (
                 <ExecAvailabilityPanel
                   today={today}

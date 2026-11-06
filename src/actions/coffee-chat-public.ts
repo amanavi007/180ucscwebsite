@@ -8,6 +8,7 @@ import { verifyTurnstileToken } from "@/lib/turnstile";
 import { buildBookingConfirmationEmail } from "@/lib/email/coffee-chat-confirmation";
 import { sendEmail } from "@/lib/email/send";
 import { notifyExecsOfBooking } from "@/lib/email/notify-execs";
+import { isCoffeeChatBookingOpen } from "@/lib/data/coffee-chat-public";
 
 const UNIQUE_VIOLATION = "23505";
 
@@ -60,6 +61,8 @@ export async function createBookingAction(input: CreateBookingInput): Promise<Cr
 
   const turnstileOk = await verifyTurnstileToken(input.turnstileToken);
   if (!turnstileOk) return { error: "We couldn't verify you're not a robot. Please try again." };
+
+  if (!(await isCoffeeChatBookingOpen())) return { error: "Coffee chat booking is closed right now. Check back soon." };
 
   const supabase = createAdminClient();
 

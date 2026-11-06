@@ -120,7 +120,7 @@ export const adminSchemas = {
   }),
   mergeClients: z.object({ keepId: id, keepName: label, duplicateId: id, duplicateName: label }),
   slotKind: z.object({ kind }),
-  bookingOpen: z.object({ kind: z.enum(["interview", "client_meeting"]), open: z.boolean() }),
+  bookingOpen: z.object({ kind: z.enum(["coffee_chat", "interview", "client_meeting"]), open: z.boolean() }),
   cancelBooking: z.object({ kind, bookingId: id, label: text(200).min(1) }),
   createPlan: z.object({ quarterId: id, name: label }),
   planRef: z.object({ planId: id, name: label }),

@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { removeAvailabilityBlockAction } from "@/actions/coffee-chat";
 import { removeInterviewAvailabilityAction } from "@/actions/interview";
 import { removeClientMeetingAvailabilityAction } from "@/actions/client-meeting";
@@ -14,6 +14,8 @@ import { formatTimeRange } from "@/lib/coffee-chat";
 import { formatDateLong } from "@/lib/date";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type { InterviewWindow } from "@/lib/interview";
+import { EditAvailabilityDialog } from "./edit-availability-dialog";
 
 export type AvailabilityKind = "coffee" | "interview" | "client";
 
@@ -36,6 +38,8 @@ export function AvailabilityPanel({
   interviews,
   clients,
   onAdd,
+  onClientPanel,
+  interviewWindow,
 }: {
   today: string;
   currentExecId: string;
@@ -43,7 +47,10 @@ export function AvailabilityPanel({
   interviews: InterviewAvailabilityRow[];
   clients: ClientMeetingAvailabilityRow[];
   onAdd: () => void;
+  onClientPanel: boolean;
+  interviewWindow: InterviewWindow;
 }) {
+  const [editing, setEditing] = useState<Entry | null>(null);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -108,6 +115,9 @@ export function AvailabilityPanel({
                     {kinds.length === 3 ? <Badge variant="muted">All three</Badge> : kinds.map((k) => <Badge key={k} variant="muted">{SHORT[k]}</Badge>)}
                   </div>
                 </div>
+                <Button variant="ghost" size="icon-sm" aria-label="Edit this availability" disabled={isPending} onClick={() => setEditing(e)}>
+                  <Pencil />
+                </Button>
                 <Button variant="ghost" size="icon-sm" aria-label="Remove this availability" disabled={isPending} onClick={() => remove(e)}>
                   <Trash2 />
                 </Button>
@@ -121,6 +131,14 @@ export function AvailabilityPanel({
         <Plus />
         Add availability
       </Button>
+
+      <EditAvailabilityDialog
+        entry={editing}
+        today={today}
+        onClientPanel={onClientPanel}
+        interviewWindow={interviewWindow}
+        onClose={() => setEditing(null)}
+      />
     </section>
   );
 }

@@ -14,7 +14,12 @@ import { createClientRecord, mergeClients } from "@/actions/clients";
 import { applyPlan, createPlan, finalizePlan } from "@/actions/team-builder";
 import { updateAttendanceAlertThreshold } from "@/actions/org-settings";
 import { deleteTask } from "@/actions/tasks";
-import { cancelBookingAsAdminAction, generateSlotsAction, publishAllSlotsAction } from "@/actions/coffee-chat";
+import {
+  cancelBookingAsAdminAction,
+  generateSlotsAction,
+  publishAllSlotsAction,
+  setCoffeeChatBookingOpenAction,
+} from "@/actions/coffee-chat";
 import {
   cancelInterviewBookingAsAdminAction,
   generateInterviewSlotsAction,
@@ -126,7 +131,13 @@ export function registerAdminExecutors() {
   A.generate_slots.execute = async (a) => check(await SLOT_ACTIONS[a.kind as keyof typeof SLOT_ACTIONS].generate());
   A.publish_all_slots.execute = async (a) => check(await SLOT_ACTIONS[a.kind as keyof typeof SLOT_ACTIONS].publish());
   A.set_booking_open.execute = async (a) =>
-    check(a.kind === "interview" ? await setInterviewBookingOpenAction(a.open) : await setClientMeetingBookingOpenAction(a.open));
+    check(
+      a.kind === "interview"
+        ? await setInterviewBookingOpenAction(a.open)
+        : a.kind === "coffee_chat"
+          ? await setCoffeeChatBookingOpenAction(a.open)
+          : await setClientMeetingBookingOpenAction(a.open),
+    );
   A.cancel_booking.execute = async (a) => check(await SLOT_ACTIONS[a.kind as keyof typeof SLOT_ACTIONS].cancel(a.bookingId));
   A.create_team_plan.execute = async (a) => check(await createPlan(a.quarterId, a.name));
   A.finalize_team_plan.execute = async (a) => check(await finalizePlan(a.planId));
@@ -474,7 +485,6 @@ export function buildAdminWriteTools(_actor: Actor, deps: ToolDeps, propose: Pro
         if (a.action === "generate_slots") return propose("generate_slots", { kind: a.kind });
         if (a.action === "publish_all") return propose("publish_all_slots", { kind: a.kind });
         if (a.action === "open_booking" || a.action === "close_booking") {
-          if (a.kind === "coffee_chat") return refused("Coffee chat booking can't be opened or closed from here; use Admin.");
           return propose("set_booking_open", { kind: a.kind, open: a.action === "open_booking" });
         }
         if (!a.who) return refused("Need whose booking to cancel.");

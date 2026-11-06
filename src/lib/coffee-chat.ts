@@ -395,3 +395,9 @@ const UCSC_EMAIL_PATTERN = /^[^\s@]+@ucsc\.edu$/i;
 export function isValidUcscEmail(email: string): boolean {
   return UCSC_EMAIL_PATTERN.test(email.trim());
 }
+
+/** Coffee chat booking is open unless an exec has switched it off, so a fresh install keeps taking bookings. */
+export const COFFEE_CHAT_BOOKING_KEY = "coffee_chat_booking_open";
+export function parseCoffeeChatBookingOpen(rows: { key: string; value: string }[]): boolean {
+  return rows.find((r) => r.key === COFFEE_CHAT_BOOKING_KEY)?.value !== "false";
+}

@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import { normalizeTime } from "@/lib/coffee-chat";
+import { COFFEE_CHAT_BOOKING_KEY, normalizeTime, parseCoffeeChatBookingOpen } from "@/lib/coffee-chat";
 import { EXEC_ROLES } from "@/lib/auth/roles";
 import { fetchAllPages } from "@/lib/paginate";
 
@@ -11,6 +11,13 @@ export interface AvailabilityRow {
   date: string;
   startTime: string;
   endTime: string;
+}
+
+export async function getCoffeeChatBookingOpen(): Promise<boolean> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("org_settings").select("key, value").eq("key", COFFEE_CHAT_BOOKING_KEY);
+  if (error) throw error;
+  return parseCoffeeChatBookingOpen(data ?? []);
 }
 
 export async function getAllAvailability(): Promise<AvailabilityRow[]> {

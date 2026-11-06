@@ -8,6 +8,7 @@ import { logAudit } from "@/lib/audit";
 import { notifyExecsOfBooking } from "@/lib/email/notify-execs";
 import { getAllAvailability, getAllSlots, getExecOptionsForSlot } from "@/lib/data/coffee-chat";
 import {
+  COFFEE_CHAT_BOOKING_KEY,
   DEFAULT_CHUNK_MINUTES,
   expandAvailabilityEntry,
   generateSlots,
@@ -32,6 +33,22 @@ async function requireExec() {
 function revalidateAdmin() {
   revalidatePath("/portal/admin/coffee-chats");
   revalidatePath("/apply/coffee-chat");
+}
+
+export async function setCoffeeChatBookingOpenAction(open: boolean): Promise<ActionResult> {
+  const { profile, error } = await requireExec();
+  if (error || !profile) return { error };
+
+  const supabase = await createClient();
+  const { error: updateError } = await supabase
+    .from("org_settings")
+    .upsert({ key: COFFEE_CHAT_BOOKING_KEY, value: open ? "true" : "false" }, { onConflict: "key" });
+  if (updateError) return { error: updateError.message };
+
+  await logAudit(profile.id, "coffee_chat.booking_toggled", undefined, open ? "opened" : "closed");
+  revalidateAdmin();
+  revalidatePath("/portal/admin/scheduling");
+  return {};
 }
 
 /** Adds availability for several days and several time blocks in one go (one row per day and block). */

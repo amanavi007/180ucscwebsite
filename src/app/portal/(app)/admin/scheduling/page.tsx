@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getAllAvailability, getAllBookings, getAllSlots } from "@/lib/data/coffee-chat";
+import { getAllAvailability, getAllBookings, getAllSlots, getCoffeeChatBookingOpen } from "@/lib/data/coffee-chat";
 import {
   getInterviewAdminSettings,
   getInterviewAvailability,
@@ -37,6 +37,7 @@ export default async function SchedulingPage() {
     coffeeSlots,
     coffeeBookings,
     coffeeAvailability,
+    coffeeBookingOpen,
     interviewSlots,
     interviewBookings,
     interviewAvailability,
@@ -51,6 +52,7 @@ export default async function SchedulingPage() {
     orFallback(getAllSlots(), []),
     orFallback(getAllBookings(), []),
     orFallback(getAllAvailability(), []),
+    orFallback(getCoffeeChatBookingOpen(), true),
     orFallback(getInterviewSlots(), []),
     orFallback(getInterviewBookings(), []),
     orFallback(getInterviewAvailability(), []),
@@ -69,7 +71,7 @@ export default async function SchedulingPage() {
       currentExecId={profile.id}
       isSuperAdmin={profile.role === "director_of_projects"}
       feedUrl={`${process.env.NEXT_PUBLIC_SITE_URL}${calendarFeedPath(profile.id)}`}
-      coffee={{ slots: coffeeSlots, bookings: coffeeBookings, availability: coffeeAvailability }}
+      coffee={{ slots: coffeeSlots, bookings: coffeeBookings, availability: coffeeAvailability, bookingOpen: coffeeBookingOpen }}
       interviews={{
         slots: interviewSlots,
         bookings: interviewBookings,

@@ -30,6 +30,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "interview.booking_cancelled_by_admin": "Cancelled an interview booking",
   "interview.invitees_added": "Added interview invitees",
   "interview.invitee_removed": "Removed an interview invitee",
+  "coffee_chat.booking_toggled": "Opened or closed coffee chat booking",
   "interview.booking_toggled": "Opened or closed interview booking",
   "interview.window_set": "Changed the interview date range",
   "recruit.applicants_merged": "Merged duplicate applicants",

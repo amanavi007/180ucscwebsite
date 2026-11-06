@@ -1,6 +1,12 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { DEFAULT_MIN_LEAD_MINUTES, isSlotBookable, normalizeTime } from "@/lib/coffee-chat";
+import {
+  COFFEE_CHAT_BOOKING_KEY,
+  DEFAULT_MIN_LEAD_MINUTES,
+  isSlotBookable,
+  normalizeTime,
+  parseCoffeeChatBookingOpen,
+} from "@/lib/coffee-chat";
 import { fetchAllPages } from "@/lib/paginate";
 
 export interface PublicSlot {
@@ -12,7 +18,16 @@ export interface PublicSlot {
 }
 
 /** Every slot an applicant is currently allowed to book: published, unbooked, and past the minimum lead time. */
+export async function isCoffeeChatBookingOpen(): Promise<boolean> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.from("org_settings").select("key, value").eq("key", COFFEE_CHAT_BOOKING_KEY);
+  if (error) throw error;
+  return parseCoffeeChatBookingOpen(data ?? []);
+}
+
+/** Empty when an exec has closed coffee chat booking. */
 export async function getOpenSlots(): Promise<PublicSlot[]> {
+  if (!(await isCoffeeChatBookingOpen())) return [];
   const supabase = createAdminClient();
   const slotRows = await fetchAllPages((from, to) =>
     supabase
