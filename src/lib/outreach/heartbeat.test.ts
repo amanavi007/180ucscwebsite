@@ -51,6 +51,9 @@ describe("summarizeRun", () => {
   it("says what drafting did", () => {
     expect(summarizeRun("prepare", { verified: 3, drafted: 1, followUps: 2, needsAttention: 2 })).toBe("checked 3, wrote 1 draft, 2 follow-ups, 2 need attention");
   });
+  it("says when drafts failed to write because the AI errored", () => {
+    expect(summarizeRun("prepare", { verified: 25, drafted: 0, followUps: 0, draftErrors: 4 })).toBe("checked 25, wrote 0 drafts, 0 follow-ups, 4 drafts failed to write (AI error)");
+  });
   it("says why nothing was sent", () => {
     expect(summarizeRun("send", { scheduled: 0, skipped: "cap_reached" })).toBe("sent none (cap reached)");
     expect(summarizeRun("send", { scheduled: 4, skipped: null })).toBe("scheduled 4 emails");

@@ -173,7 +173,11 @@ export interface PrepareResult {
   followUps: number;
   /** Old drafts that failed the current rules and were sent back for rewriting. */
   staleRewritten?: number;
+  /** Drafts the AI failed to write at all (provider error or timeout). The company stays verified and is retried on a later run. */
+  draftErrors?: number;
 }
+
+type DraftOutcome = { draft: DraftOutput } | { needsAttention: string };
 
 /** Verifies new prospects, drafts emails, turns past scheduled sends into sent ones, and drafts due follow-ups. */
 export async function runPrepare(deps: PrepareDeps): Promise<PrepareResult> {
@@ -181,22 +185,36 @@ export async function runPrepare(deps: PrepareDeps): Promise<PrepareResult> {
   const { settings, now } = deps;
   if (settings.mode === "off") return result;
 
-  const stale = deps.refreshStaleDrafts ? await deps.refreshStaleDrafts() : 0;
+  // One step failing must not take down the whole run: the run only records its heartbeat when it
+  // finishes, so an early throw quietly stops every later step too. Failures are logged and counted,
+  // and the affected company is left untouched so a later run retries it.
+  let stale = 0;
+  if (deps.refreshStaleDrafts) {
+    try {
+      stale = await deps.refreshStaleDrafts();
+    } catch (err) {
+      console.error("outreach stale-draft refresh failed:", err);
+    }
+  }
   if (stale > 0) result.staleRewritten = stale;
 
   if (settings.mode === "live") {
     for (const s of await deps.listScheduledDue(new Date(now.getTime() - RECONCILE_DELAY_MS))) {
-      if (!(await deps.casMessage(s.messageId, ["scheduled"], { status: "sent", sentAt: s.scheduledFor }))) continue;
-      result.reconciled++;
-      const newStep = s.step + 1;
-      const first = s.step === 0 ? s.scheduledFor : (s.prospect.firstSentAt ?? s.scheduledFor);
-      const next = nextActionAt(first, settings.followupDays, newStep) ?? new Date(s.scheduledFor.getTime() + CLOSING_GRACE_MS);
-      await deps.casProspect(s.prospect.id, ["queued"], {
-        status: statusAfterSend(s.step),
-        step: newStep,
-        lastSentAt: s.scheduledFor,
-        nextActionAt: next,
-      });
+      try {
+        if (!(await deps.casMessage(s.messageId, ["scheduled"], { status: "sent", sentAt: s.scheduledFor }))) continue;
+        result.reconciled++;
+        const newStep = s.step + 1;
+        const first = s.step === 0 ? s.scheduledFor : (s.prospect.firstSentAt ?? s.scheduledFor);
+        const next = nextActionAt(first, settings.followupDays, newStep) ?? new Date(s.scheduledFor.getTime() + CLOSING_GRACE_MS);
+        await deps.casProspect(s.prospect.id, ["queued"], {
+          status: statusAfterSend(s.step),
+          step: newStep,
+          lastSentAt: s.scheduledFor,
+          nextActionAt: next,
+        });
+      } catch (err) {
+        console.error(`outreach reconcile failed for message ${s.messageId}:`, err);
+      }
     }
     for (const p of await deps.listProspects(["closing_note"], 100, { dueBy: now })) {
       await deps.casProspect(p.id, ["closing_note"], { status: "no_response" });
@@ -221,6 +239,19 @@ export async function runPrepare(deps: PrepareDeps): Promise<PrepareResult> {
   const startedAt = Date.now();
   const budgetMs = deps.budgetMs ?? PREPARE_BUDGET_MS;
   const outOfTime = () => Date.now() - startedAt > budgetMs;
+  // A draft call that throws (the AI provider erroring or timing out) fails only that one company:
+  // it stays in its current status and a later run retries it. Without this, one bad call in a
+  // parallel chunk rejects the whole run — nothing is drafted and no heartbeat is recorded.
+  let draftErrors = 0;
+  const attemptDraft = async (args: { row: ProspectDraftRow; step: DraftKind; previousSubjects: string[] }): Promise<DraftOutcome | null> => {
+    try {
+      return await deps.draft(args);
+    } catch (err) {
+      draftErrors++;
+      console.error(`outreach draft failed for ${args.row.company}:`, err);
+      return null;
+    }
+  };
   const draftBatch = Math.min(MAX_DRAFT_BATCH, Math.max(DRAFT_BATCH, settings.discoveryPerDay));
   const batchBodies = await deps.recentDraftBodies();
   const batchSubjects: string[] = [];
@@ -230,13 +261,14 @@ export async function runPrepare(deps: PrepareDeps): Promise<PrepareResult> {
     if (outOfTime()) break;
     const chunk = toDraft.slice(i, i + DRAFT_CONCURRENCY);
     const earlier = await Promise.all(chunk.map((p) => deps.previousSubjects(p.id)));
-    const firstTries = await Promise.all(chunk.map((p, j) => deps.draft({ row: toDraftRow(p), step: "first", previousSubjects: [...earlier[j], ...batchSubjects] })));
+    const firstTries = await Promise.all(chunk.map((p, j) => attemptDraft({ row: toDraftRow(p), step: "first", previousSubjects: [...earlier[j], ...batchSubjects] })));
     for (let j = 0; j < chunk.length; j++) {
       const p = chunk[j];
-      let outcome: { draft: DraftOutput } | { needsAttention: string } = firstTries[j];
+      let outcome = firstTries[j];
+      if (!outcome) continue;
       if (!("needsAttention" in outcome) && batchBodies.some((b) => isNearDuplicate(b, (outcome as { draft: DraftOutput }).draft.body))) {
-        const again = await deps.draft({ row: toDraftRow(p), step: "first", previousSubjects: [...earlier[j], ...batchSubjects] });
-        outcome = "needsAttention" in again || !batchBodies.some((b) => isNearDuplicate(b, again.draft.body)) ? again : { needsAttention: "Draft too similar to another in this batch." };
+        const again = await attemptDraft({ row: toDraftRow(p), step: "first", previousSubjects: [...earlier[j], ...batchSubjects] });
+        outcome = again && ("needsAttention" in again || !batchBodies.some((b) => isNearDuplicate(b, again.draft.body))) ? again : { needsAttention: "Draft too similar to another in this batch." };
       }
       if ("needsAttention" in outcome) {
         if (await deps.casProspect(p.id, ["verified"], { status: "needs_attention", statusReason: outcome.needsAttention })) result.needsAttention++;
@@ -256,7 +288,8 @@ export async function runPrepare(deps: PrepareDeps): Promise<PrepareResult> {
       if (outOfTime()) break;
       if (!p.nextActionAt || p.nextActionAt > now) continue;
       if (await deps.hasMessageForStep(p.id, p.step)) continue;
-      const made = await deps.draft({ row: toDraftRow(p), step: stepKind(p.step), previousSubjects: await deps.previousSubjects(p.id) });
+      const made = await attemptDraft({ row: toDraftRow(p), step: stepKind(p.step), previousSubjects: await deps.previousSubjects(p.id) });
+      if (!made) continue;
       if ("needsAttention" in made) {
         await deps.casProspect(p.id, [p.status], { status: "needs_attention", statusReason: made.needsAttention });
         result.needsAttention++;
@@ -266,6 +299,7 @@ export async function runPrepare(deps: PrepareDeps): Promise<PrepareResult> {
       result.followUps++;
     }
   }
+  if (draftErrors > 0) result.draftErrors = draftErrors;
   return result;
 }
 

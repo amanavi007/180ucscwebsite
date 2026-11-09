@@ -19,6 +19,7 @@ export function summarizeRun(job: HeartbeatJob, result: unknown): string {
   if (job === "prepare") {
     const parts = [`checked ${num("verified")}`, `wrote ${plural(num("drafted"), "draft")}`, `${plural(num("followUps"), "follow-up")}`];
     if (num("needsAttention") > 0) parts.push(`${num("needsAttention")} need attention`);
+    if (num("draftErrors") > 0) parts.push(`${plural(num("draftErrors"), "draft")} failed to write (AI error)`);
     return parts.join(", ");
   }
   if (job === "send") {

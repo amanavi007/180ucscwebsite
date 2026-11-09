@@ -10,7 +10,14 @@ export function modelGenerate(env: Record<string, string | undefined> = process.
   const model = buildModel({ ...env, ASSISTANT_PRIMARY: "bayleaf" });
   if (!model) throw new Error("The AI helper isn't set up. Add an AI key.");
   return async (prompt) => {
-    const { output } = await generateText({ model, output: Output.object({ schema: draftModelSchema }), prompt });
+    const { output } = await generateText({
+      model,
+      output: Output.object({ schema: draftModelSchema }),
+      prompt,
+      // One hanging provider call must not stall the whole prepare run against the cron's time
+      // limit: abort the single call, and the runner skips just that company and carries on.
+      abortSignal: AbortSignal.timeout(60_000),
+    });
     return output;
   };
 }

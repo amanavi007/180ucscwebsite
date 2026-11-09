@@ -397,6 +397,49 @@ describe("runPrepare", () => {
     expect(store.prospects.get("p1")).toMatchObject({ status: "needs_attention", statusReason: "No researched facts" });
   });
 
+  it("keeps drafting other companies when one draft call throws, and counts the failure", async () => {
+    const store = new Store();
+    store.prospects.set("p1", prospect(1, { status: "verified" }));
+    store.prospects.set("p2", prospect(2, { status: "verified" }));
+    const draft = vi.fn().mockImplementation(async ({ row }: { row: { company: string } }) => {
+      if (row.company === "Company 1") throw new Error("AI provider unavailable");
+      return { draft: { subject: `About ${row.company}`, body: `Hi, I saw ${row.company} builds widget platforms for logistics.` } };
+    });
+    const result = await runPrepare(prepareDeps(store, { draft }));
+    expect(result.draftErrors).toBe(1);
+    expect(result.drafted).toBe(1);
+    // The failed company is left verified so a later run retries it; the other one drafted fine.
+    expect(store.prospects.get("p1")!.status).toBe("verified");
+    expect(store.prospects.get("p2")!.status).toBe("drafted");
+  });
+
+  it("still verifies and drafts when the stale-draft refresh throws", async () => {
+    const store = new Store();
+    store.prospects.set("p1", prospect(1, { status: "new" }));
+    const refreshStaleDrafts = vi.fn().mockRejectedValue(new Error("database unavailable"));
+    const result = await runPrepare(prepareDeps(store, { refreshStaleDrafts }));
+    expect(result.verified).toBe(1);
+    expect(store.prospects.get("p1")!.status).toBe("drafted");
+  });
+
+  it("reconciles the other scheduled messages when one of them throws", async () => {
+    const store = new Store();
+    store.prospects.set("p1", prospect(1, { status: "queued" }));
+    store.prospects.set("p2", prospect(2, { status: "queued" }));
+    const past = new Date("2026-10-19T20:00:00Z");
+    store.messages.set("m1", { id: "m1", prospectId: "p1", step: 0, subject: "S", bodyText: "B", status: "scheduled", scheduledFor: past, resendId: "re_1", sentAt: null, error: null });
+    store.messages.set("m2", { id: "m2", prospectId: "p2", step: 0, subject: "S", bodyText: "B", status: "scheduled", scheduledFor: past, resendId: "re_2", sentAt: null, error: null });
+    const base = prepareDeps(store, {}, settings({ mode: "live" }));
+    const casMessage = vi.fn().mockImplementation(async (id: string, from: string[], patch: MessagePatch) => {
+      if (id === "m1") throw new Error("database unavailable");
+      return base.casMessage(id, from, patch);
+    });
+    const result = await runPrepare({ ...base, casMessage });
+    expect(result.reconciled).toBe(1);
+    expect(store.messages.get("m2")).toMatchObject({ status: "sent" });
+    expect(store.prospects.get("p2")).toMatchObject({ status: "sent", step: 1 });
+  });
+
   it("regenerates a draft that is a near-duplicate of one already written in the batch", async () => {
     const store = new Store();
     store.prospects.set("p1", prospect(1, { status: "verified" }));
