@@ -68,6 +68,12 @@ async function markInvalid(admin: Admin, id: string, reason: string) {
   if (error) throw error;
 }
 
+async function markContacted(admin: Admin, id: string, reason: string) {
+  await cancelScheduledMessages(admin, id);
+  const { error } = await admin.from("outreach_prospects").update({ status: "contacted", status_reason: reason, next_action_at: null }).eq("id", id);
+  if (error) throw error;
+}
+
 /** True when a message has gone out (or its send time has passed) for this prospect. */
 async function hasSentMessage(admin: Admin, id: string): Promise<boolean> {
   const { data, error } = await admin.from("outreach_messages").select("id, status, scheduled_for").eq("prospect_id", id).in("status", ["sent", "scheduled"]); // in-ok: two statuses
@@ -105,6 +111,7 @@ export function buildProspectCorrectionDeps(admin: Admin, keyId: string): Prospe
       throw error;
     },
     markInvalid: (id, reason) => markInvalid(admin, id, reason),
+    markContacted: (id, reason) => markContacted(admin, id, reason),
     record: (detail) => record(admin, keyId, detail),
   };
 }

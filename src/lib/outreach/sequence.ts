@@ -41,7 +41,7 @@ export function stepKind(step: number): "first" | "follow_up" | "closing" {
   return step >= 3 ? "closing" : "follow_up";
 }
 
-const TERMINAL = new Set(["replied", "booked", "unsubscribed", "bounced", "invalid", "no_response"]);
+const TERMINAL = new Set(["replied", "booked", "unsubscribed", "bounced", "invalid", "no_response", "contacted"]);
 
 export function isTerminal(status: string): boolean {
   return TERMINAL.has(status);

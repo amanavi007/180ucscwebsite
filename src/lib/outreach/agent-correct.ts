@@ -18,7 +18,7 @@ const bad = (status: number, error: string, extra: Record<string, unknown> = {})
 export const CORRECTABLE_OUTCOMES = new Set(["ready", "no_email", "failed", "unreachable"]);
 
 /** Prospect statuses that mean an email went out or the person answered. Such a prospect is never changed here. */
-export const ENGAGED_STATUSES = new Set(["sent", "follow_up_1", "follow_up_2", "closing_note", "no_response", "replied", "booked", "unsubscribed", "bounced"]);
+export const ENGAGED_STATUSES = new Set(["sent", "follow_up_1", "follow_up_2", "closing_note", "no_response", "replied", "booked", "unsubscribed", "bounced", "contacted"]);
 
 /* ── Body ──────────────────────────────────────────────────────────────────────────────────────────────────── */
 
@@ -230,6 +230,8 @@ export interface ProspectCorrectionDeps extends EmailCheckDeps {
   saveContact(id: string, change: { email: string; name: string | null; role: string | null; resetToNew: boolean }): Promise<"ok" | "duplicate_email">;
   /** Marks the prospect invalid and takes it out of drafting and sending. */
   markInvalid(id: string, reason: string): Promise<void>;
+  /** Marks the prospect contacted (emailed outside the pipeline) and drops anything drafted or scheduled. */
+  markContacted(id: string, reason: string): Promise<void>;
   record(detail: Record<string, unknown>): Promise<void>;
 }
 
@@ -282,4 +284,22 @@ export async function invalidateProspect(id: string, body: unknown, deps: Pick<P
   await deps.markInvalid(prospect.id, reasonText(parsed.data.reason, parsed.data.detail));
   await deps.record({ action: "invalidate", target: "prospect", prospectId: prospect.id, company: prospect.company, reason: parsed.data.reason, detail: parsed.data.detail, previousStatus: prospect.status });
   return { status: 200, body: { id: prospect.id, status: "invalid" } };
+}
+
+export const contactedSchema = z.object({ note: text(300).default("") });
+
+/**
+ * Records that someone already emailed this prospect outside the pipeline, so drafting, sending and follow-ups skip it.
+ * A prospect the pipeline has already written to keeps its own status and the call is a no-op.
+ */
+export async function markProspectContacted(id: string, body: unknown, deps: Pick<ProspectCorrectionDeps, "getProspect" | "isEngaged" | "markContacted" | "record">): Promise<AuditResponse> {
+  const parsed = contactedSchema.safeParse(body ?? {});
+  if (!parsed.success) return bad(400, "invalid_body");
+  const prospect = await deps.getProspect(id);
+  if (!prospect) return bad(404, "not_found");
+  if (ENGAGED_STATUSES.has(prospect.status) || (await deps.isEngaged(prospect))) return { status: 200, body: { id: prospect.id, status: prospect.status, unchanged: true } };
+  const reason = (parsed.data.note ? `Contacted outside the pipeline: ${parsed.data.note}` : "Contacted outside the pipeline.").slice(0, 300);
+  await deps.markContacted(prospect.id, reason);
+  await deps.record({ action: "contacted", target: "prospect", prospectId: prospect.id, company: prospect.company, detail: parsed.data.note, previousStatus: prospect.status });
+  return { status: 200, body: { id: prospect.id, status: "contacted" } };
 }

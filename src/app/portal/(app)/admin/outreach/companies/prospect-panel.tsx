@@ -9,7 +9,7 @@ import { useConfirm } from "@/components/confirm-dialog";
 import type { ProspectDetail, ProspectView } from "@/lib/data/outreach";
 import { eventLabel, formatWhen, replyLabel, stageChip, stepLabel } from "@/lib/outreach/view";
 
-const FINISHED = ["replied", "booked", "unsubscribed", "bounced", "invalid", "no_response"];
+const FINISHED = ["replied", "booked", "unsubscribed", "bounced", "invalid", "no_response", "contacted"];
 
 /** One prospect in a panel beside the list: who they are, what we know, what was sent, what came back. */
 export function ProspectPanel({

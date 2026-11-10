@@ -87,6 +87,7 @@ function prospectDeps(p: ProspectForCorrection | null, engaged = false) {
     checkMx: async () => true,
     saveContact: vi.fn(async () => "ok" as const),
     markInvalid: vi.fn(async () => {}),
+    markContacted: vi.fn(async () => {}),
     record: vi.fn(async () => {}),
   };
 }

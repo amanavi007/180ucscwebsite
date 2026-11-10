@@ -15,6 +15,7 @@ const STAGES: Record<string, { label: string; variant: ChipVariant }> = {
   follow_up_2: { label: "Follow-up 2", variant: "ok" },
   closing_note: { label: "Closing note", variant: "ok" },
   no_response: { label: "No response", variant: "muted" },
+  contacted: { label: "Contacted", variant: "ok" },
   replied: { label: "Replied", variant: "warn" },
   booked: { label: "Booked", variant: "ok" },
   unsubscribed: { label: "Unsubscribed", variant: "muted" },
@@ -37,7 +38,7 @@ export const STAGE_FILTERS: { key: string; label: string; statuses: string[] }[]
   { key: "sent", label: "Sent", statuses: ["sent", "follow_up_1", "follow_up_2", "closing_note"] },
   { key: "replied", label: "Replied", statuses: ["replied"] },
   { key: "booked", label: "Booked", statuses: ["booked"] },
-  { key: "finished", label: "Finished", statuses: ["no_response", "unsubscribed"] },
+  { key: "finished", label: "Finished", statuses: ["contacted", "no_response", "unsubscribed"] },
   // Addresses that can't be emailed. They sit here, out of the way, instead of cluttering Finished.
   { key: "trash", label: "Trash", statuses: ["invalid"] },
 ];

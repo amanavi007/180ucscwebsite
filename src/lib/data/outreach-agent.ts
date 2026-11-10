@@ -304,7 +304,9 @@ function describeCorrection(detail: Record<string, unknown> | null, at: string):
       ? `Website changed from ${d.oldDomain ?? "?"} to ${d.newDomain ?? "?"}. ${d.note ?? ""}`
       : action === "contact_correction"
         ? `Contact ${d.field ?? "changed"}: ${d.oldEmail ?? "none"} to ${d.newEmail ?? "none"}.`
-        : action === "retire" || action === "invalidate"
+        : action === "contacted"
+          ? `Marked contacted. ${d.detail ?? ""}`
+          : action === "retire" || action === "invalidate"
           ? `${action === "retire" ? "Retired" : "Invalidated"}: ${d.reason ?? "no reason"}. ${d.detail ?? ""}`
           : action === "rescreen"
             ? `Re-screened stored contacts: ${d.flagged ?? 0} flagged.`
