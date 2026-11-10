@@ -6,6 +6,8 @@ export const CLIENT_MEETING_GRID_MINUTES = 30;
 export const CLIENT_MEETING_MIN_LEAD_MINUTES = 24 * 60;
 export const CLIENT_MEETING_CANCEL_CUTOFF_MINUTES = 12 * 60;
 export const PANEL_SIZE = 3;
+/** A slot exists when at least this many panel execs are free (2 of 3), so there are more slots to offer. */
+export const MIN_FREE_EXECS = 2;
 
 export const MAX_CONTACT_NAME = 100;
 export const MAX_BUSINESS_NAME = 150;
@@ -59,8 +61,8 @@ export interface ClientMeetingSlotTime {
 }
 
 /**
- * Slots exist only where all 3 panel execs are free. Candidate starts are every :00/:30 for which
- * each exec's block covers the whole slot. Existing slots (and slots created earlier in this run)
+ * Slots exist where at least 2 of the 3 panel execs are free. Candidate starts are every :00/:30 for which
+ * those execs' blocks cover the whole slot. Existing slots (and slots created earlier in this run)
  * are never overlapped. Output is chronological, so the same input always gives the same result.
  */
 export function generateClientMeetingSlots(
@@ -91,7 +93,7 @@ export function generateClientMeetingSlots(
   const taken = existing.map((s) => ({ date: s.date, startTime: normalizeTime(s.startTime), endTime: normalizeTime(s.endTime) }));
   const generated: ClientMeetingSlotTime[] = [];
   for (const [key, execIds] of [...free].sort(([a], [b]) => a.localeCompare(b))) {
-    if (execIds.size !== PANEL_SIZE) continue;
+    if (execIds.size < MIN_FREE_EXECS) continue;
     const [date, startTime] = key.split("|");
     const endTime = minutesToTime(timeToMinutes(startTime) + slotMinutes);
     if (taken.some((s) => s.date === date && overlaps(s.startTime, s.endTime, startTime, endTime))) continue;

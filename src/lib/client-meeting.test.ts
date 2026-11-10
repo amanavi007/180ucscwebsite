@@ -51,21 +51,26 @@ describe("parseClientMeetingSettings", () => {
 });
 
 describe("generateClientMeetingSlots", () => {
-  it("only creates slots where all 3 are free, on the :00/:30 grid", () => {
+  it("creates slots where at least 2 of 3 are free, on the :00/:30 grid", () => {
     const slots = generateClientMeetingSlots(panel, [
       block("a", "09:00", "11:00"),
       block("b", "09:15", "11:00"),
       block("c", "09:00", "10:30"),
     ]);
-    expect(slots.map((s) => s.startTime)).toEqual(["09:30", "10:00"]);
-    expect(slots[0]).toEqual({ date: "2026-10-20", startTime: "09:30", endTime: "10:00" });
+    // 09:00 has a+c, 09:30 and 10:00 have all three, 10:30 has a+b.
+    expect(slots.map((s) => s.startTime)).toEqual(["09:00", "09:30", "10:00", "10:30"]);
+    expect(slots[1]).toEqual({ date: "2026-10-20", startTime: "09:30", endTime: "10:00" });
   });
-  it("creates nothing when one exec has no availability", () => {
-    expect(generateClientMeetingSlots(panel, [block("a", "09:00", "11:00"), block("b", "09:00", "11:00")])).toEqual([]);
+  it("still works when one exec has no availability", () => {
+    expect(generateClientMeetingSlots(panel, [block("a", "09:00", "10:00"), block("b", "09:00", "10:00")]).map((s) => s.startTime)).toEqual(["09:00", "09:30"]);
+  });
+  it("creates nothing when only 1 exec is free", () => {
+    expect(generateClientMeetingSlots(panel, [block("a", "09:00", "11:00")])).toEqual([]);
+    expect(generateClientMeetingSlots(panel, [block("a", "09:00", "10:00"), block("b", "10:00", "11:00")])).toEqual([]);
   });
   it("ignores availability from non-panel execs", () => {
     expect(
-      generateClientMeetingSlots(panel, [block("a", "09:00", "10:00"), block("b", "09:00", "10:00"), block("x", "09:00", "10:00")]),
+      generateClientMeetingSlots(panel, [block("a", "09:00", "10:00"), block("x", "09:00", "10:00"), block("y", "09:00", "10:00")]),
     ).toEqual([]);
   });
   it("returns nothing for an invalid panel", () => {
