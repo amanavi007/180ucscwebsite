@@ -323,7 +323,10 @@ export async function alertExecsOfBrake(admin: Admin, reason: string): Promise<v
   const already = (data ?? []).some((e) => (e.detail as { reason?: string } | null)?.reason === reason);
   if (already) return;
   await admin.from("outreach_events").insert({ kind: "brake", detail: { reason } });
-  const to = replyForwardRecipients(await loadOutreachSettings(admin), await execEmails(admin));
+  // Operational alerts are internal: every exec gets them in any mode (the test-recipient rule is for prospect replies),
+  // plus the test recipient if one is set, so a dead job is never reported to just one person.
+  const settings = await loadOutreachSettings(admin);
+  const to = [...new Set([...(await execEmails(admin)), ...(settings.testRecipient ? [settings.testRecipient] : [])])];
   if (to.length === 0) return;
   const portalUrl = `${process.env.NEXT_PUBLIC_SITE_URL}${OUTREACH_PORTAL_PATH}`;
   const email = buildBrakeAlertEmail(reason, portalUrl);
@@ -888,6 +891,15 @@ export async function getOutreachOverview(now = new Date()): Promise<OutreachOve
 }
 
 /** Records that a daily job finished, and emails the execs if one of the other jobs has gone quiet. Never throws: it must not fail the job. */
+/** Tells every exec a daily job crashed, once a day per job. Never throws: it must not hide the original error. */
+export async function reportJobFailure(job: HeartbeatJob, err: unknown): Promise<void> {
+  try {
+    await alertExecsOfBrake(createAdminClient(), `job_failed_${job}`);
+  } catch (alertErr) {
+    console.error(`outreach ${job} failure alert failed:`, alertErr, "original error:", err);
+  }
+}
+
 export async function recordJobRun(job: HeartbeatJob, now = new Date(), result?: unknown): Promise<void> {
   try {
     const admin = createAdminClient();

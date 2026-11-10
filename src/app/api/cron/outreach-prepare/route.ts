@@ -1,5 +1,5 @@
 import { isPacificHour } from "@/lib/interview-reminders";
-import { buildPrepareDeps, buildWebhookHealthDeps, recordJobRun } from "@/lib/data/outreach";
+import { buildPrepareDeps, buildWebhookHealthDeps, recordJobRun, reportJobFailure } from "@/lib/data/outreach";
 import { runPrepare } from "@/lib/outreach/runner";
 import { checkWebhookHealth } from "@/lib/outreach/webhook-health";
 
@@ -32,6 +32,7 @@ export async function GET(request: Request) {
     return Response.json({ webhook, ...result });
   } catch (err) {
     console.error("outreach prepare failed:", err);
+    await reportJobFailure("prepare", err);
     return Response.json({ error: err instanceof Error ? err.message : "failed" }, { status: 500 });
   }
 }

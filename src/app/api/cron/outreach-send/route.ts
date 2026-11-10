@@ -1,5 +1,5 @@
 import { isPacificHour } from "@/lib/interview-reminders";
-import { buildSendDeps, recordJobRun } from "@/lib/data/outreach";
+import { buildSendDeps, recordJobRun, reportJobFailure } from "@/lib/data/outreach";
 import { runSend } from "@/lib/outreach/runner";
 
 // Always run fresh; this reads the clock and the database.
@@ -24,6 +24,7 @@ export async function GET(request: Request) {
     return Response.json(result);
   } catch (err) {
     console.error("outreach send failed:", err);
+    await reportJobFailure("send", err);
     return Response.json({ error: err instanceof Error ? err.message : "failed" }, { status: 500 });
   }
 }

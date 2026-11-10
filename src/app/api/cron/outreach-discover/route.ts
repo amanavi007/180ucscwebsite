@@ -1,5 +1,5 @@
 import { isPacificHour } from "@/lib/interview-reminders";
-import { recordJobRun } from "@/lib/data/outreach";
+import { recordJobRun, reportJobFailure } from "@/lib/data/outreach";
 import { buildDiscoveryDeps } from "@/lib/data/outreach-discovery";
 import { runDiscovery } from "@/lib/outreach/discovery/runner";
 
@@ -25,6 +25,7 @@ export async function GET(request: Request) {
     return Response.json(result);
   } catch (err) {
     console.error("outreach discovery failed:", err);
+    await reportJobFailure("discover", err);
     return Response.json({ error: err instanceof Error ? err.message : "failed" }, { status: 500 });
   }
 }

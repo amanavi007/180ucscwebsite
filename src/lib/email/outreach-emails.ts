@@ -195,6 +195,10 @@ const BRAKE_COPY: Record<string, string> = {
   job_stale_repair: "The daily job that retries companies discovery could not read has not run in over a day. Check the Vercel cron logs, and that CRON_SECRET is set.",
   job_stale_prepare: "The daily job that verifies prospects and writes drafts has not run in over a day. Check the Vercel cron logs, and that CRON_SECRET is set.",
   job_stale_send: "The daily job that schedules emails has not run in over a day. Check the Vercel cron logs, and that CRON_SECRET is set.",
+  job_failed_discover: "The daily job that finds new companies crashed. Check the Vercel cron logs for outreach-discover, and that CRON_SECRET and the API keys are set.",
+  job_failed_repair: "The daily job that retries companies discovery could not read crashed. Check the Vercel cron logs for outreach-repair.",
+  job_failed_prepare: "The daily job that verifies prospects and writes drafts crashed. Check the Vercel cron logs for outreach-prepare, and the AI key.",
+  job_failed_send: "The daily job that schedules emails crashed. Check the Vercel cron logs for outreach-send.",
   webhook_disabled: "Resend had switched off the webhook that brings replies and bounces into the portal. It has been turned back on automatically. Replies sent while it was off may not have been forwarded, so check the Resend dashboard (Webhooks) for failed events.",
   webhook_missing: "There is no Resend webhook for the portal, so replies, bounces and spam complaints are not reaching it. Add one in the Resend dashboard under Webhooks, pointing at the portal's /api/webhooks/resend address.",
 };
@@ -203,5 +207,5 @@ export function buildBrakeAlertEmail(reason: string, portalUrl: string): EmailCo
   const explanation = BRAKE_COPY[reason] ?? "Outreach stopped for a safety reason.";
   const text = `${explanation}\n\nOpen the portal: ${portalUrl}`;
   const html = `<p>${escapeHtml(explanation)}</p><p><a href="${escapeHtml(portalUrl)}">Open the portal</a></p>`;
-  return { subject: reason.startsWith("webhook") ? "Outreach needs a look: reply webhook" : reason.startsWith("job_stale") ? "Outreach needs a look: a daily job stopped" : "Outreach sending paused", text, html };
+  return { subject: reason.startsWith("webhook") ? "Outreach needs a look: reply webhook" : reason.startsWith("job_stale") || reason.startsWith("job_failed") ? "Outreach needs a look: a daily job stopped" : "Outreach sending paused", text, html };
 }

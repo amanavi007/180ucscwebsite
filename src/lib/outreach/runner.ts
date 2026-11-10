@@ -116,6 +116,12 @@ export interface PrepareDeps extends SharedDeps {
   refreshStaleDrafts?(): Promise<number>;
   /** Stop starting new drafts after this long. Defaults to 150 seconds, which fits the cron's 300-second limit. */
   budgetMs?: number;
+  /**
+   * No single draft call may run past this, measured from the start of the run. A draft can make three 60-second model
+   * attempts, so without it a chunk begun just inside the budget could outlive the cron's 300-second limit and be killed
+   * with no error and no heartbeat. Defaults to 240 seconds.
+   */
+  hardDeadlineMs?: number;
 }
 
 export interface SendDeps extends SharedDeps {
@@ -148,6 +154,7 @@ const DRAFT_CONCURRENCY = 4;
 const MAX_DRAFT_BATCH = 40;
 /** The cron may run for 300 seconds; stop starting new AI drafts well before that so the job finishes and records itself. */
 const PREPARE_BUDGET_MS = 150_000;
+const PREPARE_HARD_DEADLINE_MS = 240_000;
 
 export function toDraftRow(p: RunnerProspect): ProspectDraftRow {
   return {
@@ -182,6 +189,7 @@ type DraftOutcome = { draft: DraftOutput } | { needsAttention: string };
 /** Verifies new prospects, drafts emails, turns past scheduled sends into sent ones, and drafts due follow-ups. */
 export async function runPrepare(deps: PrepareDeps): Promise<PrepareResult> {
   const result: PrepareResult = { verified: 0, drafted: 0, needsAttention: 0, reconciled: 0, followUps: 0 };
+  const runStartedAt = Date.now();
   const { settings, now } = deps;
   if (settings.mode === "off") return result;
 
@@ -245,7 +253,17 @@ export async function runPrepare(deps: PrepareDeps): Promise<PrepareResult> {
   let draftErrors = 0;
   const attemptDraft = async (args: { row: ProspectDraftRow; step: DraftKind; previousSubjects: string[] }): Promise<DraftOutcome | null> => {
     try {
-      return await deps.draft(args);
+      const remaining = (deps.hardDeadlineMs ?? PREPARE_HARD_DEADLINE_MS) - (Date.now() - runStartedAt);
+      if (remaining <= 0) throw new Error("out of time for this run");
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const deadline = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error("draft call outlived the run's time limit")), remaining);
+      });
+      try {
+        return await Promise.race([deps.draft(args), deadline]);
+      } finally {
+        clearTimeout(timer);
+      }
     } catch (err) {
       draftErrors++;
       console.error(`outreach draft failed for ${args.row.company}:`, err);

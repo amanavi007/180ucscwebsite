@@ -413,6 +413,15 @@ describe("runPrepare", () => {
     expect(store.prospects.get("p2")!.status).toBe("drafted");
   });
 
+  it("gives up on a draft call that outlives the hard deadline instead of hanging the run", async () => {
+    const store = new Store();
+    store.prospects.set("p1", prospect(1, { status: "verified" }));
+    const draft = vi.fn(() => new Promise<never>(() => {})); // never settles, like a hung provider
+    const result = await runPrepare(prepareDeps(store, { draft, hardDeadlineMs: 50 }));
+    expect(result.draftErrors).toBe(1);
+    expect(store.prospects.get("p1")!.status).toBe("verified");
+  });
+
   it("still verifies and drafts when the stale-draft refresh throws", async () => {
     const store = new Store();
     store.prospects.set("p1", prospect(1, { status: "new" }));
