@@ -4,6 +4,28 @@ The public website and internal member portal for [180 Degrees Consulting at UC 
 
 I built and maintain it. The goal was to replace the club's spreadsheet-based tracking with one system.
 
+## Screenshots
+
+**Public site** (live at [ucsc180dc.org](https://www.ucsc180dc.org)):
+
+| Home | Services |
+| --- | --- |
+| ![Public home page](docs/images/site-home.png) | ![Services page](docs/images/site-services.png) |
+
+**Member portal.** The portal sits behind a login and holds real member data, so these are mockups with invented names and data. They use the app's real design tokens, fonts, buttons, chips and navigation (see the [UI rulebook](docs/ui-rulebook.md)).
+
+| Home with AI assistant | Projects board |
+| --- | --- |
+| ![Home with the AI assistant proposing changes for approval](docs/images/portal-home.png) | ![Projects board with status chips](docs/images/portal-projects.png) |
+
+| Recruiting review | Outreach pipeline |
+| --- | --- |
+| ![Recruiting applicant list with a rubric scoring panel](docs/images/portal-recruiting.png) | ![Outreach pipeline with reply and sender health panel](docs/images/portal-outreach.png) |
+
+| People and attendance |
+| --- |
+| ![People stats with attendance meters](docs/images/portal-people.png) |
+
 ## What it does
 
 **Public site** (`src/app/(marketing)`): club pages, client showcase, and public booking flows for coffee chats and recruitment interviews (Cloudflare Turnstile bot check, calendar invites, reminder emails).
