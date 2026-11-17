@@ -1,12 +1,15 @@
 {
-  "name": "180ucscwebsite",
+  "name": "180ucsc",
   "version": "0.1.0",
+  "description": "Website and member portal for 180 Degrees Consulting at UC Santa Cruz",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {

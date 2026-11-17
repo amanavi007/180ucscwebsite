@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { parseResearchPrompts, type ResearchPrompt } from "@/lib/interview-guide";
 
 export const DEFAULT_ATTENDANCE_ALERT_THRESHOLD = 0.8;
-const FALLBACK_BULK_PASSWORD = "ucsc180dc$";
 
 // RLS on org_settings is exec-only, so a non-exec caller's query is always
 // silently filtered to nothing and falls back to the default below anyway --
@@ -41,7 +40,10 @@ export function invalidateAttendanceThresholdCache() {
   thresholdCache = null;
 }
 
-/** The shared temp password new/reset accounts get before being forced to set their own. */
+/**
+ * The shared temp password new/reset accounts get before being forced to set their own.
+ * Exec set it in Admin > Settings; there is deliberately no default in code. Empty means unset.
+ */
 export async function getDefaultBulkPassword(): Promise<string> {
   const supabase = await createClient();
   const { data } = await supabase
@@ -50,7 +52,7 @@ export async function getDefaultBulkPassword(): Promise<string> {
     .eq("key", "default_bulk_password")
     .maybeSingle();
 
-  return data?.value || FALLBACK_BULK_PASSWORD;
+  return data?.value ?? "";
 }
 
 export const RESEARCH_PROMPTS_SETTING_KEY = "interview_research_prompts";

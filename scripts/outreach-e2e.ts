@@ -19,7 +19,11 @@ import { buildBookingUrl } from "@/lib/outreach/booking-link";
 import { listUnsubscribeHeaders, oneClickUrl, signUnsubscribeToken, unsubscribeUrl } from "@/lib/outreach/unsubscribe";
 import { runPrepare, runSend } from "@/lib/outreach/runner";
 
-const TEST_EMAIL = process.env.OUTREACH_E2E_EMAIL ?? "amanavinash007@gmail.com";
+const TEST_EMAIL: string = (() => {
+  const email = process.env.OUTREACH_E2E_EMAIL;
+  if (!email) throw new Error("Set OUTREACH_E2E_EMAIL to an inbox you own before running this script.");
+  return email;
+})();
 const TEST_COMPANY = "ZZ Pipeline Test Co";
 
 const admin = createAdminClient();

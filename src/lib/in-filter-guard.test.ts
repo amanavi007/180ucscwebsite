@@ -22,7 +22,9 @@ function sourceFiles(dir: string): string[] {
 
 /** A list written out in the source (`["a", "b"]`), a CONSTANT, or `Object.values(CONSTANT)`: it cannot grow with the data. */
 function isBoundedLiteral(arg: string): boolean {
-  if (/^\[\s*(?:(?:"[^"]*"|'[^']*'|[\w.]+)\s*,?\s*)+\]$/.test(arg)) return true;
+  // Items must be comma-separated: without a required separator the pattern is ambiguous and backtracks exponentially.
+  const item = String.raw`(?:"[^"]*"|'[^']*'|[\w.]+)`;
+  if (new RegExp(String.raw`^\[\s*(?:${item}(?:\s*,\s*${item})*\s*,?\s*)?\]$`).test(arg)) return true;
   return /^[A-Z][A-Z0-9_]*$/.test(arg) || /^Object\.values\([A-Z][A-Z0-9_]*\)$/.test(arg);
 }
 

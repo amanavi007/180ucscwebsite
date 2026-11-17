@@ -47,6 +47,7 @@ export async function bulkCreateMembers(
 
   const admin = createAdminClient();
   const defaultPassword = await getDefaultBulkPassword();
+  if (!defaultPassword) return { error: "Set a default password in Admin > Settings first." };
 
   // Each row is an independent auth signup (no batch endpoint exists), so run
   // them concurrently rather than awaiting one at a time.
@@ -100,6 +101,7 @@ export async function resetMemberPassword(userId: string): Promise<ActionResult>
 
   const admin = createAdminClient();
   const defaultPassword = await getDefaultBulkPassword();
+  if (!defaultPassword) return { error: "Set a default password in Admin > Settings first." };
   const { error: authError } = await admin.auth.admin.updateUserById(userId, {
     password: defaultPassword,
   });

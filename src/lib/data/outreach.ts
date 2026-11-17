@@ -852,7 +852,7 @@ export async function getOutreachOverview(now = new Date()): Promise<OutreachOve
     fetchAllPages((from, to) => supabase.from("outreach_messages").select("*").order("step", { ascending: true }).order("id").range(from, to)),
     fetchAllPages((from, to) => supabase.from("outreach_replies").select("*").order("created_at", { ascending: false }).order("id").range(from, to)),
     fetchAllPages((from, to) => supabase.from("outreach_events").select("id, prospect_id, kind, created_at").order("created_at", { ascending: false }).order("id").range(from, to)),
-    supabase.from("org_settings").select("key, value").in("key", [...OUTREACH_SETTING_KEYS, ...HEARTBEAT_JOBS.map(heartbeatKey), ...HEARTBEAT_JOBS.map(lastRunKey)]),
+    supabase.from("org_settings").select("key, value").in("key", [...OUTREACH_SETTING_KEYS, ...HEARTBEAT_JOBS.map(heartbeatKey), ...HEARTBEAT_JOBS.map(lastRunKey)]), // in-ok: fixed set of setting keys
     supabase.from("org_settings").select("value").eq("key", "client_meeting_booking_open").maybeSingle(),
   ]);
   if (settingRows.error) throw settingRows.error;
@@ -906,7 +906,7 @@ export async function recordJobRun(job: HeartbeatJob, now = new Date(), result?:
     const admin = createAdminClient();
     await setOutreachSetting(admin, heartbeatKey(job), now.toISOString());
     if (result !== undefined) await setOutreachSetting(admin, lastRunKey(job), summarizeRun(job, result));
-    const { data } = await admin.from("org_settings").select("key, value").in("key", HEARTBEAT_JOBS.map(heartbeatKey));
+    const { data } = await admin.from("org_settings").select("key, value").in("key", HEARTBEAT_JOBS.map(heartbeatKey)); // in-ok: fixed set of job names
     const beats = Object.fromEntries(HEARTBEAT_JOBS.map((j) => [j, (data ?? []).find((r) => r.key === heartbeatKey(j))?.value || null])) as Heartbeats;
     // A switched-off agent is not "dead": it is not expected to report.
     if (!(await loadOutreachSettings(admin)).agentEnabled) beats.agent = null;

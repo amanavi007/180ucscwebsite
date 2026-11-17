@@ -10,7 +10,8 @@ export function modelGenerate(env: Record<string, string | undefined> = process.
   // BayLeaf is left out: on real draft prompts (about 9,000 characters, structured output) it hangs past 100 seconds, so
   // every draft timed out, and the fallback only triggers on 429/5xx, never on a hang. Google answers in about 5 seconds
   // and Groq in about 4, so drafts use those two (primary, then fallback).
-  const { BAYLEAF_API_KEY: _skipBayleaf, ...withoutBayleaf } = env;
+  const withoutBayleaf = { ...env };
+  delete withoutBayleaf.BAYLEAF_API_KEY;
   const model = buildModel({ ...withoutBayleaf, ASSISTANT_PRIMARY: undefined });
   if (!model) throw new Error("The AI helper isn't set up. Add an AI key.");
   return async (prompt) => {

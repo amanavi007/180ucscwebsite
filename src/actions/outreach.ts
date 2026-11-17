@@ -31,7 +31,7 @@ import { matchFounderToEmail, type Founder } from "@/lib/outreach/discovery/foun
 import { parseCompanyList, type ListError } from "@/lib/outreach/discovery/list";
 import { evaluateCandidate, evaluateListLead, prospectFromYc, runDiscovery, stageLeads, type DiscoveryResult } from "@/lib/outreach/discovery/runner";
 import { loadYcDataset } from "@/lib/outreach/discovery/web";
-import { factsToJson, getProspectDetail, type ProspectDetail } from "@/lib/data/outreach";
+import { getProspectDetail, type ProspectDetail } from "@/lib/data/outreach";
 import { fetchInChunks, runInChunks } from "@/lib/paginate";
 
 export interface ActionResult {

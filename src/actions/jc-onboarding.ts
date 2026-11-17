@@ -104,7 +104,7 @@ export async function removeOnboardingJcs(ids: string[]): Promise<ActionResult &
   const { data, error } = await supabase
     .from("onboarding_jcs")
     .update({ removed_at: new Date().toISOString() })
-    .in("id", ids)
+    .in("id", ids) // in-ok: one onboarding cohort of junior consultants
     .is("removed_at", null)
     .select("id");
   if (error) return { error: error.message };
@@ -152,7 +152,7 @@ export async function setOnboardingDates(quarterId: string, dates: string[]): Pr
     return { error: `Attendance is already taken for ${locked.map((m) => m.date).join(", ")}. Those days can't be removed.` };
   }
   if (removing.length > 0) {
-    const { error } = await supabase.from("onboarding_meetings").delete().in("id", removing.map((m) => m.id));
+    const { error } = await supabase.from("onboarding_meetings").delete().in("id", removing.map((m) => m.id)); // in-ok: meetings in one onboarding cohort
     if (error) return { error: error.message };
   }
   const have = new Set(current.map((m) => m.date));
@@ -205,7 +205,7 @@ export async function submitOnboardingAttendance(
       .from("onboarding_marks")
       .delete()
       .eq("meeting_id", meetingId)
-      .in("jc_id", activeIds);
+      .in("jc_id", activeIds); // in-ok: junior consultants in one cohort
     if (delError) return { error: delError.message };
     const { error: insError } = await supabase.from("onboarding_marks").insert(rows);
     if (insError) return { error: insError.message };
