@@ -153,3 +153,20 @@ export function ringFraction(total: number, max: number): number {
   if (max <= 0) return 0;
   return Math.min(1, Math.max(0, total / max));
 }
+
+/** Splits "Jane Q. Doe" into first and last. Everything after the first word is the last name. */
+export function splitName(name: string): { first: string; last: string } {
+  const parts = name.trim().replace(/\s+/g, " ").split(" ");
+  return { first: parts[0] ?? "", last: parts.slice(1).join(" ") };
+}
+
+/** Top `count` people as tab-separated "First, Last, email" lines, so a paste into Google Sheets fills three columns. */
+export function acceptedRowsForSheet(ranked: { name: string; email: string | null }[], count: number): string {
+  return ranked
+    .slice(0, Math.max(0, count))
+    .map((r) => {
+      const { first, last } = splitName(r.name);
+      return [first, last, (r.email ?? "").trim().toLowerCase()].join("\t");
+    })
+    .join("\n");
+}

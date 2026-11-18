@@ -5,7 +5,7 @@ import { Copy, ListFilter, Search, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import type { ApplicantRow, RecruitCategory, RecruitEvent } from "@/lib/data/recruit";
 import type { ApplicantReviewState } from "@/lib/recruit-assignment";
-import { combinedTotal, meetsCutoff, pickAboveCutoff, rankByTotal } from "@/lib/recruit";
+import { acceptedRowsForSheet, combinedTotal, meetsCutoff, pickAboveCutoff, rankByTotal } from "@/lib/recruit";
 import { isValidUcscEmail } from "@/lib/coffee-chat";
 import { isDisagreement, type StageSummary } from "@/lib/recruit-scoring";
 import { Badge } from "@/components/ui/badge";
@@ -161,6 +161,18 @@ export function ApplicantsView({
       toast.error("Couldn't copy. Select the emails by hand instead.");
     }
   }
+  const [acceptCount, setAcceptCount] = useState("");
+  const rankedAll = useMemo(() => rankByTotal(scored.filter((r) => r.hasApplication)), [scored]);
+  const acceptN = Math.min(Math.floor(Number(acceptCount)) || 0, rankedAll.length);
+  async function copyAccepted() {
+    try {
+      await navigator.clipboard.writeText(acceptedRowsForSheet(rankedAll, acceptN));
+      const missing = rankedAll.slice(0, acceptN).filter((r) => !r.email).length;
+      toast.success(`Copied ${acceptN} rows (first, last, email). Paste into Sheets.${missing ? ` ${missing} have no email.` : ""}`);
+    } catch {
+      toast.error("Couldn't copy.");
+    }
+  }
   const activeFilters = (filter !== "all" ? 1 : 0) + (stage ? 1 : 0);
   const applicantCount = rows.filter((r) => r.hasApplication).length;
 
@@ -310,6 +322,32 @@ export function ApplicantsView({
                   Clear filters
                 </Button>
               )}
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger render={<Button variant="outline" size="sm" />}>
+              <Copy />
+              Copy accepted
+            </PopoverTrigger>
+            <PopoverContent align="start" className="flex w-72 flex-col gap-3">
+              <label htmlFor="accept-count" className="text-sm font-medium">
+                How many made the cutoff?
+              </label>
+              <Input
+                id="accept-count"
+                type="number"
+                min="1"
+                max={rankedAll.length}
+                inputMode="numeric"
+                value={acceptCount}
+                onChange={(e) => setAcceptCount(e.target.value)}
+              />
+              <p className="text-[13px] text-muted-foreground">
+                Takes the top of the full ranking and copies First, Last, UCSC email as columns for Google Sheets.
+              </p>
+              <Button variant="outline" size="sm" disabled={acceptN < 1} onClick={copyAccepted}>
+                Copy {acceptN || ""} {acceptN === 1 ? "row" : "rows"}
+              </Button>
             </PopoverContent>
           </Popover>
           {stage && (
