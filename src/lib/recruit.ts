@@ -160,13 +160,55 @@ export function splitName(name: string): { first: string; last: string } {
   return { first: parts[0] ?? "", last: parts.slice(1).join(" ") };
 }
 
-/** Top `count` people as tab-separated "First, Last, email" lines, so a paste into Google Sheets fills three columns. */
-export function acceptedRowsForSheet(ranked: { name: string; email: string | null }[], count: number): string {
-  return ranked
-    .slice(0, Math.max(0, count))
-    .map((r) => {
-      const { first, last } = splitName(r.name);
-      return [first, last, (r.email ?? "").trim().toLowerCase()].join("\t");
-    })
-    .join("\n");
+export const ORG_EMAIL_DOMAIN = "180dc.org";
+
+/** Lowercase letters only, accents folded ("José" becomes "jose"). */
+function emailPart(text: string): string {
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z]/g, "");
+}
+
+export type AcceptedPerson = { first: string; last: string; ucscEmail: string; orgEmail: string };
+
+/**
+ * Top `count` people with a proposed org address: first.last@180dc.org, using the first word of the first name and the
+ * last word of the last name. Repeats get 2, 3, ... so every address is unique. `taken` holds addresses already in use.
+ */
+export function acceptedPeople(
+  ranked: { name: string; email: string | null }[],
+  count: number,
+  taken: Iterable<string> = [],
+): AcceptedPerson[] {
+  const used = new Set([...taken].map((e) => e.toLowerCase()));
+  return ranked.slice(0, Math.max(0, count)).map((r) => {
+    const { first, last } = splitName(r.name);
+    const base = [emailPart(first.split(/[\s-]/)[0] ?? ""), emailPart(last.split(" ").pop() ?? "")].filter(Boolean).join(".") || "member";
+    let orgEmail = `${base}@${ORG_EMAIL_DOMAIN}`;
+    for (let n = 2; used.has(orgEmail); n++) orgEmail = `${base}${n}@${ORG_EMAIL_DOMAIN}`;
+    used.add(orgEmail);
+    return { first, last, ucscEmail: (r.email ?? "").trim().toLowerCase(), orgEmail };
+  });
+}
+
+/** Tab-separated First, Last, UCSC email, 180DC email: paste into Google Sheets and it fills four columns. */
+export function acceptedRowsForSheet(people: AcceptedPerson[]): string {
+  return people.map((p) => [p.first, p.last, p.ucscEmail, p.orgEmail].join("\t")).join("\n");
+}
+
+function csvCell(value: string): string {
+  return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+/** The file Google Admin's bulk user upload expects. Each person must change the password at first sign-in. */
+export function googleAdminCsv(people: AcceptedPerson[], password: string): string {
+  const header = [
+    "First Name [Required]",
+    "Last Name [Required]",
+    "Email Address [Required]",
+    "Password [Required]",
+    "Org Unit Path [Required]",
+    "Change Password at Next Sign-In",
+    "Recovery Email",
+  ];
+  const lines = people.map((p) => [p.first, p.last || p.first, p.orgEmail, password, "/", "TRUE", p.ucscEmail].map(csvCell).join(","));
+  return [header.join(","), ...lines].join("\n") + "\n";
 }

@@ -16,6 +16,8 @@ import {
   undoableMergeIds,
   validateAward,
   type MergeSide,
+  acceptedPeople,
+  googleAdminCsv,
 } from "./recruit";
 
 describe("sumPoints", () => {
@@ -236,5 +238,26 @@ describe("interview cutoff", () => {
   it("ignores people who never submitted an application", () => {
     const out = pickAboveCutoff([row("a", 50, "a@ucsc.edu", false)], 10, ucsc);
     expect(out).toEqual({ eligible: [], noEmail: [] });
+  });
+});
+
+describe("acceptedPeople", () => {
+  it("builds first.last@180dc.org, folds accents, and de-duplicates", () => {
+    const people = acceptedPeople(
+      [
+        { name: "José Núñez", email: "JNunez@ucsc.edu" },
+        { name: "Jose Nunez", email: "jn2@ucsc.edu" },
+        { name: "Maria De La Cruz", email: null },
+      ],
+      3,
+      ["maria.cruz@180dc.org"],
+    );
+    expect(people.map((p) => p.orgEmail)).toEqual(["jose.nunez@180dc.org", "jose.nunez2@180dc.org", "maria.cruz2@180dc.org"]);
+    expect(people[2].last).toBe("De La Cruz");
+  });
+  it("writes the Google Admin header and quotes commas", () => {
+    const csv = googleAdminCsv([{ first: "A", last: "B, Jr", ucscEmail: "a@ucsc.edu", orgEmail: "a.b@180dc.org" }], "pw12345678");
+    expect(csv.split("\n")[0]).toContain("Email Address [Required]");
+    expect(csv).toContain('"B, Jr"');
   });
 });

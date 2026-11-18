@@ -5,7 +5,7 @@ import { Copy, ListFilter, Search, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import type { ApplicantRow, RecruitCategory, RecruitEvent } from "@/lib/data/recruit";
 import type { ApplicantReviewState } from "@/lib/recruit-assignment";
-import { acceptedRowsForSheet, combinedTotal, meetsCutoff, pickAboveCutoff, rankByTotal } from "@/lib/recruit";
+import { acceptedPeople, acceptedRowsForSheet, googleAdminCsv, combinedTotal, meetsCutoff, pickAboveCutoff, rankByTotal } from "@/lib/recruit";
 import { isValidUcscEmail } from "@/lib/coffee-chat";
 import { isDisagreement, type StageSummary } from "@/lib/recruit-scoring";
 import { Badge } from "@/components/ui/badge";
@@ -60,6 +60,7 @@ export function ApplicantsView({
   disagreementThreshold,
   interviewCutoff,
   invitedEmails,
+  existingOrgEmails,
   bookedEmails,
   onAdd,
 }: {
@@ -79,6 +80,8 @@ export function ApplicantsView({
   interviewCutoff: number | null;
   /** Lowercased emails already on the interview invite list. */
   invitedEmails: string[];
+  /** Addresses already used by portal accounts, so new 180DC emails never repeat one. */
+  existingOrgEmails: string[];
   /** Lowercased emails with a confirmed interview booking. */
   bookedEmails: string[];
   onAdd: () => void;
@@ -164,14 +167,24 @@ export function ApplicantsView({
   const [acceptCount, setAcceptCount] = useState("");
   const rankedAll = useMemo(() => rankByTotal(scored.filter((r) => r.hasApplication)), [scored]);
   const acceptN = Math.min(Math.floor(Number(acceptCount)) || 0, rankedAll.length);
+  const [googlePassword, setGooglePassword] = useState("");
+  const accepted = useMemo(() => acceptedPeople(rankedAll, acceptN, existingOrgEmails), [rankedAll, acceptN, existingOrgEmails]);
+  const missingEmail = accepted.filter((p) => !p.ucscEmail).length;
   async function copyAccepted() {
     try {
-      await navigator.clipboard.writeText(acceptedRowsForSheet(rankedAll, acceptN));
-      const missing = rankedAll.slice(0, acceptN).filter((r) => !r.email).length;
-      toast.success(`Copied ${acceptN} rows (first, last, email). Paste into Sheets.${missing ? ` ${missing} have no email.` : ""}`);
+      await navigator.clipboard.writeText(acceptedRowsForSheet(accepted));
+      toast.success(`Copied ${accepted.length} rows. Paste into Sheets.${missingEmail ? ` ${missingEmail} have no UCSC email.` : ""}`);
     } catch {
       toast.error("Couldn't copy.");
     }
+  }
+  function downloadGoogleCsv() {
+    const url = URL.createObjectURL(new Blob([googleAdminCsv(accepted, googlePassword)], { type: "text/csv" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "google-admin-users.csv";
+    a.click();
+    URL.revokeObjectURL(url);
   }
   const activeFilters = (filter !== "all" ? 1 : 0) + (stage ? 1 : 0);
   const applicantCount = rows.filter((r) => r.hasApplication).length;
@@ -343,10 +356,17 @@ export function ApplicantsView({
                 onChange={(e) => setAcceptCount(e.target.value)}
               />
               <p className="text-[13px] text-muted-foreground">
-                Takes the top of the full ranking and copies First, Last, UCSC email as columns for Google Sheets.
+                Takes the top of the full ranking. Gives First, Last, UCSC email and a proposed 180DC email (first.last@180dc.org).
               </p>
               <Button variant="outline" size="sm" disabled={acceptN < 1} onClick={copyAccepted}>
-                Copy {acceptN || ""} {acceptN === 1 ? "row" : "rows"}
+                Copy {acceptN || ""} {acceptN === 1 ? "row" : "rows"} for Sheets
+              </Button>
+              <label htmlFor="google-password" className="text-sm font-medium">
+                Starting password for Google
+              </label>
+              <Input id="google-password" value={googlePassword} onChange={(e) => setGooglePassword(e.target.value)} />
+              <Button variant="outline" size="sm" disabled={acceptN < 1 || googlePassword.length < 8} onClick={downloadGoogleCsv}>
+                Download Google Admin CSV
               </Button>
             </PopoverContent>
           </Popover>

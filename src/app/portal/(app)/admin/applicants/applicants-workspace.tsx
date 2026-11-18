@@ -37,6 +37,7 @@ export function ApplicantsWorkspace({
   interviews,
   invitedEmails,
   bookedEmails,
+  existingOrgEmails,
 }: {
   quarterId: string;
   quarterName: string;
@@ -52,6 +53,7 @@ export function ApplicantsWorkspace({
   invitedEmails: string[];
   /** Lowercased emails with a confirmed interview booking. */
   bookedEmails: string[];
+  existingOrgEmails: string[];
 }) {
   const [tab, setTab] = useUrlTab(["applicants", "queue", "progress", "attendance", "duplicates"], "applicants");
   const [addOpen, setAddOpen] = useState(false);
@@ -137,6 +139,7 @@ export function ApplicantsWorkspace({
             interviewCutoff={scoring.settings.interviewCutoff}
             invitedEmails={invitedEmails}
             bookedEmails={bookedEmails}
+            existingOrgEmails={existingOrgEmails}
             onAdd={() => setAddOpen(true)}
           />
         </TabsContent>
