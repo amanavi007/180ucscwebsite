@@ -98,6 +98,7 @@ export function AttendanceView({
                   loadSession={async (date) => (await fetchJcSessionForDate(date)) as EntrySession | null}
                   save={submitJcAttendance}
                   emptyText="No JCs yet. Add them in Admin > People > Onboarding."
+                  showSeenChecks
                 />
               ) : (
                 <QuickEntryForm

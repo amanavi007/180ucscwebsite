@@ -15,7 +15,6 @@ import { FilterChip } from "@/components/filter-chip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { JcNameCheck } from "./jc-name-check";
 import { CutoffBar } from "./interview-cutoff";
 import { Segmented } from "./segmented";
 
@@ -170,7 +169,6 @@ export function ApplicantsView({
   const rankedAll = useMemo(() => rankByTotal(scored.filter((r) => r.hasApplication)), [scored]);
   const acceptN = Math.min(Math.floor(Number(acceptCount)) || 0, rankedAll.length);
   const takenEmails = useMemo(() => [...existingOrgEmails, ...RESERVED_ORG_EMAILS], [existingOrgEmails]);
-  const [nameCheckOpen, setNameCheckOpen] = useState(false);
   const [googlePassword, setGooglePassword] = useState("");
   const accepted = useMemo(() => acceptedPeople(rankedAll, acceptN, takenEmails), [rankedAll, acceptN, takenEmails]);
   const missingEmail = accepted.filter((p) => !p.ucscEmail).length;
@@ -372,16 +370,8 @@ export function ApplicantsView({
               <Button variant="outline" size="sm" disabled={acceptN < 1 || googlePassword.length < 8} onClick={downloadGoogleCsv}>
                 Download Google Admin CSV
               </Button>
-              <Button variant="ghost" size="sm" disabled={acceptN < 1} onClick={() => setNameCheckOpen(true)}>
-                Open name check ({acceptN || 0})
-              </Button>
             </PopoverContent>
           </Popover>
-          <JcNameCheck
-            people={rankedAll.slice(0, acceptN).map((r) => ({ id: r.id, name: r.name }))}
-            open={nameCheckOpen}
-            onOpenChange={setNameCheckOpen}
-          />
           {stage && (
             <Button variant="outline" size="sm" onClick={copyEmails} disabled={emails.length === 0}>
               <Copy />

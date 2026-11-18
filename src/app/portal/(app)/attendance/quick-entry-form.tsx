@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,18 @@ export interface EntryPerson {
   name: string;
 }
 
+const SEEN_KEY = "attendance-seen-checks";
+
+/** Reads the per-date "I've met this person" ticks this browser remembers. */
+function readSeen(): Record<string, string[]> {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SEEN_KEY) ?? "{}");
+    return saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
+  } catch {
+    return {};
+  }
+}
+
 function marksFromSession(session: EntrySession | null): Record<string, AttendanceMark> {
   if (!session) return {};
   return Object.fromEntries(session.marks.map((m) => [m.id, m.mark]));
@@ -51,6 +64,7 @@ export function QuickEntryForm({
   loadSession,
   save,
   emptyText = "No team members yet.",
+  showSeenChecks = false,
 }: {
   roster: EntryPerson[];
   today: string;
@@ -63,6 +77,8 @@ export function QuickEntryForm({
     tardyIds: string[];
   }) => Promise<{ error?: string }>;
   emptyText?: string;
+  /** A little tick beside each name so you can see who you've already matched to a face. It never changes the attendance. */
+  showSeenChecks?: boolean;
 }) {
   const [date, setDate] = useState(today);
   const [marks, setMarks] = useState<Record<string, AttendanceMark>>(
@@ -70,6 +86,19 @@ export function QuickEntryForm({
   );
   // Whether a session is already logged for the selected date (past dates with one are locked).
   const [hasSession, setHasSession] = useState(!!initialSession);
+  const [seenByDate, setSeenByDate] = useState<Record<string, string[]>>(() => (showSeenChecks ? readSeen() : {}));
+  const seen = new Set(seenByDate[date] ?? []);
+  function toggleSeen(id: string) {
+    const next = new Set(seen);
+    if (!next.delete(id)) next.add(id);
+    const all = { ...seenByDate, [date]: [...next] };
+    setSeenByDate(all);
+    try {
+      localStorage.setItem(SEEN_KEY, JSON.stringify(all));
+    } catch {
+      // Ticks just won't survive a refresh.
+    }
+  }
   const [isPending, startTransition] = useTransition();
   const [isLoadingDate, setIsLoadingDate] = useState(false);
   const router = useRouter();
@@ -169,6 +198,12 @@ export function QuickEntryForm({
               Tap a name into Excused, Unexcused, or Tardy. Everyone else is present.{" "}
               <span className="font-medium text-foreground">{presentCount} present</span> of{" "}
               {roster.length}.
+              {showSeenChecks && (
+                <>
+                  {" "}Ticks beside names are only a reminder for you of who you&apos;ve met (
+                  {roster.filter((m) => seen.has(m.id)).length} of {roster.length}).
+                </>
+              )}
             </>
           )}
         </p>
@@ -179,7 +214,14 @@ export function QuickEntryForm({
               key={m.id}
               className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
             >
-              <span className="text-sm font-medium">{m.name}</span>
+              {showSeenChecks && !readOnly ? (
+                <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+                  <Checkbox checked={seen.has(m.id)} onCheckedChange={() => toggleSeen(m.id)} aria-label={`Met ${m.name}`} />
+                  <span className={cn("min-w-0 break-words text-sm font-medium", seen.has(m.id) && "text-muted-foreground")}>{m.name}</span>
+                </label>
+              ) : (
+                <span className="text-sm font-medium">{m.name}</span>
+              )}
               {readOnly ? (
                 <Badge
                   variant="outline"
