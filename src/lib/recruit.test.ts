@@ -242,18 +242,25 @@ describe("interview cutoff", () => {
 });
 
 describe("acceptedPeople", () => {
-  it("builds first.last@180dc.org, folds accents, and de-duplicates", () => {
+  it("uses first initial + last name, then longer first-name prefixes, then numbers", () => {
     const people = acceptedPeople(
       [
-        { name: "José Núñez", email: "JNunez@ucsc.edu" },
-        { name: "Jose Nunez", email: "jn2@ucsc.edu" },
+        { name: "José Núñez", email: "a@ucsc.edu" },
+        { name: "Jose Nunez", email: "b@ucsc.edu" },
         { name: "Maria De La Cruz", email: null },
+        { name: "Amy Sharma", email: null },
+        { name: "Al Sharma", email: null },
       ],
-      3,
-      ["maria.cruz@180dc.org"],
+      5,
+      ["asharma@180dc.org", "amsharma@180dc.org"],
     );
-    expect(people.map((p) => p.orgEmail)).toEqual(["jose.nunez@180dc.org", "jose.nunez2@180dc.org", "maria.cruz2@180dc.org"]);
-    expect(people[2].last).toBe("De La Cruz");
+    expect(people.map((p) => p.orgEmail)).toEqual([
+      "jnunez@180dc.org",
+      "jonunez@180dc.org",
+      "mdelacruz@180dc.org",
+      "amysharma@180dc.org",
+      "alsharma@180dc.org",
+    ]);
   });
   it("writes the Google Admin header and quotes commas", () => {
     const csv = googleAdminCsv([{ first: "A", last: "B, Jr", ucscEmail: "a@ucsc.edu", orgEmail: "a.b@180dc.org" }], "pw12345678");

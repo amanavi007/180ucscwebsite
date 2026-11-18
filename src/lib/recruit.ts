@@ -170,8 +170,9 @@ function emailPart(text: string): string {
 export type AcceptedPerson = { first: string; last: string; ucscEmail: string; orgEmail: string };
 
 /**
- * Top `count` people with a proposed org address: first.last@180dc.org, using the first word of the first name and the
- * last word of the last name. Repeats get 2, 3, ... so every address is unique. `taken` holds addresses already in use.
+ * Top `count` people with a proposed org address in the club's style: first initial plus the whole last name
+ * (Jane Doe -> jdoe@180dc.org). If that is taken, the first-name part grows one letter at a time (jadoe, janedoe), and
+ * if even the full first name is taken a number is added. `taken` holds addresses already in use.
  */
 export function acceptedPeople(
   ranked: { name: string; email: string | null }[],
@@ -181,9 +182,18 @@ export function acceptedPeople(
   const used = new Set([...taken].map((e) => e.toLowerCase()));
   return ranked.slice(0, Math.max(0, count)).map((r) => {
     const { first, last } = splitName(r.name);
-    const base = [emailPart(first.split(/[\s-]/)[0] ?? ""), emailPart(last.split(" ").pop() ?? "")].filter(Boolean).join(".") || "member";
-    let orgEmail = `${base}@${ORG_EMAIL_DOMAIN}`;
-    for (let n = 2; used.has(orgEmail); n++) orgEmail = `${base}${n}@${ORG_EMAIL_DOMAIN}`;
+    const firstPart = emailPart(first.split(/[\s-]/)[0] ?? "") || "x";
+    const lastPart = emailPart(last) || emailPart(first);
+    const address = (prefix: string, n = "") => `${prefix}${lastPart}${n}@${ORG_EMAIL_DOMAIN}`;
+    let orgEmail = "";
+    for (let len = 1; len <= firstPart.length && !orgEmail; len++) {
+      const candidate = address(firstPart.slice(0, len));
+      if (!used.has(candidate)) orgEmail = candidate;
+    }
+    for (let n = 2; !orgEmail; n++) {
+      const candidate = address(firstPart[0], String(n));
+      if (!used.has(candidate)) orgEmail = candidate;
+    }
     used.add(orgEmail);
     return { first, last, ucscEmail: (r.email ?? "").trim().toLowerCase(), orgEmail };
   });
@@ -198,7 +208,7 @@ function csvCell(value: string): string {
   return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
-/** The file Google Admin's bulk user upload expects. Each person must change the password at first sign-in. */
+/** The file Google Admin's bulk user upload expects. Passwords are permanent: nobody is forced to change it at first sign-in. */
 export function googleAdminCsv(people: AcceptedPerson[], password: string): string {
   const header = [
     "First Name [Required]",
@@ -209,6 +219,6 @@ export function googleAdminCsv(people: AcceptedPerson[], password: string): stri
     "Change Password at Next Sign-In",
     "Recovery Email",
   ];
-  const lines = people.map((p) => [p.first, p.last || p.first, p.orgEmail, password, "/", "TRUE", p.ucscEmail].map(csvCell).join(","));
+  const lines = people.map((p) => [p.first, p.last || p.first, p.orgEmail, password, "/", "FALSE", p.ucscEmail].map(csvCell).join(","));
   return [header.join(","), ...lines].join("\n") + "\n";
 }

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import type { ApplicantRow, RecruitCategory, RecruitEvent } from "@/lib/data/recruit";
 import type { ApplicantReviewState } from "@/lib/recruit-assignment";
 import { acceptedPeople, acceptedRowsForSheet, googleAdminCsv, combinedTotal, meetsCutoff, pickAboveCutoff, rankByTotal } from "@/lib/recruit";
+import { RESERVED_ORG_EMAILS } from "@/lib/org-emails-reserved";
 import { isValidUcscEmail } from "@/lib/coffee-chat";
 import { isDisagreement, type StageSummary } from "@/lib/recruit-scoring";
 import { Badge } from "@/components/ui/badge";
@@ -167,8 +168,9 @@ export function ApplicantsView({
   const [acceptCount, setAcceptCount] = useState("");
   const rankedAll = useMemo(() => rankByTotal(scored.filter((r) => r.hasApplication)), [scored]);
   const acceptN = Math.min(Math.floor(Number(acceptCount)) || 0, rankedAll.length);
+  const takenEmails = useMemo(() => [...existingOrgEmails, ...RESERVED_ORG_EMAILS], [existingOrgEmails]);
   const [googlePassword, setGooglePassword] = useState("");
-  const accepted = useMemo(() => acceptedPeople(rankedAll, acceptN, existingOrgEmails), [rankedAll, acceptN, existingOrgEmails]);
+  const accepted = useMemo(() => acceptedPeople(rankedAll, acceptN, takenEmails), [rankedAll, acceptN, takenEmails]);
   const missingEmail = accepted.filter((p) => !p.ucscEmail).length;
   async function copyAccepted() {
     try {
@@ -356,7 +358,7 @@ export function ApplicantsView({
                 onChange={(e) => setAcceptCount(e.target.value)}
               />
               <p className="text-[13px] text-muted-foreground">
-                Takes the top of the full ranking. Gives First, Last, UCSC email and a proposed 180DC email (first.last@180dc.org).
+                Takes the top of the full ranking. Gives First, Last, UCSC email and a proposed 180DC email (like jdoe@180dc.org).
               </p>
               <Button variant="outline" size="sm" disabled={acceptN < 1} onClick={copyAccepted}>
                 Copy {acceptN || ""} {acceptN === 1 ? "row" : "rows"} for Sheets
